@@ -1,0 +1,28 @@
+{
+  "emergencyDefense": {
+    "id": "pulse_plate",
+    "displayName": "Pulse Plate",
+    "purchaseCost": 70,
+    "startingInventory": 1,
+    "charges": 2,
+    "damage": 32,
+    "blastRadius": 52,
+    "triggerRadius": 20,
+    "armTime": 0.35,
+    "triggerCooldown": 0.0,
+    "stunDuration": 0.3,
+    "armorPierce": 2,
+    "visual": { "shape": "diamond", "primary": "#E8B637", "accent": "#EC5062", "radius": 13, "marks": 2, "ring": true }
+  },
+  "generator": {
+    "id": "charge_forge",
+    "displayName": "Charge Forge",
+    "purchaseCost": 320,
+    "visual": { "shape": "hexagon", "primary": "#2AC275", "accent": "#E8B637", "radius": 22, "marks": 3, "ring": true },
+    "levels": [
+      { "productionSeconds": 42, "capacity": 3, "defenseDamageBonus": 0.0, "upgradeCost": 210 },
+      { "productionSeconds": 32, "capacity": 4, "defenseDamageBonus": 0.15, "upgradeCost": 310 },
+      { "productionSeconds": 24, "capacity": 5, "defenseDamageBonus": 0.30, "upgradeCost": null }
+    ]
+  }
+}

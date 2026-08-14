@@ -1,0 +1,14 @@
+#----------------------------- Global Properties ----------------------------#
+
+/outputDir:bin/$(Platform)/Content
+/intermediateDir:obj/$(Platform)/Content
+/platform:DesktopGL
+/config:
+/quiet
+
+#---------------------------------- Content ---------------------------------#
+
+#begin Fonts/Interface.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/build:Fonts/Interface.spritefont

@@ -1,0 +1,294 @@
+using MinimalBastion.Core;
+using MinimalBastion.Effects;
+using MinimalBastion.Enemies;
+using MinimalBastion.Towers;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+
+namespace MinimalBastion.Rendering;
+
+public sealed class GameRenderer
+{
+    public void Draw(SpriteBatch batch, PrimitiveRenderer primitives, MinimalBastion.GameSession session)
+    {
+        primitives.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight), session.Map.Definition.Background.BaseColor);
+        DrawTerrain(batch, primitives, session);
+        DrawPath(batch, primitives, session);
+        DrawTacticalDefenses(batch, primitives, session);
+        DrawRanges(batch, primitives, session);
+        DrawTowers(batch, primitives, session);
+        DrawEnemies(batch, primitives, session);
+        DrawProjectiles(batch, primitives, session);
+        DrawEffects(batch, primitives, session);
+        DrawMarkers(batch, primitives, session);
+    }
+
+    private static void DrawTerrain(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    {
+        var mapRect = new Rectangle(0, 0, GameConstants.MapWidth, GameConstants.LogicalHeight);
+        var baseColor = session.Map.Definition.Background.BaseColor;
+        var accentColor = session.Map.Definition.Background.AccentColor;
+        p.FillRect(batch, mapRect, baseColor);
+
+        foreach (var region in session.Map.BuildableRegions)
+        {
+            var pointerInside = region.Contains(session.PlacementPosition.ToPoint());
+            var placementActive = session.PlacementTowerId is not null || session.TacticalPlacement == TacticalPlacementKind.ChargeForge;
+            var emphasized = placementActive && pointerInside;
+            var regionFill = Color.Lerp(baseColor, accentColor, emphasized ? 0.34f : 0.18f);
+            p.FillRect(batch, region, regionFill);
+            DrawBuildZoneCorners(batch, p, region, emphasized ? ColorPalette.PlacementValid : ColorPalette.WithAlpha(ColorPalette.BuildableOutline, 165), emphasized ? 3 : 2);
+        }
+
+        foreach (var node in session.Map.Definition.PowerNodes)
+        {
+            var position = node.Position.ToVector2();
+            p.DashedRing(batch, position, node.Radius, ColorPalette.WithAlpha(node.NodeColor, 95), 32, 2);
+            p.DrawPolygon(batch, position, 14, 4, false, ColorPalette.WithAlpha(node.NodeColor, 210), MathHelper.PiOver4);
+            p.DrawPolygon(batch, position, 7, 4, false, ColorPalette.Paper, MathHelper.PiOver4);
+            p.Line(batch, position - new Vector2(22, 0), position - new Vector2(10, 0), node.NodeColor, 2);
+            p.Line(batch, position + new Vector2(10, 0), position + new Vector2(22, 0), node.NodeColor, 2);
+        }
+
+        p.DrawRect(batch, mapRect, ColorPalette.MapBoundary, 1);
+    }
+
+    private static void DrawBuildZoneCorners(SpriteBatch batch, PrimitiveRenderer p, Rectangle region, Color color, int thickness)
+    {
+        const int length = 16;
+        var right = region.Right - 1;
+        var bottom = region.Bottom - 1;
+        p.Line(batch, new Vector2(region.Left, region.Top), new Vector2(region.Left + length, region.Top), color, thickness);
+        p.Line(batch, new Vector2(region.Left, region.Top), new Vector2(region.Left, region.Top + length), color, thickness);
+        p.Line(batch, new Vector2(right, region.Top), new Vector2(right - length, region.Top), color, thickness);
+        p.Line(batch, new Vector2(right, region.Top), new Vector2(right, region.Top + length), color, thickness);
+        p.Line(batch, new Vector2(region.Left, bottom), new Vector2(region.Left + length, bottom), color, thickness);
+        p.Line(batch, new Vector2(region.Left, bottom), new Vector2(region.Left, bottom - length), color, thickness);
+        p.Line(batch, new Vector2(right, bottom), new Vector2(right - length, bottom), color, thickness);
+        p.Line(batch, new Vector2(right, bottom), new Vector2(right, bottom - length), color, thickness);
+    }
+
+    private static void DrawPath(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    {
+        var points = session.Map.Definition.Path.Select(x => x.ToVector2()).ToArray();
+        var roadWidth = session.Map.Definition.PathWidth;
+
+        // One flat color across every segment and join makes the route read as a
+        // single continuous road. There are deliberately no shoulders or seams.
+        for (var i = 0; i < points.Length - 1; i++)
+            p.Line(batch, points[i], points[i + 1], ColorPalette.Path, roadWidth);
+
+        foreach (var point in points)
+            p.FillRect(batch, new Rectangle((int)(point.X - roadWidth / 2f), (int)(point.Y - roadWidth / 2f), roadWidth, roadWidth), ColorPalette.Path);
+
+        for (var i = 0; i < points.Length - 1; i++)
+            DrawDashedLine(batch, p, points[i], points[i + 1], ColorPalette.PathStripe, 4, 18, 16);
+    }
+
+    private static void DrawDashedLine(SpriteBatch batch, PrimitiveRenderer p, Vector2 start, Vector2 end, Color color, float thickness, float dashLength, float gapLength)
+    {
+        var delta = end - start;
+        var length = delta.Length();
+        if (length <= 0.01f) return;
+        var direction = delta / length;
+        for (var distance = 0f; distance < length; distance += dashLength + gapLength)
+        {
+            var dashEnd = MathF.Min(distance + dashLength, length);
+            p.Line(batch, start + direction * distance, start + direction * dashEnd, color, thickness);
+        }
+    }
+
+    private static void DrawRanges(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    {
+        if (session.SelectedTower is { } selected)
+            p.DashedRing(batch, selected.Position, session.GetEffectiveRange(selected), ColorPalette.WithAlpha(ColorPalette.Gold, 155), 36, 2);
+        else if (session.HoveredTower is { IsSupport: false } hovered)
+            p.DashedRing(batch, hovered.Position, session.GetEffectiveRange(hovered), ColorPalette.WithAlpha(ColorPalette.Cyan, 105), 36, 2);
+
+        var placementOnMap = session.PlacementPosition.X >= 0 && session.PlacementPosition.X < GameConstants.MapWidth &&
+                             session.PlacementPosition.Y >= GameConstants.TopBarHeight && session.PlacementPosition.Y < GameConstants.LogicalHeight;
+        if (placementOnMap && session.PlacementTowerId is { } towerId && session.Content.Towers.TryGetValue(towerId, out var definition))
+        {
+            var placementColor = session.ValidatePlacement(towerId, session.PlacementPosition) == PlacementFailure.None
+                ? ColorPalette.PlacementValid
+                : ColorPalette.PlacementInvalid;
+            p.DashedRing(batch, session.PlacementPosition, definition.Levels[0].Range, placementColor, 32, 2);
+            p.DrawShape(batch, session.PlacementPosition, definition.Visual.Radius, definition.Visual.Shape,
+                ColorPalette.WithAlpha(definition.Visual.PrimaryColor, 175), definition.Visual.AccentColor, 1, true, levelMarks: true);
+        }
+
+        if (!placementOnMap || session.TacticalPlacement == TacticalPlacementKind.None) return;
+        var tacticalColor = session.ValidateTacticalPlacement(session.TacticalPlacement, session.PlacementPosition) == PlacementFailure.None
+            ? ColorPalette.PlacementValid
+            : ColorPalette.PlacementInvalid;
+        if (session.TacticalPlacement == TacticalPlacementKind.PulsePlate)
+        {
+            var tactical = session.Content.Tactics.EmergencyDefense;
+            var position = session.PlacementPreviewPosition;
+            p.DashedRing(batch, position, tactical.BlastRadius, tacticalColor, 28, 2);
+            p.DrawShape(batch, position, tactical.Visual.Radius, tactical.Visual.Shape,
+                ColorPalette.WithAlpha(tactical.Visual.PrimaryColor, 190), tactical.Visual.AccentColor, tactical.Charges, true);
+        }
+        else if (session.TacticalPlacement == TacticalPlacementKind.ChargeForge)
+        {
+            var generator = session.Content.Tactics.Generator;
+            p.DrawShape(batch, session.PlacementPosition, generator.Visual.Radius, generator.Visual.Shape,
+                ColorPalette.WithAlpha(generator.Visual.PrimaryColor, 190), generator.Visual.AccentColor, 1, true, levelMarks: true);
+        }
+    }
+
+    private static void DrawTacticalDefenses(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    {
+        foreach (var plate in session.EmergencyDefenses)
+        {
+            var pulse = plate.ArmRemaining > 0 ? 0.82f : 1f;
+            p.DrawShape(batch, plate.Position, plate.Definition.Visual.Radius, plate.Definition.Visual.Shape,
+                plate.Definition.Visual.PrimaryColor, plate.Definition.Visual.AccentColor, plate.ChargesRemaining, true, pulse);
+            if (plate.ArmRemaining > 0)
+                p.DashedRing(batch, plate.Position, plate.Definition.Visual.Radius + 7, ColorPalette.WithAlpha(ColorPalette.Paper, 130), 12, 2);
+        }
+
+        if (session.Generator is not { } generator) return;
+        var visual = generator.Definition.Visual;
+        p.DrawShape(batch, generator.Position, visual.Radius, visual.Shape,
+            visual.PrimaryColor, visual.AccentColor, generator.LevelIndex + 1, true,
+            1f + MathF.Sin(session.Statistics.SimulatedSeconds * 2.5f) * 0.04f, true);
+        if (session.IsCoOp)
+            p.Ring(batch, generator.Position, visual.Radius + 8, generator.OwnerPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral, 2);
+        var track = new Rectangle((int)generator.Position.X - 22, (int)generator.Position.Y + visual.Radius + 8, 44, 5);
+        p.FillRect(batch, track, ColorPalette.HealthTrack);
+        p.FillRect(batch, new Rectangle(track.X, track.Y, (int)(track.Width * generator.ProductionProgress), track.Height), ColorPalette.Green);
+        if (session.SelectedGenerator == generator)
+            p.Ring(batch, generator.Position, visual.Radius + (session.IsCoOp ? 12 : 8), ColorPalette.Gold, 3);
+    }
+
+    private static void DrawTowers(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    {
+        var time = session.Statistics.SimulatedSeconds;
+        foreach (var tower in session.Towers)
+        {
+            var supportPulse = tower.IsSupport ? 1f + MathF.Sin(time * 3f + tower.Id) * 0.06f : 1f;
+            if (tower.IsOverdriven) supportPulse *= 1f + MathF.Sin(time * 13f + tower.Id) * 0.05f;
+            var pulse = supportPulse * tower.VisualScale;
+            var primary = tower.Definition.Visual.PrimaryColor;
+            var accent = tower.Definition.Visual.AccentColor;
+            p.DrawShape(batch, tower.Position, tower.Definition.Visual.Radius, tower.Definition.Visual.Shape,
+                primary, accent, tower.LevelIndex + 1, true, pulse, true);
+            if (tower.Specialization is { } specialization)
+            {
+                var branchIndex = tower.Definition.Specializations.IndexOf(specialization);
+                if (branchIndex == 0)
+                    p.Circle(batch, tower.Position, 4f, ColorPalette.Paper);
+                else
+                    p.DrawPolygon(batch, tower.Position, 5f, 4, false, ColorPalette.Paper, MathHelper.PiOver4);
+            }
+            if (session.Map.GetPowerBuff(tower.Position).IsPowered)
+                p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 10, ColorPalette.WithAlpha(ColorPalette.Gold, 190), 12, 2);
+            if (tower.IsOverdriven)
+                p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 15 + MathF.Sin(time * 8f) * 2f, ColorPalette.Coral, 16, 3);
+
+            if (session.IsCoOp)
+                p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 8, tower.OwnerPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral, 2);
+            if (tower == session.SelectedTower)
+                p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + (session.IsCoOp ? 12 : 8), ColorPalette.Gold, 3);
+
+            if (tower.IsSupport)
+                p.DashedRing(batch, tower.Position, tower.Level.AuraRange, ColorPalette.WithAlpha(accent, 120), 28, 2);
+        }
+    }
+
+    private static void DrawEnemies(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    {
+        var time = session.Statistics.SimulatedSeconds;
+        foreach (var enemy in session.Enemies)
+        {
+            if (enemy.IsDead || enemy.HasEscaped) continue;
+            var pulseRate = enemy.IsBoss ? 8f : 5f;
+            var pulseAmount = enemy.IsBoss ? 0.09f : 0.05f;
+            var pulse = enemy.IsBoss || enemy.Definition.Id.Contains("regenerator", StringComparison.OrdinalIgnoreCase)
+                ? 1f + MathF.Sin(time * pulseRate) * pulseAmount : 1f;
+            var primary = enemy.Definition.Visual.PrimaryColor;
+            var accent = enemy.Definition.Visual.AccentColor;
+            p.DrawShape(batch, enemy.Position, (int)MathF.Round(enemy.Radius), enemy.Definition.Visual.Shape,
+                primary, accent, enemy.Definition.Visual.Marks + (enemy.IsBoss ? 2 : 0), enemy.Definition.Visual.Ring || enemy.IsElite || enemy.IsBoss, pulse);
+
+            if (enemy.IsBoss)
+            {
+                p.DashedRing(batch, enemy.Position, enemy.Radius + 10, ColorPalette.Coral, 16, 3);
+                p.DashedRing(batch, enemy.Position, enemy.Radius + 16, ColorPalette.Gold, 24, 2);
+            }
+            else if (enemy.IsElite)
+                p.DashedRing(batch, enemy.Position, enemy.Radius + 7, ColorPalette.Gold, 12, 2);
+
+            var healthRatio = enemy.MaxHealth > 0 ? enemy.Health / enemy.MaxHealth : 0;
+            p.HealthBar(batch, enemy.Position - new Vector2(0, enemy.Radius + 11), enemy.Radius * (enemy.IsBoss ? 3.5f : 2.5f),
+                healthRatio, ColorPalette.Health(healthRatio), ColorPalette.HealthTrack, ColorPalette.Ink);
+
+            if (enemy.Shield > 0)
+                p.Ring(batch, enemy.Position, enemy.Radius + 5, ColorPalette.Shield, 3);
+            if (enemy.StatusEffects.SlowFactor > 0)
+                p.DashedRing(batch, enemy.Position, enemy.Radius + 9, ColorPalette.Slow, 16, 2);
+            if (enemy.StatusEffects.DamageMultiplier > 1f)
+            {
+                p.Ring(batch, enemy.Position, enemy.Radius + 13, ColorPalette.Violet, 2);
+                p.DrawPolygon(batch, enemy.Position - new Vector2(0, enemy.Radius + 13), 3.5f, 4, false, ColorPalette.Violet, MathHelper.PiOver4);
+            }
+            if (enemy.Definition.RegenerationPerSecond > 0)
+                p.Ring(batch, enemy.Position, enemy.Radius + 11, ColorPalette.Lime, 2);
+        }
+    }
+
+    private static void DrawProjectiles(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    {
+        foreach (var projectile in session.Projectiles.Projectiles)
+        {
+            var shape = projectile.Kind switch
+            {
+                Combat.ProjectileKind.ImpactPoint => "square",
+                Combat.ProjectileKind.Straight => "triangle",
+                _ => "diamond"
+            };
+            p.DrawShape(batch, projectile.Position, Math.Max(4, (int)projectile.Radius + 2), shape,
+                projectile.Color, ColorPalette.Ink, 0, false);
+        }
+    }
+
+    private static void DrawEffects(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    {
+        foreach (var effect in session.Effects.Effects)
+        {
+            var progress = MathHelper.Clamp(effect.Remaining / MathF.Max(effect.Duration, 0.001f), 0, 1);
+            var alpha = (byte)(100 + 155 * progress);
+            var effectColor = ColorPalette.WithAlpha(effect.Color, alpha);
+            if (effect.Kind == EffectKind.Beam)
+            {
+                p.Line(batch, effect.Start, effect.End, ColorPalette.WithAlpha(ColorPalette.Ink, alpha), effect.Radius + 4);
+                p.Line(batch, effect.Start, effect.End, effectColor, Math.Max(2, effect.Radius + 1));
+            }
+            else if (effect.Kind == EffectKind.Ping)
+            {
+                var expansion = 1f - progress;
+                var radius = effect.Radius + expansion * 34f;
+                p.DashedRing(batch, effect.Start, radius, effectColor, 18, 3);
+                p.Ring(batch, effect.Start, Math.Max(7, effect.Radius * progress), ColorPalette.WithAlpha(ColorPalette.Paper, alpha), 2);
+                p.DrawShape(batch, effect.Start, 8, "diamond", effectColor, ColorPalette.Paper, 1, false);
+            }
+            else
+            {
+                var radius = effect.Radius * (1.2f - progress * 0.2f);
+                p.Ring(batch, effect.Start, radius, effectColor, 4);
+                if (progress > 0.2f) p.Ring(batch, effect.Start, Math.Max(2, radius - 5), ColorPalette.Paper, 2);
+            }
+        }
+    }
+
+    private static void DrawMarkers(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    {
+        var spawn = session.Map.Definition.Spawn.ToVector2();
+        var goal = session.Map.Definition.Goal.ToVector2();
+        spawn.X = MathF.Max(spawn.X, 16);
+        goal.X = MathF.Min(goal.X, GameConstants.MapWidth - 16);
+        p.DrawShape(batch, spawn, 11, "square", ColorPalette.Cyan, ColorPalette.Navy, 1, false);
+        p.DrawShape(batch, goal, 12, "triangle", ColorPalette.Coral, ColorPalette.Paper, 1, false);
+    }
+}

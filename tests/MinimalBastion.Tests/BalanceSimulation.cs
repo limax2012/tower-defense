@@ -1,0 +1,250 @@
+using System.Globalization;
+using MinimalBastion;
+using MinimalBastion.Core;
+using MinimalBastion.Data;
+using MinimalBastion.Enemies;
+using MinimalBastion.Maps;
+using MinimalBastion.Towers;
+using Microsoft.Xna.Framework;
+
+namespace MinimalBastion.Tests;
+
+internal static class BalanceSimulation
+{
+    private const float StepSeconds = 0.02f;
+
+    public static void Run(GameContent content)
+    {
+        Console.WriteLine("BALANCE BENCHMARK (deterministic, current data)");
+        var totalEnemies = content.Waves.Waves.SelectMany(x => x.Groups).Sum(x => x.Count);
+        var totalKillRewards = content.Waves.Waves.SelectMany(x => x.Groups).Sum(x => x.Count * content.Enemies[x.EnemyId].Reward);
+        var totalWaveRewards = content.Waves.Waves.Sum(x => 40 + 10 * x.Number);
+        Console.WriteLine($"Wave economy: {totalEnemies} enemies, {totalKillRewards} kill credits, {totalWaveRewards} wave credits, up to {content.Waves.Waves.Count * GameConstants.EarlyStartBonus} early-start credits, {GameConstants.StartingCredits} starting credits.");
+        Console.WriteLine("Tower                 Cost  Raw L1  Single L1  Dense L1  Raw L3  Upgrade DPS/currency");
+        Console.WriteLine("--------------------  ----  ------  ---------  --------  ------  ----------------------");
+
+        foreach (var tower in content.Towers.Values.OrderBy(x => x.PurchaseCost))
+        {
+            var levelOne = SingleTarget(content, tower, 0, 20, 0);
+            var levelThree = SingleTarget(content, tower, 2, 20, 0);
+            var dense = DenseGroup(content, tower, 0, 12, 8);
+            var levelTwo = SingleTarget(content, tower, 1, 20, 0);
+            var upgradeDps = tower.Levels[0].UpgradeCost is { } firstCost
+                ? (levelTwo.DamagePerSecond - levelOne.DamagePerSecond) / firstCost
+                : 0;
+
+            Console.WriteLine($"{tower.DisplayName,-20}  {tower.PurchaseCost,4}  {RawDps(tower.Levels[0]),6:0.0}  {levelOne.DamagePerSecond,9:0.0}  {dense.DamagePerSecond,8:0.0}  {RawDps(tower.Levels[2]),6:0.0}  {upgradeDps,22:0.000}");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("ARMOR SWEEP (level 1 effective DPS; flat armor subtraction with 1 damage floor)");
+        Console.WriteLine("Tower                 Armor 0  Armor 4  Armor 8  Armor prevented");
+        Console.WriteLine("--------------------  --------  --------  --------  ---------------");
+        foreach (var tower in content.Towers.Values.OrderBy(x => x.PurchaseCost))
+        {
+            var armor0 = SingleTarget(content, tower, 0, 12, 0);
+            var armor4 = SingleTarget(content, tower, 0, 12, 4);
+            var armor8 = SingleTarget(content, tower, 0, 12, 8);
+            Console.WriteLine($"{tower.DisplayName,-20}  {armor0.DamagePerSecond,8:0.0}  {armor4.DamagePerSecond,8:0.0}  {armor8.DamagePerSecond,8:0.0}  {armor8.ArmorAbsorbed,15:0.0}");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("PRACTICAL SCENARIOS (level 1)");
+        Console.WriteLine("Tower                 Fast DPS  Swarm kills/leaks  Waste %  Dense aggregate DPS  Boss DPS");
+        Console.WriteLine("--------------------  --------  -----------------  -------  -------------------  --------");
+        foreach (var tower in content.Towers.Values.OrderBy(x => x.PurchaseCost))
+        {
+            var fast = FastEnemy(content, tower);
+            var swarm = Swarm(content, tower);
+            var dense = DenseGroup(content, tower, 0, 12, 8);
+            var boss = SingleTarget(content, tower, 0, 30, 0, 1_000_000);
+            Console.WriteLine($"{tower.DisplayName,-20}  {fast.DamagePerSecond,8:0.0}  {swarm.Kills,5}/{swarm.Leaks,-10}  {WastePercent(swarm),7:0.0}  {dense.DamagePerSecond,19:0.0}  {boss.DamagePerSecond,8:0.0}");
+        }
+
+        var support = SupportContribution(content);
+        Console.WriteLine();
+        Console.WriteLine($"Signal Beacon assisted damage estimate: {support.AssistedDamage:0.0} over 20s ({support.AssistedDps:0.0} DPS) for two Needle Turrets.");
+        Console.WriteLine("Metrics include projectile travel, path movement, armor, shields, DOT persistence, overkill, kills, leaks, and damage reports.");
+    }
+
+    private static float RawDps(TowerLevelDefinition level) => level.Damage * level.AttacksPerSecond;
+
+    private static float WastePercent(SimulationResult result) => result.Damage + result.Overkill <= 0
+        ? 0
+        : result.Overkill / (result.Damage + result.Overkill) * 100;
+
+    private static SimulationResult SingleTarget(GameContent content, TowerDefinition tower, int levelIndex, float seconds, float armor, float health = 100_000)
+    {
+        var enemy = EnemyLike(content.Enemies.Values.First(), "benchmark_target", health, 0.01f, armor, 0, 0);
+        var session = CreateSession(content, new[] { tower }, new[] { enemy }, StationaryMap());
+        var instance = AddTower(session, tower, new Vector2(400, 300), levelIndex);
+        var target = AddEnemy(session, enemy);
+        var metrics = new Metrics();
+        session.DamageResolver.DamageApplied += metrics.Record;
+        Simulate(session, seconds);
+        return metrics.ToResult(seconds, target);
+    }
+
+    private static SimulationResult DenseGroup(GameContent content, TowerDefinition tower, int levelIndex, float seconds, int count)
+    {
+        var enemy = EnemyLike(content.Enemies.Values.First(), "benchmark_dense", 100_000, 0.01f, 0, 0, 0);
+        var session = CreateSession(content, new[] { tower }, new[] { enemy }, StationaryMap());
+        AddTower(session, tower, new Vector2(400, 300), levelIndex);
+        var targets = Enumerable.Range(0, count).Select(_ => AddEnemy(session, enemy)).ToArray();
+        var metrics = new Metrics();
+        session.DamageResolver.DamageApplied += metrics.Record;
+        Simulate(session, seconds);
+        return metrics.ToResult(seconds, targets);
+    }
+
+    private static SimulationResult FastEnemy(GameContent content, TowerDefinition tower)
+    {
+        var enemy = EnemyLike(content.Enemies.Values.First(), "benchmark_fast", 10_000, 500, 0, 0, 0);
+        var session = CreateSession(content, new[] { tower }, new[] { enemy }, MovingMap());
+        AddTower(session, tower, new Vector2(400, 300), 0);
+        var target = AddEnemy(session, enemy);
+        var metrics = new Metrics();
+        session.DamageResolver.DamageApplied += metrics.Record;
+        Simulate(session, 4);
+        return metrics.ToResult(4, target);
+    }
+
+    private static SimulationResult Swarm(GameContent content, TowerDefinition tower)
+    {
+        var enemy = EnemyLike(content.Enemies.Values.First(), "benchmark_swarm", 45, 30, 0, 0, 0);
+        var session = CreateSession(content, new[] { tower }, new[] { enemy }, SwarmMap());
+        AddTower(session, tower, new Vector2(400, 300), 0);
+        var targets = Enumerable.Range(0, 24).Select(_ => AddEnemy(session, enemy)).ToArray();
+        var metrics = new Metrics();
+        session.DamageResolver.DamageApplied += metrics.Record;
+        Simulate(session, 22);
+        return metrics.ToResult(22, targets);
+    }
+
+    private static SupportResult SupportContribution(GameContent content)
+    {
+        var enemy = EnemyLike(content.Enemies.Values.First(), "benchmark_support", 100_000, 0.01f, 0, 0, 0);
+        var needles = content.Towers["needle_turret"];
+        var beacon = content.Towers["signal_beacon"];
+        var without = RunTeam(content, new[] { needles, needles }, enemy, includeBeacon: false);
+        var with = RunTeam(content, new[] { needles, needles, beacon }, enemy, includeBeacon: true);
+        return new SupportResult(with.Damage - without.Damage, (with.Damage - without.Damage) / 20f);
+    }
+
+    private static SimulationResult RunTeam(GameContent content, IReadOnlyList<TowerDefinition> towers, EnemyDefinition enemy, bool includeBeacon)
+    {
+        var session = CreateSession(content, towers, new[] { enemy }, StationaryMap());
+        AddTower(session, towers[0], new Vector2(350, 300), 0);
+        AddTower(session, towers[1], new Vector2(450, 300), 0);
+        if (includeBeacon) AddTower(session, towers[2], new Vector2(400, 400), 0);
+        var target = AddEnemy(session, enemy);
+        var metrics = new Metrics();
+        session.DamageResolver.DamageApplied += metrics.Record;
+        Simulate(session, 20);
+        return metrics.ToResult(20, target);
+    }
+
+    private static GameSession CreateSession(GameContent content, IReadOnlyList<TowerDefinition> towers, IReadOnlyList<EnemyDefinition> enemies, MapDefinition map)
+    {
+        return new GameSession(new GameContent
+        {
+            Towers = towers.Distinct().ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase),
+            Enemies = enemies.Distinct().ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase),
+            Map = map,
+            Waves = new WaveSetDefinition { Waves = new List<WaveDefinition>() }
+        });
+    }
+
+    private static TowerInstance AddTower(GameSession session, TowerDefinition definition, Vector2 position, int levelIndex)
+    {
+        var tower = new TowerInstance(session.Towers.Count + 1, definition, position);
+        for (var level = 0; level < levelIndex; level++) tower.TryUpgrade();
+        session.Towers.Add(tower);
+        return tower;
+    }
+
+    private static EnemyInstance AddEnemy(GameSession session, EnemyDefinition definition)
+    {
+        var enemy = new EnemyInstance(session.Enemies.Count + 1, definition, session.Map.Path, 1, 1);
+        session.Enemies.Add(enemy);
+        return enemy;
+    }
+
+    private static void Simulate(GameSession session, float seconds)
+    {
+        for (var elapsed = 0f; elapsed < seconds; elapsed += StepSeconds)
+            session.Update(MathF.Min(StepSeconds, seconds - elapsed));
+    }
+
+    private static MapDefinition StationaryMap() => new()
+    {
+        Id = "benchmark_stationary",
+        Path = new List<PointData> { Point(400, 200), Point(401, 200) },
+        BuildableRegions = new List<RectangleData> { new() { X = 300, Y = 250, Width = 200, Height = 120 } },
+        Background = new BackgroundData()
+    };
+
+    private static MapDefinition MovingMap() => new()
+    {
+        Id = "benchmark_moving",
+        Path = new List<PointData> { Point(40, 200), Point(920, 200) },
+        BuildableRegions = new List<RectangleData> { new() { X = 20, Y = 250, Width = 900, Height = 120 } },
+        Background = new BackgroundData()
+    };
+
+    private static MapDefinition SwarmMap() => new()
+    {
+        Id = "benchmark_swarm",
+        Path = new List<PointData> { Point(300, 200), Point(920, 200) },
+        BuildableRegions = new List<RectangleData> { new() { X = 20, Y = 250, Width = 900, Height = 120 } },
+        Background = new BackgroundData()
+    };
+
+    private static EnemyDefinition EnemyLike(EnemyDefinition source, string id, float health, float speed, float armor, float shield, float regeneration) => new()
+    {
+        Id = id,
+        DisplayName = id,
+        MaxHealth = health,
+        Speed = speed,
+        Reward = source.Reward,
+        LivesLost = 1,
+        Armor = armor,
+        Shield = shield,
+        RegenerationPerSecond = regeneration,
+        Visual = source.Visual
+    };
+
+    private static PointData Point(float x, float y) => new() { X = x, Y = y };
+
+    private sealed record SupportResult(float AssistedDamage, float AssistedDps);
+
+    private sealed class Metrics
+    {
+        public float Damage { get; private set; }
+        public float ArmorAbsorbed { get; private set; }
+        public float Overkill { get; private set; }
+        public float Incoming { get; private set; }
+        public int Hits { get; private set; }
+
+        public int Kills { get; private set; }
+        public int Leaks { get; private set; }
+
+        public void Record(MinimalBastion.Combat.DamageReport report)
+        {
+            Damage += report.HealthDamage + report.ShieldDamage;
+            Incoming += report.IncomingDamage;
+            ArmorAbsorbed += report.ArmorAbsorbed;
+            Overkill += report.Overkill;
+            Hits++;
+            if (report.Killed) Kills++;
+        }
+
+        public SimulationResult ToResult(float seconds, params EnemyInstance[] targets)
+        {
+            Leaks = targets.Count(x => x.HasEscaped);
+            return new SimulationResult(Damage, Damage / MathF.Max(0.001f, seconds), Kills, Leaks, ArmorAbsorbed, Overkill, Incoming, Hits);
+        }
+    }
+
+    private sealed record SimulationResult(float Damage, float DamagePerSecond, int Kills, int Leaks, float ArmorAbsorbed, float Overkill, float Incoming, int Hits);
+}

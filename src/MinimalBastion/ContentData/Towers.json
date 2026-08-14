@@ -1,0 +1,132 @@
+[
+  {
+    "id": "needle_turret", "displayName": "Needle Turret", "role": "Generalist", "behavior": "single_projectile", "purchaseCost": 90, "defaultTargetMode": "First",
+    "visual": { "shape": "square", "primary": "#2C7AE7", "accent": "#173F68", "radius": 18, "marks": 1, "ring": true },
+    "levels": [
+      { "range": 125, "damage": 8, "attacksPerSecond": 2.0, "projectileSpeed": 500, "upgradeCost": 55 },
+      { "range": 135, "damage": 10, "attacksPerSecond": 2.2, "projectileSpeed": 530, "upgradeCost": 85 },
+      { "range": 145, "damage": 13, "attacksPerSecond": 2.5, "projectileSpeed": 560, "upgradeCost": null }
+    ],
+    "specializations": [
+      {
+        "id": "rapid_array", "displayName": "Rapid Array", "shortLabel": "RAPID", "summary": "High-rate swarm suppression", "upgradeCost": 85,
+        "level": { "range": 145, "damage": 11, "attacksPerSecond": 3.1, "projectileSpeed": 620, "upgradeCost": null }
+      },
+      {
+        "id": "rail_pin", "displayName": "Rail Pin", "shortLabel": "RAIL", "summary": "Heavy armor-piercing shots", "upgradeCost": 95,
+        "level": { "range": 165, "damage": 24, "attacksPerSecond": 1.4, "projectileSpeed": 700, "armorPierce": 5, "upgradeCost": null }
+      }
+    ]
+  },
+  {
+    "id": "shard_fan", "displayName": "Shard Fan", "role": "Anti-swarm", "behavior": "pellet_burst", "purchaseCost": 150, "defaultTargetMode": "First",
+    "visual": { "shape": "triangle", "primary": "#E58A32", "accent": "#7B480F", "radius": 18, "marks": 1, "ring": true },
+    "levels": [
+      { "range": 110, "damage": 9, "attacksPerSecond": 0.80, "projectileSpeed": 400, "pelletCount": 3, "pelletSpreadDegrees": 18, "upgradeCost": 90 },
+      { "range": 115, "damage": 10, "attacksPerSecond": 0.86, "projectileSpeed": 420, "pelletCount": 4, "pelletSpreadDegrees": 20, "upgradeCost": 135 },
+      { "range": 120, "damage": 12, "attacksPerSecond": 0.92, "projectileSpeed": 450, "pelletCount": 5, "pelletSpreadDegrees": 22, "upgradeCost": null }
+    ]
+  },
+  {
+    "id": "watchtower", "displayName": "Watchtower", "role": "Long range", "behavior": "single_projectile", "purchaseCost": 190, "defaultTargetMode": "Strongest",
+    "visual": { "shape": "square", "primary": "#7C53DA", "accent": "#39245F", "radius": 20, "marks": 1, "ring": true },
+    "levels": [
+      { "range": 250, "damage": 46, "attacksPerSecond": 0.50, "projectileSpeed": 850, "upgradeCost": 120 },
+      { "range": 270, "damage": 68, "attacksPerSecond": 0.52, "projectileSpeed": 900, "upgradeCost": 185 },
+      { "range": 290, "damage": 105, "attacksPerSecond": 0.55, "projectileSpeed": 950, "upgradeCost": null }
+    ]
+  },
+  {
+    "id": "frost_spire", "displayName": "Frost Spire", "role": "Control", "behavior": "slow_projectile", "purchaseCost": 140, "defaultTargetMode": "First",
+    "visual": { "shape": "diamond", "primary": "#2192AA", "accent": "#18586B", "radius": 18, "marks": 1, "ring": true },
+    "levels": [
+      { "range": 150, "damage": 3, "attacksPerSecond": 0.80, "projectileSpeed": 350, "splashRadius": 28, "slowPercent": 0.35, "slowDuration": 2.0, "upgradeCost": 90 },
+      { "range": 160, "damage": 4, "attacksPerSecond": 0.85, "projectileSpeed": 370, "splashRadius": 32, "slowPercent": 0.42, "slowDuration": 2.2, "upgradeCost": 145 },
+      { "range": 170, "damage": 6, "attacksPerSecond": 0.90, "projectileSpeed": 390, "splashRadius": 36, "slowPercent": 0.50, "slowDuration": 2.5, "upgradeCost": null }
+    ],
+    "specializations": [
+      {
+        "id": "permafrost", "displayName": "Permafrost", "shortLabel": "DEEP", "summary": "Maximum slow and duration", "upgradeCost": 145,
+        "level": { "range": 178, "damage": 5, "attacksPerSecond": 0.82, "projectileSpeed": 410, "splashRadius": 42, "slowPercent": 0.62, "slowDuration": 3.4, "upgradeCost": null }
+      },
+      {
+        "id": "hail_lancer", "displayName": "Hail Lancer", "shortLabel": "HAIL", "summary": "Faster, harder control fire", "upgradeCost": 150,
+        "level": { "range": 172, "damage": 9, "attacksPerSecond": 1.15, "projectileSpeed": 470, "splashRadius": 30, "slowPercent": 0.30, "slowDuration": 1.5, "upgradeCost": null }
+      }
+    ]
+  },
+  {
+    "id": "ember_coil", "displayName": "Ember Coil", "role": "Damage over time", "behavior": "burn_projectile", "purchaseCost": 220, "defaultTargetMode": "First",
+    "visual": { "shape": "hexagon", "primary": "#EC5062", "accent": "#6B2631", "radius": 19, "marks": 1, "ring": true },
+    "levels": [
+      { "range": 155, "damage": 12, "attacksPerSecond": 0.75, "projectileSpeed": 400, "burnDamagePerSecond": 6, "burnDuration": 2.5, "burnTickInterval": 0.5, "upgradeCost": 140 },
+      { "range": 165, "damage": 16, "attacksPerSecond": 0.82, "projectileSpeed": 430, "burnDamagePerSecond": 9, "burnDuration": 3.0, "burnTickInterval": 0.5, "upgradeCost": 210 },
+      { "range": 175, "damage": 20, "attacksPerSecond": 0.90, "projectileSpeed": 460, "burnDamagePerSecond": 14, "burnDuration": 3.5, "burnTickInterval": 0.5, "splashRadius": 18, "upgradeCost": null }
+    ],
+    "specializations": [
+      {
+        "id": "wildfire_matrix", "displayName": "Wildfire Matrix", "shortLabel": "WILDFIRE", "summary": "Wide-area burn propagation", "upgradeCost": 210,
+        "level": { "range": 178, "damage": 18, "attacksPerSecond": 0.95, "projectileSpeed": 480, "burnDamagePerSecond": 13, "burnDuration": 4.0, "burnTickInterval": 0.5, "splashRadius": 42, "upgradeCost": null }
+      },
+      {
+        "id": "searing_brand", "displayName": "Searing Brand", "shortLabel": "SEARING", "summary": "Intense burn for durable targets", "upgradeCost": 215,
+        "level": { "range": 195, "damage": 22, "attacksPerSecond": 0.65, "projectileSpeed": 520, "burnDamagePerSecond": 24, "burnDuration": 6.0, "burnTickInterval": 0.5, "upgradeCost": null }
+      }
+    ]
+  },
+  {
+    "id": "breaker_cannon", "displayName": "Breaker Cannon", "role": "Armor counter", "behavior": "armor_projectile", "purchaseCost": 250, "defaultTargetMode": "Strongest",
+    "visual": { "shape": "square", "primary": "#E8B637", "accent": "#70561A", "radius": 21, "marks": 1, "ring": true },
+    "levels": [
+      { "range": 165, "damage": 24, "attacksPerSecond": 0.70, "projectileSpeed": 520, "armorPierce": 6, "upgradeCost": 160 },
+      { "range": 175, "damage": 34, "attacksPerSecond": 0.76, "projectileSpeed": 550, "armorPierce": 10, "upgradeCost": 240 },
+      { "range": 185, "damage": 48, "attacksPerSecond": 0.82, "projectileSpeed": 580, "armorPierce": 14, "armorReduction": 4, "armorReductionDuration": 4.0, "upgradeCost": null }
+    ],
+    "specializations": [
+      {
+        "id": "breach_round", "displayName": "Breach Round", "shortLabel": "BREACH", "summary": "Elite and boss penetrator", "upgradeCost": 240,
+        "level": { "range": 205, "damage": 64, "attacksPerSecond": 0.68, "projectileSpeed": 720, "armorPierce": 20, "armorReduction": 5, "armorReductionDuration": 5.0, "upgradeCost": null }
+      },
+      {
+        "id": "shatter_shell", "displayName": "Shatter Shell", "shortLabel": "SHATTER", "summary": "Area armor-break impact", "upgradeCost": 235,
+        "level": { "range": 188, "damage": 38, "attacksPerSecond": 0.9, "projectileSpeed": 590, "splashRadius": 42, "armorPierce": 9, "armorReduction": 6, "armorReductionDuration": 4.5, "upgradeCost": null }
+      }
+    ]
+  },
+  {
+    "id": "arc_relay", "displayName": "Arc Relay", "role": "Chain damage", "behavior": "chain", "purchaseCost": 320, "defaultTargetMode": "First",
+    "visual": { "shape": "circle", "primary": "#2AC275", "accent": "#176442", "radius": 20, "marks": 1, "ring": true },
+    "levels": [
+      { "range": 155, "damage": 19, "attacksPerSecond": 0.68, "chainCount": 2, "chainDamage": 14, "chainRange": 95, "upgradeCost": 220 },
+      { "range": 165, "damage": 28, "attacksPerSecond": 0.74, "chainCount": 3, "chainDamage": 19, "chainRange": 105, "upgradeCost": 330 },
+      { "range": 175, "damage": 40, "attacksPerSecond": 0.80, "chainCount": 4, "chainDamage": 28, "chainRange": 115, "stunDuration": 0.4, "upgradeCost": null }
+    ]
+  },
+  {
+    "id": "siege_mortar", "displayName": "Siege Mortar", "role": "Area damage", "behavior": "splash_projectile", "purchaseCost": 360, "defaultTargetMode": "First",
+    "visual": { "shape": "circle", "primary": "#384E65", "accent": "#EC5062", "radius": 23, "marks": 1, "ring": true },
+    "levels": [
+      { "range": 275, "damage": 42, "attacksPerSecond": 0.29, "projectileSpeed": 240, "splashRadius": 45, "upgradeCost": 240 },
+      { "range": 285, "damage": 58, "attacksPerSecond": 0.32, "projectileSpeed": 250, "splashRadius": 52, "upgradeCost": 360 },
+      { "range": 300, "damage": 78, "attacksPerSecond": 0.35, "projectileSpeed": 260, "splashRadius": 58, "upgradeCost": null }
+    ]
+  },
+  {
+    "id": "prism_beam", "displayName": "Prism Beam", "role": "Focused damage", "behavior": "beam", "purchaseCost": 450, "defaultTargetMode": "Strongest",
+    "visual": { "shape": "diamond", "primary": "#E04BC5", "accent": "#6A1B63", "radius": 21, "marks": 1, "ring": true },
+    "levels": [
+      { "range": 205, "damage": 6, "attacksPerSecond": 3.5, "armorPierce": 3, "exposePercent": 0.10, "exposeDuration": 2.0, "upgradeCost": 300 },
+      { "range": 220, "damage": 9, "attacksPerSecond": 4.0, "armorPierce": 5, "exposePercent": 0.15, "exposeDuration": 2.0, "upgradeCost": 450 },
+      { "range": 235, "damage": 12, "attacksPerSecond": 4.5, "armorPierce": 8, "exposePercent": 0.20, "exposeDuration": 2.0, "ignoreShield": true, "upgradeCost": null }
+    ]
+  },
+  {
+    "id": "signal_beacon", "displayName": "Signal Beacon", "role": "Support aura", "behavior": "aura", "purchaseCost": 300, "defaultTargetMode": "First",
+    "visual": { "shape": "circle", "primary": "#F6E58D", "accent": "#B7791F", "radius": 19, "marks": 1, "ring": true },
+    "levels": [
+      { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 145, "auraAttackSpeedBonus": 0.15, "auraRangeBonus": 0.10, "upgradeCost": 210 },
+      { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 165, "auraAttackSpeedBonus": 0.25, "auraRangeBonus": 0.16, "upgradeCost": 330 },
+      { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 185, "auraAttackSpeedBonus": 0.35, "auraRangeBonus": 0.22, "upgradeCost": null }
+    ]
+  }
+]
