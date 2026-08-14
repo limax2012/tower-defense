@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+*.pdb
+src/MinimalBastion/Content/bin/
+src/MinimalBastion/Content/obj/
+.dotnet/
+.build/

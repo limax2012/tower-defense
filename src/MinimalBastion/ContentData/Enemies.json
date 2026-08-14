@@ -1,0 +1,7 @@
+[
+  { "id": "t1_crawler", "displayName": "Crawler", "maxHealth": 70, "speed": 70, "reward": 8, "livesLost": 1, "armor": 0, "shield": 0, "regenerationPerSecond": 0, "visual": { "shape": "circle", "primary": "#3C9FCB", "accent": "#174F68", "radius": 14, "marks": 1, "ring": false } },
+  { "id": "t2_runner", "displayName": "Runner", "maxHealth": 55, "speed": 125, "reward": 10, "livesLost": 1, "armor": 0, "shield": 0, "regenerationPerSecond": 0, "visual": { "shape": "diamond", "primary": "#E58A32", "accent": "#754312", "radius": 12, "marks": 2, "ring": false } },
+  { "id": "t3_brute", "displayName": "Brute", "maxHealth": 260, "speed": 48, "reward": 25, "livesLost": 1, "armor": 4, "shield": 0, "regenerationPerSecond": 0, "visual": { "shape": "hexagon", "primary": "#EC5062", "accent": "#692432", "radius": 21, "marks": 2, "ring": false } },
+  { "id": "t4_aegis", "displayName": "Aegis", "maxHealth": 520, "speed": 62, "reward": 45, "livesLost": 3, "armor": 8, "shield": 100, "regenerationPerSecond": 0, "visual": { "shape": "octagon", "primary": "#7C53DA", "accent": "#329DB5", "radius": 24, "marks": 1, "ring": true } },
+  { "id": "t5_regenerator", "displayName": "Regenerator", "maxHealth": 800, "speed": 42, "reward": 75, "livesLost": 5, "armor": 2, "shield": 0, "regenerationPerSecond": 18, "visual": { "shape": "star", "primary": "#222A3A", "accent": "#42D392", "radius": 26, "marks": 5, "ring": true } }
+]

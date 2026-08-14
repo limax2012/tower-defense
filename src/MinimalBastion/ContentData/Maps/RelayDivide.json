@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "id": "relay_divide",
+  "displayName": "Surge Divide",
+  "logicalSize": { "width": 960, "height": 720 },
+  "background": { "base": "#152D36", "accent": "#294F59" },
+  "spawn": { "x": -32, "y": 140 },
+  "goal": { "x": 952, "y": 650 },
+  "pathWidth": 56,
+  "path": [
+    { "x": -32, "y": 140 }, { "x": 170, "y": 140 }, { "x": 170, "y": 530 },
+    { "x": 390, "y": 530 }, { "x": 390, "y": 220 }, { "x": 660, "y": 220 },
+    { "x": 660, "y": 500 }, { "x": 810, "y": 500 }, { "x": 810, "y": 650 },
+    { "x": 952, "y": 650 }
+  ],
+  "buildableRegions": [
+    { "x": 25, "y": 220, "width": 95, "height": 250 },
+    { "x": 230, "y": 280, "width": 110, "height": 190 },
+    { "x": 450, "y": 280, "width": 160, "height": 160 },
+    { "x": 450, "y": 80, "width": 300, "height": 90 },
+    { "x": 720, "y": 280, "width": 40, "height": 160 },
+    { "x": 240, "y": 610, "width": 430, "height": 65 }
+  ],
+  "restrictedRegions": [],
+  "powerNodes": [
+    {
+      "id": "west_accelerator", "displayName": "Accelerator Node",
+      "position": { "x": 72, "y": 285 }, "radius": 30,
+      "attackSpeedBonus": 0.18, "color": "#EC5062"
+    },
+    {
+      "id": "west_scope", "displayName": "Scope Node",
+      "position": { "x": 72, "y": 405 }, "radius": 38,
+      "rangeBonus": 0.08, "color": "#2192AA"
+    },
+    {
+      "id": "inner_amplifier", "displayName": "Amplifier Node",
+      "position": { "x": 285, "y": 330 }, "radius": 34,
+      "damageBonus": 0.15, "color": "#7C53DA"
+    },
+    {
+      "id": "inner_breach", "displayName": "Breach Node",
+      "position": { "x": 290, "y": 425 }, "radius": 30,
+      "armorPierceBonus": 3.0, "color": "#E8B637"
+    },
+    {
+      "id": "east_scope", "displayName": "Wideband Node",
+      "position": { "x": 500, "y": 330 }, "radius": 42,
+      "rangeBonus": 0.10, "color": "#2192AA"
+    },
+    {
+      "id": "east_accelerator", "displayName": "Overclock Node",
+      "position": { "x": 570, "y": 400 }, "radius": 34,
+      "attackSpeedBonus": 0.14, "color": "#EC5062"
+    },
+    {
+      "id": "north_amplifier", "displayName": "Focus Node",
+      "position": { "x": 515, "y": 125 }, "radius": 36,
+      "damageBonus": 0.12, "color": "#7C53DA"
+    },
+    {
+      "id": "south_breach", "displayName": "Penetrator Node",
+      "position": { "x": 330, "y": 642 }, "radius": 32,
+      "armorPierceBonus": 4.0, "color": "#E8B637"
+    },
+    {
+      "id": "south_scope", "displayName": "Horizon Node",
+      "position": { "x": 560, "y": 642 }, "radius": 42,
+      "rangeBonus": 0.09, "color": "#2192AA"
+    }
+  ],
+  "waveSet": "foundry_waves",
+  "startingLives": 20,
+  "startingCredits": 360
+}

@@ -1,0 +1,131 @@
+using MinimalBastion.Data;
+using MinimalBastion.Maps;
+
+namespace MinimalBastion.UI;
+
+public static class TowerInfo
+{
+    public static float RawDps(TowerLevelDefinition level) => level.Damage * level.AttacksPerSecond * Math.Max(1, level.PelletCount);
+
+    public static string ShortRole(TowerDefinition definition) => definition.Behavior.ToLowerInvariant() switch
+    {
+        "single_projectile" when definition.Id == "watchtower" => "Long range",
+        "single_projectile" => "General",
+        "pellet_burst" => "Swarm",
+        "slow_projectile" => "Control",
+        "burn_projectile" => "Burn",
+        "armor_projectile" => "Anti-armor",
+        "chain" => "Chain",
+        "splash_projectile" => "Splash",
+        "beam" => "Beam",
+        "aura" => "Support",
+        _ => string.IsNullOrWhiteSpace(definition.Role) ? "Utility" : definition.Role
+    };
+
+    public static string Special(TowerDefinition definition, TowerLevelDefinition level)
+    {
+        return definition.Behavior.ToLowerInvariant() switch
+        {
+            "pellet_burst" => $"{level.PelletCount} projectiles per burst",
+            "slow_projectile" => $"AoE {level.SplashRadius:0}; slow {level.SlowPercent:P0} for {level.SlowDuration:0.#}s",
+            "burn_projectile" => $"Burn {level.BurnDamagePerSecond:0.#}/s; scorched armor -2",
+            "armor_projectile" => level.ArmorReduction > 0 ? $"Pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0}" : $"Armor pierce {level.ArmorPierce:0}",
+            "chain" => $"Chain {level.ChainCount}; +35% damage to slowed",
+            "splash_projectile" => $"Splash radius {level.SplashRadius:0}",
+            "beam" => $"Expose: +{level.ExposePercent:P0} all incoming damage for {level.ExposeDuration:0.#}s",
+            "aura" => $"Aura +{level.AuraAttackSpeedBonus:P0} rate, +{level.AuraRangeBonus:P0} range",
+            _ => "Reliable direct projectile"
+        };
+    }
+
+    public static string Strength(TowerDefinition definition) => definition.Behavior.ToLowerInvariant() switch
+    {
+        "single_projectile" when definition.Id == "watchtower" => "Strength: priority targets at long range",
+        "single_projectile" => "Strength: efficient general coverage",
+        "pellet_burst" => "Strength: separated weak targets",
+        "slow_projectile" => "Strength: slows and chips clustered enemies",
+        "burn_projectile" => "Strength: persistent damage and armor setup",
+        "armor_projectile" => "Strength: armored enemies",
+        "chain" => "Strength: dense groups; Frost synergy",
+        "splash_projectile" => "Strength: tightly packed swarms",
+        "beam" => "Strength: focused pressure on durable targets",
+        "aura" => "Strength: multiplies clustered towers",
+        _ => "Strength: flexible defense"
+    };
+
+    public static string Limitation(TowerDefinition definition) => definition.Behavior.ToLowerInvariant() switch
+    {
+        "single_projectile" when definition.Id == "watchtower" => "Limit: slow fire and high cost",
+        "single_projectile" => "Limit: armor reduces each small hit",
+        "pellet_burst" => "Limit: short range; weak into armor",
+        "slow_projectile" => "Limit: very low direct damage",
+        "burn_projectile" => "Limit: needs time; armor checks each tick",
+        "armor_projectile" => "Limit: ordinary against light targets",
+        "chain" => "Limit: weak against isolated enemies",
+        "splash_projectile" => "Limit: expensive; weak against spread targets",
+        "beam" => "Limit: expensive and armor-sensitive",
+        "aura" => "Limit: no damage without nearby towers",
+        _ => "Limit: no specialized counter"
+    };
+
+    public static string UpgradeSummary(TowerDefinition definition, int levelIndex)
+    {
+        if (levelIndex >= definition.Levels.Count - 1) return "Maximum level reached";
+        var current = definition.Levels[levelIndex];
+        var next = definition.Levels[levelIndex + 1];
+        var changes = new List<string>();
+        Add("DMG", current.Damage, next.Damage, "0.#");
+        Add("RATE", current.AttacksPerSecond, next.AttacksPerSecond, "0.##");
+        Add("RNG", current.Range, next.Range, "0");
+        if (next.PelletCount != current.PelletCount) changes.Add($"SHOT {current.PelletCount}>{next.PelletCount}");
+        if (next.SlowPercent != current.SlowPercent) changes.Add($"SLOW {current.SlowPercent:P0}>{next.SlowPercent:P0}");
+        if (next.ArmorPierce != current.ArmorPierce) changes.Add($"PIERCE {current.ArmorPierce:0}>{next.ArmorPierce:0}");
+        if (next.ChainCount != current.ChainCount) changes.Add($"CHAIN {current.ChainCount}>{next.ChainCount}");
+        return string.Join("  ", changes.Take(3));
+
+        void Add(string label, float before, float after, string format)
+        {
+            if (MathF.Abs(after - before) > 0.001f) changes.Add($"{label} {before.ToString(format)}>{after.ToString(format)}");
+        }
+    }
+
+    public static string SpecializationSummary(TowerLevelDefinition current, TowerSpecializationDefinition specialization)
+    {
+        var next = specialization.Level;
+        var changes = new List<string>();
+        if (MathF.Abs(next.BurnDamagePerSecond - current.BurnDamagePerSecond) > 0.001f) changes.Add($"BURN {next.BurnDamagePerSecond:0.#}/s");
+        if (next.SplashRadius > 0) changes.Add($"SPLASH {next.SplashRadius:0}");
+        if (next.SlowPercent > current.SlowPercent) changes.Add($"SLOW {next.SlowPercent:P0}");
+        if (next.ArmorPierce > current.ArmorPierce) changes.Add($"PIERCE {next.ArmorPierce:0}");
+        if (MathF.Abs(next.Damage - current.Damage) > 0.001f) changes.Add($"DMG {next.Damage:0.#}");
+        if (MathF.Abs(next.AttacksPerSecond - current.AttacksPerSecond) > 0.001f) changes.Add($"RATE {next.AttacksPerSecond:0.##}");
+        return $"{specialization.Summary}: {string.Join("  ", changes.Take(2))}";
+    }
+
+    public static string PowerNodeBonus(PowerNodeData node)
+    {
+        var bonuses = new List<string>();
+        if (node.AttackSpeedBonus > 0) bonuses.Add($"RATE +{node.AttackSpeedBonus:P0}");
+        if (node.RangeBonus > 0) bonuses.Add($"RNG +{node.RangeBonus:P0}");
+        if (node.DamageBonus > 0) bonuses.Add($"DMG +{node.DamageBonus:P0}");
+        if (node.ArmorPierceBonus > 0) bonuses.Add($"PIERCE +{node.ArmorPierceBonus:0.#}");
+        return string.Join("  ", bonuses);
+    }
+
+    public static string PowerNodeStatChange(TowerDefinition definition, TowerLevelDefinition level, MapPowerBuff power)
+    {
+        if (definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase))
+            return "NO COMPATIBLE COMBAT STAT CHANGE";
+
+        var changes = new List<string>();
+        if (power.DamageBonus > 0 && level.Damage > 0)
+            changes.Add($"DMG {level.Damage:0.#}>{level.Damage * (1 + power.DamageBonus):0.#}");
+        if (power.AttackSpeedBonus > 0 && level.AttacksPerSecond > 0)
+            changes.Add($"RATE {level.AttacksPerSecond:0.##}>{level.AttacksPerSecond * (1 + power.AttackSpeedBonus):0.##}/s");
+        if (power.RangeBonus > 0 && level.Range > 0)
+            changes.Add($"RNG {level.Range:0}>{level.Range * (1 + power.RangeBonus):0}");
+        if (power.ArmorPierceBonus > 0)
+            changes.Add($"PIERCE {level.ArmorPierce:0.#}>{level.ArmorPierce + power.ArmorPierceBonus:0.#}");
+        return changes.Count == 0 ? "NO COMPATIBLE COMBAT STAT CHANGE" : string.Join("  ", changes);
+    }
+}
