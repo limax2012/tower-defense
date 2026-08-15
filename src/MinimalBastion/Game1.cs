@@ -235,7 +235,9 @@ public sealed class Game1 : Game
         if (_session is null) return;
         if (_networkRunner is not null) PollNetwork();
         if (_session is null || _state != GameState.Playing) return;
-        if (_networkRunner is not null && input.PingPressed && input.MousePosition.X < GameConstants.MapWidth && input.MousePosition.Y >= GameConstants.TopBarHeight)
+        if (_networkRunner is not null && input.PingPressed && input.IsMouseOverLogicalCanvas &&
+            input.MousePosition.X >= 0 && input.MousePosition.X < GameConstants.MapWidth &&
+            input.MousePosition.Y >= GameConstants.TopBarHeight && input.MousePosition.Y <= GameConstants.LogicalHeight)
             SendCoOpPing(input.MousePosition);
         if (_networkRunner is not null && _networkStarted &&
             _coOpCursor.TryCaptureLocal(input.MousePosition, input.IsMouseOverLogicalCanvas,

@@ -2612,6 +2612,13 @@ internal static class Program
         Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "place tower");
         Check.Equal(1, session.Towers.Count, "tower count");
         Check.Equal(PlacementFailure.OverlapsTower, session.ValidatePlacement("tower", new Vector2(75, 200)), "overlap rejection");
+        session.HandleWorldInput(WorldInput(new Vector2(50, 200)) with { LeftPressed = true });
+        Check.True(ReferenceEquals(session.Towers[0], session.SelectedTower), "battlefield click selects tower");
+        session.HandleWorldInput(WorldInput(new Vector2(-20, 200)) with { LeftPressed = true, IsMouseOverLogicalCanvas = false });
+        Check.True(ReferenceEquals(session.Towers[0], session.SelectedTower), "letterbox click does not clear field selection");
+        session.HandleInspectionInput(WorldInput(new Vector2(50, GameConstants.LogicalHeight + 20)) with
+            { LeftPressed = true, IsMouseOverLogicalCanvas = false });
+        Check.True(ReferenceEquals(session.Towers[0], session.SelectedTower), "inspection ignores clicks below the logical canvas");
     }
 
     private static void WaveFinalGroup()

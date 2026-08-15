@@ -242,7 +242,7 @@ public sealed class GameSession
             return;
         }
 
-        if (input.MousePosition.X < GameConstants.MapWidth && input.MousePosition.Y >= GameConstants.TopBarHeight)
+        if (IsInteractiveBattlefieldPosition(input.MousePosition))
         {
             if (Generator is { } generator)
             {
@@ -274,7 +274,7 @@ public sealed class GameSession
         PlacementPosition = input.MousePosition;
         HoveredTower = null;
         HoveredGenerator = null;
-        if (input.MousePosition.X < GameConstants.MapWidth && input.MousePosition.Y >= GameConstants.TopBarHeight)
+        if (IsInteractiveBattlefieldPosition(input.MousePosition))
         {
             if (Generator is { } generator)
             {
@@ -490,6 +490,9 @@ public sealed class GameSession
         float.IsFinite(position.X) && float.IsFinite(position.Y) &&
         position.X >= 0 && position.X < GameConstants.MapWidth &&
         position.Y >= 0 && position.Y <= GameConstants.LogicalHeight;
+
+    private static bool IsInteractiveBattlefieldPosition(Vector2 position) =>
+        IsBattlefieldPosition(position) && position.Y >= GameConstants.TopBarHeight;
 
     public bool TryDeployEmergencyDefense(Vector2 position, int ownerPlayerId = 1)
     {
