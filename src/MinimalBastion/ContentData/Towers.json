@@ -39,7 +39,7 @@
     "specializations": [
       {
         "id": "razor_bloom", "displayName": "Razor Bloom", "shortLabel": "BLOOM", "summary": "Wide seven-shard swarm clear", "upgradeCost": 135,
-        "level": { "range": 140, "damage": 11, "attacksPerSecond": 1.02, "projectileSpeed": 500, "pelletCount": 7, "pelletSpreadDegrees": 30, "armorPierce": 1, "upgradeCost": null }
+        "level": { "range": 140, "damage": 13, "attacksPerSecond": 1.02, "projectileSpeed": 500, "pelletCount": 7, "pelletSpreadDegrees": 30, "armorPierce": 1, "upgradeCost": null }
       },
       {
         "id": "lance_fan", "displayName": "Lance Fan", "shortLabel": "LANCE", "summary": "Tight armor-piercing burst", "upgradeCost": 140,

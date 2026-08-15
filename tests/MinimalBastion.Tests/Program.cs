@@ -337,7 +337,8 @@ internal static class Program
             "Searing owns durable single-target burn");
         var shardBloom = shard.Specializations.Single(x => x.Id == "razor_bloom").Level;
         var shardLance = shard.Specializations.Single(x => x.Id == "lance_fan").Level;
-        Check.True(shardBloom.PelletCount > shardLance.PelletCount && shardLance.ArmorPierce > shardBloom.ArmorPierce,
+        Check.True(shardBloom.PelletCount > shardLance.PelletCount && shardBloom.Damage * shardBloom.PelletCount > shardLance.Damage * shardLance.PelletCount &&
+                   shardLance.ArmorPierce > shardBloom.ArmorPierce,
             "Shard branches separate crowd coverage from armor pressure");
         var mortar = content.Towers["siege_mortar"];
         var salvo = mortar.Specializations.Single(x => x.Id == "salvo_rack").Level;
