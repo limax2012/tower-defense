@@ -83,6 +83,7 @@ internal static class Program
             ("co-op wave ready", CoOpWaveReady),
             ("co-op cursor presence", CoOpCursorPresence),
             ("online co-op transport", CoOpLoopbackTransport),
+            ("online co-op framing bounds", CoOpFramingBounds),
             ("online co-op reconnect transport", CoOpReconnectTransport),
             ("co-op invalid code", CoOpInvalidCode),
             ("co-op incompatible build", CoOpIncompatibleBuild),
@@ -1502,6 +1503,32 @@ internal static class Program
     private static void CoOpReconnectTransport()
     {
         CoOpReconnectTransportAsync().GetAwaiter().GetResult();
+    }
+
+    private static void CoOpFramingBounds()
+    {
+        CoOpFramingBoundsAsync().GetAwaiter().GetResult();
+    }
+
+    private static async Task CoOpFramingBoundsAsync()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await using var host = new LanCoOpHost(0, "BOUNDS");
+        host.Start();
+        var acceptTask = host.AcceptPlayerAsync(timeout.Token);
+        using var rawClient = new System.Net.Sockets.TcpClient();
+        await rawClient.ConnectAsync("localhost", host.Port, timeout.Token);
+        var oversizedHeader = new byte[sizeof(int)];
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(oversizedHeader,
+            LanCoOpConnection.MaximumMessageBytes + 1);
+        await rawClient.GetStream().WriteAsync(oversizedHeader, timeout.Token);
+        var rejected = false;
+        try { await acceptTask; }
+        catch (InvalidDataException exception)
+        {
+            rejected = exception.Message.Contains("protocol limit", StringComparison.OrdinalIgnoreCase);
+        }
+        Check.True(rejected, "oversized frame is rejected before allocating its declared payload");
     }
 
     private static async Task CoOpReconnectTransportAsync()

@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
-using System.Text;
+using System.Buffers.Binary;
 using System.Text.Json;
 using System.Threading.Channels;
 
@@ -29,7 +29,7 @@ public enum CoOpMessageType
 
 public sealed record CoOpEnvelope
 {
-    public const int CurrentProtocolVersion = 5;
+    public const int CurrentProtocolVersion = 6;
     public CoOpMessageType Type { get; init; }
     public int ProtocolVersion { get; init; } = CurrentProtocolVersion;
     public string JoinCode { get; init; } = "";
@@ -51,11 +51,10 @@ public sealed record CoOpEnvelope
 
 public sealed class LanCoOpConnection : IAsyncDisposable
 {
-    private const int MaximumMessageCharacters = 2_097_152;
+    public const int MaximumMessageBytes = 2_097_152;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly TcpClient _client;
-    private readonly StreamReader _reader;
-    private readonly StreamWriter _writer;
+    private readonly NetworkStream _stream;
     private readonly Channel<PendingSend> _sendQueue = Channel.CreateUnbounded<PendingSend>(new UnboundedChannelOptions
     {
         SingleReader = true,
@@ -69,9 +68,7 @@ public sealed class LanCoOpConnection : IAsyncDisposable
     {
         _client = client;
         _client.NoDelay = true;
-        var stream = client.GetStream();
-        _reader = new StreamReader(stream, new UTF8Encoding(false), false, 4096, true);
-        _writer = new StreamWriter(stream, new UTF8Encoding(false), 4096, true) { AutoFlush = true };
+        _stream = client.GetStream();
         _sendPump = PumpSendsAsync();
     }
 
@@ -79,19 +76,28 @@ public sealed class LanCoOpConnection : IAsyncDisposable
 
     public async Task SendAsync(CoOpEnvelope envelope, CancellationToken cancellationToken = default)
     {
-        var json = JsonSerializer.Serialize(envelope, JsonOptions);
-        if (json.Length > MaximumMessageCharacters) throw new InvalidDataException("Co-op message exceeds the protocol limit.");
+        var payload = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonOptions);
+        if (payload.Length > MaximumMessageBytes) throw new InvalidDataException("Co-op message exceeds the protocol limit.");
+        var frame = new byte[payload.Length + sizeof(int)];
+        BinaryPrimitives.WriteInt32BigEndian(frame.AsSpan(0, sizeof(int)), payload.Length);
+        payload.CopyTo(frame.AsSpan(sizeof(int)));
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        await _sendQueue.Writer.WriteAsync(new PendingSend(json, completion, cancellationToken), cancellationToken);
+        await _sendQueue.Writer.WriteAsync(new PendingSend(frame, completion, cancellationToken), cancellationToken);
         await completion.Task.WaitAsync(cancellationToken);
     }
 
     public async Task<CoOpEnvelope?> ReceiveAsync(CancellationToken cancellationToken = default)
     {
-        var line = await _reader.ReadLineAsync(cancellationToken);
-        if (line is null) return null;
-        if (line.Length > MaximumMessageCharacters) throw new InvalidDataException("Co-op message exceeds the protocol limit.");
-        var envelope = JsonSerializer.Deserialize<CoOpEnvelope>(line, JsonOptions)
+        var header = new byte[sizeof(int)];
+        var firstByte = await _stream.ReadAsync(header.AsMemory(0, 1), cancellationToken);
+        if (firstByte == 0) return null;
+        await _stream.ReadExactlyAsync(header.AsMemory(1), cancellationToken);
+        var payloadLength = BinaryPrimitives.ReadInt32BigEndian(header);
+        if (payloadLength <= 0 || payloadLength > MaximumMessageBytes)
+            throw new InvalidDataException("Co-op message exceeds the protocol limit.");
+        var payload = new byte[payloadLength];
+        await _stream.ReadExactlyAsync(payload, cancellationToken);
+        var envelope = JsonSerializer.Deserialize<CoOpEnvelope>(payload, JsonOptions)
             ?? throw new InvalidDataException("Co-op message was empty.");
         if (envelope.ProtocolVersion != CoOpEnvelope.CurrentProtocolVersion)
             throw new InvalidDataException($"Unsupported co-op protocol {envelope.ProtocolVersion}.");
@@ -105,8 +111,6 @@ public sealed class LanCoOpConnection : IAsyncDisposable
         _sendQueue.Writer.TryComplete();
         try { await _sendPump; }
         catch { }
-        _reader.Dispose();
-        await _writer.DisposeAsync();
     }
 
     private async Task PumpSendsAsync()
@@ -121,7 +125,7 @@ public sealed class LanCoOpConnection : IAsyncDisposable
                     pending.Completion.TrySetCanceled(pending.CancellationToken);
                     continue;
                 }
-                await _writer.WriteLineAsync(pending.Json.AsMemory(), pending.CancellationToken);
+                await _stream.WriteAsync(pending.Frame, pending.CancellationToken);
                 pending.Completion.TrySetResult();
             }
         }
@@ -140,7 +144,7 @@ public sealed class LanCoOpConnection : IAsyncDisposable
         }
     }
 
-    private readonly record struct PendingSend(string Json, TaskCompletionSource Completion, CancellationToken CancellationToken);
+    private readonly record struct PendingSend(byte[] Frame, TaskCompletionSource Completion, CancellationToken CancellationToken);
 }
 
 public sealed class LanCoOpHost : IAsyncDisposable
