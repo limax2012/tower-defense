@@ -1701,6 +1701,13 @@ internal static class Program
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, staleIdentity, 2),
             "stale next-entity identities are rejected instead of silently changing the client checksum");
 
+        var inconsistentWaveSession = SessionWithWave();
+        Check.True(inconsistentWaveSession.StartNextWave(), "start active wave for malformed progress test");
+        var inconsistentWave = inconsistentWaveSession.CaptureCoOpState(0, 0, false);
+        inconsistentWave.Waves.QueuedEnemies++;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, inconsistentWave, 2),
+            "queued enemies must agree with authoritative group progress");
+
         var invalidProgress = session.CaptureCoOpState(0, 0, false);
         invalidProgress.Enemies.Add(new EnemyRuntimeState
         {

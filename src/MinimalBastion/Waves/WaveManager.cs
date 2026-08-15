@@ -168,6 +168,26 @@ public sealed class WaveManager
                 ?? throw new InvalidDataException($"Network wave {data.ActiveWaveNumber} is unavailable.");
         if (_activeDefinition is not null && (data.GroupIndex < 0 || data.GroupIndex > _activeDefinition.Groups.Count))
             throw new InvalidDataException("Network wave group index is invalid.");
+        if (_activeDefinition is not null)
+        {
+            if (data.ActiveWaveNumber != data.CurrentWaveNumber)
+                throw new InvalidDataException("Network active wave does not match current wave progress.");
+
+            long expectedQueued = 0;
+            if (data.GroupIndex < _activeDefinition.Groups.Count)
+            {
+                var currentGroup = _activeDefinition.Groups[data.GroupIndex];
+                if (data.SpawnedInGroup > currentGroup.Count)
+                    throw new InvalidDataException("Network wave group spawn progress is invalid.");
+                expectedQueued = currentGroup.Count - data.SpawnedInGroup;
+                for (var index = data.GroupIndex + 1; index < _activeDefinition.Groups.Count; index++)
+                    expectedQueued += _activeDefinition.Groups[index].Count;
+            }
+            if (data.QueuedEnemies != expectedQueued)
+                throw new InvalidDataException("Network queued-enemy count does not match wave progress.");
+        }
+        else if (data.QueuedEnemies != 0)
+            throw new InvalidDataException("Network inactive wave cannot retain queued enemies.");
 
         CurrentWaveNumber = data.CurrentWaveNumber;
         _groupIndex = _activeDefinition is null ? 0 : data.GroupIndex;
