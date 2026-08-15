@@ -13,6 +13,7 @@ public sealed class AudioManager : IDisposable
     private float _sfxVolume = 0.65f;
     private float _musicVolume = 0.20f;
     private float _musicPitch;
+    private float _musicActivity = 0.68f;
     private bool _disposed;
     private GameSession? _attachedSession;
 
@@ -70,8 +71,13 @@ public sealed class AudioManager : IDisposable
         if (_musicInstance is null) return;
         try
         {
-            var activity = _attachedSession?.Waves.IsActive == true ? 1f : 0.68f;
-            _musicInstance.Volume = Math.Clamp(_musicVolume * activity, 0, 1);
+            var waveActive = _attachedSession?.Waves.IsActive == true;
+            var liveEnemies = _attachedSession?.Enemies.Count(enemy => !enemy.IsDead && !enemy.HasEscaped) ?? 0;
+            var bossPresent = _attachedSession?.Enemies.Any(enemy => enemy.IsBoss && !enemy.IsDead && !enemy.HasEscaped) == true;
+            var targetActivity = MusicActivityTarget(waveActive, liveEnemies, bossPresent);
+            var blend = 1f - MathF.Exp(-MathF.Max(0, deltaSeconds) * 2.4f);
+            _musicActivity = MathHelper.Lerp(_musicActivity, targetActivity, blend);
+            _musicInstance.Volume = Math.Clamp(_musicVolume * _musicActivity, 0, 1);
             _musicInstance.Pitch = _musicPitch;
             if (_musicInstance.State == SoundState.Stopped) _musicInstance.Play();
         }
@@ -115,6 +121,13 @@ public sealed class AudioManager : IDisposable
     public void PlayUiConfirm() => Play(Cue.UiConfirm, 0.42f);
     public void PlayUiBack() => Play(Cue.UiBack, 0.36f);
     public void PlayUiDelete() => Play(Cue.UiDelete, 0.42f);
+
+    public static float MusicActivityTarget(bool waveActive, int liveEnemyCount, bool bossPresent)
+    {
+        if (!waveActive) return 0.68f;
+        var pressure = MathHelper.Clamp(Math.Max(0, liveEnemyCount) / 70f, 0, 1);
+        return MathF.Min(1f, 0.78f + pressure * 0.17f + (bossPresent ? 0.08f : 0));
+    }
 
     private void PlayKill()
     {

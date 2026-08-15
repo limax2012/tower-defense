@@ -1,4 +1,5 @@
 using MinimalBastion;
+using MinimalBastion.Audio;
 using MinimalBastion.Combat;
 using MinimalBastion.Core;
 using MinimalBastion.Data;
@@ -479,6 +480,13 @@ internal static class Program
         Check.Equal(2160, settings.WindowHeight, "maximum output height");
         Check.Nearly(0, settings.SfxVolume, "sound volume clamp");
         Check.Nearly(1, settings.MusicVolume, "music volume clamp");
+        Check.Nearly(0.68f, AudioManager.MusicActivityTarget(false, 200, true),
+            "downtime music remains restrained regardless of queued pressure");
+        Check.True(AudioManager.MusicActivityTarget(true, 70, false) >
+                   AudioManager.MusicActivityTarget(true, 0, false),
+            "active music rises with live battlefield pressure");
+        Check.Nearly(1, AudioManager.MusicActivityTarget(true, 70, true),
+            "boss pressure reaches the bounded music peak");
 
         settings.CycleResolution();
         Check.Equal(1280, settings.WindowWidth, "unknown resolution enters first preset");
