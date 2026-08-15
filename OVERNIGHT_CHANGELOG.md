@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Bounded restored burn phase and rejected impossible co-op status phases. A corrupt authoritative snapshot can no longer turn one burn into an enormous tick-allocation loop immediately after resynchronization.
 - Limited terminal Run History persistence to one attempt per distinct result state. An unavailable or read-only local-data folder can no longer provoke a failed disk write every frame while the player views victory or defeat.
 - Required every authored Surge Node center to be a genuinely placeable tower position, including restricted-zone checks. Malformed future maps now fail content validation instead of advertising a tactical bonus the player cannot occupy.
 - Locked legacy checkpoint compatibility through the current profile and history systems: saves predating difficulty, directive, and run IDs still identify as original Hard/Standard rules and receive a safe run identity without rewriting the source file.

@@ -132,14 +132,20 @@ public sealed class StatusEffectController
     {
         _statuses.Clear();
         foreach (var status in statuses.Where(status => status.RemainingSeconds > 0 && status.Magnitude > 0))
+        {
+            var tickInterval = float.IsFinite(status.TickInterval) ? MathF.Max(0.05f, status.TickInterval) : 0.5f;
+            var tickProgress = float.IsFinite(status.TickProgress)
+                ? Math.Clamp(status.TickProgress, 0, tickInterval)
+                : 0;
             _statuses.Add(new ActiveStatus
             {
                 Type = status.Type,
                 RemainingSeconds = status.RemainingSeconds,
                 Magnitude = status.Magnitude,
                 SourceId = status.SourceId,
-                TickInterval = MathF.Max(0.05f, status.TickInterval),
-                TickProgress = MathF.Max(0, status.TickProgress)
+                TickInterval = tickInterval,
+                TickProgress = tickProgress
             });
+        }
     }
 }

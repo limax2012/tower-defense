@@ -86,7 +86,7 @@ internal static class CoOpSnapshotValidator
                 statuses.Count > MaximumStatusesPerEnemy || statuses.Any(status => status is null ||
                     !Enum.IsDefined(status.Type) || !IsPositiveFinite(status.RemainingSeconds) ||
                     !IsPositiveFinite(status.Magnitude) || !IsPositiveFinite(status.TickInterval) ||
-                    !IsNonnegativeFinite(status.TickProgress)))
+                    !IsNonnegativeFinite(status.TickProgress) || status.TickProgress >= status.TickInterval))
                 throw new InvalidDataException("Co-op snapshot enemy state is structurally invalid.");
         }
         if (enemies.Any(enemy => enemy.Id >= snapshot.NextEnemyId))

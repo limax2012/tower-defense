@@ -859,6 +859,21 @@ internal static class Program
         Check.Nearly(16, statuses.ConsumeBurnDamage(1), "burn tick");
         statuses.Update(2.1f);
         Check.Equal(0, statuses.Active.Count, "status expiry");
+
+        var restored = new StatusEffectController();
+        restored.RestoreState(new[]
+        {
+            new ActiveStatus
+            {
+                Type = StatusType.Burn,
+                RemainingSeconds = 2,
+                Magnitude = 5,
+                TickInterval = 0.5f,
+                TickProgress = float.MaxValue
+            }
+        });
+        Check.True(restored.ConsumeBurnTicks(0.05f).Count <= 1,
+            "restored burn phase cannot expand into an unbounded tick loop");
     }
 
     private static void EffectBudget()
@@ -1696,6 +1711,21 @@ internal static class Program
         invalidProgress.NextEnemyId = 2;
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, invalidProgress, 2),
             "enemy progress beyond the map path is rejected instead of clamped into divergence");
+
+        var invalidBurnPhaseSession = SessionWithWave();
+        invalidBurnPhaseSession.SpawnEnemy("enemy", 1, 1);
+        invalidBurnPhaseSession.Enemies[0].ApplyStatus(new StatusApplication
+        {
+            Type = StatusType.Burn,
+            Duration = 2,
+            Magnitude = 5,
+            SourceId = 1,
+            TickInterval = 0.5f
+        });
+        var invalidBurnPhase = invalidBurnPhaseSession.CaptureCoOpState(0, 0, false);
+        invalidBurnPhase.Enemies[0].Statuses[0].TickProgress = float.MaxValue;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, invalidBurnPhase, 2),
+            "impossible burn phase is rejected before it can create an unbounded tick loop");
 
         var nonfiniteProjectile = session.CaptureCoOpState(0, 0, false);
         nonfiniteProjectile.Projectiles.Add(new ProjectileRuntimeState
