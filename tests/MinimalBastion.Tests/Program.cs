@@ -526,6 +526,16 @@ internal static class Program
         Check.Equal(UiAction.Restart,
             restartUi.HandlePausedInput(WorldInput(new Vector2(640, 467)) with { LeftPressed = true }, Session()),
             "second pause-menu restart click confirms the reset");
+
+        var coOpSession = Session();
+        coOpSession.ConfigureCoOp(2);
+        GameCommand? pauseRequest = null;
+        Check.Equal(UiAction.None,
+            new UIManager(null!).HandleGameplayInput(
+                WorldInput(Vector2.Zero) with { EscapePressed = true }, coOpSession, command => pauseRequest = command, 2),
+            "co-op Escape requests a shared pause without opening a divergent local overlay");
+        Check.True(pauseRequest is { Type: GameCommandType.SetPaused, PlayerId: 2, Paused: true },
+            "co-op pause request carries the desired authoritative state");
     }
 
     private static void OpeningWaveBalance()
@@ -1092,6 +1102,8 @@ internal static class Program
     {
         var first = SessionWithWave();
         var second = SessionWithWave();
+        first.ConfigureCoOp(1);
+        second.ConfigureCoOp(2);
         var firstRunner = new DeterministicSessionRunner(first);
         var secondRunner = new DeterministicSessionRunner(second);
         var placement = new GameCommand
@@ -1118,6 +1130,30 @@ internal static class Program
         Check.True(first.Towers[0].IsOverdriven, "mirrored active ability state");
         Check.True(first.OverdriveCooldownRemaining > 0, "mirrored cooldown state");
         Check.Equal(1, first.AutoOverdriveTowerId, "mirrored auto protocol state");
+
+        var paused = Session();
+        paused.ConfigureCoOp(1);
+        var pausedRunner = new DeterministicSessionRunner(paused);
+        Check.True(pausedRunner.Schedule(0, new GameCommand
+        {
+            Sequence = 1,
+            PlayerId = 2,
+            Type = GameCommandType.SetPaused,
+            Paused = true
+        }), "remote shared pause schedules authoritatively");
+        pausedRunner.RunTicks(20);
+        Check.True(paused.IsCoOpPaused, "shared pause remains active on both-player simulation state");
+        Check.Nearly(0, paused.Statistics.SimulatedSeconds, "fixed ticks continue while shared gameplay time is frozen");
+        Check.True(pausedRunner.Schedule(pausedRunner.Tick, new GameCommand
+        {
+            Sequence = 2,
+            PlayerId = 1,
+            Type = GameCommandType.SetPaused,
+            Paused = false
+        }), "either player can resume the shared defense");
+        pausedRunner.RunTicks(1);
+        Check.True(!paused.IsCoOpPaused && paused.Statistics.SimulatedSeconds > 0,
+            "resuming restarts deterministic gameplay time on the command tick");
     }
 
     private static void CoOpCommandHistoryBounds()
@@ -1251,6 +1287,7 @@ internal static class Program
         Check.True(host.TryDeployEmergencyDefense(new Vector2(300, 30)), "snapshot direct plate deployment");
         Check.True(host.Enemies[0].TryApplyKnockback(4, 0.75f, host.Map.Path), "snapshot enemy knockback grace");
         Check.True(host.TryToggleAutoProtocol(host.Towers[0].Id, 2), "snapshot automatic protocol armed");
+        Check.True(host.SetCoOpPaused(true), "snapshot captures a shared paused match");
 
         var future = new GameCommand { Sequence = 3, ClientRequestId = 3, PlayerId = 2, Type = GameCommandType.SetSpeed, Speed = 2f };
         Check.True(hostRunner.Schedule(hostRunner.Tick + 3, future), "future command scheduled before snapshot");
@@ -1265,6 +1302,7 @@ internal static class Program
         Check.Equal(SessionChecksum.Compute(host, hostRunner.Tick), SessionChecksum.Compute(client, clientRunner.Tick), "snapshot checksum matches immediately");
         Check.Equal(2, client.Towers[0].OwnerPlayerId, "snapshot preserves original placer");
         Check.Equal(host.Towers[0].Id, client.AutoOverdriveTowerId, "snapshot restores automatic protocol tower");
+        Check.True(client.IsCoOpPaused, "snapshot restores synchronized pause state");
         Check.Equal(1, client.Enemies[0].StatusEffects.Active.Count, "snapshot restores status effects");
         Check.Equal(1, client.EmergencyDirectPurchasesThisWave, "snapshot restores escalating plate purchase count");
         Check.Nearly(host.Enemies[0].KnockbackGraceRemaining, client.Enemies[0].KnockbackGraceRemaining, "snapshot restores plate knockback grace");

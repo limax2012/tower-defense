@@ -739,7 +739,15 @@ public sealed class UIManager
         }
         _hoveredTacticalPlacement = _emergencyButton.Contains(point) ? TacticalPlacementKind.PulsePlate :
             _generatorButton.Contains(point) ? TacticalPlacementKind.ChargeForge : TacticalPlacementKind.None;
-        if (input.EscapePressed && session.PlacementTowerId is null && session.TacticalPlacement == TacticalPlacementKind.None) return UiAction.Pause;
+        if ((input.EscapePressed || input.PausePressed) && session.PlacementTowerId is null && session.TacticalPlacement == TacticalPlacementKind.None)
+        {
+            if (session.IsCoOp && commandSink is not null)
+            {
+                RequestPause(session, commandSink, playerId);
+                return UiAction.None;
+            }
+            return UiAction.Pause;
+        }
 
         var towersByCost = session.Content.Towers.Values.OrderBy(x => x.PurchaseCost).ToArray();
         if (input.TowerHotkey > 0 && input.TowerHotkey <= towersByCost.Length)
@@ -764,7 +772,15 @@ public sealed class UIManager
             RequestSpeed(session, commandSink, playerId);
             return UiAction.None;
         }
-        if (_pauseButton.Contains(point) && !session.IsCoOp) return UiAction.Pause;
+        if (_pauseButton.Contains(point))
+        {
+            if (session.IsCoOp && commandSink is not null)
+            {
+                RequestPause(session, commandSink, playerId);
+                return UiAction.None;
+            }
+            return UiAction.Pause;
+        }
         if (_emergencyButton.Contains(point))
         {
             session.BeginEmergencyPlacement();
@@ -824,6 +840,9 @@ public sealed class UIManager
         if (sink is null) session.SetSpeed(speed);
         else sink(new GameCommand { PlayerId = playerId, Type = GameCommandType.SetSpeed, Speed = speed });
     }
+
+    private static void RequestPause(MinimalBastion.GameSession session, Action<GameCommand> sink, int playerId) =>
+        sink(new GameCommand { PlayerId = playerId, Type = GameCommandType.SetPaused, Paused = !session.IsCoOpPaused });
 
     private static void RequestTarget(MinimalBastion.GameSession session, Action<GameCommand>? sink, int playerId)
     {
@@ -1196,6 +1215,7 @@ public sealed class UIManager
         if (session.PlacementTowerId is not null || session.TacticalPlacement != TacticalPlacementKind.None) DrawPlacementStatus(batch, p, session);
         if (state == GameState.Playing && session.IsCoOp) DrawRemoteCoOpCursor(batch, p, session);
         if (state == GameState.Playing) DrawAnnouncement(batch, p, session);
+        if (state == GameState.Playing && session.IsCoOpPaused) DrawCoOpPausedBanner(batch, p);
 
         if (state == GameState.Paused) DrawPauseOverlay(batch, p, session);
         else if (state == GameState.CoOpReconnect) DrawCoOpReconnectOverlay(batch, p);
@@ -1272,8 +1292,19 @@ public sealed class UIManager
         }
         DrawButton(batch, p, _startWaveButton, startWaveLabel, startWaveEnabled, ColorPalette.Green);
         DrawButton(batch, p, _speedButton, session.Speed >= 1.5f ? "2x" : "1x", true, ColorPalette.Violet);
-        var linkLabel = _coOpResyncing ? "SYNC..." : _coOpPeerConnected ? "P1 + P2" : "P2 OFF";
-        DrawButton(batch, p, _pauseButton, session.IsCoOp ? linkLabel : "PAUSE", !session.IsCoOp || _coOpPeerConnected, session.IsCoOp ? ColorPalette.Green : ColorPalette.Coral);
+        var pauseLabel = session.IsCoOpPaused ? "RESUME" : "PAUSE";
+        DrawButton(batch, p, _pauseButton, pauseLabel, !session.IsCoOp || _coOpPeerConnected,
+            session.IsCoOpPaused ? ColorPalette.Green : ColorPalette.Coral);
+    }
+
+    private void DrawCoOpPausedBanner(SpriteBatch batch, PrimitiveRenderer p)
+    {
+        var rect = new Rectangle(285, 86, 390, 44);
+        p.FillRect(batch, rect, ColorPalette.Navy);
+        p.FillRect(batch, new Rectangle(rect.X, rect.Y, 5, rect.Height), ColorPalette.Green);
+        p.DrawRect(batch, rect, ColorPalette.Cyan, 2);
+        DrawText(batch, "CO-OP PAUSED  |  BUILD, PLAN, THEN RESUME", new Vector2(rect.Center.X, rect.Center.Y),
+            ColorPalette.Paper, 0.52f, true);
     }
 
     private void DrawAnnouncement(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)

@@ -76,6 +76,7 @@ public sealed class GameSession
     public bool IsVictory { get; private set; }
     public bool IsDefeat { get; private set; }
     public bool IsCoOp { get; private set; }
+    public bool IsCoOpPaused { get; private set; }
     public int LocalPlayerId { get; private set; } = 1;
     public string? AnnouncementTitle { get; private set; }
     public string? AnnouncementSubtitle { get; private set; }
@@ -141,7 +142,7 @@ public sealed class GameSession
 
     public void Update(float unscaledDeltaSeconds)
     {
-        if (IsVictory || IsDefeat) return;
+        if (IsVictory || IsDefeat || IsCoOpPaused) return;
         var deltaSeconds = MathF.Min(0.1f, MathF.Max(0, unscaledDeltaSeconds)) * Speed;
         Statistics.Advance(deltaSeconds);
         AnnouncementRemaining = MathF.Max(0, AnnouncementRemaining - deltaSeconds);
@@ -691,6 +692,13 @@ public sealed class GameSession
     public bool StartNextWave(bool? earlyStartEligible = null) => Waves.TryStartNextWave(this, earlyStartEligible);
     public void SetSpeed(float speed) => Speed = speed >= 1.5f ? 2f : 1f;
 
+    public bool SetCoOpPaused(bool paused)
+    {
+        if (!IsCoOp) return false;
+        IsCoOpPaused = paused;
+        return true;
+    }
+
     public bool BeginEndlessMode()
     {
         if (!IsVictory || IsDefeat || !Waves.EnableEndlessMode()) return false;
@@ -847,6 +855,7 @@ public sealed class GameSession
         ReadyMask = readyMask,
         WaveStartQueued = waveStartQueued,
         WaveEarlyBonusQueued = waveEarlyBonusQueued,
+        IsPaused = IsCoOpPaused,
         Speed = Speed,
         OverdriveCooldownRemaining = OverdriveCooldownRemaining,
         AutoOverdriveTowerId = AutoOverdriveTowerId,
@@ -881,6 +890,7 @@ public sealed class GameSession
         var session = new GameSession(content, data.MapId, data.DifficultyId, data.ChallengeId);
         session.RunId = NormalizeRunId(data.RunId, session.RunId);
         session.ConfigureCoOp(localPlayerId);
+        session.IsCoOpPaused = data.IsPaused;
         session.Economy.RestoreSaveData(data.Economy);
         session.Waves.RestoreCoOpState(data.Waves);
         session.Speed = data.Speed >= 1.5f ? 2f : 1f;

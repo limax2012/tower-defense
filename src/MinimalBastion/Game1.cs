@@ -239,7 +239,7 @@ public sealed class Game1 : Game
         _debug.Update(input);
         Action<GameCommand>? commandSink = _networkRunner is null ? null : SubmitLocalNetworkCommand;
         var action = _ui.HandleGameplayInput(input, _session, commandSink, _localPlayerId);
-        if (_networkRunner is null && (action == UiAction.Pause || (input.PausePressed && _session.PlacementTowerId is null)))
+        if (_networkRunner is null && action == UiAction.Pause)
         {
             _state = GameState.Paused;
             return;

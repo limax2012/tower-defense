@@ -19,7 +19,8 @@ public enum GameCommandType
     SellGenerator,
     StartWave,
     ContinueEndless,
-    SetSpeed
+    SetSpeed,
+    SetPaused
 }
 
 public sealed record GameCommand
@@ -36,6 +37,7 @@ public sealed record GameCommand
     public float Y { get; init; }
     public TargetMode TargetMode { get; init; }
     public float Speed { get; init; } = 1f;
+    public bool Paused { get; init; }
     public bool? EarlyStartEligible { get; init; }
     public Vector2 Position => new(X, Y);
 }
@@ -68,6 +70,7 @@ public static class GameCommandProcessor
             GameCommandType.StartWave => session.StartNextWave(command.EarlyStartEligible),
             GameCommandType.ContinueEndless => session.BeginEndlessMode(),
             GameCommandType.SetSpeed => SetSpeed(session, command.Speed),
+            GameCommandType.SetPaused => session.SetCoOpPaused(command.Paused),
             _ => false
         };
         return accepted ? GameCommandResult.Success : GameCommandResult.Reject("Command rejected by game rules");

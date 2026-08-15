@@ -29,7 +29,7 @@ public enum CoOpMessageType
 
 public sealed record CoOpEnvelope
 {
-    public const int CurrentProtocolVersion = 6;
+    public const int CurrentProtocolVersion = 7;
     public CoOpMessageType Type { get; init; }
     public int ProtocolVersion { get; init; } = CurrentProtocolVersion;
     public string JoinCode { get; init; } = "";
