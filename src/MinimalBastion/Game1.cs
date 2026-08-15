@@ -55,7 +55,7 @@ public sealed class Game1 : Game
     private OnlineHostEndpoint? _joinEndpoint;
     private string _joinCode = "";
     private float _reconnectRetryRemaining;
-    private int _lastAutosavedWave = -1;
+    private int _lastAutosaveAttemptedWave = -1;
     private int? _activeSaveSlot;
     private GameState _saveSlotReturnState = GameState.MainMenu;
     private bool _saveSlotWriteMode;
@@ -116,7 +116,7 @@ public sealed class Game1 : Game
             _ui.ConfigureChallenges(_content.Challenges.Values);
             _ui.ConfigureTowerLibrary(_content.Towers.Values, _content.Enemies.Values);
             _ui.ConfigureSettings(_settings);
-            _ui.SetSaveState(SaveGameStore.Exists);
+            _ui.SetSaveState(SaveSlotsExistSafely());
             _debug = new DebugOverlay(font);
             _gameRenderer.ReducedEffects = _settings.ReducedEffects;
             _audio = AudioManager.TryCreate();
@@ -268,7 +268,7 @@ public sealed class Game1 : Game
             _ui.PrepareResultScreen();
             _state = GameState.Defeat;
         }
-        else if ((_networkRunner is null || _isNetworkHost) && _session.CanSaveCheckpoint && _session.CurrentWave > 0 && _session.CurrentWave != _lastAutosavedWave)
+        else if ((_networkRunner is null || _isNetworkHost) && _session.CanSaveCheckpoint && _session.CurrentWave > 0 && _session.CurrentWave != _lastAutosaveAttemptedWave)
             SaveCheckpoint(true);
     }
 
@@ -277,8 +277,8 @@ public sealed class Game1 : Game
         if (action == UiAction.Play)
         {
             AssignSession(new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId, _ui.SelectedChallengeId));
-            _lastAutosavedWave = -1;
-            _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
+            _lastAutosaveAttemptedWave = -1;
+            _activeSaveSlot = FindFirstEmptySaveSlotSafely();
             _state = GameState.Playing;
         }
         else if (action == UiAction.TowerLibrary) _state = GameState.TowerLibrary;
@@ -316,8 +316,8 @@ public sealed class Game1 : Game
         try
         {
             AssignSession(restoredSession);
-            _activeSaveSlot = saveSlot ?? SaveGameStore.FindFirstEmptySlot();
-            _lastAutosavedWave = restoredSession?.CurrentWave ?? -1;
+            _activeSaveSlot = saveSlot ?? FindFirstEmptySaveSlotSafely();
+            _lastAutosaveAttemptedWave = restoredSession?.CurrentWave ?? -1;
             _networkCancellation = new CancellationTokenSource();
             _coOpHost = new LanCoOpHost(OnlineCoOpPort, buildFingerprint: _contentFingerprint);
             _coOpHost.Start();
@@ -952,8 +952,8 @@ public sealed class Game1 : Game
         var difficultyId = _session?.DifficultyId ?? _ui.SelectedDifficultyId;
         var challengeId = _session?.ChallengeId ?? _ui.SelectedChallengeId;
         AssignSession(new GameSession(_content, mapId, difficultyId, challengeId));
-        _lastAutosavedWave = -1;
-        _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
+        _lastAutosaveAttemptedWave = -1;
+        _activeSaveSlot = FindFirstEmptySaveSlotSafely();
         _state = GameState.Playing;
     }
 
@@ -982,8 +982,8 @@ public sealed class Game1 : Game
         var challengeId = _session.ChallengeId;
         AssignSession(new GameSession(_content, mapId, difficultyId, challengeId));
         _session.ConfigureCoOp(1);
-        _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
-        _lastAutosavedWave = -1;
+        _activeSaveSlot = FindFirstEmptySaveSlotSafely();
+        _lastAutosaveAttemptedWave = -1;
         _authoritativeCommands = new AuthoritativeCommandHost();
         _networkRunner = new DeterministicSessionRunner(_session);
         AttachNetworkRunner();
@@ -1001,9 +1001,17 @@ public sealed class Game1 : Game
     {
         _saveSlotWriteMode = writeMode;
         _saveSlotReturnState = returnState;
-        var slots = SaveGameStore.GetSlots();
-        _ui.ConfigureSaveSlots(slots, writeMode, _activeSaveSlot);
-        _ui.SetSaveState(slots.Any(slot => slot.IsOccupied));
+        try
+        {
+            var slots = SaveGameStore.GetSlots();
+            _ui.ConfigureSaveSlots(slots, writeMode, _activeSaveSlot);
+            _ui.SetSaveState(slots.Any(slot => slot.IsOccupied));
+        }
+        catch (Exception exception)
+        {
+            _ui.ConfigureSaveSlots(Array.Empty<SaveSlotInfo>(), writeMode, _activeSaveSlot);
+            _ui.SetSaveState(false, $"Save storage unavailable: {exception.GetBaseException().Message}");
+        }
         _state = GameState.SaveSlots;
     }
 
@@ -1096,7 +1104,7 @@ public sealed class Game1 : Game
         {
             if (!SaveGameStore.Delete(slot))
             {
-                _ui.SetSaveState(SaveGameStore.Exists, $"Slot {slot} is already empty.");
+                _ui.SetSaveState(SaveSlotsExistSafely(), $"Slot {slot} is already empty.");
                 return;
             }
 
@@ -1109,25 +1117,28 @@ public sealed class Game1 : Game
         }
         catch (Exception exception)
         {
-            _ui.SetSaveState(SaveGameStore.Exists, $"Delete failed: {exception.GetBaseException().Message}");
+            _ui.SetSaveState(SaveSlotsExistSafely(), $"Delete failed: {exception.GetBaseException().Message}");
         }
     }
 
     private void SaveCheckpoint(bool automatic, int? requestedSlot = null)
     {
         if (_session is null || !_session.CanSaveCheckpoint) return;
+        // One automatic attempt per completed wave prevents a persistent I/O
+        // failure from retrying every render frame. Manual Save remains an
+        // immediate retry and a later wave gets a fresh automatic attempt.
+        if (automatic) _lastAutosaveAttemptedWave = _session.CurrentWave;
         try
         {
             var slot = requestedSlot ?? _activeSaveSlot ?? SaveGameStore.FindFirstEmptySlot();
             if (slot is null)
             {
-                _lastAutosavedWave = _session.CurrentWave;
                 _ui.SetSaveState(true, "Save index capacity is exhausted; delete an old save before continuing.");
                 return;
             }
             SaveGameStore.Save(_session, slot.Value);
             _activeSaveSlot = slot;
-            _lastAutosavedWave = _session.CurrentWave;
+            _lastAutosaveAttemptedWave = _session.CurrentWave;
             var label = automatic
                 ? $"Autosaved wave {_session.CurrentWave} to slot {slot}."
                 : $"Saved wave {_session.CurrentWave} to slot {slot}.";
@@ -1135,7 +1146,7 @@ public sealed class Game1 : Game
         }
         catch (Exception exception)
         {
-            _ui.SetSaveState(SaveGameStore.Exists, $"Save failed: {exception.GetBaseException().Message}");
+            _ui.SetSaveState(SaveSlotsExistSafely(), $"Save failed: {exception.GetBaseException().Message}");
         }
     }
 
@@ -1154,15 +1165,27 @@ public sealed class Game1 : Game
             CleanupNetwork();
             AssignSession(restored);
             _activeSaveSlot = slot;
-            _lastAutosavedWave = restored.CurrentWave;
+            _lastAutosaveAttemptedWave = restored.CurrentWave;
             _ui.SetSaveState(true, $"Loaded solo slot {slot} after wave {restored.CurrentWave}.");
             _state = GameState.Playing;
         }
         catch (Exception exception)
         {
-            _ui.SetSaveState(SaveGameStore.Exists, $"Load failed: {exception.GetBaseException().Message}");
+            _ui.SetSaveState(SaveSlotsExistSafely(), $"Load failed: {exception.GetBaseException().Message}");
             OpenSaveSlots(_saveSlotWriteMode, _saveSlotReturnState);
         }
+    }
+
+    private static bool SaveSlotsExistSafely()
+    {
+        try { return SaveGameStore.Exists; }
+        catch { return false; }
+    }
+
+    private static int? FindFirstEmptySaveSlotSafely()
+    {
+        try { return SaveGameStore.FindFirstEmptySlot(); }
+        catch { return null; }
     }
 
     protected override void Draw(GameTime gameTime)
