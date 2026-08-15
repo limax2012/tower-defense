@@ -1186,9 +1186,43 @@ internal static class Program
         Check.True(paused.IsCoOpPaused, "shared pause remains active on both-player simulation state");
         Check.Equal(2, paused.CoOpPausePlayerId, "shared pause identifies the requesting player");
         Check.Nearly(0, paused.Statistics.SimulatedSeconds, "fixed ticks continue while shared gameplay time is frozen");
+        paused.Content.Towers["beacon"] = new TowerDefinition
+        {
+            Id = "beacon",
+            DisplayName = "Planning Beacon",
+            Behavior = "aura",
+            PurchaseCost = 0,
+            Levels = new List<TowerLevelDefinition>
+            {
+                new() { AuraRange = 100, AuraAttackSpeedBonus = 0.25f, AuraRangeBonus = 0.1f }
+            }
+        };
         Check.True(pausedRunner.Schedule(pausedRunner.Tick, new GameCommand
         {
             Sequence = 2,
+            PlayerId = 1,
+            Type = GameCommandType.PlaceTower,
+            TowerDefinitionId = "tower",
+            X = 50,
+            Y = 200
+        }), "tower placement can be planned while shared combat is paused");
+        Check.True(pausedRunner.Schedule(pausedRunner.Tick, new GameCommand
+        {
+            Sequence = 3,
+            PlayerId = 2,
+            Type = GameCommandType.PlaceTower,
+            TowerDefinitionId = "beacon",
+            X = 110,
+            Y = 200
+        }), "beacon placement can be planned while shared combat is paused");
+        pausedRunner.RunTicks(1);
+        Check.True(paused.GetSupportBuff(paused.Towers.Single(tower => tower.Definition.Id == "tower")).IsActive,
+            "paused planning refreshes Beacon coverage without resuming combat");
+        Check.Nearly(0, paused.Statistics.SimulatedSeconds,
+            "paused support refresh does not advance gameplay time");
+        Check.True(pausedRunner.Schedule(pausedRunner.Tick, new GameCommand
+        {
+            Sequence = 4,
             PlayerId = 1,
             Type = GameCommandType.SetPaused,
             Paused = false

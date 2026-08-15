@@ -143,7 +143,15 @@ public sealed class GameSession
 
     public void Update(float unscaledDeltaSeconds)
     {
-        if (IsVictory || IsDefeat || IsCoOpPaused) return;
+        if (IsVictory || IsDefeat) return;
+        if (IsCoOpPaused)
+        {
+            // Shared pause still permits deterministic building and tower
+            // management. Keep support topology current without advancing a
+            // single combat, economy, animation, or cooldown timer.
+            _buffSystem.Update(Towers);
+            return;
+        }
         var deltaSeconds = MathF.Min(0.1f, MathF.Max(0, unscaledDeltaSeconds)) * Speed;
         Statistics.Advance(deltaSeconds);
         AnnouncementRemaining = MathF.Max(0, AnnouncementRemaining - deltaSeconds);

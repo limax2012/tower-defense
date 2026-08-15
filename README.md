@@ -29,7 +29,7 @@ The handshake rejects mismatched compiled builds or any recursive JSON gameplay/
 
 Co-op uses shared credits, lives, plates, waves, and speed. Both players can upgrade, specialize, retarget, Overdrive, or sell any tower or Charge Forge; the P1/P2 ring records who originally placed it without restricting control. Both players must ready each wave, and the wave button plus sidebar show both ready states and the same early-call countdown. The host locks the +20 reward only when the second player readies before the timer expires; one early ready does not preserve the bonus indefinitely. A compact P1/P2 crosshair shows the other player's live battlefield cursor, and four matching corner marks identify their selected tower without replacing its native colors; middle-click creates a more persistent location ping.
 
-Either player can press Esc, P, or the HUD Pause button to pause/resume the shared deterministic simulation. Both peers stop on the same fixed tick, the banner identifies who paused, and tower placement and management remain available for joint planning.
+Either player can press Esc, P, or the HUD Pause button to pause/resume the shared deterministic simulation. Both peers stop on the same fixed tick, the banner identifies who paused, and tower placement and management remain available for joint planning. Beacon coverage and effective-stat previews refresh as the paused layout changes, but no combat, wave, economy, Forge, Protocol, cooldown, or visual-effect timer advances.
 
 If the link drops—or valid inbound traffic disappears for 15 seconds—the match pauses and the client retries automatically. The host's preserved-session overlay keeps the six-character rejoin code visible and lets it be copied by clicking the code or pressing Ctrl+C.
 
