@@ -232,12 +232,16 @@ public sealed class SaveSlotRepository
     private static void WriteAtomically(string path, SaveGameData data)
     {
         data.SavedAtUtc = DateTime.UtcNow;
+        ValidateSaveStructure(data);
+        var payload = JsonSerializer.SerializeToUtf8Bytes(data, JsonOptions);
+        if (payload.LongLength > MaximumSaveFileBytes)
+            throw new InvalidOperationException("Checkpoint is too large to store safely.");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temporaryPath = path + ".tmp";
         var backupPath = path + ".bak";
         try
         {
-            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(data, JsonOptions));
+            File.WriteAllBytes(temporaryPath, payload);
             if (File.Exists(path) && IsReadableSave(path)) File.Copy(path, backupPath, true);
             File.Move(temporaryPath, path, true);
         }
