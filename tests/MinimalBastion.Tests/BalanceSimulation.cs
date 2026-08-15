@@ -26,11 +26,13 @@ internal static class BalanceSimulation
         foreach (var tower in content.Towers.Values.OrderBy(x => x.PurchaseCost))
         {
             var levelOne = SingleTarget(content, tower, 0, 20, 0);
+            var firstDoctrine = tower.Tier2Doctrines.FirstOrDefault();
             var firstSpecialization = tower.Specializations.FirstOrDefault();
-            var terminalLevel = firstSpecialization?.Level ?? tower.Levels[2];
+            var terminalLevel = (firstSpecialization?.Level ?? tower.Levels[2]).WithDoctrine(firstDoctrine);
             var dense = DenseGroup(content, tower, 0, 12, 8);
-            var levelTwo = SingleTarget(content, tower, 1, 20, 0);
-            var upgradeDps = tower.Levels[0].UpgradeCost is { } firstCost
+            var levelTwo = SingleTarget(content, tower, 1, 20, 0, doctrineId: firstDoctrine?.Id);
+            var firstCost = firstDoctrine?.UpgradeCost ?? tower.Levels[0].UpgradeCost ?? 0;
+            var upgradeDps = firstCost > 0
                 ? (levelTwo.DamagePerSecond - levelOne.DamagePerSecond) / firstCost
                 : 0;
 
@@ -80,9 +82,12 @@ internal static class BalanceSimulation
             var rows = TierRows(tower);
             foreach (var row in rows)
             {
-                var single = SingleTarget(content, tower, row.LevelIndex, 20, 0, specializationId: row.SpecializationId);
-                var armored = SingleTarget(content, tower, row.LevelIndex, 20, 8, specializationId: row.SpecializationId);
-                var dense = DenseGroup(content, tower, row.LevelIndex, 20, 8, row.SpecializationId);
+                var single = SingleTarget(content, tower, row.LevelIndex, 20, 0,
+                    specializationId: row.SpecializationId, doctrineId: row.DoctrineId);
+                var armored = SingleTarget(content, tower, row.LevelIndex, 20, 8,
+                    specializationId: row.SpecializationId, doctrineId: row.DoctrineId);
+                var dense = DenseGroup(content, tower, row.LevelIndex, 20, 8,
+                    row.SpecializationId, row.DoctrineId);
                 Console.WriteLine($"{tower.DisplayName + " " + row.Label,-28}  {row.CumulativeCost,4}  {row.MarginalCost,8}  {single.DamagePerSecond,10:0.0}  {armored.DamagePerSecond,11:0.0}  {dense.DamagePerSecond,9:0.0}  {dense.DamagePerSecond / Math.Max(1, row.CumulativeCost),12:0.000}");
             }
         }
@@ -92,17 +97,37 @@ internal static class BalanceSimulation
     {
         var rows = new List<TierRow>
         {
-            new("L1", 0, null, tower.PurchaseCost, tower.PurchaseCost)
+            new("L1", 0, null, null, tower.PurchaseCost, tower.PurchaseCost)
         };
+
+        if (tower.Tier2Doctrines.Count > 0)
+        {
+            foreach (var doctrine in tower.Tier2Doctrines)
+            {
+                var cumulativeDoctrine = tower.PurchaseCost + doctrine.UpgradeCost;
+                rows.Add(new TierRow($"L2 {doctrine.ShortLabel}", 1, doctrine.Id, null,
+                    cumulativeDoctrine, doctrine.UpgradeCost));
+                rows.AddRange(tower.Specializations.Select(specialization => new TierRow(
+                    $"{doctrine.ShortLabel}>{specialization.ShortLabel}",
+                    2,
+                    doctrine.Id,
+                    specialization.Id,
+                    cumulativeDoctrine + specialization.UpgradeCost,
+                    specialization.UpgradeCost)));
+            }
+            return rows;
+        }
+
         var levelTwoCost = tower.Levels[0].UpgradeCost ?? 0;
         var cumulativeLevelTwo = tower.PurchaseCost + levelTwoCost;
-        rows.Add(new TierRow("L2", 1, null, cumulativeLevelTwo, levelTwoCost));
+        rows.Add(new TierRow("L2", 1, null, null, cumulativeLevelTwo, levelTwoCost));
 
         if (tower.Specializations.Count > 0)
         {
             rows.AddRange(tower.Specializations.Select(specialization => new TierRow(
                 specialization.ShortLabel,
                 2,
+                null,
                 specialization.Id,
                 cumulativeLevelTwo + specialization.UpgradeCost,
                 specialization.UpgradeCost)));
@@ -110,7 +135,7 @@ internal static class BalanceSimulation
         else
         {
             var levelThreeCost = tower.Levels[1].UpgradeCost ?? 0;
-            rows.Add(new TierRow("L3", 2, null, cumulativeLevelTwo + levelThreeCost, levelThreeCost));
+            rows.Add(new TierRow("L3", 2, null, null, cumulativeLevelTwo + levelThreeCost, levelThreeCost));
         }
 
         return rows;
@@ -144,11 +169,12 @@ internal static class BalanceSimulation
         float seconds,
         float armor,
         float health = 100_000,
-        string? specializationId = null)
+        string? specializationId = null,
+        string? doctrineId = null)
     {
         var enemy = EnemyLike(content.Enemies.Values.First(), "benchmark_target", health, 0.01f, armor, 0, 0);
         var session = CreateSession(content, new[] { tower }, new[] { enemy }, StationaryMap());
-        AddTower(session, tower, new Vector2(400, 300), levelIndex, specializationId);
+        AddTower(session, tower, new Vector2(400, 300), levelIndex, specializationId, doctrineId);
         var target = AddEnemy(session, enemy);
         var metrics = new Metrics();
         session.DamageResolver.DamageApplied += metrics.Record;
@@ -156,11 +182,12 @@ internal static class BalanceSimulation
         return metrics.ToResult(seconds, target);
     }
 
-    private static SimulationResult DenseGroup(GameContent content, TowerDefinition tower, int levelIndex, float seconds, int count, string? specializationId = null)
+    private static SimulationResult DenseGroup(GameContent content, TowerDefinition tower, int levelIndex, float seconds,
+        int count, string? specializationId = null, string? doctrineId = null)
     {
         var enemy = EnemyLike(content.Enemies.Values.First(), "benchmark_dense", 100_000, 0.01f, 0, 0, 0);
         var session = CreateSession(content, new[] { tower }, new[] { enemy }, StationaryMap());
-        AddTower(session, tower, new Vector2(400, 300), levelIndex, specializationId);
+        AddTower(session, tower, new Vector2(400, 300), levelIndex, specializationId, doctrineId);
         var targets = Enumerable.Range(0, count).Select(_ => AddEnemy(session, enemy)).ToArray();
         var metrics = new Metrics();
         session.DamageResolver.DamageApplied += metrics.Record;
@@ -220,7 +247,7 @@ internal static class BalanceSimulation
         foreach (var position in offensePositions)
             AddTower(session, offense, position, 0);
         if (beaconTier is { } tier)
-            AddTower(session, beacon, beaconPosition, tier.LevelIndex, tier.SpecializationId);
+            AddTower(session, beacon, beaconPosition, tier.LevelIndex, tier.SpecializationId, tier.DoctrineId);
         var target = AddEnemy(session, enemy);
         var metrics = new Metrics();
         session.DamageResolver.DamageApplied += metrics.Record;
@@ -244,10 +271,18 @@ internal static class BalanceSimulation
         TowerDefinition definition,
         Vector2 position,
         int levelIndex,
-        string? specializationId = null)
+        string? specializationId = null,
+        string? doctrineId = null)
     {
         var tower = new TowerInstance(session.Towers.Count + 1, definition, position);
-        if (specializationId is not null)
+        if (doctrineId is not null)
+        {
+            if (!tower.TryChooseDoctrine(doctrineId))
+                throw new InvalidOperationException($"Could not create {definition.Id} doctrine {doctrineId}.");
+            if (specializationId is not null && !tower.TrySpecialize(specializationId))
+                throw new InvalidOperationException($"Could not create {definition.Id} doctrine {doctrineId} specialization {specializationId}.");
+        }
+        else if (specializationId is not null)
         {
             if (!tower.TryUpgrade() || !tower.TrySpecialize(specializationId))
                 throw new InvalidOperationException($"Could not create {definition.Id} specialization {specializationId}.");
@@ -260,6 +295,24 @@ internal static class BalanceSimulation
         }
         session.Towers.Add(tower);
         return tower;
+    }
+
+    internal static int ValidateTierConfigurations(GameContent content)
+    {
+        var count = 0;
+        foreach (var definition in content.Towers.Values)
+        {
+            foreach (var row in TierRows(definition))
+            {
+                var session = CreateSession(content, new[] { definition }, content.Enemies.Values.Take(1).ToArray(), StationaryMap());
+                var tower = AddTower(session, definition, new Vector2(400, 300), row.LevelIndex,
+                    row.SpecializationId, row.DoctrineId);
+                if (tower.LevelIndex != row.LevelIndex)
+                    throw new InvalidOperationException($"Benchmark tier mismatch for {definition.Id} {row.Label}.");
+                count++;
+            }
+        }
+        return count;
     }
 
     private static EnemyInstance AddEnemy(GameSession session, EnemyDefinition definition)
@@ -316,7 +369,8 @@ internal static class BalanceSimulation
     private static PointData Point(float x, float y) => new() { X = x, Y = y };
 
     private sealed record SupportResult(float AssistedDamage, float AssistedDps);
-    private sealed record TierRow(string Label, int LevelIndex, string? SpecializationId, int CumulativeCost, int MarginalCost);
+    private sealed record TierRow(string Label, int LevelIndex, string? DoctrineId, string? SpecializationId,
+        int CumulativeCost, int MarginalCost);
 
     private sealed class Metrics
     {

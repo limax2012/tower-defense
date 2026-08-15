@@ -53,7 +53,7 @@
     "protocol": { "displayName": "Dead Reckoning", "summary": "Extends reach and marks priority threats", "durationSeconds": 6.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.15, "damageBonus": 0.5, "rangeBonus": 0.2, "armorPierceBonus": 3, "autoTriggerCount": 2, "burstRadius": 220, "burstStatus": "Exposed", "burstStatusMagnitude": 0.18, "burstStatusDuration": 3.5 },
     "tier2Doctrines": [
       { "id": "watch_spotter", "displayName": "Spotter Lens", "shortLabel": "SPOTTER", "summary": "Wider coverage and steadier cadence", "upgradeCost": 120, "damageMultiplier": 0.88, "attackSpeedMultiplier": 1.10, "rangeMultiplier": 1.12, "utilityMultiplier": 0.96 },
-      { "id": "watch_heavy_optics", "displayName": "Heavy Optics", "shortLabel": "HEAVY", "summary": "Higher impact with deliberate shots", "upgradeCost": 120, "damageMultiplier": 1.05, "attackSpeedMultiplier": 0.96, "rangeMultiplier": 1.03, "utilityMultiplier": 1.08 }
+      { "id": "watch_heavy_optics", "displayName": "Heavy Optics", "shortLabel": "HEAVY", "summary": "Higher impact and utility at shorter reach", "upgradeCost": 120, "damageMultiplier": 1.05, "attackSpeedMultiplier": 0.96, "rangeMultiplier": 0.98, "utilityMultiplier": 1.08 }
     ],
     "levels": [
       { "range": 250, "damage": 40, "attacksPerSecond": 0.47, "projectileSpeed": 850, "upgradeCost": 120 },
@@ -67,7 +67,7 @@
       },
       {
         "id": "deadeye_post", "displayName": "Deadeye Post", "shortLabel": "DEADEYE", "summary": "Extreme-range priority eliminator", "upgradeCost": 195,
-        "level": { "range": 345, "damage": 118, "attacksPerSecond": 0.38, "projectileSpeed": 1250, "armorPierce": 8, "upgradeCost": null }
+        "level": { "range": 335, "damage": 112, "attacksPerSecond": 0.38, "projectileSpeed": 1250, "armorPierce": 8, "upgradeCost": null }
       }
     ]
   },

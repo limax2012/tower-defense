@@ -81,6 +81,7 @@ internal static class Program
             ("tower information", TowerInformation),
             ("tower library reference", TowerLibraryReference),
             ("tower tier two doctrines", TowerTierTwoDoctrines),
+            ("balance benchmark doctrine coverage", BalanceBenchmarkDoctrineCoverage),
             ("tower specializations", TowerSpecializations),
             ("tower overdrive", TowerOverdrive),
             ("emergency pulse plates", EmergencyPulsePlates),
@@ -116,6 +117,14 @@ internal static class Program
         Check.Equal(20, SimulationCli.ResolveMaximumWave(["--simulate-full"], 20), "default simulation wave cap");
         Check.Equal(30, SimulationCli.ResolveMaximumWave(["--simulate-full", "--max-wave", "30"], 20), "explicit endless wave cap");
         Check.Equal(1, SimulationCli.ResolveMaximumWave(["--simulate", "--max-wave=0"], 20), "minimum explicit wave cap");
+    }
+
+    private static void BalanceBenchmarkDoctrineCoverage()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        Check.Equal(70, BalanceSimulation.ValidateTierConfigurations(content),
+            "balance benchmark covers L1, two doctrines, and four final combinations for every tower");
     }
 
     private static void ContentCounts()
