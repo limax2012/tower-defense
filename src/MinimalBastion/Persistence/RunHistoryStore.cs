@@ -141,8 +141,16 @@ public sealed class RunHistoryRepository
     {
         var entries = JsonSerializer.Deserialize<List<RunHistoryEntry>>(File.ReadAllText(path), JsonOptions)
             ?? throw new InvalidDataException("Run history is empty or invalid.");
+        if (entries.Select(entry => entry.RunId).Distinct(StringComparer.OrdinalIgnoreCase).Count() != entries.Count ||
+            entries.Any(entry => string.IsNullOrWhiteSpace(entry.RunId) || entry.RunId.Length > 64 ||
+                entry.CompletedAtUtc == default || string.IsNullOrWhiteSpace(entry.MapId) || string.IsNullOrWhiteSpace(entry.MapName) ||
+                string.IsNullOrWhiteSpace(entry.DifficultyId) || string.IsNullOrWhiteSpace(entry.DifficultyName) ||
+                entry.CurrentWave < 0 || entry.TotalWaves <= 0 || entry.Lives < 0 || entry.StartingLives <= 0 ||
+                entry.Kills < 0 || entry.Leaks < 0 || entry.CreditsEarned < 0 || entry.CreditsSpent < 0 ||
+                !float.IsFinite(entry.DefenseSeconds) || entry.DefenseSeconds < 0 ||
+                !float.IsFinite(entry.TopTowerContribution) || entry.TopTowerContribution < 0))
+            throw new InvalidDataException("Run history contains structurally invalid records.");
         return entries
-            .Where(entry => !string.IsNullOrWhiteSpace(entry.RunId))
             .OrderByDescending(entry => entry.CompletedAtUtc)
             .ToArray();
     }

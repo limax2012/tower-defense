@@ -218,7 +218,37 @@ public sealed class SaveSlotRepository
             ?? throw new InvalidDataException($"Save file '{Path.GetFileName(path)}' is empty or invalid.");
         if (data.SchemaVersion != SaveGameData.CurrentSchemaVersion)
             throw new InvalidDataException($"Save schema {data.SchemaVersion} is not supported.");
+        ValidateSaveStructure(data);
         return data;
+    }
+
+    private static void ValidateSaveStructure(SaveGameData data)
+    {
+        if (string.IsNullOrWhiteSpace(data.MapId) || data.MapId.Length > 128 ||
+            data.Economy is null || data.Waves is null || data.Towers is null || data.PulsePlates is null || data.Statistics is null ||
+            data.Statistics.Towers is null || data.Statistics.Enemies is null || data.Statistics.TowerDefinitionByInstance is null ||
+            data.NextEnemyId <= 0 || data.NextTowerId <= 0 || data.NextEmergencyDefenseId <= 0 ||
+            !float.IsFinite(data.Speed) || data.Speed <= 0 || !float.IsFinite(data.OverdriveCooldownRemaining) ||
+            data.EmergencyInventory < 0 || data.EmergencyDirectPurchasesThisWave < 0 || data.Waves.CurrentWaveNumber < 0 ||
+            data.Economy.Credits < 0 || data.Economy.Lives < 0 || data.Economy.TotalKills < 0 || data.Economy.EscapedEnemies < 0)
+            throw new InvalidDataException("Save data is structurally invalid.");
+
+        if (data.Towers.Select(tower => tower.Id).Distinct().Count() != data.Towers.Count ||
+            data.Towers.Any(tower => tower.Id <= 0 || tower.OwnerPlayerId is < 1 or > 2 || string.IsNullOrWhiteSpace(tower.DefinitionId) ||
+                !float.IsFinite(tower.X) || !float.IsFinite(tower.Y) || tower.LevelIndex < 0 ||
+                !Enum.IsDefined(tower.TargetMode) || tower.InvestedCredits < 0 || !float.IsFinite(tower.CooldownRemaining)))
+            throw new InvalidDataException("Save tower data is structurally invalid.");
+
+        if (data.PulsePlates.Select(plate => plate.Id).Distinct().Count() != data.PulsePlates.Count ||
+            data.PulsePlates.Any(plate => plate.Id <= 0 || plate.OwnerPlayerId is < 1 or > 2 || plate.HandledEnemyIds is null ||
+                !float.IsFinite(plate.X) || !float.IsFinite(plate.Y) || plate.ChargesRemaining < 0 ||
+                !float.IsFinite(plate.ArmRemaining) || !float.IsFinite(plate.CooldownRemaining)))
+            throw new InvalidDataException("Save Pulse Plate data is structurally invalid.");
+
+        if (data.Generator is { } generator && (generator.OwnerPlayerId is < 1 or > 2 || generator.LevelIndex < 0 ||
+            generator.InvestedCredits < 0 || !float.IsFinite(generator.X) || !float.IsFinite(generator.Y) ||
+            !float.IsFinite(generator.ProductionRemaining)))
+            throw new InvalidDataException("Save Charge Forge data is structurally invalid.");
     }
 
     private static bool IsReadableSave(string path)

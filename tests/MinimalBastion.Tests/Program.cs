@@ -2090,6 +2090,14 @@ internal static class Program
             Check.Equal(originalCredits, repository.LoadData(1).Economy.Credits,
                 "preserved recovery remains usable after another interrupted primary");
 
+            File.WriteAllText(repository.GetSlotPath(1), "{\"schemaVersion\":1}");
+            Check.Equal(originalCredits, repository.LoadData(1).Economy.Credits,
+                "parseable but structurally empty primary falls back to recovery");
+            var semanticRecoveryGeneration = File.ReadAllText(repository.GetSlotBackupPath(1));
+            repository.Save(session, 1);
+            Check.Equal(semanticRecoveryGeneration, File.ReadAllText(repository.GetSlotBackupPath(1)),
+                "semantic corruption cannot replace a known-good save recovery generation");
+
             File.Delete(repository.GetSlotPath(1));
             Check.True(repository.GetSlots().Single(slot => slot.Slot == 1).IsOccupied,
                 "backup-only interrupted slot remains discoverable");
@@ -2152,6 +2160,15 @@ internal static class Program
             File.Delete(recoveryRepository.HistoryPath);
             Check.Equal("run-a", recoveryRepository.GetEntries().Single().RunId,
                 "history update after primary corruption preserves its known-good recovery generation");
+
+            var semanticRepository = new RunHistoryRepository(Path.Combine(testRoot, "semantic-recovery"));
+            semanticRepository.Upsert(first);
+            semanticRepository.Upsert(first with { RunId = "run-b", CompletedAtUtc = first.CompletedAtUtc.AddHours(1) });
+            File.WriteAllText(semanticRepository.HistoryPath, "[{\"runId\":\"\"}]");
+            semanticRepository.Upsert(first with { RunId = "run-c", CompletedAtUtc = first.CompletedAtUtc.AddHours(2) });
+            File.Delete(semanticRepository.HistoryPath);
+            Check.Equal("run-a", semanticRepository.GetEntries().Single().RunId,
+                "semantic history corruption cannot replace a known-good recovery generation");
 
             var session = Session();
             var runId = session.RunId;
