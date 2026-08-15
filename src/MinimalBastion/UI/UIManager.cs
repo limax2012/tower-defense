@@ -1855,6 +1855,7 @@ public sealed class UIManager
         PlacementFailure.GeneratorAlreadyBuilt => "ONLY ONE CHARGE FORGE IS ALLOWED",
         PlacementFailure.TowerUnavailable => $"{session.Challenge.DisplayName.ToUpperInvariant()} - TOWER OFFLINE",
         PlacementFailure.TacticalSystemsDisabled => $"{session.Challenge.DisplayName.ToUpperInvariant()} - RESERVES OFFLINE",
+        PlacementFailure.IdentityCapacityReached => "ENDLESS ENTITY CAPACITY REACHED",
         PlacementFailure.NoDefenseAvailable => !session.Waves.IsActive && session.EmergencyInventory <= 0
             ? "NO STORED PLATE - DIRECT BUYING ACTIVATES IN WAVES"
             : $"NO STORED PLATE - NEED {session.CurrentEmergencyDirectPurchaseCost} CREDITS",

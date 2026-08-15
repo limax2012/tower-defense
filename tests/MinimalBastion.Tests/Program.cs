@@ -947,6 +947,23 @@ internal static class Program
             "direct Plate purchase count saturates instead of wrapping negative");
         Check.Equal(int.MaxValue, extremePurchases.CurrentEmergencyDirectPurchaseCost,
             "saturated purchase count keeps the next Plate price valid");
+
+        var identityState = session.CaptureSaveGame();
+        identityState.NextEnemyId = int.MaxValue;
+        identityState.NextTowerId = int.MaxValue;
+        identityState.NextEmergencyDefenseId = int.MaxValue;
+        var exhausted = GameSession.RestoreSaveGame(session.Content, identityState);
+        Check.Equal(PlacementFailure.IdentityCapacityReached,
+            exhausted.ValidatePlacement("tower", new Vector2(110, 200)),
+            "exhausted tower identity space rejects placement before spending");
+        Check.Equal(PlacementFailure.IdentityCapacityReached,
+            exhausted.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(100, 30)),
+            "exhausted Plate identity space reports a bounded terminal state");
+        exhausted.SpawnEnemy("enemy", 1, 1);
+        Check.Equal(0, exhausted.Enemies.Count,
+            "exhausted enemy identity space cannot wrap into duplicate runtime IDs");
+        Check.Equal(int.MaxValue, exhausted.NextEnemyId,
+            "exhausted enemy identity remains saturated after a rejected spawn");
     }
 
     private static void SoldTowerUtilityPersistence()

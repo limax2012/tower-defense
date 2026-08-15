@@ -78,7 +78,8 @@ public enum PlacementFailure
     NoDefenseAvailable,
     DefenseCapacityReached,
     TowerUnavailable,
-    TacticalSystemsDisabled
+    TacticalSystemsDisabled,
+    IdentityCapacityReached
 }
 
 public enum TacticalPlacementKind

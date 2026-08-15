@@ -370,6 +370,7 @@ public sealed class GameSession
     public PlacementFailure ValidatePlacement(string towerId, Vector2 position)
     {
         if (!_content.Towers.TryGetValue(towerId, out var definition)) return PlacementFailure.UnknownTower;
+        if (_nextTowerId >= int.MaxValue) return PlacementFailure.IdentityCapacityReached;
         if (!IsTowerAvailable(towerId)) return PlacementFailure.TowerUnavailable;
         if (!Economy.CanAfford(definition.PurchaseCost)) return PlacementFailure.InsufficientCredits;
         if (position.X < GameConstants.TowerRadius || position.X > GameConstants.MapWidth - GameConstants.TowerRadius ||
@@ -390,6 +391,7 @@ public sealed class GameSession
         if (kind == TacticalPlacementKind.PulsePlate)
         {
             var definition = _content.Tactics.EmergencyDefense;
+            if (_nextEmergencyDefenseId >= int.MaxValue) return PlacementFailure.IdentityCapacityReached;
             if (EmergencyDefenses.Count >= definition.MaximumActive) return PlacementFailure.DefenseCapacityReached;
             if (EmergencyInventory <= 0 && !CanDirectPurchaseEmergencyDefense) return PlacementFailure.NoDefenseAvailable;
             var projection = Map.Path.Project(position);
@@ -755,7 +757,7 @@ public sealed class GameSession
 
     public void SpawnEnemy(string enemyId, float healthMultiplier, float speedMultiplier, string rank = "Standard")
     {
-        if (!_content.Enemies.TryGetValue(enemyId, out var definition)) return;
+        if (_nextEnemyId >= int.MaxValue || !_content.Enemies.TryGetValue(enemyId, out var definition)) return;
         var enemy = new EnemyInstance(_nextEnemyId++, definition, Map.Path,
             healthMultiplier * Difficulty.EnemyHealthMultiplier,
             speedMultiplier * Difficulty.EnemySpeedMultiplier,

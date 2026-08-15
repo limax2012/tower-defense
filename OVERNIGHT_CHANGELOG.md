@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Guarded the final deep-endless identity boundary. Exhausted 32-bit tower and Pulse Plate IDs now produce a clear placement-capacity message without spending, while enemy spawning remains saturated instead of wrapping into negative or duplicate IDs that could corrupt targeting, saves, or co-op checksums.
 - Saturated the per-wave direct Pulse Plate purchase counter. An extreme restored endless state at the integer limit can no longer wrap its escalating-price counter negative after paying the capped price.
 - Isolated save-storage failures from gameplay startup and frame pacing. New Game, Host, and Restart now fall back to an unslotted run if slot discovery fails; Load Saves reports an unavailable store without crashing; and autosave makes one attempt per completed wave instead of hammering a failing disk every frame. Manual Save and the next wave still retry normally.
 - Kept Signal Beacon topology live during shared co-op pause. Deterministically placed, sold, or upgraded support towers now update planning intel and effective ranges immediately while every combat/economy/cooldown timer remains frozen.
