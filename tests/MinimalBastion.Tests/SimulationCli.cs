@@ -23,15 +23,15 @@ internal static class SimulationCli
             : deep ? content.Maps.Keys.OrderBy(x => x).ToArray() : new[] { content.Map.Id };
         var maximumWave = ResolveMaximumWave(args, content.Waves.Waves.Count);
         var difficulties = ResolveDifficulties(ReadValue(args, "--difficulty"), content);
-        var challengeId = ReadValue(args, "--challenge") ?? ChallengeCatalog.DefaultId;
-        if (!content.Challenges.ContainsKey(challengeId))
-            throw new ArgumentException($"Unknown challenge '{challengeId}'. Choose one of: {string.Join(", ", content.Challenges.Keys.OrderBy(x => x))}.");
+        var challenges = ResolveChallenges(ReadValue(args, "--challenge"), content);
         var forcedBuild = ParseForcedBuild(ReadValue(args, "--force-build"), content);
         var useProtocols = !args.Any(arg => arg.Equals("--no-protocols", StringComparison.OrdinalIgnoreCase));
+        var summaryOnly = args.Any(arg => arg.Equals("--summary-only", StringComparison.OrdinalIgnoreCase));
 
         var runs = new List<SimulationRunResult>();
         foreach (var mapId in maps)
         foreach (var difficultyId in difficulties)
+        foreach (var challengeId in challenges)
             foreach (var strategy in strategies)
             {
                 for (var index = 0; index < runsPerStrategy; index++)
@@ -52,7 +52,8 @@ internal static class SimulationCli
                         UseProtocols = useProtocols
                     });
                     runs.Add(result);
-                    Console.WriteLine($"{mapId,-15} {difficultyId,-8} {challengeId,-14} {strategy,-16} seed {seed,7}  {result.Result,-7}  wave {result.WaveReached,2}  lives {result.LivesRemaining,2}  spent {result.CreditsSpent,5}  towers {result.Towers.Values.Sum(x => x.Purchases),2}  plates {result.EmergencyDeployments,2}");
+                    if (!summaryOnly)
+                        Console.WriteLine($"{mapId,-15} {difficultyId,-8} {challengeId,-14} {strategy,-16} seed {seed,7}  {result.Result,-7}  wave {result.WaveReached,2}  lives {result.LivesRemaining,2}  spent {result.CreditsSpent,5}  towers {result.Towers.Values.Sum(x => x.Purchases),2}  plates {result.EmergencyDeployments,2}");
                 }
             }
 
@@ -64,6 +65,7 @@ internal static class SimulationCli
         if (!useProtocols) Console.WriteLine("Protocol activations disabled for this control group.");
         PrintStrategySummary(runs);
         PrintDifficultySummary(runs);
+        PrintChallengeSummary(runs);
         PrintMapSummary(runs);
         PrintArenaDifficultyMatrix(runs, content);
         PrintTowerSummary(runs);
@@ -99,6 +101,17 @@ internal static class SimulationCli
         if (!content.Difficulties.ContainsKey(difficultyId))
             throw new ArgumentException($"Unknown difficulty '{difficultyId}'. Choose one of: all, {string.Join(", ", content.Difficulties.Keys.OrderBy(x => x))}.");
         return new[] { content.Difficulties[difficultyId].Id };
+    }
+
+    internal static IReadOnlyList<string> ResolveChallenges(string? selectedChallenge, GameContent content)
+    {
+        if (selectedChallenge?.Equals("all", StringComparison.OrdinalIgnoreCase) == true)
+            return content.Challenges.Values.Select(x => x.Id).ToArray();
+
+        var challengeId = selectedChallenge ?? ChallengeCatalog.DefaultId;
+        if (!content.Challenges.ContainsKey(challengeId))
+            throw new ArgumentException($"Unknown challenge '{challengeId}'. Choose one of: all, {string.Join(", ", content.Challenges.Keys.OrderBy(x => x))}.");
+        return new[] { content.Challenges[challengeId].Id };
     }
 
     internal static ForcedBuildPath? ParseForcedBuild(string? value, GameContent content)
@@ -141,6 +154,16 @@ internal static class SimulationCli
         Console.WriteLine();
         Console.WriteLine("DIFFICULTY SUMMARY");
         foreach (var group in runs.GroupBy(x => x.DifficultyId).OrderBy(x => x.Key))
+            Console.WriteLine($"{group.Key,-18} {group.Count(x => x.Won),2}/{group.Count(),-2} wins  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
+    }
+
+    private static void PrintChallengeSummary(IEnumerable<SimulationRunResult> runs)
+    {
+        var materialized = runs.ToArray();
+        if (materialized.Select(x => x.ChallengeId).Distinct(StringComparer.OrdinalIgnoreCase).Count() < 2) return;
+        Console.WriteLine();
+        Console.WriteLine("CHALLENGE SUMMARY");
+        foreach (var group in materialized.GroupBy(x => x.ChallengeId).OrderBy(x => x.Key))
             Console.WriteLine($"{group.Key,-18} {group.Count(x => x.Won),2}/{group.Count(),-2} wins  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
     }
 

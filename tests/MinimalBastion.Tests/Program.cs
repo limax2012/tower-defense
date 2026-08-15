@@ -141,6 +141,13 @@ internal static class Program
             "difficulty sweep contains each profile once");
         Check.True(allDifficulties.SequenceEqual(content.Difficulties.Values.Select(x => x.Id), StringComparer.OrdinalIgnoreCase),
             "difficulty sweep follows the authored menu order");
+        var defaultChallenges = SimulationCli.ResolveChallenges(null, content);
+        Check.Equal(1, defaultChallenges.Count, "simulation defaults to one challenge directive");
+        Check.Equal(ChallengeCatalog.DefaultId, defaultChallenges[0], "simulation retains standard directive default");
+        var allChallenges = SimulationCli.ResolveChallenges("all", content);
+        Check.Equal(content.Challenges.Count, allChallenges.Count, "simulation can sweep every challenge directive");
+        Check.True(allChallenges.SequenceEqual(content.Challenges.Values.Select(x => x.Id), StringComparer.OrdinalIgnoreCase),
+            "challenge sweep follows the authored menu order");
         var path = SimulationCli.ParseForcedBuild("siege_mortar:mortar_loader>quake_shell", content);
         Check.Equal("siege_mortar", path!.TowerId, "forced build parser tower");
         Check.Equal("mortar_loader", path.DoctrineId, "forced build parser doctrine");
