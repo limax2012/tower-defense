@@ -205,15 +205,16 @@ public static class TowerInfo
         }
     }
 
-    public static string DoctrineSummary(TowerDefinition definition, TowerDoctrineDefinition doctrine)
+    public static string DoctrineSummary(TowerDefinition definition, TowerDoctrineDefinition doctrine,
+        TowerBuff supportBuff = default, MapPowerBuff powerBuff = default)
     {
         var current = definition.Levels[0];
         var next = definition.Levels[Math.Min(1, definition.Levels.Count - 1)].WithDoctrine(doctrine);
-        return $"{doctrine.Summary}: {CoreChanges(current, next)}";
+        return $"{doctrine.Summary}: {CoreChanges(current, next, supportBuff, powerBuff)}";
     }
 
     public static string SpecializationSummary(TowerLevelDefinition current, TowerSpecializationDefinition specialization,
-        TowerDoctrineDefinition? doctrine = null)
+        TowerDoctrineDefinition? doctrine = null, TowerBuff supportBuff = default, MapPowerBuff powerBuff = default)
     {
         var next = specialization.Level.WithDoctrine(doctrine);
         var changes = new List<string>();
@@ -224,23 +225,35 @@ public static class TowerInfo
         if (next.SplashRadius > 0) changes.Add($"SPLASH {next.SplashRadius:0}");
         if (next.SplashTargetLimit > 0) changes.Add($"CAP {next.SplashTargetLimit}");
         if (next.SlowPercent > current.SlowPercent) changes.Add($"SLOW {next.SlowPercent:P0}");
-        if (next.ArmorPierce > current.ArmorPierce) changes.Add($"PIERCE {next.ArmorPierce:0}");
+        if (next.ArmorPierce > current.ArmorPierce)
+            changes.Add($"PIERCE {current.ArmorPierce + powerBuff.ArmorPierceBonus:0.#}>{next.ArmorPierce + powerBuff.ArmorPierceBonus:0.#}");
         if (next.PelletCount != current.PelletCount) changes.Add($"SHOTS {next.PelletCount}");
         if (next.ChainCount != current.ChainCount) changes.Add($"CHAIN {next.ChainCount}");
         if (next.ExposePercent != current.ExposePercent) changes.Add($"EXPOSE +{next.ExposePercent:P0}");
-        if (MathF.Abs(next.Damage - current.Damage) > 0.001f) changes.Add($"DAMAGE {next.Damage:0.#}");
-        if (MathF.Abs(next.AttacksPerSecond - current.AttacksPerSecond) > 0.001f) changes.Add($"RATE {next.AttacksPerSecond:0.##}");
-        return $"{specialization.Summary}: {string.Join("  ", changes.Take(2))}";
+        var damageMultiplier = 1f + powerBuff.DamageBonus;
+        var attackSpeedMultiplier = 1f + supportBuff.AttackSpeedBonus + powerBuff.AttackSpeedBonus;
+        var rangeMultiplier = 1f + supportBuff.RangeBonus + powerBuff.RangeBonus;
+        if (MathF.Abs(next.Damage - current.Damage) > 0.001f)
+            changes.Add($"DAMAGE {current.Damage * damageMultiplier:0.#}>{next.Damage * damageMultiplier:0.#}");
+        if (MathF.Abs(next.AttacksPerSecond - current.AttacksPerSecond) > 0.001f)
+            changes.Add($"RATE {current.AttacksPerSecond * attackSpeedMultiplier:0.##}>{next.AttacksPerSecond * attackSpeedMultiplier:0.##}");
+        if (MathF.Abs(next.Range - current.Range) > 0.001f)
+            changes.Add($"RANGE {current.Range * rangeMultiplier:0}>{next.Range * rangeMultiplier:0}");
+        return $"{specialization.Summary}: {string.Join("  ", changes.Take(3))}";
     }
 
-    private static string CoreChanges(TowerLevelDefinition current, TowerLevelDefinition next)
+    private static string CoreChanges(TowerLevelDefinition current, TowerLevelDefinition next,
+        TowerBuff supportBuff = default, MapPowerBuff powerBuff = default)
     {
         var changes = new List<string>();
         if (next.AuraRange > 0) changes.Add($"FIELD {next.AuraRange:0}");
         if (next.AuraAttackSpeedBonus > 0) changes.Add($"AURA +{next.AuraAttackSpeedBonus:P0}");
-        if (next.Damage > 0) changes.Add($"DAMAGE {next.Damage:0.#}");
-        if (next.AttacksPerSecond > 0) changes.Add($"RATE {next.AttacksPerSecond:0.##}");
-        if (next.Range > 0) changes.Add($"RANGE {next.Range:0}");
+        var damageMultiplier = 1f + powerBuff.DamageBonus;
+        var attackSpeedMultiplier = 1f + supportBuff.AttackSpeedBonus + powerBuff.AttackSpeedBonus;
+        var rangeMultiplier = 1f + supportBuff.RangeBonus + powerBuff.RangeBonus;
+        if (next.Damage > 0) changes.Add($"DAMAGE {current.Damage * damageMultiplier:0.#}>{next.Damage * damageMultiplier:0.#}");
+        if (next.AttacksPerSecond > 0) changes.Add($"RATE {current.AttacksPerSecond * attackSpeedMultiplier:0.##}>{next.AttacksPerSecond * attackSpeedMultiplier:0.##}");
+        if (next.Range > 0) changes.Add($"RANGE {current.Range * rangeMultiplier:0}>{next.Range * rangeMultiplier:0}");
         if (next.PelletCount != current.PelletCount) changes.Add($"SHOTS {next.PelletCount}");
         if (next.ChainCount != current.ChainCount) changes.Add($"CHAIN {next.ChainCount}");
         if (next.SplashTargetLimit != current.SplashTargetLimit) changes.Add($"CAP {next.SplashTargetLimit}");

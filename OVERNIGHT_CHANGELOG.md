@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Unified branch-planning math with live combat math. Tier-two doctrine and tier-three specialization hover previews now include the selected tower's strongest Signal Beacon and Surge Node modifiers in every displayed damage, rate, range, and pierce comparison, matching the existing linear `NEXT` preview.
 - Added a conservative 15-second co-op heartbeat timeout using the existing checksum exchange. A silently broken Wi-Fi/router path now enters preserved-session reconnection instead of waiting indefinitely for the operating system's TCP timeout; unusually large resumed-frame samples are clamped to avoid false disconnects.
 - Drained in-flight connect, accept, receive, and send tasks during every co-op teardown. A late successful connection is disposed instead of becoming an unowned socket, while expected cancellation faults are observed safely.
 - Added a post-snapshot checksum fence and bounded tick window. Delayed checksums from the state that was just repaired can no longer arrive after resume and trigger a false second resynchronization.

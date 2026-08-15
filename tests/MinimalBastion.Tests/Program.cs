@@ -2358,6 +2358,17 @@ internal static class Program
         var effectiveUpgrade = TowerInfo.UpgradeSummary(needle, 0, signalBuff, default);
         Check.True(effectiveUpgrade.Contains("RATE 2.56>2.82", StringComparison.Ordinal), "upgrade comparison includes beacon rate");
         Check.True(effectiveUpgrade.Contains("RANGE 147>159", StringComparison.Ordinal), "upgrade comparison includes beacon range");
+        var cycler = needle.Tier2Doctrines.Single(x => x.Id == "needle_cycler");
+        var doctrineSummary = TowerInfo.DoctrineSummary(needle, cycler, signalBuff);
+        Check.True(doctrineSummary.Contains("RATE 2.56>3.15", StringComparison.Ordinal),
+            "tier-two doctrine preview includes beacon-adjusted rate");
+        Check.True(doctrineSummary.Contains("RANGE 147>153", StringComparison.Ordinal),
+            "tier-two doctrine preview includes beacon-adjusted range");
+        var doctrineLevel = needle.Levels[1].WithDoctrine(cycler);
+        var specializationSummary = TowerInfo.SpecializationSummary(doctrineLevel,
+            needle.Specializations.Single(x => x.Id == "rapid_array"), cycler, signalBuff);
+        Check.True(specializationSummary.Contains("RATE 3.15>4.44", StringComparison.Ordinal),
+            "tier-three branch preview includes beacon-adjusted rate");
         var beaconUpgrade = TowerInfo.UpgradeSummary(beacon, 0);
         Check.True(beaconUpgrade.Contains("AURA 145>165", StringComparison.Ordinal), "beacon upgrade compares aura radius");
         Check.True(beaconUpgrade.Contains("RATE +15%>+25%", StringComparison.Ordinal), "beacon upgrade compares aura rate");

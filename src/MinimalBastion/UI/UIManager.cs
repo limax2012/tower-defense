@@ -797,16 +797,24 @@ public sealed class UIManager
         if (session.SelectedTower is { RequiresDoctrine: true } doctrinePreview)
         {
             if (_specializationAButton.Contains(point) && doctrinePreview.Definition.Tier2Doctrines.Count > 0)
-                _specializationHint = TowerInfo.DoctrineSummary(doctrinePreview.Definition, doctrinePreview.Definition.Tier2Doctrines[0]);
+                _specializationHint = TowerInfo.DoctrineSummary(doctrinePreview.Definition,
+                    doctrinePreview.Definition.Tier2Doctrines[0], session.GetSupportBuff(doctrinePreview),
+                    session.Map.GetPowerBuff(doctrinePreview.Position));
             else if (_specializationBButton.Contains(point) && doctrinePreview.Definition.Tier2Doctrines.Count > 1)
-                _specializationHint = TowerInfo.DoctrineSummary(doctrinePreview.Definition, doctrinePreview.Definition.Tier2Doctrines[1]);
+                _specializationHint = TowerInfo.DoctrineSummary(doctrinePreview.Definition,
+                    doctrinePreview.Definition.Tier2Doctrines[1], session.GetSupportBuff(doctrinePreview),
+                    session.Map.GetPowerBuff(doctrinePreview.Position));
         }
         else if (session.SelectedTower is { RequiresSpecialization: true } branchPreview)
         {
             if (_specializationAButton.Contains(point) && branchPreview.Definition.Specializations.Count > 0)
-                _specializationHint = TowerInfo.SpecializationSummary(branchPreview.Level, branchPreview.Definition.Specializations[0], branchPreview.Doctrine);
+                _specializationHint = TowerInfo.SpecializationSummary(branchPreview.Level,
+                    branchPreview.Definition.Specializations[0], branchPreview.Doctrine,
+                    session.GetSupportBuff(branchPreview), session.Map.GetPowerBuff(branchPreview.Position));
             else if (_specializationBButton.Contains(point) && branchPreview.Definition.Specializations.Count > 1)
-                _specializationHint = TowerInfo.SpecializationSummary(branchPreview.Level, branchPreview.Definition.Specializations[1], branchPreview.Doctrine);
+                _specializationHint = TowerInfo.SpecializationSummary(branchPreview.Level,
+                    branchPreview.Definition.Specializations[1], branchPreview.Doctrine,
+                    session.GetSupportBuff(branchPreview), session.Map.GetPowerBuff(branchPreview.Position));
         }
         _hoveredTacticalPlacement = _emergencyButton.Contains(point) ? TacticalPlacementKind.PulsePlate :
             _generatorButton.Contains(point) ? TacticalPlacementKind.ChargeForge : TacticalPlacementKind.None;
