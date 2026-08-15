@@ -1521,18 +1521,25 @@ internal static class Program
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
         var ui = new UIManager(null!);
+        ui.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
         ui.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values);
         Check.Equal(UiAction.TowerLibrary,
             ui.HandleMainMenu(WorldInput(new Vector2(712, 442)) with { LeftPressed = true }),
             "title screen opens tower library");
         Check.Equal(UiAction.None,
-            ui.HandleTitleTowerLibrary(WorldInput(new Vector2(980, 67)) with { LeftPressed = true }),
+            ui.HandleTitleTowerLibrary(WorldInput(new Vector2(827, 67)) with { LeftPressed = true }),
             "threat reference remains inside tactical library");
         Check.True(ui.LibraryShowsThreats, "tactical library switches to threat reference");
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TowerHotkey = 3 });
         Check.Equal("t3_brute", ui.SelectedLibraryEnemyId!, "threat hotkeys select the health-ordered archetype");
-        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(830, 67)) with { LeftPressed = true });
+        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(982, 67)) with { LeftPressed = true });
+        Check.True(ui.LibraryShowsCampaign, "tactical library switches to campaign reference");
+        Check.Equal(20, ui.SelectedLibraryCampaignWaveCount, "campaign reference exposes all authored waves");
+        ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TowerHotkey = 2 });
+        Check.Equal(20, ui.SelectedLibraryCampaignWaveCount, "campaign hotkey selects another complete arena roster");
+        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(672, 67)) with { LeftPressed = true });
         Check.True(!ui.LibraryShowsThreats, "tactical library returns to tower planning");
+        Check.True(!ui.LibraryShowsCampaign, "tower planning closes campaign reference");
         Check.Equal(UiAction.MainMenu,
             ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { EscapePressed = true }),
             "title library escape returns to title screen");

@@ -95,10 +95,13 @@ public sealed class UIManager
     private int _towerLibraryDoctrineIndex;
     private int _enemyLibraryIndex;
     private bool _libraryShowsThreats;
+    private bool _libraryShowsCampaign;
+    private int _campaignLibraryMapIndex;
     private Rectangle _towerLibraryDoctrineAButton;
     private Rectangle _towerLibraryDoctrineBButton;
     private IReadOnlyList<TowerDefinition> _libraryTowers = Array.Empty<TowerDefinition>();
     private IReadOnlyList<EnemyDefinition> _libraryEnemies = Array.Empty<EnemyDefinition>();
+    private readonly Dictionary<string, IReadOnlyList<CampaignWaveReference>> _libraryCampaignWaves = new(StringComparer.OrdinalIgnoreCase);
     private readonly Rectangle _mapButton = new(440, 370, 190, 40);
     private readonly Rectangle _difficultyButton = new(640, 370, 90, 40);
     private readonly Rectangle _challengeButton = new(740, 370, 100, 40);
@@ -136,8 +139,9 @@ public sealed class UIManager
     private readonly Rectangle _restartButton = new(500, 444, 280, 46);
     private readonly Rectangle _mainMenuButton = new(500, 496, 280, 46);
     private readonly Rectangle _towerLibraryCloseButton = new(1080, 48, 130, 38);
-    private readonly Rectangle _towerLibraryTowerTabButton = new(760, 48, 140, 38);
-    private readonly Rectangle _towerLibraryThreatTabButton = new(910, 48, 140, 38);
+    private readonly Rectangle _towerLibraryTowerTabButton = new(600, 48, 145, 38);
+    private readonly Rectangle _towerLibraryThreatTabButton = new(755, 48, 145, 38);
+    private readonly Rectangle _towerLibraryCampaignTabButton = new(910, 48, 145, 38);
     private readonly Rectangle _resultContinueButton = new(296, 580, 206, 46);
     private readonly Rectangle _resultRestartButton = new(518, 580, 206, 46);
     private readonly Rectangle _resultMenuButton = new(740, 580, 206, 46);
@@ -163,7 +167,12 @@ public sealed class UIManager
     public int SelectedSaveSlot => _selectedSaveSlot;
     public string? SelectedRunHistoryId => _selectedRunHistoryId;
     public bool LibraryShowsThreats => _libraryShowsThreats;
+    public bool LibraryShowsCampaign => _libraryShowsCampaign;
     public string? SelectedLibraryEnemyId => _libraryEnemies.Count == 0 ? null : _libraryEnemies[_enemyLibraryIndex].Id;
+    public string? SelectedLibraryCampaignMapId => _maps.Count == 0 ? null : _maps[_campaignLibraryMapIndex].Id;
+    public int SelectedLibraryCampaignWaveCount => SelectedLibraryCampaignMapId is { } mapId && _libraryCampaignWaves.TryGetValue(mapId, out var waves)
+        ? waves.Count
+        : 0;
 
     public void ConfigureSettings(UserSettings settings) => _settings = settings;
     public void SetSettingsStatus(string status) => _settingsStatus = status;
@@ -267,8 +276,9 @@ public sealed class UIManager
     public void ConfigureMaps(IEnumerable<MapDefinition> maps, IReadOnlyDictionary<string, WaveSetDefinition>? waveSets = null,
         IReadOnlyDictionary<string, EnemyDefinition>? enemies = null)
     {
+        var mapDefinitions = maps.ToArray();
         _maps.Clear();
-        _maps.AddRange(maps.OrderBy(x => x.Id.Equals("foundry_loop", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+        _maps.AddRange(mapDefinitions.OrderBy(x => x.Id.Equals("foundry_loop", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
             .ThenBy(x => x.ChallengeRating)
             .ThenBy(x => x.DisplayName)
             .Select(x =>
@@ -279,6 +289,18 @@ public sealed class UIManager
                 return (x.Id, x.DisplayName, x.PowerNodes.Count, x.ChallengeRating, x.Description, x.PathVisual.Style, campaign);
             }));
         _selectedMapIndex = Math.Clamp(_selectedMapIndex, 0, Math.Max(0, _maps.Count - 1));
+        _campaignLibraryMapIndex = Math.Clamp(_campaignLibraryMapIndex, 0, Math.Max(0, _maps.Count - 1));
+        _libraryCampaignWaves.Clear();
+        if (waveSets is not null && enemies is not null)
+        {
+            foreach (var map in mapDefinitions)
+            {
+                if (!waveSets.TryGetValue(map.WaveSet, out var waveSet)) continue;
+                _libraryCampaignWaves[map.Id] = waveSet.Waves.OrderBy(wave => wave.Number)
+                    .Select(wave => CampaignWaveReference.From(wave, enemies))
+                    .ToArray();
+            }
+        }
     }
 
     public void ConfigureDifficulties(IEnumerable<DifficultyDefinition> difficulties)
@@ -769,10 +791,12 @@ public sealed class UIManager
         _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, Math.Max(0, _libraryTowers.Count - 1));
         _enemyLibraryIndex = Math.Clamp(_enemyLibraryIndex, 0, Math.Max(0, _libraryEnemies.Count - 1));
         if (input.EscapePressed || input.PausePressed || input.RightPressed) return true;
-        var activeCount = _libraryShowsThreats ? _libraryEnemies.Count : _libraryTowers.Count;
+        _campaignLibraryMapIndex = Math.Clamp(_campaignLibraryMapIndex, 0, Math.Max(0, _maps.Count - 1));
+        var activeCount = _libraryShowsCampaign ? _maps.Count : _libraryShowsThreats ? _libraryEnemies.Count : _libraryTowers.Count;
         if (input.TowerHotkey > 0 && input.TowerHotkey <= activeCount)
         {
-            if (_libraryShowsThreats) _enemyLibraryIndex = input.TowerHotkey - 1;
+            if (_libraryShowsCampaign) _campaignLibraryMapIndex = input.TowerHotkey - 1;
+            else if (_libraryShowsThreats) _enemyLibraryIndex = input.TowerHotkey - 1;
             else _towerLibraryIndex = input.TowerHotkey - 1;
             _towerLibraryDoctrineIndex = 0;
         }
@@ -782,11 +806,29 @@ public sealed class UIManager
         if (_towerLibraryTowerTabButton.Contains(point))
         {
             _libraryShowsThreats = false;
+            _libraryShowsCampaign = false;
             return false;
         }
         if (_towerLibraryThreatTabButton.Contains(point) && _libraryEnemies.Count > 0)
         {
             _libraryShowsThreats = true;
+            _libraryShowsCampaign = false;
+            return false;
+        }
+        if (_towerLibraryCampaignTabButton.Contains(point) && _libraryCampaignWaves.Count > 0)
+        {
+            _libraryShowsThreats = false;
+            _libraryShowsCampaign = true;
+            return false;
+        }
+        if (_libraryShowsCampaign)
+        {
+            for (var index = 0; index < _maps.Count; index++)
+            {
+                if (!CampaignLibraryMapRow(index).Contains(point)) continue;
+                _campaignLibraryMapIndex = index;
+                break;
+            }
             return false;
         }
         if (_libraryShowsThreats)
@@ -1761,16 +1803,21 @@ public sealed class UIManager
         p.DrawRect(batch, panel, ColorPalette.Ink, 2);
 
         DrawText(batch, "TACTICAL LIBRARY", new Vector2(62, 48), ColorPalette.Navy, 1.25f);
-        DrawText(batch, _libraryShowsThreats
-            ? "Base enemy profiles, rank rules, counterplay, and battlefield status symbols."
-            : "Exact tower values. Click a Tier 2 doctrine to preview either final role.",
+        DrawText(batch, _libraryShowsCampaign
+            ? "Every arena's exact authored wave roster, base scaling, and threat sequence."
+            : _libraryShowsThreats
+                ? "Base enemy profiles, rank rules, counterplay, and battlefield status symbols."
+                : "Exact tower values. Click a Tier 2 doctrine to preview either final role.",
             new Vector2(62, 82), ColorPalette.Muted, 0.56f);
         DrawButton(batch, p, _towerLibraryTowerTabButton, "TOWERS", true,
-            _libraryShowsThreats ? ColorPalette.PanelAlt : ColorPalette.Cyan,
-            _libraryShowsThreats ? ColorPalette.Ink : ColorPalette.Navy);
+            _libraryShowsThreats || _libraryShowsCampaign ? ColorPalette.PanelAlt : ColorPalette.Cyan,
+            _libraryShowsThreats || _libraryShowsCampaign ? ColorPalette.Ink : ColorPalette.Navy);
         DrawButton(batch, p, _towerLibraryThreatTabButton, "THREATS", _libraryEnemies.Count > 0,
             _libraryShowsThreats ? ColorPalette.Coral : ColorPalette.PanelAlt,
             _libraryShowsThreats ? ColorPalette.Paper : ColorPalette.Ink);
+        DrawButton(batch, p, _towerLibraryCampaignTabButton, "CAMPAIGNS", _libraryCampaignWaves.Count > 0,
+            _libraryShowsCampaign ? ColorPalette.Violet : ColorPalette.PanelAlt,
+            _libraryShowsCampaign ? ColorPalette.Paper : ColorPalette.Ink);
         DrawButton(batch, p, _towerLibraryCloseButton, "BACK", true, ColorPalette.Violet);
 
         var listPanel = new Rectangle(56, 112, 264, 540);
@@ -1779,8 +1826,16 @@ public sealed class UIManager
         p.DrawRect(batch, listPanel, ColorPalette.CardOutline, 1);
         p.FillRect(batch, detailPanel, ColorPalette.Panel);
         p.DrawRect(batch, detailPanel, ColorPalette.CardOutline, 1);
-        DrawText(batch, _libraryShowsThreats ? "SELECT THREAT" : "SELECT TOWER", new Vector2(68, 122), ColorPalette.Navy, 0.63f);
-        DrawText(batch, _libraryShowsThreats ? "1-5" : "1-0", new Vector2(302, 122), ColorPalette.Muted, 0.48f, true);
+        DrawText(batch, _libraryShowsCampaign ? "SELECT ARENA" : _libraryShowsThreats ? "SELECT THREAT" : "SELECT TOWER",
+            new Vector2(68, 122), ColorPalette.Navy, 0.63f);
+        DrawText(batch, _libraryShowsCampaign ? $"1-{_maps.Count}" : _libraryShowsThreats ? "1-5" : "1-0",
+            new Vector2(302, 122), ColorPalette.Muted, 0.48f, true);
+
+        if (_libraryShowsCampaign)
+        {
+            DrawCampaignLibrary(batch, p, detailPanel, returnDestination);
+            return;
+        }
 
         if (_libraryShowsThreats)
         {
@@ -1816,6 +1871,94 @@ public sealed class UIManager
         DrawTowerLibraryDetails(batch, p, towers[_towerLibraryIndex], detailPanel);
         DrawText(batch, $"Click a tower or press 1-0.  ESC, right-click, or BACK returns to {returnDestination}.", new Vector2(640, 674), ColorPalette.Muted, 0.49f, true);
     }
+
+    private void DrawCampaignLibrary(SpriteBatch batch, PrimitiveRenderer p, Rectangle detailPanel, string returnDestination)
+    {
+        _towerLibraryDoctrineAButton = Rectangle.Empty;
+        _towerLibraryDoctrineBButton = Rectangle.Empty;
+        if (_maps.Count == 0 || _libraryCampaignWaves.Count == 0)
+        {
+            DrawText(batch, "NO CAMPAIGN DEFINITIONS AVAILABLE", new Vector2(detailPanel.Center.X, detailPanel.Center.Y), ColorPalette.Coral, 0.72f, true);
+            return;
+        }
+
+        _campaignLibraryMapIndex = Math.Clamp(_campaignLibraryMapIndex, 0, _maps.Count - 1);
+        for (var index = 0; index < _maps.Count; index++)
+        {
+            var map = _maps[index];
+            var row = CampaignLibraryMapRow(index);
+            var selected = index == _campaignLibraryMapIndex;
+            var accent = MapLibraryAccent(map.PathStyle);
+            p.FillRect(batch, row, selected ? ColorPalette.Tint(accent, 0.80f) : ColorPalette.PanelAlt);
+            p.DrawRect(batch, row, selected ? accent : ColorPalette.CardOutline, selected ? 2 : 1);
+            p.DrawShape(batch, new Vector2(row.X + 31, row.Y + 31), 15,
+                map.PathStyle.Equals("conduit", StringComparison.OrdinalIgnoreCase) ? "diamond" :
+                map.PathStyle.Equals("channel", StringComparison.OrdinalIgnoreCase) ? "triangle" : "square",
+                accent, ColorPalette.Ink, Math.Max(1, map.Challenge - 1), false);
+            DrawFittedText(batch, map.Name, new Vector2(row.X + 58, row.Y + 14), ColorPalette.Ink, 0.62f, 160);
+            DrawText(batch, $"THREAT {map.Challenge}/5  |  {map.PathStyle.ToUpperInvariant()}", new Vector2(row.X + 58, row.Y + 39), ColorPalette.Muted, 0.43f);
+            DrawFittedText(batch, $"{map.Campaign.TotalContacts:N0} contacts  |  peak {map.Campaign.PeakContacts}  |  boss W{map.Campaign.BossWave}",
+                new Vector2(row.X + 14, row.Y + 67), ColorPalette.ReadableAccent(accent, selected ? ColorPalette.Tint(accent, 0.80f) : ColorPalette.PanelAlt),
+                0.40f, row.Width - 28);
+            DrawTextRight(batch, (index + 1).ToString(), new Vector2(row.Right - 10, row.Y + 9), selected ? accent : ColorPalette.Muted, 0.43f);
+        }
+
+        var selectedMap = _maps[_campaignLibraryMapIndex];
+        if (!_libraryCampaignWaves.TryGetValue(selectedMap.Id, out var waves) || waves.Count == 0)
+        {
+            DrawText(batch, "NO AUTHORED WAVES FOR THIS ARENA", new Vector2(detailPanel.Center.X, detailPanel.Center.Y), ColorPalette.Coral, 0.72f, true);
+            return;
+        }
+
+        var mapAccent = MapLibraryAccent(selectedMap.PathStyle);
+        DrawText(batch, selectedMap.Name.ToUpperInvariant(), new Vector2(detailPanel.X + 18, detailPanel.Y + 16), ColorPalette.Ink, 0.96f);
+        DrawTextRight(batch, $"THREAT {selectedMap.Challenge}/5  |  {selectedMap.PowerNodes} SURGE NODES  |  {selectedMap.PathStyle.ToUpperInvariant()} PATH",
+            new Vector2(detailPanel.Right - 18, detailPanel.Y + 21), ColorPalette.ReadableAccent(mapAccent, ColorPalette.Panel), 0.50f);
+        DrawFittedText(batch, selectedMap.Description, new Vector2(detailPanel.X + 18, detailPanel.Y + 48), ColorPalette.Muted, 0.48f, detailPanel.Width - 36);
+        DrawFittedText(batch, selectedMap.Campaign.CompactSummary, new Vector2(detailPanel.X + 18, detailPanel.Y + 72), mapAccent, 0.43f, detailPanel.Width - 36);
+        p.FillRect(batch, new Rectangle(detailPanel.X + 18, detailPanel.Y + 98, detailPanel.Width - 36, 2), mapAccent);
+
+        for (var index = 0; index < Math.Min(20, waves.Count); index++)
+        {
+            var column = index / 10;
+            var row = index % 10;
+            var rect = new Rectangle(detailPanel.X + 18 + column * 436, detailPanel.Y + 112 + row * 41, 418, 37);
+            DrawCampaignWaveRow(batch, p, rect, waves[index]);
+        }
+
+        DrawText(batch, $"Select an arena or press 1-{_maps.Count}.  Base wave multipliers are shown before difficulty.  ESC, right-click, or BACK returns to {returnDestination}.",
+            new Vector2(640, 674), ColorPalette.Muted, 0.45f, true);
+    }
+
+    private void DrawCampaignWaveRow(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, CampaignWaveReference wave)
+    {
+        var accent = CampaignWaveAccent(wave);
+        p.FillRect(batch, rect, ColorPalette.PanelAlt);
+        p.FillRect(batch, new Rectangle(rect.X, rect.Y, 4, rect.Height), accent);
+        p.DrawRect(batch, rect, ColorPalette.CardOutline, 1);
+        DrawFittedText(batch, $"W{wave.Number:00}  {wave.Archetype.ToUpperInvariant()}", new Vector2(rect.X + 10, rect.Y + 4), ColorPalette.Navy, 0.46f, 190);
+        DrawTextRight(batch, $"{wave.Contacts} | HP x{wave.HealthMultiplier:0.00} | SPD x{wave.SpeedMultiplier:0.00}",
+            new Vector2(rect.Right - 8, rect.Y + 4), accent, 0.38f);
+        DrawStrictFittedText(batch, $"{wave.Threats}  |  {wave.Roster}", new Vector2(rect.X + 10, rect.Y + 20),
+            ColorPalette.Muted, 0.35f, rect.Width - 20, 0.26f);
+    }
+
+    private static Color MapLibraryAccent(string pathStyle) => pathStyle.ToLowerInvariant() switch
+    {
+        "channel" => ColorPalette.Cyan,
+        "conduit" => ColorPalette.Violet,
+        _ => ColorPalette.Gold
+    };
+
+    private static Color CampaignWaveAccent(CampaignWaveReference wave) => wave.Threats.Contains("BOSS", StringComparison.OrdinalIgnoreCase)
+        ? ColorPalette.Coral
+        : wave.Threats.Contains("ELITE", StringComparison.OrdinalIgnoreCase)
+            ? ColorPalette.Gold
+            : wave.Threats.Contains("REGEN", StringComparison.OrdinalIgnoreCase)
+                ? ColorPalette.Green
+                : wave.Threats.Contains("SHIELD", StringComparison.OrdinalIgnoreCase)
+                    ? ColorPalette.Violet
+                    : ColorPalette.Cyan;
 
     private void DrawEnemyLibrary(SpriteBatch batch, PrimitiveRenderer p, Rectangle detailPanel, string returnDestination)
     {
@@ -1970,6 +2113,42 @@ public sealed class UIManager
                     ? ["BREAKER CANNON", "RAIL / LANCE ROLES", "PRISM EXPOSURE", "STRONGEST TARGETING"]
                     : ["SHARD FAN", "NEEDLE ARRAY", "ARC RELAY", "AREA CONTROL"];
 
+    private sealed record CampaignWaveReference(
+        int Number,
+        string Archetype,
+        int Contacts,
+        float HealthMultiplier,
+        float SpeedMultiplier,
+        string Threats,
+        string Roster)
+    {
+        public static CampaignWaveReference From(WaveDefinition wave, IReadOnlyDictionary<string, EnemyDefinition> enemies)
+        {
+            var intel = WaveIntel.Analyze(wave, enemies);
+            var roster = string.Join(" + ", wave.Groups
+                .GroupBy(group => (group.EnemyId, group.Rank))
+                .Select(groups =>
+            {
+                var first = groups.First();
+                var name = enemies.TryGetValue(first.EnemyId, out var enemy) ? enemy.DisplayName : first.EnemyId;
+                var compactName = first.EnemyId.ToLowerInvariant() switch
+                {
+                    "t1_crawler" => "CRAWLER",
+                    "t2_runner" => "RUNNER",
+                    "t3_brute" => "BRUTE",
+                    "t4_aegis" => "AEGIS",
+                    "t5_regenerator" => "REGEN",
+                    _ => name.ToUpperInvariant()
+                };
+                var rank = first.Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase) ? "E-" :
+                    first.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase) ? "B-" : "";
+                return $"{groups.Sum(group => group.Count)} {rank}{compactName}";
+            }));
+            return new CampaignWaveReference(wave.Number, wave.Archetype, wave.Groups.Sum(group => group.Count),
+                wave.HealthMultiplier, wave.SpeedMultiplier, intel.CompactThreats, roster);
+        }
+    }
+
     private void DrawTowerLibraryDetails(SpriteBatch batch, PrimitiveRenderer p, TowerDefinition definition, Rectangle panel)
     {
         _towerLibraryDoctrineAButton = Rectangle.Empty;
@@ -2077,6 +2256,7 @@ public sealed class UIManager
 
     private static Rectangle TowerLibraryRow(int index) => new(66, 148 + index * 49, 244, 44);
     private static Rectangle EnemyLibraryRow(int index) => new(66, 148 + index * 96, 244, 82);
+    private static Rectangle CampaignLibraryMapRow(int index) => new(66, 148 + index * 116, 244, 102);
 
     private void DrawButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string text, bool enabled, Color fillColor, Color? textColor = null)
     {
@@ -2119,6 +2299,15 @@ public sealed class UIManager
         if (measuredWidth > maximumWidth)
             scale *= maximumWidth / measuredWidth;
         DrawText(batch, text, position, color, MathF.Max(0.36f, scale));
+    }
+
+    private void DrawStrictFittedText(SpriteBatch batch, string text, Vector2 position, Color color, float scale,
+        float maximumWidth, float minimumScale)
+    {
+        var measuredWidth = _font.MeasureString(text).X * scale * GameConstants.FontDrawScale;
+        if (measuredWidth > maximumWidth)
+            scale *= maximumWidth / measuredWidth;
+        DrawText(batch, text, position, color, MathF.Max(minimumScale, scale));
     }
 
     private void DrawFittedCenteredText(SpriteBatch batch, string text, Vector2 position, Color color, float scale, float maximumWidth)

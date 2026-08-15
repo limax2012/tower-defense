@@ -1,6 +1,6 @@
 # Minimal Bastion
 
-Minimal Bastion is a colorful, data-driven 2D tower-defense game built with C#, .NET 10, and MonoGame DesktopGL. It includes four strategic maps with authored campaigns, four difficulty profiles, four decision-changing challenge directives, 20 mixed waves per map, 10 towers with 20 tier-two doctrines, 20 final specializations, and distinct tactical Protocols, elites and phased bosses, an in-game tower/threat tactical library, Pulse Plates and a Charge Forge, dynamically expanding independent saves, procedural audio, persistent display settings, post-run analysis, deterministic balance agents, and direct two-player online co-op.
+Minimal Bastion is a colorful, data-driven 2D tower-defense game built with C#, .NET 10, and MonoGame DesktopGL. It includes four strategic maps with authored campaigns, four difficulty profiles, four decision-changing challenge directives, 20 mixed waves per map, 10 towers with 20 tier-two doctrines, 20 final specializations, and distinct tactical Protocols, elites and phased bosses, an in-game tower/threat/campaign tactical library, Pulse Plates and a Charge Forge, dynamically expanding independent saves, procedural audio, persistent display settings, post-run analysis, deterministic balance agents, and direct two-player online co-op.
 
 ## Play the verified build
 
