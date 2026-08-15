@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Extended save backup recovery across full content-aware session reconstruction. A valid-JSON primary with an unavailable map/tower, invalid authored branch/level, or incompatible runtime invariant now falls back to the known-good generation instead of failing after the repository had already accepted it.
 - Guarded the final deep-endless identity boundary. Exhausted 32-bit tower and Pulse Plate IDs now produce a clear placement-capacity message without spending, while enemy spawning remains saturated instead of wrapping into negative or duplicate IDs that could corrupt targeting, saves, or co-op checksums.
 - Saturated the per-wave direct Pulse Plate purchase counter. An extreme restored endless state at the integer limit can no longer wrap its escalating-price counter negative after paying the capped price.
 - Isolated save-storage failures from gameplay startup and frame pacing. New Game, Host, and Restart now fall back to an unslotted run if slot discovery fails; Load Saves reports an unavailable store without crashing; and autosave makes one attempt per completed wave instead of hammering a failing disk every frame. Manual Save and the next wave still retry normally.

@@ -69,7 +69,37 @@ public sealed class SaveSlotRepository
         WriteAtomically(GetSlotPath(slot), session.CaptureSaveGame());
     }
 
-    public GameSession Load(GameContent content, int slot = 1) => GameSession.RestoreSaveGame(content, LoadData(slot));
+    public GameSession Load(GameContent content, int slot = 1)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        ValidateSlot(slot);
+        TryMigrateLegacySave();
+        var path = GetSlotPath(slot);
+        var backupPath = GetSlotBackupPath(slot);
+        if (!File.Exists(path) && !File.Exists(backupPath))
+            throw new FileNotFoundException($"Save slot {slot} is empty.", path);
+
+        Exception? primaryFailure = null;
+        if (File.Exists(path))
+        {
+            try { return GameSession.RestoreSaveGame(content, ReadSaveData(path)); }
+            catch (Exception exception) when (IsRecoverableLoadFailure(exception))
+            {
+                primaryFailure = exception;
+            }
+        }
+        if (File.Exists(backupPath))
+        {
+            try { return GameSession.RestoreSaveGame(content, ReadSaveData(backupPath)); }
+            catch (Exception exception) when (IsRecoverableLoadFailure(exception))
+            {
+                throw new InvalidDataException(
+                    $"Save slot {slot} and its recovery copy cannot be restored: {exception.GetBaseException().Message}",
+                    primaryFailure ?? exception);
+            }
+        }
+        throw new InvalidDataException($"Save slot {slot} cannot be restored: {primaryFailure?.GetBaseException().Message}", primaryFailure);
+    }
 
     public SaveGameData LoadData(int slot)
     {
@@ -84,7 +114,7 @@ public sealed class SaveSlotRepository
         if (File.Exists(path))
         {
             try { return ReadSaveData(path); }
-            catch (Exception exception) when (exception is IOException or JsonException or InvalidDataException)
+            catch (Exception exception) when (IsRecoverableLoadFailure(exception))
             {
                 primaryFailure = exception;
             }
@@ -92,7 +122,7 @@ public sealed class SaveSlotRepository
         if (File.Exists(backupPath))
         {
             try { return ReadSaveData(backupPath); }
-            catch (Exception exception) when (exception is IOException or JsonException or InvalidDataException)
+            catch (Exception exception) when (IsRecoverableLoadFailure(exception))
             {
                 throw new InvalidDataException(
                     $"Save slot {slot} and its recovery copy are unreadable: {exception.GetBaseException().Message}",
@@ -296,6 +326,9 @@ public sealed class SaveSlotRepository
 
     private static bool IsNonnegativeFinite(float value) => float.IsFinite(value) && value >= 0;
 
+    private static bool IsRecoverableLoadFailure(Exception exception) =>
+        exception is IOException or UnauthorizedAccessException or JsonException or InvalidDataException or ArgumentException;
+
     private static bool IsReadableSave(string path)
     {
         try
@@ -303,7 +336,7 @@ public sealed class SaveSlotRepository
             _ = ReadSaveData(path);
             return true;
         }
-        catch (Exception exception) when (exception is IOException or JsonException or InvalidDataException)
+        catch (Exception exception) when (IsRecoverableLoadFailure(exception))
         {
             return false;
         }

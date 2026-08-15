@@ -2817,6 +2817,15 @@ internal static class Program
             Check.Equal(nestedRecoveryGeneration, File.ReadAllText(repository.GetSlotBackupPath(1)),
                 "nested corruption cannot rotate over a valid checkpoint backup");
 
+            var incompatiblePrimary = session.CaptureSaveGame();
+            incompatiblePrimary.MapId = "missing_from_current_content";
+            File.WriteAllText(repository.GetSlotPath(1), JsonSerializer.Serialize(incompatiblePrimary));
+            var contentRecovered = repository.Load(session.Content, 1);
+            Check.Equal(originalCredits, contentRecovered.Economy.Credits,
+                "content-incompatible primary falls back after full session reconstruction fails");
+            Check.Equal(session.Map.Definition.Id, contentRecovered.Map.Definition.Id,
+                "recovery generation restores its valid map identity");
+
             File.Delete(repository.GetSlotPath(1));
             Check.True(repository.GetSlots().Single(slot => slot.Slot == 1).IsOccupied,
                 "backup-only interrupted slot remains discoverable");
