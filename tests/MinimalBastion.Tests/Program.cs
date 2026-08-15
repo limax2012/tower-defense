@@ -82,6 +82,7 @@ internal static class Program
             ("co-op buffered jitter commands", CoOpBufferedJitterCommands),
             ("co-op active state snapshot", CoOpActiveStateSnapshot),
             ("co-op tower path reconstruction", CoOpTowerPathReconstruction),
+            ("co-op tactical state reconstruction", CoOpTacticalStateReconstruction),
             ("co-op malformed snapshot rejection", CoOpMalformedSnapshotRejection),
             ("co-op checksum coverage", CoOpChecksumCoverage),
             ("co-op reconnect combat soak", CoOpReconnectCombatSoak),
@@ -1821,6 +1822,60 @@ internal static class Program
         }
 
         Check.Equal(40, pathCount, "every complete tower path reconstructs through co-op");
+    }
+
+    private static void CoOpTacticalStateReconstruction()
+    {
+        var host = SessionWithWave();
+        host.ConfigureCoOp(1);
+        host.Economy.AddCredits(1_000);
+        var runner = new DeterministicSessionRunner(host);
+        var commands = new[]
+        {
+            new GameCommand { Sequence = 1, ClientRequestId = 1, PlayerId = 2, Type = GameCommandType.PlaceGenerator, X = 50, Y = 200 },
+            new GameCommand { Sequence = 2, ClientRequestId = 1, PlayerId = 1, Type = GameCommandType.UpgradeGenerator },
+            new GameCommand { Sequence = 3, ClientRequestId = 2, PlayerId = 2, Type = GameCommandType.UpgradeGenerator },
+            new GameCommand { Sequence = 4, ClientRequestId = 3, PlayerId = 2, Type = GameCommandType.DeployEmergencyDefense, X = 200, Y = 30 },
+            new GameCommand { Sequence = 5, ClientRequestId = 2, PlayerId = 1, Type = GameCommandType.StartWave }
+        };
+        for (var index = 0; index < commands.Length; index++)
+            Check.True(runner.Schedule(index, commands[index]), $"schedule tactical co-op command {index + 1}");
+        runner.RunTicks(commands.Length);
+
+        Check.True(host.Waves.IsActive && host.Enemies.Count > 0, "tactical reconnect captures active combat");
+        Check.Equal(2, host.Generator!.OwnerPlayerId, "player two owns the reconstructed Forge");
+        Check.Equal(2, host.Generator.LevelIndex, "shared upgrades advance the Forge to level three");
+        Check.Equal(2, host.EmergencyDefenses.Single().OwnerPlayerId, "player two owns the reconstructed Plate");
+
+        var plate = host.EmergencyDefenses.Single();
+        var enemy = host.Enemies[0];
+        var travelSeconds = MathF.Max(0, (plate.Position.X - enemy.DistanceAlongPath) / enemy.CurrentSpeed);
+        enemy.UpdateMovement(travelSeconds, host.Map.Path);
+        new TacticalDefenseSystem().Update(0.25f, host);
+        Check.Equal(1, plate.ChargesRemaining, "captured Plate has spent exactly one pulse");
+        Check.True(plate.CooldownRemaining > 0 && plate.HandledEnemyIds.Contains(enemy.Id),
+            "captured Plate retains its trigger cooldown and handled enemy identity");
+        Check.True(host.Generator.ProductionRemaining > 0 &&
+            host.Generator.ProductionRemaining < host.Generator.Level.ProductionSeconds,
+            "captured Forge retains partial wave-powered production progress");
+
+        var snapshot = host.CaptureCoOpState(runner.Tick, 0, false);
+        var transferred = JsonSerializer.Deserialize<CoOpStateSnapshot>(JsonSerializer.Serialize(snapshot))!;
+        var peer = GameSession.RestoreCoOpState(host.Content, transferred, 2);
+        var peerRunner = new DeterministicSessionRunner(peer, transferred.Tick);
+        Check.Equal(SessionChecksum.Compute(host, runner.Tick), SessionChecksum.Compute(peer, peerRunner.Tick),
+            "partially spent tactical state reconstructs exactly");
+        Check.Equal(2, peer.Generator!.OwnerPlayerId, "Forge owner survives reconnect");
+        Check.Equal(2, peer.Generator.LevelIndex, "Forge level survives reconnect");
+        Check.Nearly(host.Generator.ProductionRemaining, peer.Generator.ProductionRemaining,
+            "Forge production phase survives reconnect");
+        Check.True(peer.EmergencyDefenses.Single().HandledEnemyIds.Contains(enemy.Id),
+            "Plate handled-enemy identity survives reconnect");
+
+        runner.RunTicks(80);
+        peerRunner.RunTicks(80);
+        Check.Equal(SessionChecksum.Compute(host, runner.Tick), SessionChecksum.Compute(peer, peerRunner.Tick),
+            "reconnected tactical systems remain deterministic through rearming and production");
     }
 
     private static void CoOpMalformedSnapshotRejection()
