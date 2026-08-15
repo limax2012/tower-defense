@@ -25,6 +25,9 @@ public sealed class AudioManager : IDisposable
         _sounds[Cue.WaveClear] = CreateChord(520, 780, 0.28f);
         _sounds[Cue.Plate] = CreateNoisePulse(0.11f);
         _sounds[Cue.Forge] = CreateTone(620, 980, 0.16f, WaveShape.Sine);
+        _sounds[Cue.BossPhase] = CreateTone(230, 105, 0.34f, WaveShape.Saw);
+        _sounds[Cue.Victory] = CreateTriad(392, 523, 659, 0.48f);
+        _sounds[Cue.Defeat] = CreateTone(190, 58, 0.48f, WaveShape.Saw);
     }
 
     public static AudioManager? TryCreate()
@@ -44,13 +47,17 @@ public sealed class AudioManager : IDisposable
         session.TowerSold += (_, _) => Play(Cue.Sell, 0.62f);
         session.TowerOverdriven += tower => Play(Cue.Protocol, 0.9f, ProtocolPitch(tower.Definition.Id));
         session.EnemyKilled += _ => PlayKill();
-        session.EnemyEscaped += _ => Play(Cue.Leak, 0.9f);
+        session.EnemyEscaped += _ => Play(session.Economy.Lives <= 0 ? Cue.Defeat : Cue.Leak, 0.9f);
+        session.BossPhaseChanged += _ => Play(Cue.BossPhase, 0.88f);
+        session.EmergencyDefenseDeployed += (_, _) => Play(Cue.Place, 0.48f, 0.18f);
         session.EmergencyDefenseTriggered += (_, _) => Play(Cue.Plate, 0.72f);
         session.GeneratorPlaced += _ => Play(Cue.Forge, 0.72f);
         session.GeneratorUpgraded += (_, _) => Play(Cue.Upgrade, 0.72f);
+        session.GeneratorSold += (_, _) => Play(Cue.Sell, 0.62f);
         session.EmergencyChargeProduced += () => Play(Cue.Forge, 0.55f);
         session.WaveStarted += _ => Play(Cue.WaveStart, 0.78f);
-        session.WaveCompleted += _ => Play(Cue.WaveClear, 0.82f);
+        session.WaveCompleted += wave => Play(wave >= session.TotalWaves && !session.IsEndlessMode ? Cue.Victory : Cue.WaveClear,
+            wave >= session.TotalWaves && !session.IsEndlessMode ? 0.92f : 0.82f);
     }
 
     private void PlayKill()
@@ -124,6 +131,22 @@ public sealed class AudioManager : IDisposable
         return SoundEffect.FromStream(CreateWaveStream(samples));
     }
 
+    private static SoundEffect CreateTriad(float firstFrequency, float secondFrequency, float thirdFrequency, float seconds)
+    {
+        var count = Math.Max(1, (int)(SampleRate * seconds));
+        var samples = new short[count];
+        for (var index = 0; index < count; index++)
+        {
+            var t = index / (float)Math.Max(1, count - 1);
+            var time = index / (float)SampleRate;
+            var wave = MathF.Sin(MathHelper.TwoPi * firstFrequency * time) * 0.38f +
+                       MathF.Sin(MathHelper.TwoPi * secondFrequency * time) * 0.34f +
+                       MathF.Sin(MathHelper.TwoPi * thirdFrequency * time) * 0.28f;
+            samples[index] = ToSample(wave * Envelope(t) * 0.27f);
+        }
+        return SoundEffect.FromStream(CreateWaveStream(samples));
+    }
+
     private static SoundEffect CreateNoisePulse(float seconds)
     {
         var count = Math.Max(1, (int)(SampleRate * seconds));
@@ -182,6 +205,6 @@ public sealed class AudioManager : IDisposable
         _sounds.Clear();
     }
 
-    private enum Cue { Place, Upgrade, Sell, Protocol, Kill, Leak, WaveStart, WaveClear, Plate, Forge }
+    private enum Cue { Place, Upgrade, Sell, Protocol, Kill, Leak, WaveStart, WaveClear, Plate, Forge, BossPhase, Victory, Defeat }
     private enum WaveShape { Sine, Triangle, Square, Saw }
 }

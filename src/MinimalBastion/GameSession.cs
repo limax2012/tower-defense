@@ -98,6 +98,7 @@ public sealed class GameSession
     public event Action<TowerInstance>? TowerOverdriven;
     public event Action<EnemyInstance>? EnemyKilled;
     public event Action<EnemyInstance>? EnemyEscaped;
+    public event Action<EnemyInstance>? BossPhaseChanged;
     public event Action<PulsePlateInstance, bool>? EmergencyDefenseDeployed;
     public event Action<PulsePlateInstance, int>? EmergencyDefenseTriggered;
     public event Action<PulsePlateInstance>? EmergencyDefenseExpired;
@@ -759,6 +760,7 @@ public sealed class GameSession
         AnnouncementPositive = false;
         AnnouncementRemaining = 3.2f;
         Effects.AddFlash(enemy.Position, ColorPalette.Gold, 0.9f, enemy.Radius + 34);
+        BossPhaseChanged?.Invoke(enemy);
     }
 
     public void OnWaveStarted(WaveDefinition wave, int earlyCallBonus = 0)
