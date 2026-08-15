@@ -292,7 +292,7 @@ public sealed class SaveSlotRepository
             data.Statistics.TowerDefinitionByInstance.Count > MaximumStatisticsEntries ||
             data.NextEnemyId <= 0 || data.NextTowerId <= 0 || data.NextEmergencyDefenseId <= 0 ||
             data.NextEmergencyDefenseId > GameConstants.ExhaustedPulsePlateNextId ||
-            !float.IsFinite(data.Speed) || data.Speed <= 0 || !IsNonnegativeFinite(data.OverdriveCooldownRemaining) ||
+            data.Speed is not (1f or 2f) || !IsNonnegativeFinite(data.OverdriveCooldownRemaining) ||
             data.EmergencyInventory < 0 || data.EmergencyDirectPurchasesThisWave < 0 || data.Waves.CurrentWaveNumber < 0 ||
             !IsNonnegativeFinite(data.Waves.IntermissionRemaining) || data.Economy.Credits < 0 || data.Economy.Lives < 0 ||
             data.Economy.TotalKills < 0 || data.Economy.EscapedEnemies < 0 || data.Economy.TotalCreditsSpent < 0 ||

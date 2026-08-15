@@ -180,6 +180,7 @@ The clean separation supports preserving the current multipliers. On Hard, Surge
 
 ## Current work
 
+- Checkpoint and reconnect reconstruction now rejects defense layouts that are impossible on the selected map and authored values that would otherwise be silently normalized on one peer. Current saves are strict while legacy difficulty-less saves preserve their established migration behavior.
 - Authoritative reconnect validation now enforces the complete two-player wave-readiness state machine. The regression suite covers valid one-player and both-player preparation snapshots plus impossible queued, early-bonus, and active-wave combinations that previously could be silently normalized.
 - Online co-op shared pause now exposes the complete Tactical Library locally by click or Tab. Network polling remains active, and the overlay consumes mouse/keyboard input so planning clicks cannot leak through to the battlefield; a second Escape cleanly requests authoritative resume.
 - Challenge automation now supports `--challenge all` and quiet aggregate runs. A 384-run Hard matrix measured Standard 47.9%, Close Quarters 49.0%, No Reserves 46.9%, and the intentionally severe Core Six 29.2%, supporting the current fixed opening compensation without another economy change.

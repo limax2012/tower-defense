@@ -907,6 +907,7 @@ public sealed class GameSession
         if (!knownMap) throw new InvalidDataException($"Network map '{data.MapId}' is not available.");
 
         var session = new GameSession(content, data.MapId, data.DifficultyId, data.ChallengeId);
+        ValidateRestoredHeaderState(session, data.Speed, data.Economy, false);
         session.RunId = NormalizeRunId(data.RunId, session.RunId);
         session.ConfigureCoOp(localPlayerId);
         session.IsCoOpPaused = data.IsPaused;
@@ -925,6 +926,8 @@ public sealed class GameSession
         {
             if (!content.Towers.TryGetValue(savedTower.DefinitionId, out var definition))
                 throw new InvalidDataException($"Network tower '{savedTower.DefinitionId}' is not available.");
+            if (savedTower.InvestedCredits < definition.PurchaseCost)
+                throw new InvalidDataException($"Network tower '{savedTower.DefinitionId}' has impossible investment state.");
             session.Towers.Add(TowerInstance.RestoreCoOpState(savedTower, definition));
         }
 
@@ -934,13 +937,21 @@ public sealed class GameSession
                 throw new InvalidDataException($"Network enemy '{savedEnemy.DefinitionId}' is not available.");
             if (savedEnemy.DistanceAlongPath > session.Map.Path.TotalLength + 0.01f)
                 throw new InvalidDataException("Network enemy progress is outside the selected map path.");
+            var rankHealthMultiplier = savedEnemy.Rank switch { EnemyRank.Elite => 1.85f, EnemyRank.Boss => 4.5f, _ => 1f };
+            var maximumHealth = definition.MaxHealth * savedEnemy.HealthMultiplier * rankHealthMultiplier;
+            var maximumShield = definition.Shield + (savedEnemy.Rank == EnemyRank.Boss ? maximumHealth * 0.12f : 0);
+            if (!float.IsFinite(maximumHealth) || savedEnemy.Health > maximumHealth + 0.01f ||
+                savedEnemy.Shield > maximumShield + 0.01f)
+                throw new InvalidDataException("Network enemy health or shield exceeds its authored maximum.");
             session.Enemies.Add(EnemyInstance.RestoreCoOpState(savedEnemy, definition, session.Map.Path));
         }
 
+        ValidateRestoredTacticalState(session, data.PulsePlates, data.Generator);
         foreach (var savedPlate in data.PulsePlates.Where(plate => plate.ChargesRemaining > 0))
             session.EmergencyDefenses.Add(PulsePlateInstance.RestoreSaveData(savedPlate, content.Tactics.EmergencyDefense));
         if (data.Generator is not null)
             session.Generator = ChargeForgeInstance.RestoreSaveData(data.Generator, content.Tactics.Generator);
+        ValidateRestoredDefenseLayout(session);
 
         session._nextEnemyId = Math.Max(data.NextEnemyId, session.Enemies.Select(enemy => enemy.Id).DefaultIfEmpty(0).Max() + 1);
         session._nextTowerId = Math.Max(data.NextTowerId, session.Towers.Select(tower => tower.Id).DefaultIfEmpty(0).Max() + 1);
@@ -968,6 +979,7 @@ public sealed class GameSession
         if (!knownMap) throw new InvalidDataException($"Saved map '{data.MapId}' is not available.");
 
         var session = new GameSession(content, data.MapId, data.DifficultyId, data.ChallengeId);
+        ValidateRestoredHeaderState(session, data.Speed, data.Economy, string.IsNullOrWhiteSpace(data.DifficultyId));
         session.RunId = NormalizeRunId(data.RunId, session.RunId);
         if (data.IsCoOp) session.ConfigureCoOp(1);
         session.Economy.RestoreSaveData(data.Economy);
@@ -984,12 +996,16 @@ public sealed class GameSession
         {
             if (!content.Towers.TryGetValue(savedTower.DefinitionId, out var definition))
                 throw new InvalidDataException($"Saved tower '{savedTower.DefinitionId}' is not available.");
+            if (savedTower.InvestedCredits < definition.PurchaseCost)
+                throw new InvalidDataException($"Saved tower '{savedTower.DefinitionId}' has impossible investment state.");
             session.Towers.Add(TowerInstance.RestoreSaveData(savedTower, definition));
         }
+        ValidateRestoredTacticalState(session, data.PulsePlates, data.Generator);
         foreach (var savedPlate in data.PulsePlates.Where(x => x.ChargesRemaining > 0))
             session.EmergencyDefenses.Add(PulsePlateInstance.RestoreSaveData(savedPlate, content.Tactics.EmergencyDefense));
         if (data.Generator is not null)
             session.Generator = ChargeForgeInstance.RestoreSaveData(data.Generator, content.Tactics.Generator);
+        ValidateRestoredDefenseLayout(session);
 
         session._nextEnemyId = Math.Max(data.NextEnemyId, 1);
         session._nextTowerId = Math.Max(data.NextTowerId, session.Towers.Select(x => x.Id).DefaultIfEmpty(0).Max() + 1);
@@ -1009,6 +1025,90 @@ public sealed class GameSession
         session.AnnouncementRemaining = 2.8f;
         session.AnnouncementPositive = true;
         return session;
+    }
+
+    private static void ValidateRestoredHeaderState(
+        GameSession session,
+        float speed,
+        Persistence.EconomySaveData economy,
+        bool allowLegacyLivesMigration)
+    {
+        if (speed is not (1f or 2f))
+            throw new InvalidDataException("Restored simulation speed is invalid.");
+        if (!allowLegacyLivesMigration && economy.Lives > session.Economy.StartingLives)
+            throw new InvalidDataException("Restored lives exceed the selected difficulty's starting lives.");
+    }
+
+    private static void ValidateRestoredTacticalState(
+        GameSession session,
+        IReadOnlyList<Persistence.PulsePlateSaveData> plates,
+        Persistence.GeneratorSaveData? generator)
+    {
+        var plateDefinition = session._content.Tactics.EmergencyDefense;
+        if (plates.Any(plate => plate.ChargesRemaining <= 0 || plate.ChargesRemaining > plateDefinition.Charges ||
+            plate.ArmRemaining > plateDefinition.ArmTime + 0.01f ||
+            plate.CooldownRemaining > plateDefinition.TriggerCooldown + 0.01f))
+            throw new InvalidDataException("Restored Pulse Plate charge or timer state exceeds its authored limits.");
+
+        if (generator is null) return;
+        var definition = session._content.Tactics.Generator;
+        if (generator.LevelIndex < 0 || generator.LevelIndex >= definition.Levels.Count ||
+            generator.InvestedCredits < definition.PurchaseCost ||
+            generator.ProductionRemaining > definition.Levels[generator.LevelIndex].ProductionSeconds + 0.01f)
+            throw new InvalidDataException("Restored Charge Forge progression or timer state exceeds its authored limits.");
+    }
+
+    private static void ValidateRestoredDefenseLayout(GameSession session)
+    {
+        if (!session.TacticalSystemsEnabled &&
+            (session.EmergencyInventory != 0 || session.EmergencyDirectPurchasesThisWave != 0 ||
+             session.EmergencyDefenses.Count != 0 || session.Generator is not null))
+            throw new InvalidDataException("Restored tactical defenses conflict with the selected directive.");
+
+        foreach (var tower in session.Towers)
+        {
+            var position = tower.Position;
+            if (!session.IsTowerAvailable(tower.Definition.Id) ||
+                position.X < GameConstants.TowerRadius || position.X > GameConstants.MapWidth - GameConstants.TowerRadius ||
+                position.Y < GameConstants.TopBarHeight + GameConstants.TowerRadius ||
+                position.Y > GameConstants.LogicalHeight - GameConstants.TowerRadius ||
+                !session.Map.IsBuildable(position) ||
+                session.Map.Path.DistanceToPath(position) < GameConstants.PlacementPathClearance)
+                throw new InvalidDataException("Restored tower placement is outside the selected map's legal defense area.");
+        }
+        for (var i = 0; i < session.Towers.Count; i++)
+        for (var j = i + 1; j < session.Towers.Count; j++)
+            if (Vector2.DistanceSquared(session.Towers[i].Position, session.Towers[j].Position) <
+                GameConstants.TowerMinimumGap * GameConstants.TowerMinimumGap)
+                throw new InvalidDataException("Restored tower placements overlap.");
+
+        var plateDefinition = session._content.Tactics.EmergencyDefense;
+        if (session.EmergencyDefenses.Count > plateDefinition.MaximumActive)
+            throw new InvalidDataException("Restored Pulse Plate field exceeds its active capacity.");
+        foreach (var plate in session.EmergencyDefenses)
+        {
+            var projection = session.Map.Path.Project(plate.Position);
+            if (projection.DistanceToPath > 0.25f ||
+                projection.DistanceAlongPath < plateDefinition.EndpointClearance ||
+                projection.DistanceAlongPath > session.Map.Path.TotalLength - plateDefinition.EndpointClearance)
+                throw new InvalidDataException("Restored Pulse Plate placement is outside the selected map's legal road area.");
+        }
+        for (var i = 0; i < session.EmergencyDefenses.Count; i++)
+        for (var j = i + 1; j < session.EmergencyDefenses.Count; j++)
+            if (Vector2.DistanceSquared(session.EmergencyDefenses[i].Position, session.EmergencyDefenses[j].Position) <
+                plateDefinition.MinimumSpacing * plateDefinition.MinimumSpacing)
+                throw new InvalidDataException("Restored Pulse Plate placements overlap.");
+
+        if (session.Generator is not { } generator) return;
+        var radius = generator.Definition.Visual.Radius;
+        var generatorPosition = generator.Position;
+        if (generatorPosition.X < radius || generatorPosition.X > GameConstants.MapWidth - radius ||
+            generatorPosition.Y < GameConstants.TopBarHeight + radius ||
+            generatorPosition.Y > GameConstants.LogicalHeight - radius ||
+            !session.Map.IsBuildable(generatorPosition) ||
+            session.Map.Path.DistanceToPath(generatorPosition) < GameConstants.PlacementPathClearance ||
+            session.Towers.Any(tower => Vector2.DistanceSquared(tower.Position, generatorPosition) < 48f * 48f))
+            throw new InvalidDataException("Restored Charge Forge placement is outside the selected map's legal defense area.");
     }
 
     private static string NormalizeRunId(string? runId, string fallback) =>

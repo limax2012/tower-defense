@@ -1695,6 +1695,16 @@ internal static class Program
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, stalePauseOwner, 2),
             "running snapshot rejects stale pause attribution");
 
+        var normalizedSpeed = session.CaptureCoOpState(0, 0, false);
+        normalizedSpeed.Speed = 1.2f;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, normalizedSpeed, 2),
+            "reconnect rejects speed values that reconstruction would normalize differently");
+
+        var excessLives = session.CaptureCoOpState(0, 0, false);
+        excessLives.Economy.Lives = session.Economy.StartingLives + 1;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, excessLives, 2),
+            "reconnect rejects lives above the selected difficulty limit");
+
         var oversizedHeader = session.CaptureCoOpState(0, 0, false);
         oversizedHeader.AnnouncementSubtitle = new string('X', 513);
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, oversizedHeader, 2),
@@ -1752,6 +1762,48 @@ internal static class Program
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, orphanedEarlyBonus, 2),
             "early-call eligibility cannot restore without a queued co-op wave start");
 
+        var displacedTowerSession = Session();
+        Check.True(displacedTowerSession.TryPlaceTower("tower", new Vector2(50, 200)),
+            "place tower for malformed layout test");
+        var displacedTower = displacedTowerSession.CaptureCoOpState(0, 0, false);
+        displacedTower.Towers[0].X = 500;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, displacedTower, 2),
+            "reconnect rejects towers outside the selected map's buildable area");
+
+        var underfundedTower = displacedTowerSession.CaptureCoOpState(0, 0, false);
+        underfundedTower.Towers[0].InvestedCredits = displacedTowerSession.Content.Towers["tower"].PurchaseCost - 1;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, underfundedTower, 2),
+            "reconnect rejects tower investment that reconstruction would increase");
+
+        var displacedPlateSession = Session();
+        Check.True(displacedPlateSession.TryDeployEmergencyDefense(new Vector2(200, 30)),
+            "place Pulse Plate for malformed layout test");
+        var displacedPlate = displacedPlateSession.CaptureCoOpState(0, 0, false);
+        displacedPlate.PulsePlates[0].Y = 200;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, displacedPlate, 2),
+            "reconnect rejects Pulse Plates outside the selected map's road");
+
+        var excessPlateCharge = displacedPlateSession.CaptureCoOpState(0, 0, false);
+        excessPlateCharge.PulsePlates[0].ChargesRemaining =
+            displacedPlateSession.Content.Tactics.EmergencyDefense.Charges + 1;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, excessPlateCharge, 2),
+            "reconnect rejects Pulse Plate charges that reconstruction would clamp");
+
+        var displacedForgeSession = Session();
+        displacedForgeSession.Economy.AddCredits(20);
+        Check.True(displacedForgeSession.TryPlaceGenerator(new Vector2(50, 200)),
+            "place Charge Forge for malformed layout test");
+        var displacedForge = displacedForgeSession.CaptureCoOpState(0, 0, false);
+        displacedForge.Generator!.Y = 30;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, displacedForge, 2),
+            "reconnect rejects a Charge Forge restored onto the road");
+
+        var excessForgeTimer = displacedForgeSession.CaptureCoOpState(0, 0, false);
+        excessForgeTimer.Generator!.ProductionRemaining =
+            displacedForgeSession.Content.Tactics.Generator.Levels[0].ProductionSeconds + 1;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, excessForgeTimer, 2),
+            "reconnect rejects Charge Forge timers that reconstruction would clamp");
+
         var inconsistentWaveSession = SessionWithWave();
         Check.True(inconsistentWaveSession.StartNextWave(), "start active wave for malformed progress test");
         var activeWaveReady = inconsistentWaveSession.CaptureCoOpState(0, 0b01, false);
@@ -1788,6 +1840,17 @@ internal static class Program
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, invalidBurnPhase, 2),
             "impossible burn phase is rejected before it can create an unbounded tick loop");
 
+        var clampedBurnInterval = invalidBurnPhaseSession.CaptureCoOpState(0, 0, false);
+        clampedBurnInterval.Enemies[0].Statuses[0].TickInterval = 0.01f;
+        clampedBurnInterval.Enemies[0].Statuses[0].TickProgress = 0;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, clampedBurnInterval, 2),
+            "reconnect rejects burn intervals that status reconstruction would clamp");
+
+        var excessEnemyHealth = invalidBurnPhaseSession.CaptureCoOpState(0, 0, false);
+        excessEnemyHealth.Enemies[0].Health = invalidBurnPhaseSession.Enemies[0].MaxHealth + 1;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, excessEnemyHealth, 2),
+            "reconnect rejects enemy health above its authored scaled maximum");
+
         var nonfiniteProjectile = session.CaptureCoOpState(0, 0, false);
         nonfiniteProjectile.Projectiles.Add(new ProjectileRuntimeState
         {
@@ -1799,6 +1862,18 @@ internal static class Program
         });
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, nonfiniteProjectile, 2),
             "nonfinite network combat state is rejected");
+
+        var clampedProjectile = session.CaptureCoOpState(0, 0, false);
+        clampedProjectile.Projectiles.Add(new ProjectileRuntimeState
+        {
+            Kind = (int)ProjectileKind.Straight,
+            Speed = 100,
+            Damage = 10,
+            PriorityDamageMultiplier = 0.5f,
+            Radius = 2
+        });
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, clampedProjectile, 2),
+            "reconnect rejects projectile priority multipliers that reconstruction would raise");
 
         var orphanedHomingProjectile = session.CaptureCoOpState(0, 0, false);
         orphanedHomingProjectile.Projectiles.Add(new ProjectileRuntimeState
@@ -3273,6 +3348,16 @@ internal static class Program
         Check.Equal(tower.LifetimeKills, restored.Towers[0].LifetimeKills, "saved per-tower kills restored");
         Check.Equal(1, restored.Statistics.Towers.Single().Purchases, "saved statistics restored");
         Check.True(restored.CanSaveCheckpoint, "restored state remains checkpoint-safe");
+
+        var invalidLayout = session.CaptureSaveGame();
+        invalidLayout.Towers[0].X = 500;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreSaveGame(session.Content, invalidLayout),
+            "checkpoint reconstruction rejects defense positions outside the saved map");
+
+        var invalidSpeed = session.CaptureSaveGame();
+        invalidSpeed.Speed = 1.2f;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreSaveGame(session.Content, invalidSpeed),
+            "checkpoint reconstruction rejects simulation speed that would be silently normalized");
     }
 
     private static void IndependentSaveSlots()

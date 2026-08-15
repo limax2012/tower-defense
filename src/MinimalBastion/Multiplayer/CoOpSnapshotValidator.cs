@@ -30,7 +30,7 @@ internal static class CoOpSnapshotValidator
             snapshot.Tick < 0 || (snapshot.ReadyMask & ~0b11) != 0 ||
             snapshot.IsPaused && snapshot.PausedByPlayerId is not (1 or 2) ||
             !snapshot.IsPaused && snapshot.PausedByPlayerId != 0 ||
-            !IsPositiveFinite(snapshot.Speed) || !IsNonnegativeFinite(snapshot.OverdriveCooldownRemaining) ||
+            snapshot.Speed is not (1f or 2f) || !IsNonnegativeFinite(snapshot.OverdriveCooldownRemaining) ||
             !IsNonnegativeFinite(snapshot.AnnouncementRemaining) || snapshot.EmergencyInventory < 0 ||
             snapshot.EmergencyDirectPurchasesThisWave < 0 || snapshot.NextEnemyId <= 0 ||
             snapshot.NextTowerId <= 0 || snapshot.NextEmergencyDefenseId <= 0 ||
@@ -87,13 +87,13 @@ internal static class CoOpSnapshotValidator
         {
             var statuses = enemy.Statuses ?? throw new InvalidDataException("Co-op snapshot enemy statuses are missing.");
             if (enemy.Id <= 0 || string.IsNullOrWhiteSpace(enemy.DefinitionId) || enemy.DefinitionId.Length > 128 ||
-                !Enum.IsDefined(enemy.Rank) || !IsPositiveFinite(enemy.HealthMultiplier) ||
-                !IsPositiveFinite(enemy.SpeedMultiplier) || !IsNonnegativeFinite(enemy.DistanceAlongPath) ||
+                !Enum.IsDefined(enemy.Rank) || !IsPositiveFinite(enemy.HealthMultiplier) || enemy.HealthMultiplier < 0.01f ||
+                !IsPositiveFinite(enemy.SpeedMultiplier) || enemy.SpeedMultiplier < 0.01f || !IsNonnegativeFinite(enemy.DistanceAlongPath) ||
                 !IsNonnegativeFinite(enemy.Health) || !IsNonnegativeFinite(enemy.Shield) ||
                 !IsNonnegativeFinite(enemy.DamagePauseTimer) || !IsNonnegativeFinite(enemy.KnockbackGraceRemaining) ||
                 statuses.Count > MaximumStatusesPerEnemy || statuses.Any(status => status is null ||
                     !Enum.IsDefined(status.Type) || !IsPositiveFinite(status.RemainingSeconds) ||
-                    !IsPositiveFinite(status.Magnitude) || !IsPositiveFinite(status.TickInterval) ||
+                    !IsPositiveFinite(status.Magnitude) || !IsPositiveFinite(status.TickInterval) || status.TickInterval < 0.05f ||
                     !IsNonnegativeFinite(status.TickProgress) || status.TickProgress >= status.TickInterval))
                 throw new InvalidDataException("Co-op snapshot enemy state is structurally invalid.");
         }
@@ -108,6 +108,7 @@ internal static class CoOpSnapshotValidator
             !Enum.IsDefined(typeof(ProjectileKind), projectile.Kind) || !IsNonnegativeFinite(projectile.Speed) ||
             !IsNonnegativeFinite(projectile.SplashRadius) || projectile.SplashTargetLimit < 0 ||
             !IsNonnegativeFinite(projectile.Damage) || !IsPositiveFinite(projectile.PriorityDamageMultiplier) ||
+            projectile.PriorityDamageMultiplier < 1 ||
             projectile.PriorityDamageMultiplier > 3 || !IsNonnegativeFinite(projectile.ArmorPierce) ||
             !IsNonnegativeFinite(projectile.Radius) || !IsValidStatus(projectile.Status)))
             throw new InvalidDataException("Co-op snapshot projectile state is structurally invalid.");

@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Added authored-map/content validation to restored checkpoints and co-op snapshots. Towers and Forges must remain in legal build areas, Plates must remain on the road with valid spacing/endpoints, and speed, lives, enemy health/shields, tactical charges/timers, status cadence, projectile multipliers, and minimum investments can no longer be silently clamped into an immediate checksum mismatch; legacy difficulty-less checkpoints retain their intentional lives migration.
 - Rejected contradictory co-op readiness snapshots before reconstruction. Active combat must carry no stale ready flags, both ready players must carry the queued start they created, and early-call eligibility cannot exist without that start; malformed combinations can no longer normalize differently across reconnect UI and trigger another repair cycle.
 - Reserved Pulse Plate damage attribution through the final safe runtime identity. Save and reconnect boundaries now reject later IDs before their negative source key can wrap into the tower namespace, while gameplay reports a clean identity-capacity limit.
 - Completed the in-flight sender when a socket write fails. A peer-side close can no longer leave the frame already removed from the channel waiting forever while only later queued sends receive the transport fault.
