@@ -1773,14 +1773,15 @@ public sealed class UIManager
             DrawBranchPreview(batch, _specializationHint, ColorPalette.Cobalt);
         else
         {
-            // Protocol payload is always violet and explicitly conditional until
-            // activation. Applied map/support modifiers retain their source color
-            // on the next row, so equal numerical boosts cannot imply equal state.
+            // Nest the payload tightly beneath its Protocol state. Dormant payloads
+            // are deliberately muted; only a running Protocol inherits the active
+            // coral. Applied modifiers resume at the card's left edge after a wider
+            // gap and retain their source color.
             DrawFittedText(batch, TowerInfo.ProtocolEffectSummary(tower.Protocol, tower.IsOverdriven),
-                new Vector2(980, 615), ColorPalette.Violet, 0.44f, 280);
+                new Vector2(992, 611), tower.IsOverdriven ? ColorPalette.Coral : ColorPalette.Muted, 0.42f, 268);
             var appliedModifiers = AppliedTowerModifiers(powerNodes, supportBuff);
             if (!string.IsNullOrWhiteSpace(appliedModifiers))
-                DrawFittedText(batch, appliedModifiers, new Vector2(980, 633),
+                DrawFittedText(batch, appliedModifiers, new Vector2(980, 635),
                     supportBuff.IsActive ? ColorPalette.Gold : powerNodes[0].NodeColor, 0.43f, 280);
         }
 
