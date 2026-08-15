@@ -65,19 +65,30 @@ public sealed class GameRenderer
         switch (motif.ToLowerInvariant())
         {
             case "foundry_floor":
-                // Broad, irregular steel plates give the original arena an
-                // industrial floor without turning the battlefield into a grid.
-                foreach (var slab in new[]
+                // Oversized recessed furnace wells read as fixed industrial
+                // machinery without repeating the rectangular language used
+                // by buildable regions.
+                foreach (var well in new[]
                 {
-                    new Rectangle(28, 82, 250, 112), new Rectangle(686, 76, 230, 126),
-                    new Rectangle(78, 500, 285, 154), new Rectangle(590, 462, 300, 170)
+                    (new Vector2(92, 356), 58f),
+                    (new Vector2(444, 304), 46f),
+                    (new Vector2(806, 398), 72f),
+                    (new Vector2(448, 648), 52f)
                 })
                 {
-                    p.FillRect(batch, slab, Color.Lerp(baseColor, accent, 0.10f));
-                    p.DrawRect(batch, slab, Color.Lerp(baseColor, accent, 0.20f), 1);
-                    p.Circle(batch, new Vector2(slab.Left + 12, slab.Top + 12), 2.2f, Color.Lerp(baseColor, accent, 0.42f));
-                    p.Circle(batch, new Vector2(slab.Right - 12, slab.Bottom - 12), 2.2f, Color.Lerp(baseColor, accent, 0.42f));
+                    p.Circle(batch, well.Item1, well.Item2, Color.Lerp(baseColor, accent, 0.075f));
+                    p.Ring(batch, well.Item1, well.Item2, Color.Lerp(baseColor, accent, 0.18f), 2);
+                    p.Ring(batch, well.Item1, well.Item2 * 0.68f, Color.Lerp(baseColor, accent, 0.10f), 1);
+                    foreach (var direction in new[] { Vector2.UnitX, -Vector2.UnitX, Vector2.UnitY, -Vector2.UnitY })
+                        p.Circle(batch, well.Item1 + direction * (well.Item2 - 8), 2.1f, Color.Lerp(baseColor, accent, 0.34f));
                 }
+
+                foreach (var rivet in new[]
+                {
+                    new Vector2(42, 52), new Vector2(62, 52), new Vector2(286, 676), new Vector2(306, 676),
+                    new Vector2(698, 48), new Vector2(718, 48), new Vector2(894, 676), new Vector2(914, 676)
+                })
+                    p.Circle(batch, rivet, 2.2f, Color.Lerp(baseColor, accent, 0.30f));
                 break;
 
             case "meadow":
