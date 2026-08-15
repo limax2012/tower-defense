@@ -958,12 +958,12 @@ public sealed class GameSession
             session.Enemies.Add(EnemyInstance.RestoreCoOpState(savedEnemy, definition, session.Map.Path));
         }
 
-        ValidateRestoredTacticalState(session, data.PulsePlates, data.Generator);
+        ValidateRestoredTacticalState(session, data.PulsePlates, data.Generator, false);
         foreach (var savedPlate in data.PulsePlates.Where(plate => plate.ChargesRemaining > 0))
             session.EmergencyDefenses.Add(PulsePlateInstance.RestoreSaveData(savedPlate, content.Tactics.EmergencyDefense));
         if (data.Generator is not null)
             session.Generator = ChargeForgeInstance.RestoreSaveData(data.Generator, content.Tactics.Generator);
-        ValidateRestoredDefenseLayout(session);
+        ValidateRestoredDefenseLayout(session, false);
 
         session._nextEnemyId = Math.Max(data.NextEnemyId, session.Enemies.Select(enemy => enemy.Id).DefaultIfEmpty(0).Max() + 1);
         session._nextTowerId = Math.Max(data.NextTowerId, session.Towers.Select(tower => tower.Id).DefaultIfEmpty(0).Max() + 1);
@@ -1012,12 +1012,13 @@ public sealed class GameSession
                 throw new InvalidDataException($"Saved tower '{savedTower.DefinitionId}' has impossible investment state.");
             session.Towers.Add(TowerInstance.RestoreSaveData(savedTower, definition));
         }
-        ValidateRestoredTacticalState(session, data.PulsePlates, data.Generator);
+        var isLegacyCheckpoint = data.SchemaVersion < SaveGameData.CurrentSchemaVersion;
+        ValidateRestoredTacticalState(session, data.PulsePlates, data.Generator, isLegacyCheckpoint);
         foreach (var savedPlate in data.PulsePlates.Where(x => x.ChargesRemaining > 0))
             session.EmergencyDefenses.Add(PulsePlateInstance.RestoreSaveData(savedPlate, content.Tactics.EmergencyDefense));
         if (data.Generator is not null)
             session.Generator = ChargeForgeInstance.RestoreSaveData(data.Generator, content.Tactics.Generator);
-        ValidateRestoredDefenseLayout(session);
+        ValidateRestoredDefenseLayout(session, isLegacyCheckpoint);
 
         session._nextEnemyId = Math.Max(data.NextEnemyId, 1);
         session._nextTowerId = Math.Max(data.NextTowerId, session.Towers.Select(x => x.Id).DefaultIfEmpty(0).Max() + 1);
@@ -1054,7 +1055,8 @@ public sealed class GameSession
     private static void ValidateRestoredTacticalState(
         GameSession session,
         IReadOnlyList<Persistence.PulsePlateSaveData> plates,
-        Persistence.GeneratorSaveData? generator)
+        Persistence.GeneratorSaveData? generator,
+        bool allowLegacyForgeTimerMigration)
     {
         var plateDefinition = session._content.Tactics.EmergencyDefense;
         if (plates.Any(plate => plate.ChargesRemaining <= 0 || plate.ChargesRemaining > plateDefinition.Charges ||
@@ -1066,11 +1068,13 @@ public sealed class GameSession
         var definition = session._content.Tactics.Generator;
         if (generator.LevelIndex < 0 || generator.LevelIndex >= definition.Levels.Count ||
             generator.InvestedCredits < definition.PurchaseCost ||
-            generator.ProductionRemaining > definition.Levels[generator.LevelIndex].ProductionSeconds + 0.01f)
+            !float.IsFinite(generator.ProductionRemaining) || generator.ProductionRemaining < 0 ||
+            (!allowLegacyForgeTimerMigration &&
+             generator.ProductionRemaining > definition.Levels[generator.LevelIndex].ProductionSeconds + 0.01f))
             throw new InvalidDataException("Restored Charge Forge progression or timer state exceeds its authored limits.");
     }
 
-    private static void ValidateRestoredDefenseLayout(GameSession session)
+    private static void ValidateRestoredDefenseLayout(GameSession session, bool allowLegacyCheckpointMigration)
     {
         if (!session.TacticalSystemsEnabled &&
             (session.EmergencyInventory != 0 || session.EmergencyDirectPurchasesThisWave != 0 ||
@@ -1084,7 +1088,7 @@ public sealed class GameSession
                 position.X < GameConstants.TowerRadius || position.X > GameConstants.MapWidth - GameConstants.TowerRadius ||
                 position.Y < GameConstants.TopBarHeight + GameConstants.TowerRadius ||
                 position.Y > GameConstants.LogicalHeight - GameConstants.TowerRadius ||
-                !session.Map.IsBuildable(position) ||
+                !IsRestorableBuildPosition(session.Map, position, allowLegacyCheckpointMigration) ||
                 session.Map.Path.DistanceToPath(position) < GameConstants.PlacementPathClearance)
                 throw new InvalidDataException("Restored tower placement is outside the selected map's legal defense area.");
         }
@@ -1095,7 +1099,7 @@ public sealed class GameSession
                 throw new InvalidDataException("Restored tower placements overlap.");
 
         var plateDefinition = session._content.Tactics.EmergencyDefense;
-        if (session.EmergencyDefenses.Count > plateDefinition.MaximumActive)
+        if (!allowLegacyCheckpointMigration && session.EmergencyDefenses.Count > plateDefinition.MaximumActive)
             throw new InvalidDataException("Restored Pulse Plate field exceeds its active capacity.");
         foreach (var plate in session.EmergencyDefenses)
         {
@@ -1117,10 +1121,24 @@ public sealed class GameSession
         if (generatorPosition.X < radius || generatorPosition.X > GameConstants.MapWidth - radius ||
             generatorPosition.Y < GameConstants.TopBarHeight + radius ||
             generatorPosition.Y > GameConstants.LogicalHeight - radius ||
-            !session.Map.IsBuildable(generatorPosition) ||
+            !IsRestorableBuildPosition(session.Map, generatorPosition, allowLegacyCheckpointMigration) ||
             session.Map.Path.DistanceToPath(generatorPosition) < GameConstants.PlacementPathClearance ||
             session.Towers.Any(tower => Vector2.DistanceSquared(tower.Position, generatorPosition) < 48f * 48f))
             throw new InvalidDataException("Restored Charge Forge placement is outside the selected map's legal defense area.");
+    }
+
+    private static bool IsRestorableBuildPosition(MapRuntime map, Vector2 position, bool allowLegacyCheckpointMigration)
+    {
+        if (map.IsBuildable(position)) return true;
+        if (!allowLegacyCheckpointMigration) return false;
+
+        // Schema-1 placement treated authored region edges as closed. Current
+        // Rectangle.Contains correctly uses exclusive right/bottom edges, so
+        // retain only that sub-pixel edge case for old local checkpoints.
+        return map.BuildableRegions.Any(region =>
+                   position.X >= region.Left && position.X <= region.Right &&
+                   position.Y >= region.Top && position.Y <= region.Bottom) &&
+               !map.RestrictedRegions.Any(region => region.Contains(position.ToPoint()));
     }
 
     private static string NormalizeRunId(string? runId, string fallback) =>

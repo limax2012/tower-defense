@@ -65,30 +65,24 @@ public sealed class GameRenderer
         switch (motif.ToLowerInvariant())
         {
             case "foundry_floor":
-                // Oversized recessed furnace wells read as fixed industrial
-                // machinery without repeating the rectangular language used
-                // by buildable regions.
-                foreach (var well in new[]
+                // Open floor seams and sparse rivets suggest an industrial
+                // surface without enclosing any area. Closed background shapes
+                // compete with the actual build-zone language regardless of
+                // whether those shapes are rectangular or circular.
+                foreach (var seam in new[]
                 {
-                    (new Vector2(92, 356), 58f),
-                    (new Vector2(444, 304), 46f),
-                    (new Vector2(806, 398), 72f),
-                    (new Vector2(448, 648), 52f)
+                    (new Vector2(34, 58), new Vector2(246, 58)),
+                    (new Vector2(706, 54), new Vector2(916, 54)),
+                    (new Vector2(80, 680), new Vector2(326, 680)),
+                    (new Vector2(604, 670), new Vector2(902, 670)),
+                    (new Vector2(330, 418), new Vector2(386, 382)),
+                    (new Vector2(660, 304), new Vector2(706, 334))
                 })
                 {
-                    p.Circle(batch, well.Item1, well.Item2, Color.Lerp(baseColor, accent, 0.075f));
-                    p.Ring(batch, well.Item1, well.Item2, Color.Lerp(baseColor, accent, 0.18f), 2);
-                    p.Ring(batch, well.Item1, well.Item2 * 0.68f, Color.Lerp(baseColor, accent, 0.10f), 1);
-                    foreach (var direction in new[] { Vector2.UnitX, -Vector2.UnitX, Vector2.UnitY, -Vector2.UnitY })
-                        p.Circle(batch, well.Item1 + direction * (well.Item2 - 8), 2.1f, Color.Lerp(baseColor, accent, 0.34f));
+                    p.Line(batch, seam.Item1, seam.Item2, Color.Lerp(baseColor, accent, 0.15f), 1);
+                    p.Circle(batch, seam.Item1, 2f, Color.Lerp(baseColor, accent, 0.30f));
+                    p.Circle(batch, seam.Item2, 2f, Color.Lerp(baseColor, accent, 0.30f));
                 }
-
-                foreach (var rivet in new[]
-                {
-                    new Vector2(42, 52), new Vector2(62, 52), new Vector2(286, 676), new Vector2(306, 676),
-                    new Vector2(698, 48), new Vector2(718, 48), new Vector2(894, 676), new Vector2(914, 676)
-                })
-                    p.Circle(batch, rivet, 2.2f, Color.Lerp(baseColor, accent, 0.30f));
                 break;
 
             case "meadow":
@@ -147,12 +141,15 @@ public sealed class GameRenderer
     private static void DrawBuildZone(SpriteBatch batch, PrimitiveRenderer p, Rectangle region, string motif,
         Color baseColor, Color accentColor, PathVisualData pathVisual, bool emphasized)
     {
+        var isFoundry = motif.Equals("foundry_floor", StringComparison.OrdinalIgnoreCase);
         var outline = emphasized
             ? ColorPalette.PlacementValid
             : motif.Equals("meadow", StringComparison.OrdinalIgnoreCase)
                 ? Color.Lerp(baseColor, accentColor, 0.58f)
-                : Color.Lerp(baseColor, pathVisual.SecondaryColor, 0.52f);
-        var regionFill = Color.Lerp(baseColor, accentColor, emphasized ? 0.43f : 0.16f);
+                : isFoundry
+                    ? Color.Lerp(baseColor, ColorPalette.Cyan, 0.58f)
+                    : Color.Lerp(baseColor, pathVisual.SecondaryColor, 0.52f);
+        var regionFill = Color.Lerp(baseColor, accentColor, emphasized ? 0.43f : isFoundry ? 0.11f : 0.16f);
         p.FillRect(batch, region, regionFill);
 
         switch (motif.ToLowerInvariant())
@@ -169,6 +166,9 @@ public sealed class GameRenderer
                 break;
             case "surge_field":
                 p.DrawRect(batch, region, outline, emphasized ? 3 : 1);
+                break;
+            case "foundry_floor":
+                DrawBuildZoneCorners(batch, p, region, outline, emphasized ? 3 : 2);
                 break;
             default:
                 DrawBuildZoneCorners(batch, p, region, outline, emphasized ? 3 : 2);
@@ -730,52 +730,31 @@ public sealed class GameRenderer
         if (points.Length < 2) return;
 
         var entryDirection = SafeDirection(points[1] - points[0]);
-        var exitDirection = SafeDirection(points[^1] - points[^2]);
         var inset = Math.Max(30f, session.Map.Definition.PathWidth * 0.75f);
         var markerSpan = Math.Clamp(session.Map.Definition.PathWidth * 0.28f, 10f, 18f);
 
         var entry = ClampMarkerToField(points[0] + entryDirection * inset, markerSpan);
-        var exit = ClampMarkerToField(points[^1] - exitDirection * inset, markerSpan);
 
-        // Route markings are painted beneath units and defenses so they read as
-        // navigation infrastructure, never as placeable tower silhouettes.
-        DrawEntryMark(batch, p, entry, entryDirection, markerSpan);
-        DrawFinishMark(batch, p, exit, exitDirection, markerSpan);
+        // A quiet map-colored plaque sits beside the route rather than on top of
+        // it. The exit marker is intentionally omitted: the path already ends at
+        // the field boundary, and another symbol competes with defenses.
+        DrawEntryMark(batch, p, entry, entryDirection, session.Map.Definition.PathWidth,
+            session.Map.Definition.PathVisual);
     }
 
     private static void DrawEntryMark(SpriteBatch batch, PrimitiveRenderer p, Vector2 center,
-        Vector2 direction, float markerSpan)
+        Vector2 direction, float pathWidth, PathVisualData visual)
     {
         var normal = new Vector2(-direction.Y, direction.X);
-        var gateCenter = center - direction * 9f;
-        p.Line(batch, gateCenter - normal * markerSpan, gateCenter + normal * markerSpan,
-            ColorPalette.Cyan, 3);
-
-        for (var index = 0; index < 3; index++)
+        var plaqueCenter = ClampMarkerToField(center - normal * (pathWidth * 0.5f + 13f), 20f);
+        var plaque = new Rectangle((int)plaqueCenter.X - 17, (int)plaqueCenter.Y - 9, 34, 18);
+        p.FillRect(batch, plaque, visual.SecondaryColor);
+        p.DrawRect(batch, plaque, Color.Lerp(visual.SecondaryColor, visual.AccentColor, 0.42f), 1);
+        for (var offset = -6f; offset <= 6f; offset += 6f)
         {
-            var tip = center + direction * (index * 10f);
-            var back = tip - direction * 6f;
-            p.Line(batch, back + normal * 5f, tip, ColorPalette.Cyan, 3);
-            p.Line(batch, back - normal * 5f, tip, ColorPalette.Cyan, 3);
-        }
-    }
-
-    private static void DrawFinishMark(SpriteBatch batch, PrimitiveRenderer p, Vector2 center,
-        Vector2 direction, float markerSpan)
-    {
-        var normal = new Vector2(-direction.Y, direction.X);
-        const float halfDepth = 5f;
-        var firstBar = center - direction * halfDepth;
-        var secondBar = center + direction * halfDepth;
-        p.Line(batch, firstBar - normal * markerSpan, firstBar + normal * markerSpan,
-            ColorPalette.Coral, 3);
-        p.Line(batch, secondBar - normal * markerSpan, secondBar + normal * markerSpan,
-            ColorPalette.Coral, 3);
-
-        for (var offset = -markerSpan + 4f; offset <= markerSpan - 4f; offset += 8f)
-        {
-            p.Line(batch, firstBar + normal * offset, secondBar + normal * offset,
-                ColorPalette.Paper, 3);
+            var barCenter = plaqueCenter + direction * offset;
+            p.Line(batch, barCenter - normal * 3f, barCenter + normal * 3f,
+                Color.Lerp(visual.SecondaryColor, visual.AccentColor, 0.62f), 1);
         }
     }
 

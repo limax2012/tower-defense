@@ -4,7 +4,8 @@ namespace MinimalBastion.Persistence;
 
 public sealed class SaveGameData
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int MinimumSupportedSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public DateTime SavedAtUtc { get; set; } = DateTime.UtcNow;
     public string RunId { get; set; } = "";

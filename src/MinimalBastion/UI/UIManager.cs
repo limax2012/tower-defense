@@ -575,7 +575,7 @@ public sealed class UIManager
         {
             if (_saveSlotDeleteArmed)
             {
-                _saveSlotDeleteArmed = false;
+                DisarmSaveSlotDeletion();
                 return UiAction.None;
             }
             return UiAction.CloseSaveSlots;
@@ -604,7 +604,7 @@ public sealed class UIManager
         {
             if (!_saveSlotRows[index].Contains(point) || index >= pageSlots.Length) continue;
             _selectedSaveSlot = pageSlots[index].Slot;
-            _saveSlotDeleteArmed = false;
+            DisarmSaveSlotDeletion();
             return UiAction.None;
         }
 
@@ -612,14 +612,14 @@ public sealed class UIManager
         {
             _saveSlotPage--;
             _selectedSaveSlot = _saveSlots[_saveSlotPage * _saveSlotRows.Length].Slot;
-            _saveSlotDeleteArmed = false;
+            DisarmSaveSlotDeletion();
             return UiAction.None;
         }
         if (_saveSlotNextButton.Contains(point) && _saveSlotPage + 1 < pageCount)
         {
             _saveSlotPage++;
             _selectedSaveSlot = _saveSlots[_saveSlotPage * _saveSlotRows.Length].Slot;
-            _saveSlotDeleteArmed = false;
+            DisarmSaveSlotDeletion();
             return UiAction.None;
         }
 
@@ -634,6 +634,7 @@ public sealed class UIManager
                 return UiAction.DeleteSaveSlot;
             }
             _saveSlotDeleteArmed = true;
+            _persistenceStatus = $"Delete slot {_selectedSaveSlot}? Click the red CONFIRM DELETE button again. ESC cancels.";
             return UiAction.None;
         }
         if (_saveSlotBackButton.Contains(point)) return UiAction.CloseSaveSlots;
@@ -1330,7 +1331,7 @@ public sealed class UIManager
         var next = Math.Clamp(current < 0 ? 0 : current + delta, 0, _saveSlots.Count - 1);
         _selectedSaveSlot = _saveSlots[next].Slot;
         _saveSlotPage = next / _saveSlotRows.Length;
-        _saveSlotDeleteArmed = false;
+        DisarmSaveSlotDeletion();
     }
 
     private void MoveSaveSlotPage(int delta)
@@ -1341,6 +1342,12 @@ public sealed class UIManager
         if (nextPage == _saveSlotPage) return;
         _saveSlotPage = nextPage;
         _selectedSaveSlot = _saveSlots[_saveSlotPage * _saveSlotRows.Length].Slot;
+        DisarmSaveSlotDeletion();
+    }
+
+    private void DisarmSaveSlotDeletion()
+    {
+        if (_saveSlotDeleteArmed) _persistenceStatus = "Deletion cancelled.";
         _saveSlotDeleteArmed = false;
     }
 
@@ -1733,7 +1740,7 @@ public sealed class UIManager
             return;
         }
 
-        var intelCard = new Rectangle(972, 474, 296, 168);
+        var intelCard = new Rectangle(972, 474, 296, 174);
         p.FillRect(batch, intelCard, ColorPalette.PanelAlt);
         p.DrawRect(batch, intelCard, tower.Definition.Visual.PrimaryColor, 1);
         p.DrawShape(batch, new Vector2(1000, 512), tower.Definition.Visual.Radius, tower.Definition.Visual.Shape,
@@ -1752,11 +1759,11 @@ public sealed class UIManager
         DrawFittedText(batch, tower.IsSupport
             ? TowerInfo.ActiveAuraSummary(tower)
             : $"ACTIVE  DAMAGE {effectiveDamage:0.#}   DPS {effectiveDps:0.#}   RANGE {session.GetEffectiveRange(tower):0}",
-            new Vector2(980, 540), ColorPalette.Ink, 0.56f, 280);
+            new Vector2(980, 534), ColorPalette.Ink, 0.56f, 280);
         DrawFittedText(batch, tower.IsSupport
             ? "Strongest Beacon applies; auras never stack."
-            : TowerInfo.Special(tower.Definition, tower.Level), new Vector2(980, 559), ColorPalette.Ink, 0.56f, 280);
-        DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, 578), ColorPalette.Cobalt, 0.48f, 280);
+            : TowerInfo.Special(tower.Definition, tower.Level), new Vector2(980, 552), ColorPalette.Ink, 0.56f, 280);
+        DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, 570), ColorPalette.Cobalt, 0.48f, 280);
         var power = session.Map.GetPowerBuff(tower.Position);
         var powerNodes = session.Map.GetPowerNodes(tower.Position);
         var powerHint = powerNodes.Count > 0
@@ -1769,10 +1776,10 @@ public sealed class UIManager
             : autoArmed ? $"AUTO ARMED: {tower.Protocol.DisplayName.ToUpperInvariant()}  |  {tower.Protocol.AutoTriggerCount}+ OR ELITE/BOSS" : null;
         var primaryHint = beaconHint ?? TowerInfo.Strength(tower.Definition);
         var secondaryHint = powerHint ?? overdriveHint ?? (beaconHint is not null ? TowerInfo.Strength(tower.Definition) : TowerInfo.Limitation(tower.Definition));
-        DrawFittedText(batch, primaryHint, new Vector2(980, 594),
+        DrawFittedText(batch, primaryHint, new Vector2(980, 588),
             beaconHint is not null ? ColorPalette.Gold : ColorPalette.Muted,
             beaconHint is not null ? 0.48f : 0.53f, 280);
-        DrawFittedText(batch, secondaryHint, new Vector2(980, 610),
+        DrawFittedText(batch, secondaryHint, new Vector2(980, 606),
             powerHint is not null ? powerNodes[0].NodeColor : overdriveHint is not null ? ColorPalette.Coral : ColorPalette.Muted,
             powerHint is not null ? 0.44f : 0.50f, 280);
         var upgradeLine = _specializationHint ?? (tower.RequiresDoctrine
@@ -1782,9 +1789,15 @@ public sealed class UIManager
             : tower.CanUpgrade
                 ? $"NEXT {tower.UpgradeCost}: {TowerInfo.UpgradeSummary(tower.Definition, tower.LevelIndex, supportBuff, power)}"
                 : "MAXIMUM LEVEL");
-        DrawWrappedText(batch, upgradeLine, new Rectangle(980, 620, 280, 28),
-            _specializationHint is not null ? ColorPalette.Cobalt : tower.RequiresDoctrine || tower.RequiresSpecialization || tower.CanUpgrade ? ColorPalette.Violet : ColorPalette.Muted,
-            0.45f, 2);
+        var upgradeColor = _specializationHint is not null
+            ? ColorPalette.Cobalt
+            : tower.RequiresDoctrine || tower.RequiresSpecialization || tower.CanUpgrade
+                ? ColorPalette.Violet
+                : ColorPalette.Muted;
+        if (tower.RequiresDoctrine || tower.RequiresSpecialization)
+            DrawFittedText(batch, upgradeLine, new Vector2(980, 630), upgradeColor, 0.45f, 280);
+        else
+            DrawWrappedText(batch, upgradeLine, new Rectangle(980, 630, 280, 30), upgradeColor, 0.45f, 2);
 
         _targetButton = new Rectangle(980, 670, 88, 30);
         _upgradeButton = new Rectangle(1074, 670, 92, 30);
@@ -1798,9 +1811,9 @@ public sealed class UIManager
             // Keep the first branch in the normal upgrade position and place the
             // alternate directly beneath it, with a clear gutter below intel.
             _targetButton = new Rectangle(980, 650, 88, 28);
-            _specializationAButton = new Rectangle(1074, 650, 118, 28);
-            _specializationBButton = new Rectangle(1074, 686, 118, 28);
-            _sellButton = new Rectangle(1198, 650, 68, 28);
+            _sellButton = new Rectangle(980, 686, 88, 28);
+            _specializationAButton = new Rectangle(1074, 650, 192, 28);
+            _specializationBButton = new Rectangle(1074, 686, 192, 28);
             var firstLabel = tower.RequiresDoctrine ? tower.Definition.Tier2Doctrines[0].ShortLabel : tower.Definition.Specializations[0].ShortLabel;
             var secondLabel = tower.RequiresDoctrine ? tower.Definition.Tier2Doctrines[1].ShortLabel : tower.Definition.Specializations[1].ShortLabel;
             var firstCost = tower.RequiresDoctrine ? tower.Definition.Tier2Doctrines[0].UpgradeCost : tower.Definition.Specializations[0].UpgradeCost;
@@ -2220,7 +2233,8 @@ public sealed class UIManager
         DrawButton(batch, p, _saveSlotPreviousButton, "PREVIOUS", _saveSlotPage > 0, ColorPalette.Cyan);
         DrawButton(batch, p, _saveSlotBackButton, "BACK", true, ColorPalette.Violet);
         DrawButton(batch, p, _saveSlotNextButton, "NEXT", _saveSlotPage + 1 < pageCount, ColorPalette.Cyan);
-        DrawText(batch, $"ARROWS SELECT  |  ENTER CONFIRMS  |  {_persistenceStatus}", new Vector2(640, 654), ColorPalette.Muted, 0.48f, true);
+        DrawFittedCenteredText(batch, $"ARROWS SELECT  |  ENTER CONFIRMS  |  {_persistenceStatus}",
+            new Vector2(640, 654), _saveSlotDeleteArmed ? ColorPalette.Coral : ColorPalette.Muted, 0.48f, 1080);
     }
 
     private void DrawRunHistory(SpriteBatch batch, PrimitiveRenderer p)

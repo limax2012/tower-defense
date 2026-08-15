@@ -3633,6 +3633,71 @@ internal static class Program
         Check.Equal(1, restored.Statistics.Towers.Single().Purchases, "saved statistics restored");
         Check.True(restored.CanSaveCheckpoint, "restored state remains checkpoint-safe");
 
+        var legacyForgeSession = SessionWithWaves(2);
+        legacyForgeSession.Economy.AddCredits(2000);
+        Check.True(legacyForgeSession.TryPlaceGenerator(new Vector2(50, 200)), "place legacy checkpoint forge");
+        Check.True(legacyForgeSession.TryUpgradeGenerator(), "upgrade legacy checkpoint forge to level two");
+        Check.True(legacyForgeSession.TryUpgradeGenerator(), "upgrade legacy checkpoint forge to level three");
+        var currentForgeInterval = legacyForgeSession.Generator!.Level.ProductionSeconds;
+        var legacyForgeSave = legacyForgeSession.CaptureSaveGame();
+        legacyForgeSave.Generator!.ProductionRemaining = currentForgeInterval + 4;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreSaveGame(legacyForgeSession.Content, legacyForgeSave),
+            "current checkpoints reject an out-of-range Forge timer");
+        legacyForgeSave.SchemaVersion = SaveGameData.MinimumSupportedSchemaVersion;
+        var migratedForge = GameSession.RestoreSaveGame(legacyForgeSession.Content, legacyForgeSave);
+        Check.Nearly(currentForgeInterval, migratedForge.Generator!.ProductionRemaining,
+            "local checkpoint migrates a timer authored before the Forge interval was shortened");
+
+        var strictNetworkForge = legacyForgeSession.CaptureCoOpState(0, 0, false);
+        strictNetworkForge.Generator!.ProductionRemaining = currentForgeInterval + 4;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(
+                legacyForgeSession.Content, strictNetworkForge, 2),
+            "network snapshots still reject an out-of-range Forge timer");
+
+        var authoredContent = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        var edgeSession = new GameSession(authoredContent, "foundry_loop");
+        var edgeSave = edgeSession.CaptureSaveGame();
+        var edgeTower = authoredContent.Towers["frost_spire"];
+        edgeSave.Towers.Add(new TowerSaveData
+        {
+            Id = 1,
+            DefinitionId = edgeTower.Id,
+            X = 70,
+            Y = 174,
+            InvestedCredits = edgeTower.PurchaseCost,
+            TargetMode = TargetMode.First
+        });
+        edgeSave.NextTowerId = 2;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreSaveGame(authoredContent, edgeSave),
+            "current checkpoints retain exclusive build-region edges");
+        edgeSave.SchemaVersion = SaveGameData.MinimumSupportedSchemaVersion;
+        Check.Equal(1, GameSession.RestoreSaveGame(authoredContent, edgeSave).Towers.Count,
+            "legacy checkpoints retain towers authored exactly on old closed region edges");
+
+        var overCapacitySave = edgeSession.CaptureSaveGame();
+        var plateDefinition = authoredContent.Tactics.EmergencyDefense;
+        for (var index = 0; index <= plateDefinition.MaximumActive; index++)
+        {
+            var distance = plateDefinition.EndpointClearance + 12f +
+                           index * (edgeSession.Map.Path.TotalLength - 2 * (plateDefinition.EndpointClearance + 12f)) /
+                           plateDefinition.MaximumActive;
+            var position = edgeSession.Map.Path.GetPosition(distance);
+            overCapacitySave.PulsePlates.Add(new PulsePlateSaveData
+            {
+                Id = index + 1,
+                X = position.X,
+                Y = position.Y,
+                ChargesRemaining = plateDefinition.Charges
+            });
+        }
+        overCapacitySave.NextEmergencyDefenseId = plateDefinition.MaximumActive + 2;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreSaveGame(authoredContent, overCapacitySave),
+            "current checkpoints enforce the active Pulse Plate cap");
+        overCapacitySave.SchemaVersion = SaveGameData.MinimumSupportedSchemaVersion;
+        Check.Equal(plateDefinition.MaximumActive + 1,
+            GameSession.RestoreSaveGame(authoredContent, overCapacitySave).EmergencyDefenses.Count,
+            "legacy checkpoints preserve historical over-cap plates until they are consumed");
+
         var invalidLayout = session.CaptureSaveGame();
         invalidLayout.Towers[0].X = 500;
         Check.Throws<InvalidDataException>(() => GameSession.RestoreSaveGame(session.Content, invalidLayout),
@@ -3717,6 +3782,7 @@ internal static class Program
             Directory.CreateDirectory(legacyRoot);
             var legacyRepository = new SaveSlotRepository(legacyRoot);
             var legacyData = solo.CaptureSaveGame();
+            legacyData.SchemaVersion = SaveGameData.MinimumSupportedSchemaVersion;
             legacyData.RunId = "";
             legacyData.DifficultyId = "";
             legacyData.ChallengeId = "";

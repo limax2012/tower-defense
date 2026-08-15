@@ -274,7 +274,8 @@ public sealed class SaveSlotRepository
             throw new InvalidDataException($"Save file '{Path.GetFileName(path)}' exceeds the supported size limit.");
         var data = JsonSerializer.Deserialize<SaveGameData>(File.ReadAllText(path), JsonOptions)
             ?? throw new InvalidDataException($"Save file '{Path.GetFileName(path)}' is empty or invalid.");
-        if (data.SchemaVersion != SaveGameData.CurrentSchemaVersion)
+        if (data.SchemaVersion < SaveGameData.MinimumSupportedSchemaVersion ||
+            data.SchemaVersion > SaveGameData.CurrentSchemaVersion)
             throw new InvalidDataException($"Save schema {data.SchemaVersion} is not supported.");
         ValidateSaveStructure(data);
         return data;
