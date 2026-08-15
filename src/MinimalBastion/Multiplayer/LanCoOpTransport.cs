@@ -49,6 +49,93 @@ public sealed record CoOpEnvelope
     public CoOpStateSnapshot? State { get; init; }
 }
 
+public static class CoOpEnvelopeValidator
+{
+    public const int MaximumJoinCodeLength = 16;
+    public const int MaximumFingerprintLength = 128;
+    public const int MaximumMessageLength = 512;
+    public const int ChecksumLength = 16;
+
+    public static bool IsStructurallyValid(CoOpEnvelope? envelope)
+    {
+        if (envelope is null || envelope.ProtocolVersion != CoOpEnvelope.CurrentProtocolVersion ||
+            !Enum.IsDefined(envelope.Type) || envelope.JoinCode is null ||
+            envelope.JoinCode.Length > MaximumJoinCodeLength || envelope.BuildFingerprint is null ||
+            envelope.BuildFingerprint.Length > MaximumFingerprintLength || envelope.Message is null ||
+            envelope.Message.Length > MaximumMessageLength || envelope.Checksum is null ||
+            envelope.Checksum.Length > MaximumFingerprintLength || envelope.PlayerId is < 0 or > 2 ||
+            envelope.Tick < 0 || (envelope.ReadyMask & ~0b11) != 0 ||
+            !float.IsFinite(envelope.X) || !float.IsFinite(envelope.Y) || envelope.EntityId < 0)
+            return false;
+
+        return envelope.Type switch
+        {
+            CoOpMessageType.Hello => envelope.PlayerId == 0 &&
+                !string.IsNullOrWhiteSpace(envelope.JoinCode),
+            CoOpMessageType.Welcome => envelope.PlayerId == 2,
+            CoOpMessageType.Rejected => !string.IsNullOrWhiteSpace(envelope.Message),
+            CoOpMessageType.CommandRequest => envelope.PlayerId == 2 &&
+                IsCommandRequest(envelope.Command, envelope.PlayerId),
+            CoOpMessageType.CommandReceipt => envelope.PlayerId is 1 or 2 &&
+                IsReceipt(envelope.Receipt, envelope.PlayerId),
+            CoOpMessageType.TickSync => envelope.PlayerId is 1 or 2 &&
+                envelope.Checksum.Length == ChecksumLength && IsHex(envelope.Checksum),
+            CoOpMessageType.Ready => envelope.PlayerId is 1 or 2 && envelope.Ready,
+            CoOpMessageType.AuthoritativeCommand => envelope.PlayerId is 1 or 2 && envelope.Tick > 0 &&
+                IsAuthoritativeCommand(envelope.Command, envelope.PlayerId),
+            CoOpMessageType.WaveReady => envelope.PlayerId is 1 or 2,
+            CoOpMessageType.Ping => envelope.PlayerId is 1 or 2 && IsReasonablePosition(envelope),
+            CoOpMessageType.StateSnapshot => envelope.PlayerId == 1 && envelope.State is not null &&
+                envelope.Tick == envelope.State.Tick && IsValidSnapshot(envelope.State),
+            CoOpMessageType.ResyncRequest => envelope.PlayerId == 2,
+            CoOpMessageType.RestartRequest => envelope.PlayerId == 2,
+            CoOpMessageType.Disconnect => envelope.PlayerId is 1 or 2,
+            CoOpMessageType.Cursor => envelope.PlayerId is 1 or 2 && IsReasonablePosition(envelope),
+            _ => false
+        };
+    }
+
+    private static bool IsCommandRequest(GameCommand? command, int playerId) =>
+        command is { Sequence: 0, ClientRequestId: > 0 } && command.PlayerId == playerId &&
+        GameCommandValidator.IsStructurallyValid(command);
+
+    private static bool IsAuthoritativeCommand(GameCommand? command, int playerId) =>
+        command is { Sequence: > 0, ClientRequestId: > 0 } && command.PlayerId == playerId &&
+        GameCommandValidator.IsStructurallyValid(command);
+
+    private static bool IsReceipt(CommandReceipt? receipt, int playerId)
+    {
+        if (receipt is not { } value || value.Command is null || value.Reason is null || value.Reason.Length > 256 ||
+            value.Command.PlayerId != playerId || value.Command.ClientRequestId <= 0 ||
+            !GameCommandValidator.IsStructurallyValid(value.Command))
+            return false;
+        return value.Accepted ? value.Command.Sequence > 0 : value.Command.Sequence >= 0;
+    }
+
+    private static bool IsValidSnapshot(CoOpStateSnapshot snapshot)
+    {
+        try
+        {
+            CoOpSnapshotValidator.Validate(snapshot);
+            return true;
+        }
+        catch (InvalidDataException)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsReasonablePosition(CoOpEnvelope envelope) =>
+        MathF.Abs(envelope.X) <= 100_000 && MathF.Abs(envelope.Y) <= 100_000;
+
+    private static bool IsHex(string value)
+    {
+        foreach (var character in value)
+            if (!char.IsAsciiHexDigit(character)) return false;
+        return true;
+    }
+}
+
 public sealed class LanCoOpConnection : IAsyncDisposable
 {
     public const int MaximumMessageBytes = 2_097_152;
@@ -116,6 +203,8 @@ public sealed class LanCoOpConnection : IAsyncDisposable
             ?? throw new InvalidDataException("Co-op message was empty.");
         if (envelope.ProtocolVersion != CoOpEnvelope.CurrentProtocolVersion)
             throw new InvalidDataException($"Unsupported co-op protocol {envelope.ProtocolVersion}.");
+        if (!CoOpEnvelopeValidator.IsStructurallyValid(envelope))
+            throw new InvalidDataException("Co-op message was structurally invalid.");
         return envelope;
     }
 

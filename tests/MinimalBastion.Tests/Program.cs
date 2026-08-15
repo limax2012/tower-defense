@@ -1649,6 +1649,28 @@ internal static class Program
             "connection-level outbound queue retains a small explicit bound");
         Check.Equal(10, LanCoOpHost.HandshakeTimeoutSeconds,
             "friend handshake has a bounded but practical recovery window");
+        Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope { Type = (CoOpMessageType)999 }),
+            "undefined message kinds are rejected before dispatch");
+        Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.Cursor,
+            PlayerId = 2,
+            X = float.NaN,
+            Y = 200
+        }), "nonfinite presence coordinates are rejected before dispatch");
+        Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.ResyncRequest,
+            PlayerId = 2,
+            Message = new string('X', CoOpEnvelopeValidator.MaximumMessageLength + 1)
+        }), "oversized semantic fields are rejected inside bounded frames");
+        Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.CommandRequest,
+            PlayerId = 2,
+            Command = new GameCommand { PlayerId = 1, ClientRequestId = 1, Type = GameCommandType.StartWave }
+        }), "command envelopes cannot spoof the command's player identity");
+
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await using var host = new LanCoOpHost(0, "BOUNDS");
         host.Start();
@@ -1666,6 +1688,18 @@ internal static class Program
             rejected = exception.Message.Contains("protocol limit", StringComparison.OrdinalIgnoreCase);
         }
         Check.True(rejected, "oversized frame is rejected before allocating its declared payload");
+
+        var validAccept = host.AcceptPlayerAsync(timeout.Token);
+        await using var validClient = await LanCoOpClient.ConnectAsync("localhost", host.Port, "BOUNDS", timeout.Token);
+        await using var validServer = await validAccept;
+        await validClient.SendAsync(new CoOpEnvelope { Type = (CoOpMessageType)999 }, timeout.Token);
+        rejected = false;
+        try { await validServer.ReceiveAsync(timeout.Token); }
+        catch (InvalidDataException exception)
+        {
+            rejected = exception.Message.Contains("structurally invalid", StringComparison.OrdinalIgnoreCase);
+        }
+        Check.True(rejected, "transport rejects a malformed envelope after consuming its bounded frame");
     }
 
     private static async Task CoOpReconnectTransportAsync()
