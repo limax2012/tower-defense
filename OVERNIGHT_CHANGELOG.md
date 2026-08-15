@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Added a visible title-menu keyboard focus. Arrow keys or Tab traverse every enabled selector/action, Left/Right adjusts the focused arena/difficulty/directive, and Enter activates it while New Game remains the safe default.
 - Made the preserved-session rejoin code clickable and Ctrl+C-copyable, with clear reconnect-overlay feedback so a host can resend it without abandoning the match.
 - Protected solo and co-op runs from accidental resets: Restart now arms a clearly coral `CONFIRM RESTART` action on both pause and result screens. The confirmed fresh run still claims a new slot, preserving the previous checkpoint.
 - Added complete keyboard operation to Settings with a visible focus outline, Up/Down selection, bidirectional resolution/volume adjustment, Enter activation, and unchanged immediate persistence.

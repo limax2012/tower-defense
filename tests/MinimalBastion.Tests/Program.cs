@@ -291,6 +291,13 @@ internal static class Program
         Check.Equal("normal", ui.SelectedDifficultyId, "new game UI defaults to normal");
         Check.Equal(UiAction.Play, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
             "title Enter starts the prominent new-game action");
+        Check.Equal(UiAction.None, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { NavigateDownPressed = true }),
+            "title arrows move the visible keyboard focus");
+        Check.Equal(UiAction.CoOp, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+            "title Enter activates the focused online co-op action");
+        ui.HandleMainMenu(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
+        Check.Equal(UiAction.Play, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+            "title keyboard focus returns to New Game");
         ui.HandleMainMenu(WorldInput(new Vector2(685, 390)) with { LeftPressed = true });
         Check.Equal("hard", ui.SelectedDifficultyId, "difficulty selector cycles profiles");
     }

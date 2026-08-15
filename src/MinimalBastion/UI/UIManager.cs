@@ -96,6 +96,7 @@ public sealed class UIManager
     private bool _towerLibraryOpen;
     private UserSettings _settings = new();
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
+    private int _mainMenuSelection = 5;
     private int _settingsSelection;
     private int _towerLibraryIndex;
     private int _towerLibraryDoctrineIndex;
@@ -341,32 +342,83 @@ public sealed class UIManager
 
     public UiAction HandleMainMenu(InputSnapshot input)
     {
-        if (input.EnterPressed) return UiAction.Play;
+        if (input.TabPressed || input.NavigateUpPressed || input.NavigateDownPressed)
+        {
+            MoveMainMenuSelection(input.NavigateUpPressed ? -1 : 1);
+            return UiAction.None;
+        }
+        if (input.NavigateLeftPressed || input.NavigateRightPressed)
+        {
+            var direction = input.NavigateLeftPressed ? -1 : 1;
+            if (_mainMenuSelection <= 2)
+            {
+                CycleMainMenuSelector(_mainMenuSelection, direction);
+                return UiAction.None;
+            }
+        }
+        if (input.EnterPressed) return ActivateMainMenuSelection(_mainMenuSelection, 1);
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
-        if (_mapButton.Contains(point) && _maps.Count > 1)
+        for (var index = 0; index < 9; index++)
         {
-            _selectedMapIndex = (_selectedMapIndex + 1) % _maps.Count;
-            return UiAction.None;
+            if (!MainMenuOptionRectangle(index).Contains(point)) continue;
+            _mainMenuSelection = index;
+            return ActivateMainMenuSelection(index, 1);
         }
-        if (_difficultyButton.Contains(point) && _difficulties.Count > 1)
-        {
-            _selectedDifficultyIndex = (_selectedDifficultyIndex + 1) % _difficulties.Count;
-            return UiAction.None;
-        }
-        if (_challengeButton.Contains(point) && _challenges.Count > 1)
-        {
-            _selectedChallengeIndex = (_selectedChallengeIndex + 1) % _challenges.Count;
-            return UiAction.None;
-        }
-        if (_continueButton.Contains(point) && _saveAvailable) return UiAction.LoadGame;
-        if (_mainMenuLibraryButton.Contains(point)) return UiAction.TowerLibrary;
-        if (_playButton.Contains(point)) return UiAction.Play;
-        if (_coOpButton.Contains(point)) return UiAction.CoOp;
-        if (_mainMenuSettingsButton.Contains(point)) return UiAction.Settings;
-        if (_quitButton.Contains(point)) return UiAction.Exit;
         return UiAction.None;
     }
+
+    private void MoveMainMenuSelection(int direction)
+    {
+        for (var attempts = 0; attempts < 9; attempts++)
+        {
+            _mainMenuSelection = (_mainMenuSelection + direction + 9) % 9;
+            if (_mainMenuSelection != 3 || _saveAvailable) return;
+        }
+    }
+
+    private UiAction ActivateMainMenuSelection(int selection, int direction)
+    {
+        if (selection <= 2)
+        {
+            CycleMainMenuSelector(selection, direction);
+            return UiAction.None;
+        }
+        return selection switch
+        {
+            3 when _saveAvailable => UiAction.LoadGame,
+            4 => UiAction.TowerLibrary,
+            5 => UiAction.Play,
+            6 => UiAction.CoOp,
+            7 => UiAction.Settings,
+            8 => UiAction.Exit,
+            _ => UiAction.None
+        };
+    }
+
+    private void CycleMainMenuSelector(int selection, int direction)
+    {
+        if (selection == 0 && _maps.Count > 1)
+            _selectedMapIndex = (_selectedMapIndex + direction + _maps.Count) % _maps.Count;
+        else if (selection == 1 && _difficulties.Count > 1)
+            _selectedDifficultyIndex = (_selectedDifficultyIndex + direction + _difficulties.Count) % _difficulties.Count;
+        else if (selection == 2 && _challenges.Count > 1)
+            _selectedChallengeIndex = (_selectedChallengeIndex + direction + _challenges.Count) % _challenges.Count;
+    }
+
+    private Rectangle MainMenuOptionRectangle(int index) => index switch
+    {
+        0 => _mapButton,
+        1 => _difficultyButton,
+        2 => _challengeButton,
+        3 => _continueButton,
+        4 => _mainMenuLibraryButton,
+        5 => _playButton,
+        6 => _coOpButton,
+        7 => _mainMenuSettingsButton,
+        8 => _quitButton,
+        _ => Rectangle.Empty
+    };
 
     public UiAction HandleSettingsInput(InputSnapshot input)
     {
@@ -1667,6 +1719,9 @@ public sealed class UIManager
         DrawButton(batch, p, _coOpButton, "ONLINE CO-OP", true, ColorPalette.Green);
         DrawButton(batch, p, _mainMenuSettingsButton, "SETTINGS", true, ColorPalette.Orange, ColorPalette.Ink);
         DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
+        var focus = MainMenuOptionRectangle(Math.Clamp(_mainMenuSelection, 0, 8));
+        focus.Inflate(3, 3);
+        p.DrawRect(batch, focus, ColorPalette.Ink, 2);
         DrawFittedCenteredText(batch, $"{mapSuffix} | {map.Description}", new Vector2(640, 632), ColorPalette.Muted, 0.50f, 920);
         DrawFittedCenteredText(batch, map.Campaign.CompactSummary, new Vector2(640, 650), ColorPalette.Cyan, 0.44f, 940);
         DrawFittedCenteredText(batch, $"{(difficulty?.DisplayName ?? "Normal").ToUpperInvariant()} | {difficulty?.ModifierSummary ?? "BALANCED PROFILE"}",
