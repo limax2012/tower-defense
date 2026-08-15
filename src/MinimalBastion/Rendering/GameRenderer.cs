@@ -1,4 +1,5 @@
 using MinimalBastion.Core;
+using MinimalBastion.Data;
 using MinimalBastion.Effects;
 using MinimalBastion.Enemies;
 using MinimalBastion.Towers;
@@ -35,16 +36,15 @@ public sealed class GameRenderer
         var baseColor = session.Map.Definition.Background.BaseColor;
         var accentColor = session.Map.Definition.Background.AccentColor;
         p.FillRect(batch, mapRect, baseColor);
-        DrawMapMotif(batch, p, session.Map.Definition.Background.Motif, accentColor);
+        DrawMapMotif(batch, p, session.Map.Definition.Background.Motif, baseColor, accentColor);
 
         foreach (var region in session.Map.BuildableRegions)
         {
             var pointerInside = region.Contains(session.PlacementPosition.ToPoint());
             var placementActive = session.PlacementTowerId is not null || session.TacticalPlacement == TacticalPlacementKind.ChargeForge;
             var emphasized = placementActive && pointerInside;
-            var regionFill = Color.Lerp(baseColor, accentColor, emphasized ? 0.34f : 0.18f);
-            p.FillRect(batch, region, regionFill);
-            DrawBuildZoneCorners(batch, p, region, emphasized ? ColorPalette.PlacementValid : ColorPalette.WithAlpha(ColorPalette.BuildableOutline, 165), emphasized ? 3 : 2);
+            DrawBuildZone(batch, p, region, session.Map.Definition.Background.Motif, baseColor, accentColor,
+                session.Map.Definition.PathVisual, emphasized);
         }
 
         foreach (var node in session.Map.Definition.PowerNodes)
@@ -60,54 +60,126 @@ public sealed class GameRenderer
         p.DrawRect(batch, mapRect, ColorPalette.MapBoundary, 1);
     }
 
-    private static void DrawMapMotif(SpriteBatch batch, PrimitiveRenderer p, string motif, Color accent)
+    private static void DrawMapMotif(SpriteBatch batch, PrimitiveRenderer p, string motif, Color baseColor, Color accent)
     {
-        var color = ColorPalette.WithAlpha(accent, 46);
         switch (motif.ToLowerInvariant())
         {
-            case "braces":
-                for (var y = 150; y < GameConstants.LogicalHeight; y += 170)
-                for (var x = 70; x < GameConstants.MapWidth; x += 190)
+            case "foundry_floor":
+                // Broad, irregular steel plates give the original arena an
+                // industrial floor without turning the battlefield into a grid.
+                foreach (var slab in new[]
                 {
-                    var center = new Vector2(x, y);
-                    p.Line(batch, center - new Vector2(18, 10), center, color, 2);
-                    p.Line(batch, center, center + new Vector2(18, -10), color, 2);
+                    new Rectangle(28, 82, 250, 112), new Rectangle(686, 76, 230, 126),
+                    new Rectangle(78, 500, 285, 154), new Rectangle(590, 462, 300, 170)
+                })
+                {
+                    p.FillRect(batch, slab, Color.Lerp(baseColor, accent, 0.10f));
+                    p.DrawRect(batch, slab, Color.Lerp(baseColor, accent, 0.20f), 1);
+                    p.Circle(batch, new Vector2(slab.Left + 12, slab.Top + 12), 2.2f, Color.Lerp(baseColor, accent, 0.42f));
+                    p.Circle(batch, new Vector2(slab.Right - 12, slab.Bottom - 12), 2.2f, Color.Lerp(baseColor, accent, 0.42f));
                 }
                 break;
 
-            case "facets":
-                for (var y = 150; y < GameConstants.LogicalHeight; y += 175)
-                for (var x = 80; x < GameConstants.MapWidth; x += 180)
+            case "meadow":
+                // Sparse shrubs and a low basin pool replace the old arrow-like
+                // wind marks. Nothing here implies movement or a gameplay force.
+                p.Circle(batch, new Vector2(486, 358), 126, Color.Lerp(baseColor, ColorPalette.Cyan, 0.035f));
+                p.Circle(batch, new Vector2(486, 358), 83, Color.Lerp(baseColor, ColorPalette.Cyan, 0.025f));
+                foreach (var center in new[]
                 {
-                    var center = new Vector2(x + ((y / 175) % 2) * 44, y);
-                    p.DrawPolygon(batch, center, 14, 4, false, color, MathHelper.PiOver4);
-                    p.Line(batch, center + new Vector2(14, 0), center + new Vector2(34, 0), color, 1);
+                    new Vector2(68, 102), new Vector2(312, 92), new Vector2(530, 126), new Vector2(760, 104),
+                    new Vector2(92, 556), new Vector2(332, 600), new Vector2(704, 560), new Vector2(900, 580)
+                })
+                {
+                    p.Circle(batch, center, 8, Color.Lerp(baseColor, accent, 0.25f));
+                    p.Circle(batch, center + new Vector2(10, 4), 6, Color.Lerp(baseColor, accent, 0.20f));
+                    p.Circle(batch, center + new Vector2(-8, 6), 5, Color.Lerp(baseColor, accent, 0.17f));
                 }
                 break;
 
-            case "traces":
-                for (var y = 145; y < GameConstants.LogicalHeight; y += 165)
-                for (var x = 72; x < GameConstants.MapWidth; x += 185)
+            case "crystal_field":
+                // A few large translucent facets read as landscape, unlike the
+                // former repeated square-and-dash icon pattern.
+                foreach (var facet in new[]
                 {
-                    var start = new Vector2(x, y);
-                    p.Line(batch, start, start + new Vector2(24, 0), color, 2);
-                    p.Line(batch, start + new Vector2(24, 0), start + new Vector2(24, 14), color, 2);
-                    p.DrawPolygon(batch, start + new Vector2(28, 18), 3, 4, false, color, MathHelper.PiOver4);
+                    (new Vector2(92, 156), 68f, -0.28f, ColorPalette.Violet),
+                    (new Vector2(468, 182), 88f, 0.42f, ColorPalette.Cyan),
+                    (new Vector2(742, 420), 104f, -0.52f, ColorPalette.Violet),
+                    (new Vector2(360, 594), 76f, 0.18f, ColorPalette.Cyan)
+                })
+                {
+                    p.DrawPolygon(batch, facet.Item1, facet.Item2, 3, false,
+                        Color.Lerp(baseColor, facet.Item4, 0.07f), facet.Item3);
+                    p.Line(batch, facet.Item1, facet.Item1 + new Vector2(MathF.Cos(facet.Item3), MathF.Sin(facet.Item3)) * facet.Item2,
+                        Color.Lerp(baseColor, facet.Item4, 0.18f), 1);
                 }
                 break;
 
-            case "currents":
-                for (var y = 140; y < GameConstants.LogicalHeight; y += 155)
-                for (var x = 68; x < GameConstants.MapWidth; x += 180)
+            case "surge_field":
+                // Large overlapping energy basins establish the divide without
+                // the old circuit-trace symbols or directional arrows.
+                p.FillRect(batch, new Rectangle(350, 58, 240, 662), Color.Lerp(baseColor, accent, 0.055f));
+                foreach (var field in new[]
                 {
-                    var center = new Vector2(x + ((y / 155) % 2) * 36, y);
-                    p.Line(batch, center - new Vector2(16, 7), center, color, 2);
-                    p.Line(batch, center, center - new Vector2(16, -7), color, 2);
-                    p.Line(batch, center + new Vector2(8, -7), center + new Vector2(24, 0), color, 1);
-                    p.Line(batch, center + new Vector2(24, 0), center + new Vector2(8, 7), color, 1);
+                    (new Vector2(180, 330), 128f, ColorPalette.Cyan),
+                    (new Vector2(486, 356), 156f, ColorPalette.Violet),
+                    (new Vector2(780, 342), 124f, ColorPalette.Cyan)
+                })
+                {
+                    p.Circle(batch, field.Item1, field.Item2, Color.Lerp(baseColor, field.Item3, 0.025f));
+                    p.Ring(batch, field.Item1, field.Item2, Color.Lerp(baseColor, field.Item3, 0.13f), 1);
                 }
                 break;
         }
+    }
+
+    private static void DrawBuildZone(SpriteBatch batch, PrimitiveRenderer p, Rectangle region, string motif,
+        Color baseColor, Color accentColor, PathVisualData pathVisual, bool emphasized)
+    {
+        var outline = emphasized
+            ? ColorPalette.PlacementValid
+            : motif.Equals("meadow", StringComparison.OrdinalIgnoreCase)
+                ? Color.Lerp(baseColor, accentColor, 0.58f)
+                : Color.Lerp(baseColor, pathVisual.SecondaryColor, 0.52f);
+        var regionFill = Color.Lerp(baseColor, accentColor, emphasized ? 0.43f : 0.16f);
+        p.FillRect(batch, region, regionFill);
+
+        switch (motif.ToLowerInvariant())
+        {
+            case "meadow":
+                // A clearing is a quiet translucent patch with a restrained
+                // boundary, not another tactical bracket floating over grass.
+                p.DrawRect(batch, region, outline, emphasized ? 3 : 1);
+                p.Circle(batch, new Vector2(region.Left, region.Top), 2.5f, outline);
+                p.Circle(batch, new Vector2(region.Right - 1, region.Bottom - 1), 2.5f, outline);
+                break;
+            case "crystal_field":
+                DrawChamferedZone(batch, p, region, outline, emphasized ? 3 : 2);
+                break;
+            case "surge_field":
+                p.DrawRect(batch, region, outline, emphasized ? 3 : 1);
+                break;
+            default:
+                DrawBuildZoneCorners(batch, p, region, outline, emphasized ? 3 : 2);
+                break;
+        }
+    }
+
+    private static void DrawChamferedZone(SpriteBatch batch, PrimitiveRenderer p, Rectangle region, Color color, int thickness)
+    {
+        const int cut = 10;
+        var left = region.Left;
+        var right = region.Right - 1;
+        var top = region.Top;
+        var bottom = region.Bottom - 1;
+        p.Line(batch, new Vector2(left + cut, top), new Vector2(right - cut, top), color, thickness);
+        p.Line(batch, new Vector2(right - cut, top), new Vector2(right, top + cut), color, thickness);
+        p.Line(batch, new Vector2(right, top + cut), new Vector2(right, bottom - cut), color, thickness);
+        p.Line(batch, new Vector2(right, bottom - cut), new Vector2(right - cut, bottom), color, thickness);
+        p.Line(batch, new Vector2(right - cut, bottom), new Vector2(left + cut, bottom), color, thickness);
+        p.Line(batch, new Vector2(left + cut, bottom), new Vector2(left, bottom - cut), color, thickness);
+        p.Line(batch, new Vector2(left, bottom - cut), new Vector2(left, top + cut), color, thickness);
+        p.Line(batch, new Vector2(left, top + cut), new Vector2(left + cut, top), color, thickness);
     }
 
     private static void DrawBuildZoneCorners(SpriteBatch batch, PrimitiveRenderer p, Rectangle region, Color color, int thickness)
@@ -128,43 +200,77 @@ public sealed class GameRenderer
     private static void DrawPath(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
         var points = session.Map.Definition.Path.Select(x => x.ToVector2()).ToArray();
-        var roadWidth = session.Map.Definition.PathWidth;
+        var pathWidth = session.Map.Definition.PathWidth;
         var visual = session.Map.Definition.PathVisual;
 
-        if (visual.Style.Equals("conduit", StringComparison.OrdinalIgnoreCase))
+        if (visual.Style.Equals("foundry", StringComparison.OrdinalIgnoreCase))
         {
-            // A narrow colored sleeve and inset core read as one continuous tube.
-            // Matching square joins remove tile seams without introducing round caps.
-            DrawContinuousPath(batch, p, points, visual.AccentColor, roadWidth);
-            DrawContinuousPath(batch, p, points, visual.BaseColor, Math.Max(12, roadWidth - 8));
-            DrawDashedPath(batch, p, points, visual.SecondaryColor, 3, 10, 13);
+            // A solid molten transfer channel: steel banks, dark refractory
+            // lining, and a warm core. It reads as foundry infrastructure rather
+            // than a road, while keeping its exact gameplay footprint obvious.
+            DrawContinuousPath(batch, p, points, visual.BaseColor, pathWidth);
+            DrawContinuousPath(batch, p, points, visual.SecondaryColor, Math.Max(12, pathWidth - 10));
+            DrawContinuousPath(batch, p, points, visual.AccentColor, Math.Max(12, pathWidth / 3));
+            DrawContinuousPath(batch, p, points, ColorPalette.Tint(visual.AccentColor, 0.30f), 4);
             return;
         }
 
-        if (visual.Style.Equals("channel", StringComparison.OrdinalIgnoreCase))
+        if (visual.Style.Equals("trail", StringComparison.OrdinalIgnoreCase))
         {
-            // A slim cyan bank around a slate current differentiates this route
-            // without introducing segment seams or tile-like joints.
-            DrawContinuousPath(batch, p, points, visual.SecondaryColor, roadWidth);
-            DrawContinuousPath(batch, p, points, visual.BaseColor, Math.Max(12, roadWidth - 6));
-            DrawDashedPath(batch, p, points, visual.AccentColor, 3, 13, 19);
+            // Layered earth and sparse static stones form a footpath. There are
+            // deliberately no center lines or directional animation.
+            DrawContinuousPath(batch, p, points, visual.SecondaryColor, pathWidth);
+            DrawContinuousPath(batch, p, points, visual.AccentColor, Math.Max(12, pathWidth - 4));
+            DrawContinuousPath(batch, p, points, visual.BaseColor, Math.Max(12, pathWidth - 10));
+            DrawTrailStones(batch, p, points, ColorPalette.Tint(visual.AccentColor, 0.18f));
+            return;
+        }
+
+        if (visual.Style.Equals("prism", StringComparison.OrdinalIgnoreCase))
+        {
+            // A continuous violet light ribbon with a narrow cyan refraction
+            // core. Solid layers avoid the road/tile reading entirely.
+            DrawContinuousPath(batch, p, points, visual.AccentColor, pathWidth);
+            DrawContinuousPath(batch, p, points, visual.BaseColor, Math.Max(12, pathWidth - 8));
+            DrawContinuousPath(batch, p, points, visual.SecondaryColor, 6);
             return;
         }
 
         if (visual.Style.Equals("surge", StringComparison.OrdinalIgnoreCase))
         {
-            // Surge Divide uses a powered rail rather than another road: one
-            // seamless slate tube, a narrow cyan energy core, and restrained
-            // gold packets that move through it while simulation time runs.
-            DrawContinuousPath(batch, p, points, visual.BaseColor, roadWidth);
-            DrawContinuousPath(batch, p, points, visual.SecondaryColor, Math.Max(7, roadWidth / 7));
-            var phase = session.Statistics.SimulatedSeconds * 24f;
-            DrawDashedPath(batch, p, points, visual.AccentColor, 4, 9, 25, phase);
+            // Surge Divide is a static energy trench. The former moving packet
+            // dashes were purely decorative, but looked like reverse motion and
+            // falsely suggested a slow effect.
+            DrawContinuousPath(batch, p, points, visual.BaseColor, pathWidth);
+            DrawContinuousPath(batch, p, points, visual.SecondaryColor, Math.Max(14, pathWidth / 2));
+            DrawContinuousPath(batch, p, points, ColorPalette.Tint(visual.SecondaryColor, 0.30f), 6);
             return;
         }
 
-        DrawContinuousPath(batch, p, points, visual.BaseColor, roadWidth);
+        DrawContinuousPath(batch, p, points, visual.BaseColor, pathWidth);
         DrawDashedPath(batch, p, points, visual.AccentColor, 4, 18, 16);
+    }
+
+    private static void DrawTrailStones(SpriteBatch batch, PrimitiveRenderer p, IReadOnlyList<Vector2> points, Color color)
+    {
+        var stoneIndex = 0;
+        for (var segmentIndex = 0; segmentIndex < points.Count - 1; segmentIndex++)
+        {
+            var start = points[segmentIndex];
+            var delta = points[segmentIndex + 1] - start;
+            var length = delta.Length();
+            if (length <= 0.01f) continue;
+            var direction = delta / length;
+            var normal = new Vector2(-direction.Y, direction.X);
+            for (var distance = 30f; distance < length - 16f; distance += 62f)
+            {
+                var offset = stoneIndex++ % 2 == 0 ? -13f : 13f;
+                var position = start + direction * distance + normal * offset;
+                p.Circle(batch, position, stoneIndex % 3 == 0 ? 2.5f : 2f, color);
+                if (stoneIndex % 4 == 0)
+                    p.Circle(batch, position + direction * 6 + normal * 2, 1.4f, Color.Lerp(color, ColorPalette.Ink, 0.18f));
+            }
+        }
     }
 
     private static void DrawContinuousPath(SpriteBatch batch, PrimitiveRenderer p, IReadOnlyList<Vector2> points, Color color, int width)

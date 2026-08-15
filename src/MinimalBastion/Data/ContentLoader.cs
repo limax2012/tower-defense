@@ -198,6 +198,9 @@ public static class DataValidator
             !map.PathVisual.Style.Equals("road", StringComparison.OrdinalIgnoreCase) &&
             !map.PathVisual.Style.Equals("conduit", StringComparison.OrdinalIgnoreCase) &&
             !map.PathVisual.Style.Equals("channel", StringComparison.OrdinalIgnoreCase) &&
+            !map.PathVisual.Style.Equals("foundry", StringComparison.OrdinalIgnoreCase) &&
+            !map.PathVisual.Style.Equals("trail", StringComparison.OrdinalIgnoreCase) &&
+            !map.PathVisual.Style.Equals("prism", StringComparison.OrdinalIgnoreCase) &&
             !map.PathVisual.Style.Equals("surge", StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException($"Invalid map presentation: {map.Id}");
         if (map.PowerNodes.Any(x => string.IsNullOrWhiteSpace(x.Id) || x.Radius <= 0 || x.AttackSpeedBonus < 0 || x.RangeBonus < 0 ||

@@ -2169,7 +2169,7 @@ public sealed class UIManager
         var accent = MapLibraryAccent(map.PathStyle);
         DrawSetupCardFrame(batch, p, rect, accent, selected);
         DrawFittedText(batch, map.Name.ToUpperInvariant(), new Vector2(rect.X + 12, rect.Y + 13), ColorPalette.Navy, 0.62f, rect.Width - 24);
-        DrawFittedText(batch, $"THREAT {map.Challenge}/5  |  {(map.PowerNodes > 0 ? $"{map.PowerNodes} NODES" : map.PathStyle.ToUpperInvariant())}",
+        DrawFittedText(batch, $"THREAT {map.Challenge}/5  |  {(map.PowerNodes > 0 ? $"{map.PowerNodes} NODES" : MapPathLabel(map.PathStyle))}",
             new Vector2(rect.X + 12, rect.Y + 38), accent, 0.46f, rect.Width - 24);
         DrawWrappedText(batch, map.Description, new Rectangle(rect.X + 12, rect.Y + 61, rect.Width - 24, 38), ColorPalette.Muted, 0.43f, 2);
         DrawFittedText(batch, $"BASE {map.StartingCredits}  |  {map.Campaign.TotalContacts:N0} CONTACTS  |  PEAK {map.Campaign.PeakContacts}", new Vector2(rect.X + 12, rect.Bottom - 19),
@@ -2756,11 +2756,10 @@ public sealed class UIManager
             p.FillRect(batch, row, selected ? ColorPalette.Tint(accent, 0.80f) : ColorPalette.PanelAlt);
             p.DrawRect(batch, row, selected ? accent : ColorPalette.CardOutline, selected ? 2 : 1);
             p.DrawShape(batch, new Vector2(row.X + 31, row.Y + 31), 15,
-                map.PathStyle.Equals("conduit", StringComparison.OrdinalIgnoreCase) ? "diamond" :
-                map.PathStyle.Equals("channel", StringComparison.OrdinalIgnoreCase) ? "triangle" : "square",
+                MapLibraryShape(map.PathStyle),
                 accent, ColorPalette.Ink, Math.Max(1, map.Challenge - 1), false);
             DrawFittedText(batch, map.Name, new Vector2(row.X + 58, row.Y + 14), ColorPalette.Ink, 0.62f, 160);
-            DrawText(batch, $"THREAT {map.Challenge}/5  |  {map.PathStyle.ToUpperInvariant()}  |  BASE {map.StartingCredits}",
+            DrawText(batch, $"THREAT {map.Challenge}/5  |  {MapPathLabel(map.PathStyle)}  |  BASE {map.StartingCredits}",
                 new Vector2(row.X + 58, row.Y + 39), ColorPalette.Muted, 0.43f);
             DrawFittedText(batch, $"{map.Campaign.TotalContacts:N0} contacts  |  peak {map.Campaign.PeakContacts}  |  boss W{map.Campaign.BossWave}",
                 new Vector2(row.X + 14, row.Y + 67), ColorPalette.ReadableAccent(accent, selected ? ColorPalette.Tint(accent, 0.80f) : ColorPalette.PanelAlt),
@@ -3041,9 +3040,29 @@ public sealed class UIManager
 
     private static Color MapLibraryAccent(string pathStyle) => pathStyle.ToLowerInvariant() switch
     {
-        "channel" => ColorPalette.Cyan,
-        "conduit" => ColorPalette.Violet,
-        _ => ColorPalette.Gold
+        "trail" or "channel" => ColorPalette.Green,
+        "prism" or "conduit" => ColorPalette.Violet,
+        "surge" => ColorPalette.Cyan,
+        _ => ColorPalette.Orange
+    };
+
+    private static string MapLibraryShape(string pathStyle) => pathStyle.ToLowerInvariant() switch
+    {
+        "trail" or "channel" => "circle",
+        "prism" or "conduit" => "diamond",
+        "surge" => "hexagon",
+        _ => "square"
+    };
+
+    private static string MapPathLabel(string pathStyle) => pathStyle.ToLowerInvariant() switch
+    {
+        "foundry" => "MOLTEN CHANNEL",
+        "trail" => "EARTH TRAIL",
+        "prism" => "LIGHT RIBBON",
+        "surge" => "ENERGY TRENCH",
+        "channel" => "CHANNEL",
+        "conduit" => "CONDUIT",
+        _ => "ROAD"
     };
 
     private static Color CampaignWaveAccent(CampaignWaveReference wave) => wave.Threats.Contains("BOSS", StringComparison.OrdinalIgnoreCase)

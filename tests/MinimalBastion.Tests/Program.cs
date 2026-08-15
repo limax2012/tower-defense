@@ -651,8 +651,12 @@ internal static class Program
 
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
+        Check.Equal(content.Maps.Count,
+            content.Maps.Values.Select(map => map.Background.BaseColor).Distinct().Count(),
+            "each arena now has its own restrained terrain foundation");
         foreach (var map in content.Maps.Values)
-            Check.Equal(new Color(21, 45, 54), map.Background.BaseColor, $"{map.Id} battlefield foundation");
+            Check.True(map.Background.BaseColor.R + map.Background.BaseColor.G + map.Background.BaseColor.B > 90,
+                $"{map.Id} battlefield stays colored rather than near-black");
     }
 
     private static void MapRosterAndPowerNodes()
@@ -677,9 +681,20 @@ internal static class Program
             "each arena has an independently authored wave roster");
         Check.True(content.Maps.Values.All(map => !map.Background.Motif.Equals("none", StringComparison.OrdinalIgnoreCase)),
             "every arena opts into a visual identity motif");
-        Check.Equal("conduit", prism.PathVisual.Style, "Prism uses a distinct conduit path");
-        Check.Equal("channel", crosswind.PathVisual.Style, "Crosswind uses a distinct channel path");
-        Check.Equal("surge", relay.PathVisual.Style, "Surge uses a distinct powered rail path");
+        Check.Equal("foundry", content.Maps["foundry_loop"].PathVisual.Style, "Foundry uses a molten industrial channel");
+        Check.Equal("prism", prism.PathVisual.Style, "Prism uses a continuous refracted light ribbon");
+        Check.Equal("trail", crosswind.PathVisual.Style, "Crosswind uses a static earth trail");
+        Check.Equal("surge", relay.PathVisual.Style, "Surge uses a static energy trench");
+        Check.True(content.Maps.Values.All(map => map.Background.Motif is not ("braces" or "currents" or "facets" or "traces")),
+            "legacy repeated arrow, trace, and square-dash motifs are removed");
+        foreach (var map in content.Maps.Values)
+        {
+            var regions = map.BuildableRegions.Select(region => region.ToRectangle()).ToArray();
+            for (var first = 0; first < regions.Length; first++)
+            for (var second = first + 1; second < regions.Length; second++)
+                Check.True(!regions[first].Intersects(regions[second]),
+                    $"{map.Id} build zones {first} and {second} do not visually overlap");
+        }
         Check.Equal(0, crosswind.PowerNodes.Count, "Crosswind relies on crossfire geometry rather than power nodes");
         Check.Equal("crosswind_waves", crosswind.WaveSet, "Crosswind has its own campaign");
         Check.True(content.WaveSets[crosswind.WaveSet].Waves[1].Groups.Any(x => x.EnemyId == "t2_runner"),
