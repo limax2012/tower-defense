@@ -2826,6 +2826,11 @@ internal static class Program
             Check.Equal(session.Map.Definition.Id, contentRecovered.Map.Definition.Id,
                 "recovery generation restores its valid map identity");
 
+            using (var oversized = File.Create(repository.GetSlotPath(1)))
+                oversized.SetLength(SaveSlotRepository.MaximumSaveFileBytes + 1);
+            Check.Equal(originalCredits, repository.LoadData(1).Economy.Credits,
+                "oversized primary is rejected before allocation and falls back to recovery");
+
             File.Delete(repository.GetSlotPath(1));
             Check.True(repository.GetSlots().Single(slot => slot.Slot == 1).IsOccupied,
                 "backup-only interrupted slot remains discoverable");

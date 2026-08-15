@@ -19,6 +19,12 @@ public sealed record SaveSlotInfo(
 
 public sealed class SaveSlotRepository
 {
+    public const long MaximumSaveFileBytes = 8 * 1024 * 1024;
+    private const int MaximumTowers = 1024;
+    private const int MaximumPulsePlates = 256;
+    private const int MaximumHandledEnemiesPerPlate = 4096;
+    private const int MaximumStatisticsEntries = 4096;
+    private const int MaximumSpecializationsPerTower = 64;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
@@ -183,8 +189,7 @@ public sealed class SaveSlotRepository
         if (!File.Exists(LegacySavePath) || GetExistingSlotNumbers().Count > 0) return;
         try
         {
-            var data = JsonSerializer.Deserialize<SaveGameData>(File.ReadAllText(LegacySavePath), JsonOptions);
-            if (data is null || data.SchemaVersion != SaveGameData.CurrentSchemaVersion) return;
+            var data = ReadSaveData(LegacySavePath);
             WriteAtomically(GetSlotPath(1), data);
         }
         catch
@@ -244,6 +249,9 @@ public sealed class SaveSlotRepository
 
     private static SaveGameData ReadSaveData(string path)
     {
+        var fileLength = new FileInfo(path).Length;
+        if (fileLength <= 0 || fileLength > MaximumSaveFileBytes)
+            throw new InvalidDataException($"Save file '{Path.GetFileName(path)}' exceeds the supported size limit.");
         var data = JsonSerializer.Deserialize<SaveGameData>(File.ReadAllText(path), JsonOptions)
             ?? throw new InvalidDataException($"Save file '{Path.GetFileName(path)}' is empty or invalid.");
         if (data.SchemaVersion != SaveGameData.CurrentSchemaVersion)
@@ -259,6 +267,9 @@ public sealed class SaveSlotRepository
             data.RunId is null || data.RunId.Length > 64 ||
             data.Economy is null || data.Waves is null || data.Towers is null || data.PulsePlates is null || data.Statistics is null ||
             data.Statistics.Towers is null || data.Statistics.Enemies is null || data.Statistics.TowerDefinitionByInstance is null ||
+            data.Towers.Count > MaximumTowers || data.PulsePlates.Count > MaximumPulsePlates ||
+            data.Statistics.Towers.Count > MaximumStatisticsEntries || data.Statistics.Enemies.Count > MaximumStatisticsEntries ||
+            data.Statistics.TowerDefinitionByInstance.Count > MaximumStatisticsEntries ||
             data.NextEnemyId <= 0 || data.NextTowerId <= 0 || data.NextEmergencyDefenseId <= 0 ||
             !float.IsFinite(data.Speed) || data.Speed <= 0 || !IsNonnegativeFinite(data.OverdriveCooldownRemaining) ||
             data.EmergencyInventory < 0 || data.EmergencyDirectPurchasesThisWave < 0 || data.Waves.CurrentWaveNumber < 0 ||
@@ -270,6 +281,8 @@ public sealed class SaveSlotRepository
 
         if (data.Towers.Any(tower => tower is null) || data.Towers.Select(tower => tower.Id).Distinct().Count() != data.Towers.Count ||
             data.Towers.Any(tower => tower.Id <= 0 || tower.OwnerPlayerId is < 1 or > 2 || string.IsNullOrWhiteSpace(tower.DefinitionId) ||
+                tower.DefinitionId.Length > 128 || tower.DoctrineId is { Length: > 128 } ||
+                tower.SpecializationId is { Length: > 128 } ||
                 !float.IsFinite(tower.X) || !float.IsFinite(tower.Y) || tower.LevelIndex < 0 ||
                 !Enum.IsDefined(tower.TargetMode) || tower.InvestedCredits < 0 || !float.IsFinite(tower.CooldownRemaining) ||
                 !IsNonnegativeFinite(tower.OverdriveRemaining) || !IsNonnegativeFinite(tower.LifetimeDamage) ||
@@ -287,7 +300,7 @@ public sealed class SaveSlotRepository
             data.PulsePlates.Any(plate => plate.Id <= 0 || plate.OwnerPlayerId is < 1 or > 2 || plate.HandledEnemyIds is null ||
                 !float.IsFinite(plate.X) || !float.IsFinite(plate.Y) || plate.ChargesRemaining < 0 ||
                 !IsNonnegativeFinite(plate.ArmRemaining) || !IsNonnegativeFinite(plate.CooldownRemaining) ||
-                plate.HandledEnemyIds.Any(enemyId => enemyId <= 0)) ||
+                plate.HandledEnemyIds.Count > MaximumHandledEnemiesPerPlate || plate.HandledEnemyIds.Any(enemyId => enemyId <= 0)) ||
             data.PulsePlates.Any(plate => plate.Id >= data.NextEmergencyDefenseId))
             throw new InvalidDataException("Save Pulse Plate data is structurally invalid.");
 
@@ -306,7 +319,8 @@ public sealed class SaveSlotRepository
             statistics.EmergencyKills < 0 || !IsNonnegativeFinite(statistics.EmergencyDamage) ||
             statistics.GeneratedCharges < 0 || statistics.GeneratorPurchases < 0 || statistics.GeneratorUpgrades < 0 ||
             statistics.Towers.Any(tower => tower is null || string.IsNullOrWhiteSpace(tower.TowerId) ||
-                string.IsNullOrWhiteSpace(tower.DisplayName) || tower.Specializations is null ||
+                string.IsNullOrWhiteSpace(tower.DisplayName) || tower.TowerId.Length > 128 || tower.DisplayName.Length > 128 ||
+                tower.Specializations is null || tower.Specializations.Count > MaximumSpecializationsPerTower ||
                 tower.Purchases < 0 || tower.Upgrades < 0 || tower.Sales < 0 || tower.CreditsSpent < 0 ||
                 tower.CreditsRecovered < 0 || tower.Hits < 0 || tower.Kills < 0 || tower.Overdrives < 0 ||
                 !IsNonnegativeFinite(tower.Damage) || !IsNonnegativeFinite(tower.SupportDamageEquivalent) ||
@@ -317,7 +331,8 @@ public sealed class SaveSlotRepository
                     string.IsNullOrWhiteSpace(value.Key) || value.Value < 0)) ||
             statistics.Towers.Select(tower => tower.TowerId).Distinct(StringComparer.OrdinalIgnoreCase).Count() != statistics.Towers.Count ||
             statistics.Enemies.Any(enemy => enemy is null || string.IsNullOrWhiteSpace(enemy.EnemyId) ||
-                string.IsNullOrWhiteSpace(enemy.DisplayName) || enemy.Kills < 0 || enemy.Escapes < 0 || enemy.LivesLost < 0) ||
+                string.IsNullOrWhiteSpace(enemy.DisplayName) || enemy.EnemyId.Length > 128 || enemy.DisplayName.Length > 128 ||
+                enemy.Kills < 0 || enemy.Escapes < 0 || enemy.LivesLost < 0) ||
             statistics.Enemies.Select(enemy => enemy.EnemyId).Distinct(StringComparer.OrdinalIgnoreCase).Count() != statistics.Enemies.Count ||
             statistics.TowerDefinitionByInstance.Any(source => source.Key <= 0 || string.IsNullOrWhiteSpace(source.Value) ||
                 statistics.Towers.All(tower => !tower.TowerId.Equals(source.Value, StringComparison.OrdinalIgnoreCase))))

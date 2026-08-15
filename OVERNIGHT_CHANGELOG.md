@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Bounded checkpoint files and nested collections before expensive reads or reconstruction. Empty/oversized primaries, implausible tower/plate/stat counts, and oversized handled-enemy/specialization lists now recover through the known-good backup instead of risking excessive local allocation; normal save-slot quantity remains filesystem-limited rather than capped.
 - Extended save backup recovery across full content-aware session reconstruction. A valid-JSON primary with an unavailable map/tower, invalid authored branch/level, or incompatible runtime invariant now falls back to the known-good generation instead of failing after the repository had already accepted it.
 - Guarded the final deep-endless identity boundary. Exhausted 32-bit tower and Pulse Plate IDs now produce a clear placement-capacity message without spending, while enemy spawning remains saturated instead of wrapping into negative or duplicate IDs that could corrupt targeting, saves, or co-op checksums.
 - Saturated the per-wave direct Pulse Plate purchase counter. An extreme restored endless state at the integer limit can no longer wrap its escalating-price counter negative after paying the capped price.
