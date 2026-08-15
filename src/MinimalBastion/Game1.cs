@@ -1250,20 +1250,24 @@ public sealed class Game1 : Game
     private void ApplyUserSettings()
     {
         _settings.Normalize();
-        try
+        if (_ui.SelectedSettingsIndex <= 2)
         {
-            ApplyGraphicsSettings();
+            try
+            {
+                ApplyGraphicsSettings();
+            }
+            catch (Exception exception)
+            {
+                _settings.Fullscreen = false;
+                _settings.WindowWidth = GameConstants.LogicalWidth;
+                _settings.WindowHeight = GameConstants.LogicalHeight;
+                try { ApplyGraphicsSettings(); } catch { }
+                try { UserSettingsStore.Save(_settings); } catch { }
+                _ui.SetSettingsStatus($"Display mode was unsupported; restored 1280 x 720 windowed. {exception.GetBaseException().Message}");
+                return;
+            }
         }
-        catch (Exception exception)
-        {
-            _settings.Fullscreen = false;
-            _settings.WindowWidth = GameConstants.LogicalWidth;
-            _settings.WindowHeight = GameConstants.LogicalHeight;
-            try { ApplyGraphicsSettings(); } catch { }
-            try { UserSettingsStore.Save(_settings); } catch { }
-            _ui.SetSettingsStatus($"Display mode was unsupported; restored 1280 x 720 windowed. {exception.GetBaseException().Message}");
-            return;
-        }
+        else ApplyPresentationSettings();
 
         try
         {
@@ -1287,6 +1291,11 @@ public sealed class Game1 : Game
         _graphics.HardwareModeSwitch = false;
         _graphics.IsFullScreen = _settings.Fullscreen;
         _graphics.ApplyChanges();
+        ApplyPresentationSettings();
+    }
+
+    private void ApplyPresentationSettings()
+    {
         _gameRenderer.ReducedEffects = _settings.ReducedEffects;
         if (_audio is not null)
         {
