@@ -214,7 +214,7 @@ Date: 2026-08-14
 
 ## Tests added
 
-- Expanded deterministic suite from the original baseline to 48 passing checks.
+- Expanded deterministic suite from the original baseline to 65 passing checks.
 - Coverage includes four authored campaigns, difficulty persistence, node buffs/checksum, pathing, targeting, armor/DOT/status, elites/boss, economy, placement, endless continuation, early calls, mixed waves, tower behavior, contribution telemetry, shared co-op controls, mirrored commands, hidden-scale/stat checksum coverage, a 500-tick mid-combat reconnect soak, loopback transport, build mismatch rejection, wave ready, endpoint parsing, tower intel/roles/Protocols, Pulse Plate reliability, wave-only forge production, saves, high-resolution composition, palette constants, and headless determinism.
 - Release build and self-contained publish complete with 0 warnings and 0 errors.
 

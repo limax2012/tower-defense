@@ -55,15 +55,15 @@ internal static class BalanceSimulation
 
         Console.WriteLine();
         Console.WriteLine("PRACTICAL SCENARIOS (level 1)");
-        Console.WriteLine("Tower                 Fast DPS  Swarm kills/leaks  Waste %  Dense aggregate DPS  Boss DPS");
-        Console.WriteLine("--------------------  --------  -----------------  -------  -------------------  --------");
+        Console.WriteLine("Tower                 Fast DPS  Swarm K/S/L  HP cut  Waste %  Dense aggregate DPS  Boss DPS");
+        Console.WriteLine("--------------------  --------  -----------  ------  -------  -------------------  --------");
         foreach (var tower in content.Towers.Values.OrderBy(x => x.PurchaseCost))
         {
             var fast = FastEnemy(content, tower);
             var swarm = Swarm(content, tower);
             var dense = DenseGroup(content, tower, 0, 12, 8);
             var boss = SingleTarget(content, tower, 0, 30, 0, 1_000_000);
-            Console.WriteLine($"{tower.DisplayName,-20}  {fast.DamagePerSecond,8:0.0}  {swarm.Kills,5}/{swarm.Leaks,-10}  {WastePercent(swarm),7:0.0}  {dense.DamagePerSecond,19:0.0}  {boss.DamagePerSecond,8:0.0}");
+            Console.WriteLine($"{tower.DisplayName,-20}  {fast.DamagePerSecond,8:0.0}  {swarm.Kills,2}/{swarm.Survivors,2}/{swarm.Leaks,-2}  {swarm.HealthRemovedPercent,5:0.0}%  {WastePercent(swarm),7:0.0}  {dense.DamagePerSecond,19:0.0}  {boss.DamagePerSecond,8:0.0}");
         }
 
         PrintSupportEconomy(content);
@@ -396,9 +396,17 @@ internal static class BalanceSimulation
         public SimulationResult ToResult(float seconds, params EnemyInstance[] targets)
         {
             Leaks = targets.Count(x => x.HasEscaped);
-            return new SimulationResult(Damage, Damage / MathF.Max(0.001f, seconds), Kills, Leaks, ArmorAbsorbed, Overkill, Incoming, Hits);
+            var survivors = targets.Count(x => !x.IsDead && !x.HasEscaped);
+            var startingHealth = targets.Sum(x => x.MaxHealth);
+            var remainingHealth = targets.Sum(x => x.IsDead ? 0 : x.Health);
+            var healthRemovedPercent = startingHealth <= 0
+                ? 0
+                : MathHelper.Clamp((startingHealth - remainingHealth) / startingHealth * 100f, 0, 100);
+            return new SimulationResult(Damage, Damage / MathF.Max(0.001f, seconds), Kills, survivors, Leaks,
+                healthRemovedPercent, ArmorAbsorbed, Overkill, Incoming, Hits);
         }
     }
 
-    private sealed record SimulationResult(float Damage, float DamagePerSecond, int Kills, int Leaks, float ArmorAbsorbed, float Overkill, float Incoming, int Hits);
+    private sealed record SimulationResult(float Damage, float DamagePerSecond, int Kills, int Survivors, int Leaks,
+        float HealthRemovedPercent, float ArmorAbsorbed, float Overkill, float Incoming, int Hits);
 }
