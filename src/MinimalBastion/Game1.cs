@@ -65,10 +65,12 @@ public sealed class Game1 : Game
     public Game1()
     {
         _settings = UserSettingsStore.Load();
+        var desktopMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+        var outputSize = _settings.ResolveBackBufferSize(desktopMode.Width, desktopMode.Height);
         _graphics = new GraphicsDeviceManager(this)
         {
-            PreferredBackBufferWidth = _settings.WindowWidth,
-            PreferredBackBufferHeight = _settings.WindowHeight,
+            PreferredBackBufferWidth = outputSize.Width,
+            PreferredBackBufferHeight = outputSize.Height,
             SynchronizeWithVerticalRetrace = _settings.VSync,
             // The fixed 2x scene target already provides edge supersampling.
             // Backbuffer MSAA is unnecessary for the final textured composite.
@@ -1328,12 +1330,21 @@ public sealed class Game1 : Game
 
     private void ApplyGraphicsSettings()
     {
-        _graphics.PreferredBackBufferWidth = _settings.WindowWidth;
-        _graphics.PreferredBackBufferHeight = _settings.WindowHeight;
+        // Borderless fullscreen must use the desktop-sized backbuffer. Using a
+        // smaller windowed preset here leaves SDL's borderless window at desktop
+        // size while shrinking only the render surface, which also separates
+        // MouseState coordinates from the logical input transform.
+        var desktopMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+        var outputSize = _settings.ResolveBackBufferSize(desktopMode.Width, desktopMode.Height);
+        _graphics.PreferredBackBufferWidth = outputSize.Width;
+        _graphics.PreferredBackBufferHeight = outputSize.Height;
         _graphics.SynchronizeWithVerticalRetrace = _settings.VSync;
         _graphics.HardwareModeSwitch = false;
         _graphics.IsFullScreen = _settings.Fullscreen;
         _graphics.ApplyChanges();
+        _viewportTransform.Update(
+            GraphicsDevice.PresentationParameters.BackBufferWidth,
+            GraphicsDevice.PresentationParameters.BackBufferHeight);
         ApplyPresentationSettings();
     }
 

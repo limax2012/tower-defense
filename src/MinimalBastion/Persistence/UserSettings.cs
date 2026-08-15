@@ -39,6 +39,12 @@ public sealed class UserSettings
             : (current + step + ResolutionPresets.Length) % ResolutionPresets.Length;
         (WindowWidth, WindowHeight) = ResolutionPresets[next];
     }
+
+    public (int Width, int Height) ResolveBackBufferSize(int desktopWidth, int desktopHeight)
+    {
+        if (!Fullscreen) return (WindowWidth, WindowHeight);
+        return (Math.Max(1, desktopWidth), Math.Max(1, desktopHeight));
+    }
 }
 
 public sealed class UserSettingsRepository

@@ -562,6 +562,8 @@ internal static class Program
         Check.Equal(720, settings.WindowHeight, "first preset aspect ratio");
         settings.CycleResolution();
         Check.Equal(1600, settings.WindowWidth, "resolution preset cycles");
+        Check.Equal((1600, 900), settings.ResolveBackBufferSize(2560, 1440),
+            "windowed output uses the selected preset");
 
         var ui = new UIManager(null!);
         ui.ConfigureSettings(settings);
@@ -576,14 +578,15 @@ internal static class Program
         Check.True(settings.Fullscreen, "settings UI toggles fullscreen");
         ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
         Check.Equal(1, ui.SelectedSettingsIndex, "settings Down selects the resolution control");
-        Check.Equal(UiAction.ApplySettings,
+        Check.Equal(UiAction.None,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { NavigateLeftPressed = true }),
-            "settings Left applies a reverse adjustment");
-        Check.Equal(1280, settings.WindowWidth, "settings reverse resolution navigation selects the previous preset");
-        Check.Equal(UiAction.ApplySettings,
+            "fullscreen ignores windowed resolution adjustments");
+        Check.Equal(1600, settings.WindowWidth, "fullscreen preserves the selected windowed size");
+        Check.Equal((2560, 1440), settings.ResolveBackBufferSize(2560, 1440),
+            "fullscreen resolves to the desktop-sized backbuffer");
+        Check.Equal(UiAction.None,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EnterPressed = true }),
-            "settings Enter activates the focused control");
-        Check.Equal(1600, settings.WindowWidth, "settings Enter advances the focused resolution");
+            "fullscreen resolution activation remains inert");
         for (var index = 0; index < 4; index++)
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
         Check.Equal(5, ui.SelectedSettingsIndex, "settings navigation reaches independent music control");

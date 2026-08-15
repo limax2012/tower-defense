@@ -576,6 +576,11 @@ public sealed class UIManager
                 _settings.Fullscreen = !_settings.Fullscreen;
                 break;
             case 1:
+                if (_settings.Fullscreen)
+                {
+                    _settingsStatus = "Fullscreen always matches the desktop. Switch to WINDOWED to choose an output size.";
+                    return UiAction.None;
+                }
                 _settings.CycleResolution(direction);
                 break;
             case 2:
@@ -2211,13 +2216,14 @@ public sealed class UIManager
     {
         DrawMenuFrame(batch, p);
         DrawText(batch, "SETTINGS", new Vector2(640, 112), ColorPalette.Ink, 1.9f, true);
-        DrawText(batch, "Display choices change output scaling only; the tactical canvas and palette stay authored.",
+        DrawText(batch, "Fullscreen uses desktop resolution; windowed output can be selected independently.",
             new Vector2(640, 162), ColorPalette.Muted, 0.58f, true);
 
         DrawButton(batch, p, _windowModeButton, _settings.Fullscreen ? "DISPLAY  FULLSCREEN" : "DISPLAY  WINDOWED",
             true, ColorPalette.Cobalt);
-        DrawButton(batch, p, _resolutionButton, $"OUTPUT  {_settings.WindowWidth} x {_settings.WindowHeight}",
-            true, ColorPalette.Violet);
+        DrawButton(batch, p, _resolutionButton,
+            _settings.Fullscreen ? "OUTPUT  DESKTOP NATIVE" : $"OUTPUT  {_settings.WindowWidth} x {_settings.WindowHeight}",
+            !_settings.Fullscreen, ColorPalette.Violet);
         DrawButton(batch, p, _vsyncButton, _settings.VSync ? "VSYNC  ON" : "VSYNC  OFF",
             true, ColorPalette.Green);
         DrawButton(batch, p, _effectsButton, _settings.ReducedEffects ? "EFFECTS  REDUCED" : "EFFECTS  FULL",
