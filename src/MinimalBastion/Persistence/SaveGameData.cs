@@ -104,6 +104,7 @@ public sealed class RunStatisticsSaveData
     public int GeneratedCharges { get; set; }
     public int GeneratorPurchases { get; set; }
     public int GeneratorUpgrades { get; set; }
+    public Dictionary<int, string> TowerDefinitionByInstance { get; set; } = new();
     public List<RunTowerStatisticsSaveData> Towers { get; set; } = new();
     public List<RunEnemyStatisticsSaveData> Enemies { get; set; } = new();
 }

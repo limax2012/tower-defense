@@ -10,6 +10,7 @@ Date: 2026-08-15
 - Added data-derived campaign intel to the arena selector. Every map now previews its opening threat mix, total contacts, peak density, final health multiplier, and boss timing before a run; native high-resolution QA confirmed the extra planning line remains readable.
 - Regenerated canonical five-seed matrices across all four arenas and all four difficulties (960 runs): Easy 83.3%, Normal 77.1%, Hard 60.0%, and Bastion 19.6%. Every final specialization appears in winning Hard runs, and Surge remains the hardest arena.
 - Added exact marginal-damage attribution for Expose and Armor Break. The resolver compares the real hit against no-expose/no-break counterfactuals without altering damage, avoids interaction double-counting, persists per-tower assist, includes it in co-op checksums, and shows it in Tower Intel/results. A 240-run Hard pass measured 2.30M Prism Expose assist and 3.51M Breaker Armor Break assist.
+- Persisted historical tower-instance attribution so a lingering Slow, Expose, or Armor Break remains credited after its source tower is sold and the match is saved or resynchronized.
 - Added Easy, Normal, Hard, and Bastion profiles with persistent save/co-op identity and deterministic checksums. Hard preserves the previous authored economy and enemy values; Normal is the default onboarding experience.
 - Gave Foundry Loop, Prism Circuit, and Surge Divide separate 20-wave campaigns. Surge now carries the hardest roster and opening economy instead of granting nine nodes against the same opposition as Foundry.
 - Added Prism Circuit as a third arena with a distinct continuous conduit visual, a new route/build topology, and three restrained Surge Nodes.
@@ -25,7 +26,7 @@ Date: 2026-08-15
 - Gave every tower protocol its own restrained geometric signature and audio pitch while active. Reduced-effects mode keeps only the essential native-color protocol ring.
 - Re-ran 180 deterministic campaign agents per key difficulty after the map, branch, protocol, Mortar, and support changes. Normal cleared 137/180 (76.1%), Hard 106/180 (58.9%), and Bastion 35/180 (19.4%); on Hard, Foundry cleared 41/60, Prism 38/60, and Surge 27/60, confirming the intended arena ordering.
 - Added source-aware utility telemetry: Signal Beacon damage-equivalent and recipient-seconds plus Slow, Stun, Exposed, and Armor Break enemy-seconds. End-run contribution bars now include Beacon-assisted output while keeping direct damage visibly separate.
-- Current verification: 48/48 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
+- Current verification: 49/49 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
 
 ## Range, branch, and menu harmony pass
 

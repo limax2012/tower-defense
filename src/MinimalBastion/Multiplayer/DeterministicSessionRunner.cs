@@ -217,6 +217,11 @@ public static class SessionChecksum
         Add(ref hash, statistics.GeneratedCharges);
         Add(ref hash, statistics.GeneratorPurchases);
         Add(ref hash, statistics.GeneratorUpgrades);
+        foreach (var source in statistics.TowerDefinitionByInstance.OrderBy(value => value.Key))
+        {
+            Add(ref hash, source.Key);
+            Add(ref hash, source.Value);
+        }
         foreach (var metrics in statistics.Towers.OrderBy(value => value.TowerId, StringComparer.Ordinal))
         {
             Add(ref hash, metrics.TowerId);

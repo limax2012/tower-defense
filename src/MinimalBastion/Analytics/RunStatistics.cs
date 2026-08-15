@@ -12,6 +12,7 @@ public sealed class RunStatistics
 {
     private readonly GameSession _session;
     private readonly Dictionary<int, RunTowerStatistics> _towerByInstance = new();
+    private readonly Dictionary<int, string> _towerDefinitionByInstance = new();
     private readonly Dictionary<int, TowerInstance> _towerInstances = new();
     private readonly Dictionary<string, RunTowerStatistics> _towers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, RunEnemyStatistics> _enemies = new(StringComparer.OrdinalIgnoreCase);
@@ -28,6 +29,7 @@ public sealed class RunStatistics
     public int GeneratorUpgrades { get; private set; }
     public IReadOnlyCollection<RunTowerStatistics> Towers => _towers.Values;
     public IReadOnlyCollection<RunEnemyStatistics> Enemies => _enemies.Values;
+    public IReadOnlyDictionary<int, string> TowerDefinitionByInstance => _towerDefinitionByInstance;
     public IEnumerable<RunTowerStatistics> TowerLeaders => _towers.Values
         .Where(x => x.ContributionDamage > 0)
         .OrderByDescending(x => x.ContributionDamage)
@@ -94,6 +96,7 @@ public sealed class RunStatistics
         GeneratedCharges = GeneratedCharges,
         GeneratorPurchases = GeneratorPurchases,
         GeneratorUpgrades = GeneratorUpgrades,
+        TowerDefinitionByInstance = new Dictionary<int, string>(_towerDefinitionByInstance),
         Towers = _towers.Values.Select(x => new RunTowerStatisticsSaveData
         {
             TowerId = x.TowerId,
@@ -140,6 +143,7 @@ public sealed class RunStatistics
         GeneratorPurchases = Math.Max(0, data.GeneratorPurchases);
         GeneratorUpgrades = Math.Max(0, data.GeneratorUpgrades);
         _towerByInstance.Clear();
+        _towerDefinitionByInstance.Clear();
         _towerInstances.Clear();
         _towers.Clear();
         _enemies.Clear();
@@ -179,9 +183,17 @@ public sealed class RunStatistics
                 LivesLost = Math.Max(0, saved.LivesLost)
             };
 
+        foreach (var source in data.TowerDefinitionByInstance)
+        {
+            if (source.Key <= 0 || !_towers.TryGetValue(source.Value, out var metrics)) continue;
+            _towerByInstance[source.Key] = metrics;
+            _towerDefinitionByInstance[source.Key] = metrics.TowerId;
+        }
+
         foreach (var tower in activeTowers)
         {
             _towerByInstance[tower.Id] = GetTower(tower.Definition.Id, tower.Definition.DisplayName);
+            _towerDefinitionByInstance[tower.Id] = tower.Definition.Id;
             _towerInstances[tower.Id] = tower;
         }
     }
@@ -192,6 +204,7 @@ public sealed class RunStatistics
         metrics.Purchases++;
         metrics.CreditsSpent += tower.Definition.PurchaseCost;
         _towerByInstance[tower.Id] = metrics;
+        _towerDefinitionByInstance[tower.Id] = tower.Definition.Id;
         _towerInstances[tower.Id] = tower;
     }
 

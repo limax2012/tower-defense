@@ -64,6 +64,7 @@ internal static class Program
             ("mortar predictive aim", MortarPredictiveAim),
             ("economy telemetry", EconomyTelemetry),
             ("run statistics", RunStatistics),
+            ("sold tower utility persistence", SoldTowerUtilityPersistence),
             ("defeat field inspection", DefeatFieldInspection),
             ("co-op shared control commands", CoOpOwnershipCommands),
             ("network deterministic commands", NetworkDeterministicCommands),
@@ -628,6 +629,32 @@ internal static class Program
         Check.Equal(1, session.Statistics.GreatestLeakThreat.LivesLost, "stats lives lost");
         session.Update(0.05f);
         Check.Nearly(0.26f, session.Statistics.SimulatedSeconds, "stats defense time");
+    }
+
+    private static void SoldTowerUtilityPersistence()
+    {
+        var original = Session();
+        Check.True(original.TryPlaceTower("tower", new Vector2(50, 200)), "sold utility source placement");
+        var sourceId = original.Towers.Single().Id;
+        Check.True(original.TrySellTower(sourceId), "sold utility source removal");
+        var savedStatistics = original.Statistics.CaptureSaveData();
+        Check.Equal("tower", savedStatistics.TowerDefinitionByInstance[sourceId],
+            "sold source definition is retained in telemetry state");
+
+        var restored = Session();
+        restored.Statistics.RestoreSaveData(savedStatistics, Array.Empty<TowerInstance>());
+        var target = new EnemyInstance(88, restored.Content.Enemies["enemy"], restored.Map.Path, 1, 1);
+        target.StatusEffects.Apply(new StatusApplication
+        {
+            Type = StatusType.Slow,
+            Duration = 1,
+            Magnitude = 0.3f,
+            SourceId = sourceId
+        });
+        restored.Enemies.Add(target);
+        restored.Statistics.Advance(0.25f);
+        Check.Nearly(0.25f, restored.Statistics.Towers.Single(value => value.TowerId == "tower").ControlSeconds,
+            "lingering sold-tower utility remains attributed after restoration");
     }
 
     private static void DefeatFieldInspection()
