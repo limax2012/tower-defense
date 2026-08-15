@@ -101,6 +101,9 @@ public static class SessionChecksum
         Add(ref hash, session.Economy.SaleCreditsRecovered);
         Add(ref hash, session.EmergencyInventory);
         Add(ref hash, session.EmergencyDirectPurchasesThisWave);
+        Add(ref hash, session.NextEnemyId);
+        Add(ref hash, session.NextTowerId);
+        Add(ref hash, session.NextEmergencyDefenseId);
         Add(ref hash, session.OverdriveCooldownRemaining);
         Add(ref hash, session.AutoOverdriveTowerId);
         Add(ref hash, session.Waves.QueuedEnemies);
@@ -123,6 +126,7 @@ public static class SessionChecksum
             Add(ref hash, tower.Position.Y);
             Add(ref hash, tower.LevelIndex);
             Add(ref hash, tower.SpecializationId ?? "");
+            Add(ref hash, tower.InvestedCredits);
             Add(ref hash, tower.CooldownRemaining);
             Add(ref hash, tower.OverdriveRemaining);
             Add(ref hash, (int)tower.TargetMode);
@@ -203,6 +207,7 @@ public static class SessionChecksum
             Add(ref hash, generator.Position.X);
             Add(ref hash, generator.Position.Y);
             Add(ref hash, generator.LevelIndex);
+            Add(ref hash, generator.InvestedCredits);
             Add(ref hash, generator.ProductionRemaining);
         }
 

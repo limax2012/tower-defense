@@ -79,6 +79,9 @@ public sealed class GameSession
     public bool AnnouncementPositive { get; private set; }
     public int CurrentWave => Waves.CurrentWaveNumber;
     public int TotalWaves => Waves.TotalWaves;
+    public int NextEnemyId => _nextEnemyId;
+    public int NextTowerId => _nextTowerId;
+    public int NextEmergencyDefenseId => _nextEmergencyDefenseId;
     public bool IsEndlessMode => Waves.EndlessModeEnabled;
     public bool CanStartWave => Waves.CanStartNextWave;
     public float IntermissionRemaining => Waves.IntermissionRemaining;

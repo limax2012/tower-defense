@@ -856,6 +856,7 @@ internal static class Program
     private static void CoOpChecksumCoverage()
     {
         var host = SessionWithWave();
+        Check.True(host.TryPlaceTower("tower", new Vector2(50, 200)), "checksum coverage places tower");
         Check.True(host.StartNextWave(), "checksum coverage starts wave");
         host.Update(0.05f);
         Check.True(host.Enemies.Count > 0, "checksum coverage has active enemy");
@@ -873,6 +874,18 @@ internal static class Program
         var statisticsDrift = GameSession.RestoreCoOpState(host.Content, statisticsState, 2);
         Check.True(baseline != SessionChecksum.Compute(statisticsDrift, tick),
             "checksum detects run-analysis drift before the results screen");
+
+        var identityState = host.CaptureCoOpState(tick, 0, false);
+        identityState.NextTowerId += 10;
+        var identityDrift = GameSession.RestoreCoOpState(host.Content, identityState, 2);
+        Check.True(baseline != SessionChecksum.Compute(identityDrift, tick),
+            "checksum detects latent future-entity identity drift");
+
+        var investmentState = host.CaptureCoOpState(tick, 0, false);
+        investmentState.Towers[0].InvestedCredits += 10;
+        var investmentDrift = GameSession.RestoreCoOpState(host.Content, investmentState, 2);
+        Check.True(baseline != SessionChecksum.Compute(investmentDrift, tick),
+            "checksum detects latent sale-value drift");
     }
 
     private static void CoOpReconnectCombatSoak()
