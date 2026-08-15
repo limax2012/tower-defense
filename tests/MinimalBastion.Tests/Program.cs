@@ -1620,6 +1620,8 @@ internal static class Program
 
     private static async Task CoOpFramingBoundsAsync()
     {
+        Check.True(LanCoOpConnection.MaximumQueuedSends > 0 && LanCoOpConnection.MaximumQueuedSends <= 64,
+            "connection-level outbound queue retains a small explicit bound");
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await using var host = new LanCoOpHost(0, "BOUNDS");
         host.Start();

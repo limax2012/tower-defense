@@ -52,6 +52,7 @@ public sealed record CoOpEnvelope
 public sealed class LanCoOpConnection : IAsyncDisposable
 {
     public const int MaximumMessageBytes = 2_097_152;
+    public const int MaximumQueuedSends = 64;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly TcpClient _client;
     private readonly NetworkStream _stream;
@@ -63,6 +64,7 @@ public sealed class LanCoOpConnection : IAsyncDisposable
     });
     private readonly Task _sendPump;
     private int _disposeState;
+    private int _queuedSendCount;
 
     internal LanCoOpConnection(TcpClient client)
     {
@@ -76,14 +78,27 @@ public sealed class LanCoOpConnection : IAsyncDisposable
 
     public async Task SendAsync(CoOpEnvelope envelope, CancellationToken cancellationToken = default)
     {
-        var payload = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonOptions);
-        if (payload.Length > MaximumMessageBytes) throw new InvalidDataException("Co-op message exceeds the protocol limit.");
-        var frame = new byte[payload.Length + sizeof(int)];
-        BinaryPrimitives.WriteInt32BigEndian(frame.AsSpan(0, sizeof(int)), payload.Length);
-        payload.CopyTo(frame.AsSpan(sizeof(int)));
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        await _sendQueue.Writer.WriteAsync(new PendingSend(frame, completion, cancellationToken), cancellationToken);
-        await completion.Task.WaitAsync(cancellationToken);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposeState) != 0, this);
+        if (Interlocked.Increment(ref _queuedSendCount) > MaximumQueuedSends)
+        {
+            Interlocked.Decrement(ref _queuedSendCount);
+            throw new IOException("Co-op outbound queue exceeded its safety limit.");
+        }
+        try
+        {
+            var payload = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonOptions);
+            if (payload.Length > MaximumMessageBytes) throw new InvalidDataException("Co-op message exceeds the protocol limit.");
+            var frame = new byte[payload.Length + sizeof(int)];
+            BinaryPrimitives.WriteInt32BigEndian(frame.AsSpan(0, sizeof(int)), payload.Length);
+            payload.CopyTo(frame.AsSpan(sizeof(int)));
+            var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            await _sendQueue.Writer.WriteAsync(new PendingSend(frame, completion, cancellationToken), cancellationToken);
+            await completion.Task.WaitAsync(cancellationToken);
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _queuedSendCount);
+        }
     }
 
     public async Task<CoOpEnvelope?> ReceiveAsync(CancellationToken cancellationToken = default)
