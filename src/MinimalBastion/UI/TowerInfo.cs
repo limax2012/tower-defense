@@ -177,10 +177,16 @@ public static class TowerInfo
     {
         var next = specialization.Level;
         var changes = new List<string>();
+        if (next.AuraAttackSpeedBonus != current.AuraAttackSpeedBonus) changes.Add($"AURA RATE +{next.AuraAttackSpeedBonus:P0}");
+        if (next.AuraRangeBonus != current.AuraRangeBonus) changes.Add($"AURA RANGE +{next.AuraRangeBonus:P0}");
+        if (next.AuraRange != current.AuraRange && next.AuraRange > 0) changes.Add($"FIELD {next.AuraRange:0}");
         if (MathF.Abs(next.BurnDamagePerSecond - current.BurnDamagePerSecond) > 0.001f) changes.Add($"BURN {next.BurnDamagePerSecond:0.#}/s");
         if (next.SplashRadius > 0) changes.Add($"SPLASH {next.SplashRadius:0}");
         if (next.SlowPercent > current.SlowPercent) changes.Add($"SLOW {next.SlowPercent:P0}");
         if (next.ArmorPierce > current.ArmorPierce) changes.Add($"PIERCE {next.ArmorPierce:0}");
+        if (next.PelletCount != current.PelletCount) changes.Add($"SHOTS {next.PelletCount}");
+        if (next.ChainCount != current.ChainCount) changes.Add($"CHAIN {next.ChainCount}");
+        if (next.ExposePercent != current.ExposePercent) changes.Add($"EXPOSE +{next.ExposePercent:P0}");
         if (MathF.Abs(next.Damage - current.Damage) > 0.001f) changes.Add($"DAMAGE {next.Damage:0.#}");
         if (MathF.Abs(next.AttacksPerSecond - current.AttacksPerSecond) > 0.001f) changes.Add($"RATE {next.AttacksPerSecond:0.##}");
         return $"{specialization.Summary}: {string.Join("  ", changes.Take(2))}";

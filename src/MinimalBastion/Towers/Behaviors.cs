@@ -91,7 +91,8 @@ public sealed class PelletBurstBehavior : ITowerBehavior
         {
             var target = targets[i % targets.Count];
             BehaviorHelpers.Projectile(context, target, ProjectileKind.Homing, target.Position, 0,
-                BehaviorHelpers.Payload(context, level, level.Damage), level.ProjectileSpeed, context.Tower.Definition.Visual.PrimaryColor, 3f);
+                BehaviorHelpers.Payload(context, level, level.Damage, armorPierce: level.ArmorPierce),
+                level.ProjectileSpeed, context.Tower.Definition.Visual.PrimaryColor, 3f);
         }
     }
 }
@@ -194,6 +195,18 @@ public sealed class BeamBehavior : ITowerBehavior
         var status = BehaviorHelpers.Status(context, StatusType.Exposed, level.ExposeDuration, level.ExposePercent);
         context.Session.DamageResolver.Apply(context.Target, BehaviorHelpers.Payload(context, level, level.Damage, status, level.IgnoreShield, level.ArmorPierce));
         context.Session.Effects.AddBeam(context.Tower.Position, context.Target.Position, context.Tower.Definition.Visual.PrimaryColor, 0.15f);
+        if (level.ChainCount <= 0 || level.ChainDamage <= 0 || level.ChainRange <= 0) return;
+
+        var excluded = new HashSet<int> { context.Target.Id };
+        var previous = context.Target.Position;
+        foreach (var enemy in context.Session.TargetSelector.SelectChainTargets(previous, level.ChainRange, level.ChainCount, context.Session.Enemies, excluded))
+        {
+            excluded.Add(enemy.Id);
+            context.Session.DamageResolver.Apply(enemy,
+                BehaviorHelpers.Payload(context, level, level.ChainDamage, status, level.IgnoreShield, level.ArmorPierce));
+            context.Session.Effects.AddBeam(previous, enemy.Position, context.Tower.Definition.Visual.AccentColor, 0.12f);
+            previous = enemy.Position;
+        }
     }
 }
 

@@ -139,7 +139,8 @@ internal static class Program
         Check.True(content.Tactics.Generator.Levels.Select(x => x.ProductionSeconds).SequenceEqual(new[] { 34f, 26f, 20f }),
             "charge forge production curve");
         Check.True(content.Towers["prism_beam"].Levels.Select(x => x.ArmorPierce).SequenceEqual(new[] { 3f, 5f, 8f }), "prism beam penetration curve");
-        Check.Equal(8, content.Towers.Values.Sum(x => x.Specializations.Count), "specialization count");
+        Check.Equal(20, content.Towers.Values.Sum(x => x.Specializations.Count), "specialization count");
+        Check.True(content.Towers.Values.All(x => x.Specializations.Count == 2), "every tower has two final roles");
 
         var shard = content.Towers["shard_fan"];
         var watchtower = content.Towers["watchtower"];
@@ -164,7 +165,19 @@ internal static class Program
         Check.True(wildfire.SplashRadius >= searing.SplashRadius + 40f, "Wildfire owns clustered burn");
         Check.True(searing.BurnDamagePerSecond >= wildfire.BurnDamagePerSecond * 2f && searing.ArmorPierce > 0,
             "Searing owns durable single-target burn");
-        Check.True(new[] { "needle_turret", "frost_spire", "ember_coil", "breaker_cannon" }.All(id => content.Towers[id].Specializations.Count == 2), "branching tower roster");
+        var shardBloom = shard.Specializations.Single(x => x.Id == "razor_bloom").Level;
+        var shardLance = shard.Specializations.Single(x => x.Id == "lance_fan").Level;
+        Check.True(shardBloom.PelletCount > shardLance.PelletCount && shardLance.ArmorPierce > shardBloom.ArmorPierce,
+            "Shard branches separate crowd coverage from armor pressure");
+        var mortar = content.Towers["siege_mortar"];
+        var salvo = mortar.Specializations.Single(x => x.Id == "salvo_rack").Level;
+        var quake = mortar.Specializations.Single(x => x.Id == "quake_shell").Level;
+        Check.True(salvo.AttacksPerSecond > quake.AttacksPerSecond && quake.SplashRadius > salvo.SplashRadius && quake.SlowPercent > 0,
+            "Mortar branches separate frequent shells from wide control");
+        var beacon = content.Towers["signal_beacon"];
+        Check.True(beacon.Specializations.Any(x => x.Level.AuraAttackSpeedBonus >= 0.45f) &&
+            beacon.Specializations.Any(x => x.Level.AuraRangeBonus >= 0.35f),
+            "Beacon branches separate tempo from reach");
     }
 
     private static void DifficultyProfilesAndPersistence()

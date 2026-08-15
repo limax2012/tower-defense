@@ -25,6 +25,16 @@
       { "range": 118, "damage": 9, "attacksPerSecond": 0.80, "projectileSpeed": 400, "pelletCount": 3, "pelletSpreadDegrees": 18, "armorPierce": 1, "upgradeCost": 90 },
       { "range": 126, "damage": 10, "attacksPerSecond": 0.86, "projectileSpeed": 420, "pelletCount": 4, "pelletSpreadDegrees": 20, "armorPierce": 1, "upgradeCost": 135 },
       { "range": 136, "damage": 12, "attacksPerSecond": 0.92, "projectileSpeed": 450, "pelletCount": 5, "pelletSpreadDegrees": 22, "armorPierce": 2, "upgradeCost": null }
+    ],
+    "specializations": [
+      {
+        "id": "razor_bloom", "displayName": "Razor Bloom", "shortLabel": "BLOOM", "summary": "Wide seven-shard swarm clear", "upgradeCost": 135,
+        "level": { "range": 140, "damage": 11, "attacksPerSecond": 1.02, "projectileSpeed": 500, "pelletCount": 7, "pelletSpreadDegrees": 30, "armorPierce": 1, "upgradeCost": null }
+      },
+      {
+        "id": "lance_fan", "displayName": "Lance Fan", "shortLabel": "LANCE", "summary": "Tight armor-piercing burst", "upgradeCost": 140,
+        "level": { "range": 152, "damage": 19, "attacksPerSecond": 0.82, "projectileSpeed": 560, "pelletCount": 4, "pelletSpreadDegrees": 10, "armorPierce": 5, "upgradeCost": null }
+      }
     ]
   },
   {
@@ -34,6 +44,16 @@
       { "range": 250, "damage": 40, "attacksPerSecond": 0.47, "projectileSpeed": 850, "upgradeCost": 120 },
       { "range": 270, "damage": 56, "attacksPerSecond": 0.49, "projectileSpeed": 900, "upgradeCost": 185 },
       { "range": 290, "damage": 82, "attacksPerSecond": 0.51, "projectileSpeed": 950, "upgradeCost": null }
+    ],
+    "specializations": [
+      {
+        "id": "sentinel_array", "displayName": "Sentinel Array", "shortLabel": "SENTINEL", "summary": "Steady long-range interception", "upgradeCost": 180,
+        "level": { "range": 285, "damage": 52, "attacksPerSecond": 0.82, "projectileSpeed": 1050, "armorPierce": 2, "upgradeCost": null }
+      },
+      {
+        "id": "deadeye_post", "displayName": "Deadeye Post", "shortLabel": "DEADEYE", "summary": "Extreme-range priority eliminator", "upgradeCost": 195,
+        "level": { "range": 345, "damage": 118, "attacksPerSecond": 0.38, "projectileSpeed": 1250, "armorPierce": 8, "upgradeCost": null }
+      }
     ]
   },
   {
@@ -100,6 +120,16 @@
       { "range": 155, "damage": 19, "attacksPerSecond": 0.68, "chainCount": 2, "chainDamage": 14, "chainRange": 95, "upgradeCost": 220 },
       { "range": 165, "damage": 28, "attacksPerSecond": 0.74, "chainCount": 3, "chainDamage": 19, "chainRange": 105, "upgradeCost": 330 },
       { "range": 175, "damage": 40, "attacksPerSecond": 0.80, "chainCount": 4, "chainDamage": 28, "chainRange": 115, "stunDuration": 0.4, "upgradeCost": null }
+    ],
+    "specializations": [
+      {
+        "id": "storm_lattice", "displayName": "Storm Lattice", "shortLabel": "STORM", "summary": "Long multi-target damage chain", "upgradeCost": 325,
+        "level": { "range": 180, "damage": 34, "attacksPerSecond": 0.78, "chainCount": 6, "chainDamage": 26, "chainRange": 138, "stunDuration": 0.25, "upgradeCost": null }
+      },
+      {
+        "id": "lockdown_coil", "displayName": "Lockdown Coil", "shortLabel": "LOCKDOWN", "summary": "Fewer arcs with heavy control", "upgradeCost": 315,
+        "level": { "range": 188, "damage": 46, "attacksPerSecond": 0.72, "chainCount": 3, "chainDamage": 30, "chainRange": 125, "stunDuration": 0.85, "upgradeCost": null }
+      }
     ]
   },
   {
@@ -109,6 +139,16 @@
       { "range": 275, "damage": 42, "attacksPerSecond": 0.29, "projectileSpeed": 240, "splashRadius": 45, "upgradeCost": 240 },
       { "range": 285, "damage": 58, "attacksPerSecond": 0.32, "projectileSpeed": 250, "splashRadius": 52, "upgradeCost": 360 },
       { "range": 300, "damage": 78, "attacksPerSecond": 0.35, "projectileSpeed": 260, "splashRadius": 58, "upgradeCost": null }
+    ],
+    "specializations": [
+      {
+        "id": "salvo_rack", "displayName": "Salvo Rack", "shortLabel": "SALVO", "summary": "Frequent compact predictive shells", "upgradeCost": 345,
+        "level": { "range": 292, "damage": 60, "attacksPerSecond": 0.48, "projectileSpeed": 310, "splashRadius": 48, "upgradeCost": null }
+      },
+      {
+        "id": "quake_shell", "displayName": "Quake Shell", "shortLabel": "QUAKE", "summary": "Wide control impact with lower DPS", "upgradeCost": 365,
+        "level": { "range": 315, "damage": 74, "attacksPerSecond": 0.28, "projectileSpeed": 275, "splashRadius": 70, "slowPercent": 0.25, "slowDuration": 1.4, "upgradeCost": null }
+      }
     ]
   },
   {
@@ -118,6 +158,16 @@
       { "range": 205, "damage": 6, "attacksPerSecond": 3.5, "armorPierce": 3, "exposePercent": 0.10, "exposeDuration": 2.0, "upgradeCost": 300 },
       { "range": 220, "damage": 9, "attacksPerSecond": 4.0, "armorPierce": 5, "exposePercent": 0.15, "exposeDuration": 2.0, "upgradeCost": 450 },
       { "range": 235, "damage": 12, "attacksPerSecond": 4.5, "armorPierce": 8, "exposePercent": 0.20, "exposeDuration": 2.0, "ignoreShield": true, "upgradeCost": null }
+    ],
+    "specializations": [
+      {
+        "id": "core_lance", "displayName": "Core Lance", "shortLabel": "LANCE", "summary": "Shield-bypassing focus beam", "upgradeCost": 440,
+        "level": { "range": 255, "damage": 17, "attacksPerSecond": 4.0, "armorPierce": 12, "exposePercent": 0.25, "exposeDuration": 2.5, "ignoreShield": true, "upgradeCost": null }
+      },
+      {
+        "id": "spectrum_split", "displayName": "Spectrum Split", "shortLabel": "SPLIT", "summary": "Beam branches across nearby targets", "upgradeCost": 420,
+        "level": { "range": 235, "damage": 9, "attacksPerSecond": 4.8, "armorPierce": 5, "exposePercent": 0.12, "exposeDuration": 1.8, "chainCount": 2, "chainDamage": 8, "chainRange": 90, "upgradeCost": null }
+      }
     ]
   },
   {
@@ -127,6 +177,16 @@
       { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 145, "auraAttackSpeedBonus": 0.15, "auraRangeBonus": 0.10, "upgradeCost": 180 },
       { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 165, "auraAttackSpeedBonus": 0.25, "auraRangeBonus": 0.16, "upgradeCost": 250 },
       { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 185, "auraAttackSpeedBonus": 0.35, "auraRangeBonus": 0.22, "upgradeCost": null }
+    ],
+    "specializations": [
+      {
+        "id": "tempo_beacon", "displayName": "Tempo Beacon", "shortLabel": "TEMPO", "summary": "Maximum attack-rate support", "upgradeCost": 245,
+        "level": { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 180, "auraAttackSpeedBonus": 0.45, "auraRangeBonus": 0.12, "upgradeCost": null }
+      },
+      {
+        "id": "horizon_beacon", "displayName": "Horizon Beacon", "shortLabel": "HORIZON", "summary": "Wide aura and maximum reach", "upgradeCost": 255,
+        "level": { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 215, "auraAttackSpeedBonus": 0.22, "auraRangeBonus": 0.35, "upgradeCost": null }
+      }
     ]
   }
 ]
