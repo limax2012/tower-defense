@@ -1,6 +1,6 @@
 # Minimal Bastion
 
-Minimal Bastion is a colorful, data-driven 2D tower-defense game built with C#, .NET 10, and MonoGame DesktopGL. It includes three strategic maps with authored campaigns, four difficulty profiles, 20 mixed waves per map, 10 towers with 20 final specializations and distinct tactical Protocols, elites and phased bosses, Pulse Plates and a Charge Forge, dynamically expanding independent saves, procedural audio, persistent display settings, post-run analysis, deterministic balance agents, and direct two-player online co-op.
+Minimal Bastion is a colorful, data-driven 2D tower-defense game built with C#, .NET 10, and MonoGame DesktopGL. It includes four strategic maps with authored campaigns, four difficulty profiles, 20 mixed waves per map, 10 towers with 20 final specializations and distinct tactical Protocols, elites and phased bosses, Pulse Plates and a Charge Forge, dynamically expanding independent saves, procedural audio, persistent display settings, post-run analysis, deterministic balance agents, and direct two-player online co-op.
 
 ## Play the verified build
 
@@ -79,8 +79,8 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 
 ## Gameplay notes
 
-- Foundry Loop, Prism Circuit, and Surge Divide each use a separately authored 20-wave roster matched to their route geometry. Their base starting credits are 400, 380, and 360 before the selected difficulty modifier.
-- Each arena also declares its own restrained battlefield motif: structural braces for Foundry, facets for Prism, and circuit traces for Surge. These marks sit below routes, nodes, ranges, and targeting geometry so map identity does not reduce tactical readability.
+- Foundry Loop, Crosswind Basin, Prism Circuit, and Surge Divide each use a separately authored 20-wave roster matched to their route geometry. Their base starting credits are 400, 390, 380, and 360 before the selected difficulty modifier. Crosswind is runner-led and folds a continuous channel around three compact crossfire islands.
+- Each arena also declares its own restrained battlefield motif: structural braces for Foundry, current chevrons for Crosswind, facets for Prism, and circuit traces for Surge. These marks sit below routes, nodes, ranges, and targeting geometry so map identity does not reduce tactical readability.
 - Easy, Normal, Hard, and Bastion alter starting room and enemy health/speed through explicit profiles; tower mechanics and stats never change by wave number, elapsed time, map, or difficulty.
 - Surge Divide is intentionally the hardest arena: its stronger campaign and tighter opening economy pay for nine compact Surge Nodes with focused attack-speed, range, damage, or armor-piercing bonuses. Prism Circuit provides three restrained nodes and a distinct conduit path.
 - Hover a Surge Node for its exact radius and bonus. A tower's center must be inside the field; overlapping nodes use only the strongest bonus for each stat rather than stacking.

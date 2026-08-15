@@ -226,7 +226,7 @@ public sealed class UIManager
     {
         _maps.Clear();
         _maps.AddRange(maps.OrderBy(x => x.Id.Equals("foundry_loop", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
-            .ThenBy(x => x.Id.Equals("relay_divide", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(x => x.ChallengeRating)
             .ThenBy(x => x.DisplayName)
             .Select(x => (x.Id, x.DisplayName, x.PowerNodes.Count, x.ChallengeRating, x.Description, x.PathVisual.Style)));
         _selectedMapIndex = Math.Clamp(_selectedMapIndex, 0, Math.Max(0, _maps.Count - 1));

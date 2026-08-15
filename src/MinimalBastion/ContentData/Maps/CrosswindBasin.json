@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "crosswind_basin",
+  "displayName": "Crosswind Basin",
+  "description": "A runner-heavy current winds past three compact crossfire islands.",
+  "challengeRating": 3,
+  "logicalSize": { "width": 960, "height": 720 },
+  "background": { "base": "#152D36", "accent": "#2A5260", "motif": "currents" },
+  "pathVisual": { "style": "channel", "base": "#384E65", "accent": "#E8B637", "secondary": "#2192AA" },
+  "spawn": { "x": -32, "y": 620 },
+  "goal": { "x": 952, "y": 620 },
+  "pathWidth": 54,
+  "path": [
+    { "x": -32, "y": 620 }, { "x": 130, "y": 620 }, { "x": 130, "y": 140 },
+    { "x": 370, "y": 140 }, { "x": 370, "y": 520 }, { "x": 610, "y": 520 },
+    { "x": 610, "y": 180 }, { "x": 850, "y": 180 }, { "x": 850, "y": 620 },
+    { "x": 952, "y": 620 }
+  ],
+  "buildableRegions": [
+    { "x": 24, "y": 210, "width": 62, "height": 300 },
+    { "x": 190, "y": 210, "width": 120, "height": 240 },
+    { "x": 430, "y": 230, "width": 120, "height": 210 },
+    { "x": 670, "y": 250, "width": 120, "height": 250 },
+    { "x": 430, "y": 72, "width": 120, "height": 70 },
+    { "x": 680, "y": 72, "width": 110, "height": 60 },
+    { "x": 900, "y": 230, "width": 38, "height": 300 },
+    { "x": 210, "y": 674, "width": 110, "height": 30 },
+    { "x": 450, "y": 674, "width": 110, "height": 30 }
+  ],
+  "restrictedRegions": [],
+  "waveSet": "crosswind_waves",
+  "startingLives": 20,
+  "startingCredits": 390
+}

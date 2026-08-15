@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "id": "crosswind_waves",
+  "mapId": "crosswind_basin",
+  "waves": [
+    { "number": 1, "archetype": "First Current", "briefing": "A light crawler line enters the basin.", "healthMultiplier": 1.000, "speedMultiplier": 1.010, "groups": [
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.84, "delayBefore": 0 }
+    ] },
+    { "number": 2, "archetype": "Tailwind", "briefing": "Runners test the first crossfire island.", "healthMultiplier": 1.030, "speedMultiplier": 1.020, "groups": [
+      { "enemyId": "t1_crawler", "count": 6, "spawnInterval": 0.74, "delayBefore": 0 },
+      { "enemyId": "t2_runner", "count": 4, "spawnInterval": 0.38, "delayBefore": 0.40 }
+    ] },
+    { "number": 3, "archetype": "Slipstream", "briefing": "A fast front pulls a crawler wake through the folds.", "healthMultiplier": 1.065, "speedMultiplier": 1.025, "groups": [
+      { "enemyId": "t2_runner", "count": 7, "spawnInterval": 0.34, "delayBefore": 0 },
+      { "enemyId": "t1_crawler", "count": 7, "spawnInterval": 0.66, "delayBefore": 0.38 }
+    ] },
+    { "number": 4, "archetype": "Ballast", "briefing": "The first armored ballast follows two quick bands.", "healthMultiplier": 1.100, "speedMultiplier": 1.030, "groups": [
+      { "enemyId": "t2_runner", "count": 4, "spawnInterval": 0.32, "delayBefore": 0 },
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.62, "delayBefore": 0.28 },
+      { "enemyId": "t3_brute", "count": 2, "spawnInterval": 0.72, "delayBefore": 0.36 },
+      { "enemyId": "t2_runner", "count": 2, "spawnInterval": 0.30, "delayBefore": 0.28 }
+    ] },
+    { "number": 5, "archetype": "Crosswind", "briefing": "Alternating speeds reward overlapping fields of fire.", "healthMultiplier": 1.135, "speedMultiplier": 1.035, "groups": [
+      { "enemyId": "t2_runner", "count": 6, "spawnInterval": 0.30, "delayBefore": 0 },
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.58, "delayBefore": 0.26 },
+      { "enemyId": "t3_brute", "count": 3, "spawnInterval": 0.68, "delayBefore": 0.32 },
+      { "enemyId": "t2_runner", "count": 4, "spawnInterval": 0.28, "delayBefore": 0.26 }
+    ] },
+    { "number": 6, "archetype": "Twin Wake", "briefing": "Two balanced wakes cross every interior island.", "healthMultiplier": 1.175, "speedMultiplier": 1.040, "groups": [
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.56, "delayBefore": 0 },
+      { "enemyId": "t2_runner", "count": 6, "spawnInterval": 0.28, "delayBefore": 0.24 },
+      { "enemyId": "t3_brute", "count": 3, "spawnInterval": 0.64, "delayBefore": 0.28 },
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.54, "delayBefore": 0.30 },
+      { "enemyId": "t2_runner", "count": 6, "spawnInterval": 0.27, "delayBefore": 0.22 },
+      { "enemyId": "t3_brute", "count": 3, "spawnInterval": 0.62, "delayBefore": 0.26 }
+    ] },
+    { "number": 7, "archetype": "Shear Line", "briefing": "Runner fronts shear around a durable center.", "healthMultiplier": 1.215, "speedMultiplier": 1.045, "groups": [
+      { "enemyId": "t2_runner", "count": 8, "spawnInterval": 0.27, "delayBefore": 0 },
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.52, "delayBefore": 0.22 },
+      { "enemyId": "t3_brute", "count": 4, "spawnInterval": 0.60, "delayBefore": 0.26 },
+      { "enemyId": "t2_runner", "count": 8, "spawnInterval": 0.26, "delayBefore": 0.28 },
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.50, "delayBefore": 0.22 }
+    ] },
+    { "number": 8, "archetype": "Basin Circuit", "briefing": "A complete formation runs the full folded channel twice.", "healthMultiplier": 1.255, "speedMultiplier": 1.050, "groups": [
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.50, "delayBefore": 0 },
+      { "enemyId": "t2_runner", "count": 7, "spawnInterval": 0.26, "delayBefore": 0.20 },
+      { "enemyId": "t3_brute", "count": 4, "spawnInterval": 0.58, "delayBefore": 0.24 },
+      { "enemyId": "t2_runner", "count": 7, "spawnInterval": 0.25, "delayBefore": 0.26 },
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.48, "delayBefore": 0.20 },
+      { "enemyId": "t3_brute", "count": 4, "spawnInterval": 0.56, "delayBefore": 0.24 }
+    ] },
+    { "number": 9, "archetype": "Gale Front", "briefing": "Dense runner bands leave little recovery between armored cores.", "healthMultiplier": 1.295, "speedMultiplier": 1.055, "groups": [
+      { "enemyId": "t2_runner", "count": 9, "spawnInterval": 0.24, "delayBefore": 0 },
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.46, "delayBefore": 0.18 },
+      { "enemyId": "t3_brute", "count": 5, "spawnInterval": 0.54, "delayBefore": 0.22 },
+      { "enemyId": "t2_runner", "count": 9, "spawnInterval": 0.23, "delayBefore": 0.24 },
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.44, "delayBefore": 0.18 },
+      { "enemyId": "t3_brute", "count": 5, "spawnInterval": 0.52, "delayBefore": 0.22 }
+    ] },
+    { "number": 10, "archetype": "Storm Shield", "briefing": "Aegis units anchor two high-speed squalls.", "healthMultiplier": 1.335, "speedMultiplier": 1.060, "groups": [
+      { "enemyId": "t2_runner", "count": 8, "spawnInterval": 0.23, "delayBefore": 0 },
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.44, "delayBefore": 0.18 },
+      { "enemyId": "t3_brute", "count": 5, "spawnInterval": 0.52, "delayBefore": 0.20 },
+      { "enemyId": "t4_aegis", "count": 2, "spawnInterval": 0.68, "delayBefore": 0.28 },
+      { "enemyId": "t2_runner", "count": 8, "spawnInterval": 0.22, "delayBefore": 0.22 },
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.42, "delayBefore": 0.18 },
+      { "enemyId": "t3_brute", "count": 5, "spawnInterval": 0.50, "delayBefore": 0.20 },
+      { "enemyId": "t4_aegis", "count": 2, "spawnInterval": 0.66, "delayBefore": 0.26 }
+    ] },
+    { "number": 11, "archetype": "Pressure Drop", "briefing": "Shielded anchors compress the gaps between runner waves.", "healthMultiplier": 1.375, "speedMultiplier": 1.065, "groups": [
+      { "enemyId": "t2_runner", "count": 9, "spawnInterval": 0.22, "delayBefore": 0 },
+      { "enemyId": "t1_crawler", "count": 9, "spawnInterval": 0.42, "delayBefore": 0.17 },
+      { "enemyId": "t3_brute", "count": 6, "spawnInterval": 0.50, "delayBefore": 0.19 },
+      { "enemyId": "t4_aegis", "count": 2, "spawnInterval": 0.66, "delayBefore": 0.25 },
+      { "enemyId": "t2_runner", "count": 9, "spawnInterval": 0.21, "delayBefore": 0.21 },
+      { "enemyId": "t1_crawler", "count": 9, "spawnInterval": 0.40, "delayBefore": 0.17 },
+      { "enemyId": "t3_brute", "count": 6, "spawnInterval": 0.48, "delayBefore": 0.19 },
+      { "enemyId": "t4_aegis", "count": 2, "spawnInterval": 0.64, "delayBefore": 0.24 }
+    ] },
+    { "number": 12, "archetype": "Jetstream", "briefing": "An elite runner leads sustained combined-arms pressure.", "healthMultiplier": 1.415, "speedMultiplier": 1.070, "groups": [
+      { "enemyId": "t2_runner", "rank": "Elite", "count": 1, "spawnInterval": 0.60, "delayBefore": 0 },
+      { "enemyId": "t2_runner", "count": 10, "spawnInterval": 0.20, "delayBefore": 0.20 },
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.40, "delayBefore": 0.16 },
+      { "enemyId": "t3_brute", "count": 6, "spawnInterval": 0.48, "delayBefore": 0.18 },
+      { "enemyId": "t4_aegis", "count": 3, "spawnInterval": 0.64, "delayBefore": 0.23 },
+      { "enemyId": "t2_runner", "count": 10, "spawnInterval": 0.19, "delayBefore": 0.20 },
+      { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.38, "delayBefore": 0.16 },
+      { "enemyId": "t3_brute", "count": 6, "spawnInterval": 0.46, "delayBefore": 0.18 },
+      { "enemyId": "t4_aegis", "count": 3, "spawnInterval": 0.62, "delayBefore": 0.23 }
+    ] },
+    { "number": 13, "archetype": "Three Fronts", "briefing": "Three compact fronts demand coverage across the full basin.", "healthMultiplier": 1.455, "speedMultiplier": 1.075, "groups": [
+      { "enemyId": "t2_runner", "count": 8, "spawnInterval": 0.19, "delayBefore": 0 }, { "enemyId": "t1_crawler", "count": 7, "spawnInterval": 0.38, "delayBefore": 0.15 }, { "enemyId": "t3_brute", "count": 5, "spawnInterval": 0.46, "delayBefore": 0.17 }, { "enemyId": "t4_aegis", "count": 2, "spawnInterval": 0.62, "delayBefore": 0.21 },
+      { "enemyId": "t2_runner", "count": 8, "spawnInterval": 0.18, "delayBefore": 0.19 }, { "enemyId": "t1_crawler", "count": 7, "spawnInterval": 0.36, "delayBefore": 0.15 }, { "enemyId": "t3_brute", "count": 5, "spawnInterval": 0.44, "delayBefore": 0.17 }, { "enemyId": "t4_aegis", "count": 2, "spawnInterval": 0.60, "delayBefore": 0.21 },
+      { "enemyId": "t2_runner", "count": 8, "spawnInterval": 0.18, "delayBefore": 0.19 }, { "enemyId": "t1_crawler", "count": 7, "spawnInterval": 0.34, "delayBefore": 0.15 }, { "enemyId": "t3_brute", "count": 5, "spawnInterval": 0.42, "delayBefore": 0.17 }, { "enemyId": "t4_aegis", "count": 2, "spawnInterval": 0.58, "delayBefore": 0.21 }
+    ] },
+    { "number": 14, "archetype": "Eye Wall", "briefing": "Regenerators arrive behind a wall of speed and shielding.", "healthMultiplier": 1.500, "speedMultiplier": 1.080, "groups": [
+      { "enemyId": "t2_runner", "count": 10, "spawnInterval": 0.18, "delayBefore": 0 }, { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.36, "delayBefore": 0.14 }, { "enemyId": "t3_brute", "count": 7, "spawnInterval": 0.42, "delayBefore": 0.16 }, { "enemyId": "t4_aegis", "count": 3, "spawnInterval": 0.58, "delayBefore": 0.20 }, { "enemyId": "t5_regenerator", "count": 2, "spawnInterval": 0.80, "delayBefore": 0.26 },
+      { "enemyId": "t2_runner", "count": 10, "spawnInterval": 0.17, "delayBefore": 0.19 }, { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.34, "delayBefore": 0.14 }, { "enemyId": "t3_brute", "count": 7, "spawnInterval": 0.40, "delayBefore": 0.16 }, { "enemyId": "t4_aegis", "count": 3, "spawnInterval": 0.56, "delayBefore": 0.20 }, { "enemyId": "t5_regenerator", "count": 2, "spawnInterval": 0.78, "delayBefore": 0.25 }
+    ] },
+    { "number": 15, "archetype": "Cyclone", "briefing": "Three rotating fronts mix every threat in quick succession.", "healthMultiplier": 1.620, "speedMultiplier": 1.085, "groups": [
+      { "enemyId": "t2_runner", "count": 9, "spawnInterval": 0.17, "delayBefore": 0 }, { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.34, "delayBefore": 0.13 }, { "enemyId": "t3_brute", "count": 6, "spawnInterval": 0.40, "delayBefore": 0.15 }, { "enemyId": "t4_aegis", "count": 3, "spawnInterval": 0.56, "delayBefore": 0.19 }, { "enemyId": "t5_regenerator", "count": 1, "spawnInterval": 0.78, "delayBefore": 0.24 },
+      { "enemyId": "t2_runner", "count": 9, "spawnInterval": 0.16, "delayBefore": 0.18 }, { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.32, "delayBefore": 0.13 }, { "enemyId": "t3_brute", "count": 6, "spawnInterval": 0.38, "delayBefore": 0.15 }, { "enemyId": "t4_aegis", "count": 3, "spawnInterval": 0.54, "delayBefore": 0.19 }, { "enemyId": "t5_regenerator", "count": 1, "spawnInterval": 0.76, "delayBefore": 0.24 },
+      { "enemyId": "t2_runner", "count": 9, "spawnInterval": 0.16, "delayBefore": 0.18 }, { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.30, "delayBefore": 0.13 }, { "enemyId": "t3_brute", "count": 6, "spawnInterval": 0.36, "delayBefore": 0.15 }, { "enemyId": "t4_aegis", "count": 3, "spawnInterval": 0.52, "delayBefore": 0.19 }, { "enemyId": "t5_regenerator", "count": 1, "spawnInterval": 0.74, "delayBefore": 0.24 }
+    ] },
+    { "number": 16, "archetype": "Compressed Air", "briefing": "The gaps collapse while armored pressure keeps rising.", "healthMultiplier": 1.760, "speedMultiplier": 1.090, "groups": [
+      { "enemyId": "t2_runner", "count": 12, "spawnInterval": 0.16, "delayBefore": 0 }, { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.32, "delayBefore": 0.12 }, { "enemyId": "t3_brute", "count": 8, "spawnInterval": 0.38, "delayBefore": 0.14 }, { "enemyId": "t4_aegis", "count": 4, "spawnInterval": 0.54, "delayBefore": 0.18 }, { "enemyId": "t5_regenerator", "count": 2, "spawnInterval": 0.76, "delayBefore": 0.23 },
+      { "enemyId": "t2_runner", "count": 12, "spawnInterval": 0.15, "delayBefore": 0.17 }, { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.30, "delayBefore": 0.12 }, { "enemyId": "t3_brute", "count": 8, "spawnInterval": 0.36, "delayBefore": 0.14 }, { "enemyId": "t4_aegis", "count": 4, "spawnInterval": 0.52, "delayBefore": 0.18 }, { "enemyId": "t5_regenerator", "count": 2, "spawnInterval": 0.74, "delayBefore": 0.22 }
+    ] },
+    { "number": 17, "archetype": "Storm Corridor", "briefing": "Sustained pressure tests every crossfire pocket at once.", "healthMultiplier": 1.940, "speedMultiplier": 1.095, "groups": [
+      { "enemyId": "t2_runner", "count": 12, "spawnInterval": 0.15, "delayBefore": 0 }, { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.30, "delayBefore": 0.11 }, { "enemyId": "t3_brute", "count": 8, "spawnInterval": 0.36, "delayBefore": 0.13 }, { "enemyId": "t4_aegis", "count": 4, "spawnInterval": 0.52, "delayBefore": 0.17 }, { "enemyId": "t5_regenerator", "count": 2, "spawnInterval": 0.74, "delayBefore": 0.22 },
+      { "enemyId": "t2_runner", "count": 12, "spawnInterval": 0.14, "delayBefore": 0.16 }, { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.28, "delayBefore": 0.11 }, { "enemyId": "t3_brute", "count": 8, "spawnInterval": 0.34, "delayBefore": 0.13 }, { "enemyId": "t4_aegis", "count": 4, "spawnInterval": 0.50, "delayBefore": 0.17 }, { "enemyId": "t5_regenerator", "count": 2, "spawnInterval": 0.72, "delayBefore": 0.22 },
+      { "enemyId": "t2_runner", "count": 10, "spawnInterval": 0.14, "delayBefore": 0.16 }, { "enemyId": "t3_brute", "count": 8, "spawnInterval": 0.32, "delayBefore": 0.12 }, { "enemyId": "t4_aegis", "count": 4, "spawnInterval": 0.48, "delayBefore": 0.16 }, { "enemyId": "t5_regenerator", "count": 2, "spawnInterval": 0.70, "delayBefore": 0.21 }
+    ] },
+    { "number": 18, "archetype": "Supercell", "briefing": "An elite shield anchors the basin's heaviest sustained current.", "healthMultiplier": 2.140, "speedMultiplier": 1.100, "groups": [
+      { "enemyId": "t2_runner", "count": 13, "spawnInterval": 0.14, "delayBefore": 0 }, { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.28, "delayBefore": 0.10 }, { "enemyId": "t3_brute", "count": 9, "spawnInterval": 0.34, "delayBefore": 0.12 }, { "enemyId": "t4_aegis", "count": 5, "spawnInterval": 0.50, "delayBefore": 0.16 }, { "enemyId": "t5_regenerator", "count": 2, "spawnInterval": 0.72, "delayBefore": 0.21 },
+      { "enemyId": "t4_aegis", "rank": "Elite", "count": 1, "spawnInterval": 0.70, "delayBefore": 0.26 },
+      { "enemyId": "t2_runner", "count": 13, "spawnInterval": 0.13, "delayBefore": 0.15 }, { "enemyId": "t1_crawler", "count": 8, "spawnInterval": 0.26, "delayBefore": 0.10 }, { "enemyId": "t3_brute", "count": 9, "spawnInterval": 0.32, "delayBefore": 0.12 }, { "enemyId": "t4_aegis", "count": 5, "spawnInterval": 0.48, "delayBefore": 0.16 }, { "enemyId": "t5_regenerator", "count": 2, "spawnInterval": 0.70, "delayBefore": 0.21 },
+      { "enemyId": "t2_runner", "count": 11, "spawnInterval": 0.13, "delayBefore": 0.15 }, { "enemyId": "t3_brute", "count": 9, "spawnInterval": 0.30, "delayBefore": 0.11 }, { "enemyId": "t4_aegis", "count": 5, "spawnInterval": 0.46, "delayBefore": 0.15 }, { "enemyId": "t5_regenerator", "count": 2, "spawnInterval": 0.68, "delayBefore": 0.20 }
+    ] },
+    { "number": 19, "archetype": "Dead Calm", "briefing": "A brief opening gives way to the fastest armored storm yet.", "healthMultiplier": 2.360, "speedMultiplier": 1.105, "groups": [
+      { "enemyId": "t1_crawler", "count": 6, "spawnInterval": 0.26, "delayBefore": 0 },
+      { "enemyId": "t2_runner", "count": 14, "spawnInterval": 0.13, "delayBefore": 0.34 }, { "enemyId": "t3_brute", "count": 10, "spawnInterval": 0.32, "delayBefore": 0.10 }, { "enemyId": "t4_aegis", "count": 6, "spawnInterval": 0.48, "delayBefore": 0.15 }, { "enemyId": "t5_regenerator", "count": 3, "spawnInterval": 0.70, "delayBefore": 0.20 },
+      { "enemyId": "t2_runner", "count": 14, "spawnInterval": 0.12, "delayBefore": 0.14 }, { "enemyId": "t3_brute", "count": 10, "spawnInterval": 0.30, "delayBefore": 0.10 }, { "enemyId": "t4_aegis", "count": 6, "spawnInterval": 0.46, "delayBefore": 0.14 }, { "enemyId": "t5_regenerator", "count": 3, "spawnInterval": 0.68, "delayBefore": 0.20 },
+      { "enemyId": "t2_runner", "count": 14, "spawnInterval": 0.12, "delayBefore": 0.14 }, { "enemyId": "t3_brute", "count": 10, "spawnInterval": 0.28, "delayBefore": 0.09 }, { "enemyId": "t4_aegis", "count": 6, "spawnInterval": 0.44, "delayBefore": 0.14 }, { "enemyId": "t5_regenerator", "count": 3, "spawnInterval": 0.66, "delayBefore": 0.19 }
+    ] },
+    { "number": 20, "archetype": "Eye of the Storm", "briefing": "The Bastion Core enters behind a final runner-led supercell.", "healthMultiplier": 2.600, "speedMultiplier": 1.110, "groups": [
+      { "enemyId": "t2_runner", "count": 14, "spawnInterval": 0.12, "delayBefore": 0 }, { "enemyId": "t1_crawler", "count": 9, "spawnInterval": 0.25, "delayBefore": 0.09 }, { "enemyId": "t3_brute", "count": 10, "spawnInterval": 0.30, "delayBefore": 0.09 }, { "enemyId": "t4_aegis", "count": 6, "spawnInterval": 0.46, "delayBefore": 0.14 }, { "enemyId": "t5_regenerator", "count": 3, "spawnInterval": 0.68, "delayBefore": 0.19 },
+      { "enemyId": "t2_runner", "count": 14, "spawnInterval": 0.11, "delayBefore": 0.13 }, { "enemyId": "t1_crawler", "count": 9, "spawnInterval": 0.23, "delayBefore": 0.09 }, { "enemyId": "t3_brute", "count": 10, "spawnInterval": 0.28, "delayBefore": 0.09 }, { "enemyId": "t4_aegis", "count": 6, "spawnInterval": 0.44, "delayBefore": 0.13 }, { "enemyId": "t5_regenerator", "count": 3, "spawnInterval": 0.66, "delayBefore": 0.18 },
+      { "enemyId": "t2_runner", "count": 14, "spawnInterval": 0.11, "delayBefore": 0.13 }, { "enemyId": "t3_brute", "count": 10, "spawnInterval": 0.26, "delayBefore": 0.08 }, { "enemyId": "t4_aegis", "count": 6, "spawnInterval": 0.42, "delayBefore": 0.13 }, { "enemyId": "t5_regenerator", "count": 3, "spawnInterval": 0.64, "delayBefore": 0.18 },
+      { "enemyId": "t5_regenerator", "rank": "Boss", "count": 1, "spawnInterval": 1.0, "delayBefore": 0.82 }
+    ] }
+  ]
+}

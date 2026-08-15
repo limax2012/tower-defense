@@ -91,6 +91,18 @@ public sealed class GameRenderer
                     p.DrawPolygon(batch, start + new Vector2(28, 18), 3, 4, false, color, MathHelper.PiOver4);
                 }
                 break;
+
+            case "currents":
+                for (var y = 140; y < GameConstants.LogicalHeight; y += 155)
+                for (var x = 68; x < GameConstants.MapWidth; x += 180)
+                {
+                    var center = new Vector2(x + ((y / 155) % 2) * 36, y);
+                    p.Line(batch, center - new Vector2(16, 7), center, color, 2);
+                    p.Line(batch, center, center - new Vector2(16, -7), color, 2);
+                    p.Line(batch, center + new Vector2(8, -7), center + new Vector2(24, 0), color, 1);
+                    p.Line(batch, center + new Vector2(24, 0), center + new Vector2(8, 7), color, 1);
+                }
+                break;
         }
     }
 
@@ -123,6 +135,17 @@ public sealed class GameRenderer
             DrawContinuousPath(batch, p, points, visual.BaseColor, Math.Max(12, roadWidth - 8));
             for (var i = 0; i < points.Length - 1; i++)
                 DrawDashedLine(batch, p, points[i], points[i + 1], visual.SecondaryColor, 3, 10, 13);
+            return;
+        }
+
+        if (visual.Style.Equals("channel", StringComparison.OrdinalIgnoreCase))
+        {
+            // A slim cyan bank around a slate current differentiates this route
+            // without introducing segment seams or tile-like joints.
+            DrawContinuousPath(batch, p, points, visual.SecondaryColor, roadWidth);
+            DrawContinuousPath(batch, p, points, visual.BaseColor, Math.Max(12, roadWidth - 6));
+            for (var i = 0; i < points.Length - 1; i++)
+                DrawDashedLine(batch, p, points[i], points[i + 1], visual.AccentColor, 3, 13, 19);
             return;
         }
 

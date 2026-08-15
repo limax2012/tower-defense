@@ -118,7 +118,7 @@ internal static class Program
         Check.Equal(10, content.Towers.Count, "tower count");
         Check.Equal(5, content.Enemies.Count, "enemy count");
         Check.Equal(20, content.Waves.Waves.Count, "wave count");
-        Check.Equal(3, content.Maps.Count, "map count");
+        Check.Equal(4, content.Maps.Count, "map count");
         Check.Equal(1090, content.Waves.Waves.SelectMany(x => x.Groups).Sum(x => x.Count), "enemy count in waves");
         Check.True(content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase)) >= 5, "elite encounter groups");
         Check.Equal(1, content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)), "final boss group");
@@ -304,11 +304,25 @@ internal static class Program
         var content = new ContentLoader(root).Load();
         var relay = content.Maps["relay_divide"];
         var prism = content.Maps["prism_circuit"];
-        Check.Equal(3, content.Maps.Values.Select(map => map.Background.Motif).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+        var crosswind = content.Maps["crosswind_basin"];
+        Check.Equal(4, content.Maps.Values.Select(map => map.Background.Motif).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             "each arena has a distinct background motif");
         Check.True(content.Maps.Values.All(map => !map.Background.Motif.Equals("none", StringComparison.OrdinalIgnoreCase)),
             "every arena opts into a visual identity motif");
         Check.Equal("conduit", prism.PathVisual.Style, "Prism uses a distinct conduit path");
+        Check.Equal("channel", crosswind.PathVisual.Style, "Crosswind uses a distinct channel path");
+        Check.Equal(0, crosswind.PowerNodes.Count, "Crosswind relies on crossfire geometry rather than power nodes");
+        Check.Equal("crosswind_waves", crosswind.WaveSet, "Crosswind has its own campaign");
+        Check.True(content.WaveSets[crosswind.WaveSet].Waves[1].Groups.Any(x => x.EnemyId == "t2_runner"),
+            "Crosswind introduces its runner theme immediately");
+        var crosswindSession = new GameSession(content, crosswind.Id, "hard");
+        Check.True(crosswindSession.TryPlaceTower("needle_turret", new Vector2(250, 320)),
+            "Crosswind interior island accepts a practical tower placement");
+        var mapUi = new UIManager(null!);
+        mapUi.ConfigureMaps(content.Maps.Values);
+        Check.Equal("foundry_loop", mapUi.SelectedMapId, "arena selector starts on Foundry");
+        mapUi.HandleMainMenu(WorldInput(new Vector2(500, 370)) with { LeftPressed = true });
+        Check.Equal("crosswind_basin", mapUi.SelectedMapId, "arena selector advances by challenge rating");
         Check.Equal(3, prism.PowerNodes.Count, "Prism has a restrained node roster");
         Check.Equal("prism_waves", prism.WaveSet, "Prism has its own campaign");
         Check.True(prism.ChallengeRating > content.Maps["foundry_loop"].ChallengeRating, "Prism challenge is above Foundry");

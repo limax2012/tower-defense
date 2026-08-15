@@ -63,24 +63,25 @@ Batch summaries derive win rate, average wave/lives, map/strategy outcomes, and 
 
 - Fast: 46 deterministic mechanics, content, transport, command, and simulation regressions.
 - Medium: isolated `--balance` benchmark plus focused strategy/map batches.
-- Deep: `--simulate-full` across 12 strategies, all three maps, four difficulties, and multiple seeds.
+- Deep: `--simulate-full` across 12 strategies, all four maps, four difficulties, and multiple seeds.
 - Player-facing: self-contained native build inspection of menus, online setup, battlefield, workshop, tactical states, Surge Zone hover, level badges, Overdrive, forge timing, and result screens.
 
 ## Current baseline
 
-The current five-seed matrices cover 12 strategies across Foundry Loop, Prism Circuit, and Surge Divide: 180 deterministic runs per difficulty.
+The current five-seed matrices cover 12 strategies across Foundry Loop, Crosswind Basin, Prism Circuit, and Surge Divide: 240 deterministic runs per difficulty. Easy's only consistent failures are the intentionally under-defending Economy and indiscriminate level-1 Spam policies.
 
 | Difficulty | Wins | Win rate | Average wave | Average lives |
 | --- | ---: | ---: | ---: | ---: |
-| Normal | 137/180 | 76.1% | 18.9 | 17.6 |
-| Hard | 106/180 | 58.9% | 17.9 | 9.8 |
-| Bastion | 35/180 | 19.4% | 12.9 | 2.3 |
+| Easy | 200/240 | 83.3% | 19.4 | 24.8 |
+| Normal | 185/240 | 77.1% | 19.0 | 17.9 |
+| Hard | 144/240 | 60.0% | 17.9 | 10.1 |
+| Bastion | 47/240 | 19.6% | 13.0 | 2.3 |
 
-Hard is the authored uncompromised baseline. Its map results are Foundry 41/60, Prism 38/60, and Surge 27/60. Surge is therefore materially harder despite its nine nodes; on Bastion it falls to 6/60 versus 15/60 Foundry and 14/60 Prism. Normal preserves recovery room without making undirected Economy or level-1 Spam policies successful.
+Hard is the authored uncompromised baseline. Its map results are Foundry 41/60, Crosswind 38/60, Prism 38/60, and Surge 27/60. Surge is therefore materially harder despite its nine nodes; on Bastion it falls to 6/60 versus 15/60 Foundry, 12/60 Crosswind, and 14/60 Prism. Normal preserves recovery room without making undirected Economy or level-1 Spam policies successful.
 
-Hard strategy wins are Conservative 15/15, Economy 0/15, Aggressive 2/15, UpgradeFocused 7/15, Spam 0/15, AntiSwarm 14/15, AntiArmor 11/15, LongRange 12/15, Control 13/15, Tactical 14/15, Adaptive 13/15, and Randomized 5/15. Long range remains useful but is no longer the leading or seed-proof policy.
+Hard strategy wins are Conservative 19/20, Economy 0/20, Aggressive 2/20, UpgradeFocused 11/20, Spam 0/20, AntiSwarm 19/20, AntiArmor 16/20, LongRange 15/20, Control 18/20, Tactical 19/20, Adaptive 16/20, and Randomized 9/20. Long range remains useful but is no longer the leading or seed-proof policy.
 
-Reports: `.build/balance/overnight-normal-5x.json`, `.build/balance/overnight-hard-5x.json`, and `.build/balance/overnight-bastion-5x.json`.
+Reports: `.build/balance/overnight-*-5x.json` for the original three-map matrices and `.build/balance/crosswind-*-5x.json` for the fourth-map additions.
 
 ## Endless validation
 
@@ -91,10 +92,11 @@ Reports: `.build/balance/overnight-normal-5x.json`, `.build/balance/overnight-ha
 
 ## Current observations
 
-- Short/medium-range alternatives remain healthy on Hard: Control wins 13/15 and AntiSwarm 14/15, compared with LongRange at 12/15.
-- Conservative is the most stable policy at 15/15, while Adaptive is strong but imperfect at 13/15. The game rewards broad coverage without requiring one exact roster.
+- Short/medium-range alternatives remain healthy on Hard: Control wins 18/20 and AntiSwarm 19/20, compared with LongRange at 15/20.
+- Crosswind specifically rewards its intended crossfire play: Control and AntiSwarm win 5/5 on Hard, while LongRange wins 3/5 despite the route's generous total length.
+- Conservative and Tactical are the most stable policies at 19/20, while Adaptive is strong but imperfect at 16/20. The game rewards broad coverage without requiring one exact roster.
 - Economy reaches wave 15.5 on average on Hard without winning; its delayed Forge investment remains meaningful but risky. Spam also remains intentionally nonviable.
-- Tactical wins 14/15 while deploying 1,139 plates across the matrix. The 16-field cap, active-wave escalating direct cost, knockback grace, and boss resistance prevent the former endless plate lock despite making the system useful.
+- Tactical wins 19/20 while deploying 1,312 plates across the matrix. The 16-field cap, active-wave escalating direct cost, knockback grace, and boss resistance prevent the former endless plate lock despite making the system useful.
 - Mortar's deterministic shell caps reduce Hard aggregate damage/credit to 14.2 and keep it below Watchtower, Breaker, Needle, Shard, Frost, and Ember rather than allowing unlimited crowded-wave scaling.
 - Every final specialization appears in winning Hard runs. Rare choices such as Quake Shell are successful in the scenarios that select them; selection frequency alone is not treated as branch failure.
 - The Beacon benchmark now measures indirect output. Tempo contributes 18.4 assisted DPS to a compact three-Needle cluster, while Horizon contributes 12.0 versus Tempo's 8.0 in a spread three-Watchtower formation by reaching two extra recipients.

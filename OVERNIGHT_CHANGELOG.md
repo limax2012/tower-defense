@@ -4,6 +4,8 @@
 
 Date: 2026-08-15
 
+- Added Crosswind Basin, a fourth arena with a seamless cyan-banked channel, current-chevron field motif, three compact crossfire islands, no power nodes, a distinct starting economy, and a runner-led authored 20-wave campaign.
+- Completed the missing five-seed Easy matrix across the original three arenas: 150/180 wins (83.3%), with only Economy and indiscriminate Spam consistently failing.
 - Added Easy, Normal, Hard, and Bastion profiles with persistent save/co-op identity and deterministic checksums. Hard preserves the previous authored economy and enemy values; Normal is the default onboarding experience.
 - Gave Foundry Loop, Prism Circuit, and Surge Divide separate 20-wave campaigns. Surge now carries the hardest roster and opening economy instead of granting nine nodes against the same opposition as Foundry.
 - Added Prism Circuit as a third arena with a distinct continuous conduit visual, a new route/build topology, and three restrained Surge Nodes.
