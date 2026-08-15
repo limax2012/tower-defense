@@ -203,6 +203,7 @@ Date: 2026-08-14
 
 ## Quality-of-life changes
 
+- Added a visually verified Profiles page to the Tactical Library. It compares all four difficulty multipliers, opening lives/credits, reserve availability, and directive tower restrictions without leaving the title or paused match.
 - Expanded persistent Run History with early-call credits, Protocol activations, Pulse Plate output, forged charges, and a compact selected-run comparison strip; legacy records load with zeroed tactical fields.
 - Reworked Run Analysis into a readable two-column metric grid and surfaced previously hidden early-call income and run-wide Protocol activation totals.
 - Replaced the frozen post-victory Final Field with **Continue Endless**. It resumes the same battlefield for wave-21 preparation and lets attack visuals cool off under normal simulation.

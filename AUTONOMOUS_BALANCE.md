@@ -73,16 +73,16 @@ The current five-seed matrices cover 12 strategies across Foundry Loop, Crosswin
 
 | Difficulty | Wins | Win rate | Average wave | Average lives |
 | --- | ---: | ---: | ---: | ---: |
-| Easy | 198/240 | 82.5% | 19.4 | 24.3 |
-| Normal | 181/240 | 75.4% | 18.8 | 16.9 |
-| Hard | 140/240 | 58.3% | 17.4 | 10.1 |
-| Bastion | 40/240 | 16.7% | 12.8 | 1.9 |
+| Easy | 199/240 | 82.9% | 19.1 | 24.6 |
+| Normal | 186/240 | 77.5% | 18.8 | 17.4 |
+| Hard | 140/240 | 58.3% | 17.5 | 9.0 |
+| Bastion | 33/240 | 13.8% | 12.1 | 1.5 |
 
-Hard is the authored uncompromised baseline. After the doctrine and Watchtower coverage passes, its map results are Crosswind 40/60, Foundry 38/60, Prism 35/60, and Surge 27/60. Surge is therefore materially harder despite its nine nodes. Easy remains forgiving and nearly map-neutral at 49-50 clears per arena; Normal ranges from 43-49; Bastion sharply exposes Surge's campaign pressure at only 2/60.
+Hard is the authored uncompromised baseline. Its current map results range from 52% on Surge to 63% on Foundry; Bastion ranges from 5% on Surge to 25% on Foundry and remains deliberately severe. Across every profile, Surge is the lowest aggregate arena (126/240) despite its nine nodes while Foundry is highest (147/240). Easy remains broadly forgiving while the intentionally dysfunctional Economy and indiscriminate level-1 Spam policies still fail, so it does not collapse into an automatic win.
 
-Hard strategy wins are Conservative 18/20, Economy 0/20, Aggressive 0/20, UpgradeFocused 17/20, Spam 0/20, AntiSwarm 12/20, AntiArmor 17/20, LongRange 18/20, Control 17/20, Tactical 13/20, Adaptive 17/20, and Randomized 11/20. Long Range remains a leading viable policy without clearing every seed; Conservative, AntiArmor, Control, Adaptive, and UpgradeFocused remain competitive alternatives.
+Current Hard strategy wins are Conservative 14/20, Economy 0/20, Aggressive 2/20, UpgradeFocused 20/20, Spam 0/20, AntiSwarm 16/20, AntiArmor 19/20, LongRange 19/20, Control 15/20, Tactical 14/20, Adaptive 15/20, and Randomized 6/20. A focused 20-seed rerun expanded UpgradeFocused to 74/80 (92.5%): it cleared Crosswind, Foundry, and Prism consistently but only 14/20 Surge cases. Deep upgrades are therefore a strong slot-efficiency plan rather than a universal solution, while AntiArmor, LongRange, AntiSwarm, Control, Adaptive, and Tactical remain credible alternatives. Report: `.build/balance/upgrade-focused-hard-20x.json`.
 
-Canonical reports: `.build/balance/doctrine-range-easy-5x.json`, `.build/balance/doctrine-range-normal-5x.json`, `.build/balance/range-trade-final-hard-5x.json`, and `.build/balance/doctrine-range-bastion-5x.json`.
+Current combined report: `.build/balance/overnight-difficulty-5x.json`. Earlier tuning reports remain under `.build/balance` for comparison.
 
 ## Challenge directive baseline
 

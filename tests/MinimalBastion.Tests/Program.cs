@@ -2892,6 +2892,8 @@ internal static class Program
         var content = new ContentLoader(root).Load();
         var ui = new UIManager(null!);
         ui.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
+        ui.ConfigureDifficulties(content.Difficulties.Values);
+        ui.ConfigureChallenges(content.Challenges.Values);
         ui.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values, content.Tactics);
         var firstTower = ui.SelectedLibraryTowerId;
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
@@ -2900,29 +2902,41 @@ internal static class Program
         Check.Equal(firstTower!, ui.SelectedLibraryTowerId!, "tower library Up returns to the previous tower");
         var tabUi = new UIManager(null!);
         tabUi.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
+        tabUi.ConfigureDifficulties(content.Difficulties.Values);
+        tabUi.ConfigureChallenges(content.Challenges.Values);
         tabUi.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values, content.Tactics);
         tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
         Check.True(tabUi.LibraryShowsThreats, "Tactical Library Tab advances from towers to threats");
         tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
         Check.True(tabUi.LibraryShowsCampaign, "Tactical Library Tab advances from threats to campaigns");
         tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
-        Check.True(tabUi.LibraryShowsSystems,
-            "Tactical Library Tab advances from campaigns to systems");
+        Check.True(tabUi.LibraryShowsProfiles,
+            "Tactical Library Tab advances from campaigns to profiles");
         tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
-        Check.True(!tabUi.LibraryShowsThreats && !tabUi.LibraryShowsCampaign && !tabUi.LibraryShowsSystems,
+        Check.True(tabUi.LibraryShowsSystems,
+            "Tactical Library Tab advances from profiles to systems");
+        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
+        Check.True(!tabUi.LibraryShowsThreats && !tabUi.LibraryShowsCampaign && !tabUi.LibraryShowsProfiles && !tabUi.LibraryShowsSystems,
             "Tactical Library Tab wraps from systems to towers");
+        var normalReference = UIManager.DifficultyReferenceLines(content.Difficulties["normal"]);
+        Check.True(normalReference.Contains("ENEMY HEALTH x0.90") && normalReference.Contains("STARTING LIVES 24"),
+            "profile reference exposes exact difficulty combat and economy values");
+        var closeReference = UIManager.ChallengeReferenceLines(content.Challenges["close_quarters"], content.Towers.Count);
+        Check.True(closeReference.Contains("TOWERS AVAILABLE 8/10") &&
+            closeReference.Any(line => line.Contains("WATCHTOWER", StringComparison.Ordinal)),
+            "profile reference exposes exact directive roster restrictions");
         Check.Equal(UiAction.TowerLibrary,
             ui.HandleMainMenu(WorldInput(new Vector2(712, 442)) with { LeftPressed = true }),
             "title screen opens tower library");
         Check.Equal(UiAction.None,
-            ui.HandleTitleTowerLibrary(WorldInput(new Vector2(717, 67)) with { LeftPressed = true }),
+            ui.HandleTitleTowerLibrary(WorldInput(new Vector2(580, 67)) with { LeftPressed = true }),
             "threat reference remains inside tactical library");
         Check.True(ui.LibraryShowsThreats, "tactical library switches to threat reference");
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TowerHotkey = 3 });
         Check.Equal("t3_brute", ui.SelectedLibraryEnemyId!, "threat hotkeys select the health-ordered archetype");
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
         Check.Equal("t1_crawler", ui.SelectedLibraryEnemyId!, "threat library supports health-ordered arrow selection");
-        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(855, 67)) with { LeftPressed = true });
+        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(725, 67)) with { LeftPressed = true });
         Check.True(ui.LibraryShowsCampaign, "tactical library switches to campaign reference");
         Check.Equal(20, ui.SelectedLibraryCampaignWaveCount, "campaign reference exposes all authored waves");
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TowerHotkey = 2 });
@@ -2930,11 +2944,14 @@ internal static class Program
         var secondMap = ui.SelectedLibraryCampaignMapId;
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
         Check.True(ui.SelectedLibraryCampaignMapId != secondMap, "campaign library supports arrow selection");
+        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(860, 67)) with { LeftPressed = true });
+        Check.True(ui.LibraryShowsProfiles, "tactical library switches to profile reference");
         ui.HandleTitleTowerLibrary(WorldInput(new Vector2(990, 67)) with { LeftPressed = true });
         Check.True(ui.LibraryShowsSystems, "tactical library switches to systems reference");
-        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(580, 67)) with { LeftPressed = true });
+        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(450, 67)) with { LeftPressed = true });
         Check.True(!ui.LibraryShowsThreats, "tactical library returns to tower planning");
         Check.True(!ui.LibraryShowsCampaign, "tower planning closes campaign reference");
+        Check.True(!ui.LibraryShowsProfiles, "tower planning closes profile reference");
         Check.True(!ui.LibraryShowsSystems, "tower planning closes systems reference");
         Check.Equal(UiAction.MainMenu,
             ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { EscapePressed = true }),

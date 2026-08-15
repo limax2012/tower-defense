@@ -107,6 +107,7 @@ public sealed class UIManager
     private int _enemyLibraryIndex;
     private bool _libraryShowsThreats;
     private bool _libraryShowsCampaign;
+    private bool _libraryShowsProfiles;
     private bool _libraryShowsSystems;
     private int _campaignLibraryMapIndex;
     private Rectangle _towerLibraryDoctrineAButton;
@@ -154,10 +155,11 @@ public sealed class UIManager
     private readonly Rectangle _restartButton = new(500, 444, 280, 46);
     private readonly Rectangle _mainMenuButton = new(500, 496, 280, 46);
     private readonly Rectangle _towerLibraryCloseButton = new(1080, 48, 130, 38);
-    private readonly Rectangle _towerLibraryTowerTabButton = new(520, 48, 125, 38);
-    private readonly Rectangle _towerLibraryThreatTabButton = new(655, 48, 125, 38);
-    private readonly Rectangle _towerLibraryCampaignTabButton = new(790, 48, 130, 38);
-    private readonly Rectangle _towerLibrarySystemsTabButton = new(930, 48, 125, 38);
+    private readonly Rectangle _towerLibraryTowerTabButton = new(390, 48, 125, 38);
+    private readonly Rectangle _towerLibraryThreatTabButton = new(525, 48, 125, 38);
+    private readonly Rectangle _towerLibraryCampaignTabButton = new(660, 48, 130, 38);
+    private readonly Rectangle _towerLibraryProfilesTabButton = new(800, 48, 125, 38);
+    private readonly Rectangle _towerLibrarySystemsTabButton = new(935, 48, 125, 38);
     private readonly Rectangle _resultContinueButton = new(296, 580, 206, 46);
     private readonly Rectangle _resultRestartButton = new(518, 580, 206, 46);
     private readonly Rectangle _resultMenuButton = new(740, 580, 206, 46);
@@ -187,6 +189,7 @@ public sealed class UIManager
     public string? SelectedRunHistoryId => _selectedRunHistoryId;
     public bool LibraryShowsThreats => _libraryShowsThreats;
     public bool LibraryShowsCampaign => _libraryShowsCampaign;
+    public bool LibraryShowsProfiles => _libraryShowsProfiles;
     public bool LibraryShowsSystems => _libraryShowsSystems;
     public string? SelectedLibraryTowerId => _libraryTowers.Count == 0 ? null : _libraryTowers[_towerLibraryIndex].Id;
     public string? SelectedLibraryEnemyId => _libraryEnemies.Count == 0 ? null : _libraryEnemies[_enemyLibraryIndex].Id;
@@ -1183,7 +1186,9 @@ public sealed class UIManager
         if (input.TabPressed) CycleTowerLibraryTab();
         if (input.NavigateUpPressed || input.NavigateDownPressed)
             MoveTowerLibrarySelection(input.NavigateUpPressed ? -1 : 1);
-        var activeCount = _libraryShowsSystems ? 0 : _libraryShowsCampaign ? _maps.Count : _libraryShowsThreats ? _libraryEnemies.Count : _libraryTowers.Count;
+        var activeCount = _libraryShowsSystems || _libraryShowsProfiles
+            ? 0
+            : _libraryShowsCampaign ? _maps.Count : _libraryShowsThreats ? _libraryEnemies.Count : _libraryTowers.Count;
         if (input.TowerHotkey > 0 && input.TowerHotkey <= activeCount)
         {
             if (_libraryShowsCampaign) _campaignLibraryMapIndex = input.TowerHotkey - 1;
@@ -1198,6 +1203,7 @@ public sealed class UIManager
         {
             _libraryShowsThreats = false;
             _libraryShowsCampaign = false;
+            _libraryShowsProfiles = false;
             _libraryShowsSystems = false;
             return false;
         }
@@ -1205,6 +1211,7 @@ public sealed class UIManager
         {
             _libraryShowsThreats = true;
             _libraryShowsCampaign = false;
+            _libraryShowsProfiles = false;
             _libraryShowsSystems = false;
             return false;
         }
@@ -1212,6 +1219,15 @@ public sealed class UIManager
         {
             _libraryShowsThreats = false;
             _libraryShowsCampaign = true;
+            _libraryShowsProfiles = false;
+            _libraryShowsSystems = false;
+            return false;
+        }
+        if (_towerLibraryProfilesTabButton.Contains(point) && _difficulties.Count > 0 && _challenges.Count > 0)
+        {
+            _libraryShowsThreats = false;
+            _libraryShowsCampaign = false;
+            _libraryShowsProfiles = true;
             _libraryShowsSystems = false;
             return false;
         }
@@ -1219,10 +1235,11 @@ public sealed class UIManager
         {
             _libraryShowsThreats = false;
             _libraryShowsCampaign = false;
+            _libraryShowsProfiles = false;
             _libraryShowsSystems = true;
             return false;
         }
-        if (_libraryShowsSystems) return false;
+        if (_libraryShowsSystems || _libraryShowsProfiles) return false;
         if (_libraryShowsCampaign)
         {
             for (var index = 0; index < _maps.Count; index++)
@@ -1265,7 +1282,7 @@ public sealed class UIManager
 
     private void CycleTowerLibraryTab()
     {
-        if (!_libraryShowsThreats && !_libraryShowsCampaign && !_libraryShowsSystems && _libraryEnemies.Count > 0)
+        if (!_libraryShowsThreats && !_libraryShowsCampaign && !_libraryShowsProfiles && !_libraryShowsSystems && _libraryEnemies.Count > 0)
         {
             _libraryShowsThreats = true;
             return;
@@ -1279,6 +1296,12 @@ public sealed class UIManager
         if (_libraryShowsCampaign)
         {
             _libraryShowsCampaign = false;
+            _libraryShowsProfiles = true;
+            return;
+        }
+        if (_libraryShowsProfiles)
+        {
+            _libraryShowsProfiles = false;
             _libraryShowsSystems = true;
             return;
         }
@@ -1289,6 +1312,7 @@ public sealed class UIManager
         }
         _libraryShowsThreats = false;
         _libraryShowsCampaign = false;
+        _libraryShowsProfiles = false;
         _libraryShowsSystems = false;
     }
 
@@ -1336,7 +1360,7 @@ public sealed class UIManager
 
     private void MoveTowerLibrarySelection(int delta)
     {
-        if (_libraryShowsSystems) return;
+        if (_libraryShowsSystems || _libraryShowsProfiles) return;
         if (_libraryShowsCampaign)
         {
             if (_maps.Count > 0) _campaignLibraryMapIndex = Math.Clamp(_campaignLibraryMapIndex + delta, 0, _maps.Count - 1);
@@ -2459,6 +2483,8 @@ public sealed class UIManager
         DrawText(batch, "TACTICAL LIBRARY", new Vector2(62, 48), ColorPalette.Navy, 1.25f);
         DrawText(batch, _libraryShowsSystems
             ? "Core rules, status behavior, tactical reserves, support stacking, and co-op flow."
+            : _libraryShowsProfiles
+            ? "Exact difficulty scaling and optional directive restrictions before committing to a run."
             : _libraryShowsCampaign
             ? "Every arena's exact authored wave roster, base scaling, and threat sequence."
             : _libraryShowsThreats
@@ -2466,14 +2492,17 @@ public sealed class UIManager
                 : "Exact tower values. Click a Tier 2 doctrine to preview either final role.",
             new Vector2(62, 82), ColorPalette.Muted, 0.56f);
         DrawButton(batch, p, _towerLibraryTowerTabButton, "TOWERS", true,
-            _libraryShowsThreats || _libraryShowsCampaign || _libraryShowsSystems ? ColorPalette.PanelAlt : ColorPalette.Cyan,
-            _libraryShowsThreats || _libraryShowsCampaign || _libraryShowsSystems ? ColorPalette.Ink : ColorPalette.Navy);
+            _libraryShowsThreats || _libraryShowsCampaign || _libraryShowsProfiles || _libraryShowsSystems ? ColorPalette.PanelAlt : ColorPalette.Cyan,
+            _libraryShowsThreats || _libraryShowsCampaign || _libraryShowsProfiles || _libraryShowsSystems ? ColorPalette.Ink : ColorPalette.Navy);
         DrawButton(batch, p, _towerLibraryThreatTabButton, "THREATS", _libraryEnemies.Count > 0,
             _libraryShowsThreats ? ColorPalette.Coral : ColorPalette.PanelAlt,
             _libraryShowsThreats ? ColorPalette.Paper : ColorPalette.Ink);
         DrawButton(batch, p, _towerLibraryCampaignTabButton, "CAMPAIGNS", _libraryCampaignWaves.Count > 0,
             _libraryShowsCampaign ? ColorPalette.Violet : ColorPalette.PanelAlt,
             _libraryShowsCampaign ? ColorPalette.Paper : ColorPalette.Ink);
+        DrawButton(batch, p, _towerLibraryProfilesTabButton, "PROFILES", _difficulties.Count > 0 && _challenges.Count > 0,
+            _libraryShowsProfiles ? ColorPalette.Gold : ColorPalette.PanelAlt,
+            _libraryShowsProfiles ? ColorPalette.Navy : ColorPalette.Ink);
         DrawButton(batch, p, _towerLibrarySystemsTabButton, "SYSTEMS", true,
             _libraryShowsSystems ? ColorPalette.Green : ColorPalette.PanelAlt,
             _libraryShowsSystems ? ColorPalette.Navy : ColorPalette.Ink);
@@ -2485,6 +2514,15 @@ public sealed class UIManager
             p.FillRect(batch, systemsPanel, ColorPalette.Panel);
             p.DrawRect(batch, systemsPanel, ColorPalette.CardOutline, 1);
             DrawSystemsLibrary(batch, p, systemsPanel, returnDestination);
+            return;
+        }
+
+        if (_libraryShowsProfiles)
+        {
+            var profilesPanel = new Rectangle(56, 112, 1168, 540);
+            p.FillRect(batch, profilesPanel, ColorPalette.Panel);
+            p.DrawRect(batch, profilesPanel, ColorPalette.CardOutline, 1);
+            DrawProfilesLibrary(batch, p, profilesPanel, returnDestination);
             return;
         }
 
@@ -2597,6 +2635,93 @@ public sealed class UIManager
         DrawFittedCenteredText(batch,
             $"W21+ inherits this arena's final roster; HP accelerates, density/cadence stay capped, and a boss returns every 5 waves.  UP/DOWN selects; TAB changes page; ESC or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
+    }
+
+    private void DrawProfilesLibrary(SpriteBatch batch, PrimitiveRenderer p, Rectangle panel, string returnDestination)
+    {
+        _towerLibraryDoctrineAButton = Rectangle.Empty;
+        _towerLibraryDoctrineBButton = Rectangle.Empty;
+        if (_difficulties.Count == 0 || _challenges.Count == 0)
+        {
+            DrawText(batch, "NO PROFILE DEFINITIONS AVAILABLE", new Vector2(panel.Center.X, panel.Center.Y), ColorPalette.Coral, 0.72f, true);
+            return;
+        }
+
+        const int cardWidth = 272;
+        const int cardHeight = 236;
+        const int gap = 14;
+        var firstX = panel.X + 18;
+        var firstY = panel.Y + 18;
+        var secondY = firstY + cardHeight + gap;
+
+        for (var index = 0; index < Math.Min(4, _difficulties.Count); index++)
+        {
+            var difficulty = _difficulties[index];
+            DrawSystemCard(batch, p, new Rectangle(firstX + index * (cardWidth + gap), firstY, cardWidth, cardHeight),
+                $"{difficulty.DisplayName.ToUpperInvariant()} DIFFICULTY", difficulty.AccentColor, "diamond",
+                DifficultyReferenceLines(difficulty));
+        }
+
+        for (var index = 0; index < Math.Min(4, _challenges.Count); index++)
+        {
+            var challenge = _challenges[index];
+            DrawSystemCard(batch, p, new Rectangle(firstX + index * (cardWidth + gap), secondY, cardWidth, cardHeight),
+                $"{challenge.DisplayName.ToUpperInvariant()} DIRECTIVE", challenge.AccentColor, "square",
+                ChallengeReferenceLines(challenge, _libraryTowers.Count));
+        }
+
+        DrawFittedCenteredText(batch,
+            $"Difficulty scales every arena and endless wave; directives change available systems and opening funds.  TAB changes page; ESC or BACK returns to {returnDestination}.",
+            new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
+    }
+
+    public static IReadOnlyList<string> DifficultyReferenceLines(DifficultyDefinition difficulty) =>
+    [
+        $"ENEMY HEALTH x{difficulty.EnemyHealthMultiplier:0.00}",
+        $"ENEMY SPEED x{difficulty.EnemySpeedMultiplier:0.00}",
+        $"START CREDITS x{difficulty.StartingCreditsMultiplier:0.000}",
+        $"STARTING LIVES {difficulty.StartingLives}",
+        difficulty.Id.ToLowerInvariant() switch
+        {
+            "easy" => "INTENT: EXPERIMENT + RECOVERY",
+            "normal" => "INTENT: BALANCED BREATHING ROOM",
+            "hard" => "INTENT: ORIGINAL THREAT + ECONOMY",
+            "bastion" => "INTENT: SEVERE LOW-MARGIN TEST",
+            _ => $"INTENT: {difficulty.Description.ToUpperInvariant()}"
+        }
+    ];
+
+    public static IReadOnlyList<string> ChallengeReferenceLines(ChallengeDefinition challenge, int totalTowerCount)
+    {
+        var available = Math.Max(0, totalTowerCount - challenge.ExcludedTowerIds.Count);
+        var lines = new List<string>
+        {
+            $"START CREDITS x{challenge.StartingCreditsMultiplier:0.00}",
+            $"TACTICAL RESERVES {(challenge.TacticalSystemsEnabled ? "ON" : "OFF")}",
+            $"TOWERS AVAILABLE {available}/{Math.Max(0, totalTowerCount)}"
+        };
+        var excluded = challenge.ExcludedTowerIds
+            .Select(id => id.Replace('_', ' ').ToUpperInvariant())
+            .ToArray();
+        if (excluded.Length == 0)
+        {
+            lines.Add("FULL TOWER ROSTER");
+        }
+        else
+        {
+            var split = (excluded.Length + 1) / 2;
+            lines.Add($"OFFLINE: {string.Join(" / ", excluded.Take(split))}");
+            if (split < excluded.Length) lines.Add(string.Join(" / ", excluded.Skip(split)));
+        }
+        lines.Add(challenge.Id.ToLowerInvariant() switch
+        {
+            "standard" => "RULE: ALL SYSTEMS AVAILABLE",
+            "close_quarters" => "RULE: FIGHT NEAR THE ROUTE",
+            "core_six" => "RULE: SIX-TOWER ROSTER LOCK",
+            "no_reserves" => "RULE: TOWERS ONLY; NO PLATES / FORGE",
+            _ => $"RULE: {challenge.Description.ToUpperInvariant()}"
+        });
+        return lines;
     }
 
     private void DrawSystemsLibrary(SpriteBatch batch, PrimitiveRenderer p, Rectangle panel, string returnDestination)
