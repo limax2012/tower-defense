@@ -137,8 +137,7 @@ public sealed class GameRenderer
             // Matching square joins remove tile seams without introducing round caps.
             DrawContinuousPath(batch, p, points, visual.AccentColor, roadWidth);
             DrawContinuousPath(batch, p, points, visual.BaseColor, Math.Max(12, roadWidth - 8));
-            for (var i = 0; i < points.Length - 1; i++)
-                DrawDashedLine(batch, p, points[i], points[i + 1], visual.SecondaryColor, 3, 10, 13);
+            DrawDashedPath(batch, p, points, visual.SecondaryColor, 3, 10, 13);
             return;
         }
 
@@ -148,8 +147,7 @@ public sealed class GameRenderer
             // without introducing segment seams or tile-like joints.
             DrawContinuousPath(batch, p, points, visual.SecondaryColor, roadWidth);
             DrawContinuousPath(batch, p, points, visual.BaseColor, Math.Max(12, roadWidth - 6));
-            for (var i = 0; i < points.Length - 1; i++)
-                DrawDashedLine(batch, p, points[i], points[i + 1], visual.AccentColor, 3, 13, 19);
+            DrawDashedPath(batch, p, points, visual.AccentColor, 3, 13, 19);
             return;
         }
 
@@ -161,14 +159,12 @@ public sealed class GameRenderer
             DrawContinuousPath(batch, p, points, visual.BaseColor, roadWidth);
             DrawContinuousPath(batch, p, points, visual.SecondaryColor, Math.Max(7, roadWidth / 7));
             var phase = session.Statistics.SimulatedSeconds * 24f;
-            for (var i = 0; i < points.Length - 1; i++)
-                DrawDashedLine(batch, p, points[i], points[i + 1], visual.AccentColor, 4, 9, 25, phase);
+            DrawDashedPath(batch, p, points, visual.AccentColor, 4, 9, 25, phase);
             return;
         }
 
         DrawContinuousPath(batch, p, points, visual.BaseColor, roadWidth);
-        for (var i = 0; i < points.Length - 1; i++)
-            DrawDashedLine(batch, p, points[i], points[i + 1], visual.AccentColor, 4, 18, 16);
+        DrawDashedPath(batch, p, points, visual.AccentColor, 4, 18, 16);
     }
 
     private static void DrawContinuousPath(SpriteBatch batch, PrimitiveRenderer p, IReadOnlyList<Vector2> points, Color color, int width)
@@ -193,6 +189,21 @@ public sealed class GameRenderer
             var dashEnd = MathF.Min(distance + dashLength, length);
             if (dashEnd > dashStart)
                 p.Line(batch, start + direction * dashStart, start + direction * dashEnd, color, thickness);
+        }
+    }
+
+    private static void DrawDashedPath(SpriteBatch batch, PrimitiveRenderer p, IReadOnlyList<Vector2> points, Color color,
+        float thickness, float dashLength, float gapLength, float phase = 0)
+    {
+        // Carry the pattern distance through every right-angle turn. Restarting
+        // it per segment made route corners read like separate road tiles and
+        // caused animated Surge packets to jump instead of flowing around bends.
+        var cumulativeDistance = 0f;
+        for (var index = 0; index < points.Count - 1; index++)
+        {
+            DrawDashedLine(batch, p, points[index], points[index + 1], color,
+                thickness, dashLength, gapLength, phase + cumulativeDistance);
+            cumulativeDistance += Vector2.Distance(points[index], points[index + 1]);
         }
     }
 

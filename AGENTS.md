@@ -94,5 +94,5 @@ Do not casually replace this with ECS, dependency injection, a physics engine, o
 - Direct online two-player co-op is functional when the host is reachable on TCP `28741`.
 - Headless gameplay is fast and deterministic; MonoGame rendering still requires a graphical Windows session.
 - Unlimited numbered solo/co-op save slots, atomic backup recovery, autosaves, run history, display/effect/audio settings, procedural sound effects, difficulty/challenge selectors, and basic reconnect recovery are implemented.
-- Hosted relay, matchmaking, automatic NAT traversal, music, and cloud save synchronization are not implemented.
+- Hosted relay, matchmaking, automatic NAT traversal, and cloud save synchronization are not implemented. Procedural music and effects are local presentation only and never participate in deterministic state.
 - Avoid changing map coordinates, costs, damage, wave totals, or tactical cadence without simulation evidence and updated tests/docs.
