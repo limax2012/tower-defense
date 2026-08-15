@@ -41,6 +41,7 @@ public sealed class UserSettings
 
 public sealed class UserSettingsRepository
 {
+    public const long MaximumSettingsFileBytes = 64 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     public UserSettingsRepository(string rootDirectory)
@@ -85,6 +86,8 @@ public sealed class UserSettingsRepository
         if (!File.Exists(path)) return false;
         try
         {
+            var length = new FileInfo(path).Length;
+            if (length <= 0 || length > MaximumSettingsFileBytes) return false;
             var restored = JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(path), JsonOptions);
             if (restored is null || restored.SchemaVersion != UserSettings.CurrentSchemaVersion) return false;
             restored.Normalize();

@@ -407,6 +407,10 @@ internal static class Program
             File.WriteAllText(repository.SettingsPath, "not json");
             Check.Equal(1600, repository.Load().WindowWidth,
                 "saving after corruption does not overwrite the last known-good settings backup");
+            using (var oversized = File.Create(repository.SettingsPath))
+                oversized.SetLength(UserSettingsRepository.MaximumSettingsFileBytes + 1);
+            Check.Equal(1600, repository.Load().WindowWidth,
+                "oversized settings primary is rejected before allocation and recovers from backup");
         }
         finally
         {
