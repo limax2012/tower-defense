@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Hardened procedural-audio startup cleanup: generated WAV streams are disposed immediately, and a mid-construction device failure releases every sound already created before falling back to silent play.
 - Carried shared-pause attribution through authoritative commands, reconnect snapshots, and deterministic checksums; the pause banner now states whether P1 or P2 paused the defense.
 - Added visible keyboard focus to pause and result actions. Arrow keys/Tab move selection, Enter activates, unavailable save/load actions are skipped, and keyboard Restart retains the same two-step protection as mouse input.
 - Reset pause/result focus only when each screen is newly entered, preventing an old destructive or leave selection from carrying into a later pause or completed run.

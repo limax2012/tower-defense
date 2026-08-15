@@ -15,19 +15,28 @@ public sealed class AudioManager : IDisposable
 
     public AudioManager()
     {
-        _sounds[Cue.Place] = CreateTone(280, 470, 0.10f, WaveShape.Triangle);
-        _sounds[Cue.Upgrade] = CreateTone(480, 760, 0.14f, WaveShape.Sine);
-        _sounds[Cue.Sell] = CreateTone(360, 210, 0.12f, WaveShape.Triangle);
-        _sounds[Cue.Protocol] = CreateChord(390, 585, 0.20f);
-        _sounds[Cue.Kill] = CreateTone(720, 560, 0.045f, WaveShape.Square);
-        _sounds[Cue.Leak] = CreateTone(150, 72, 0.22f, WaveShape.Saw);
-        _sounds[Cue.WaveStart] = CreateTone(260, 540, 0.24f, WaveShape.Triangle);
-        _sounds[Cue.WaveClear] = CreateChord(520, 780, 0.28f);
-        _sounds[Cue.Plate] = CreateNoisePulse(0.11f);
-        _sounds[Cue.Forge] = CreateTone(620, 980, 0.16f, WaveShape.Sine);
-        _sounds[Cue.BossPhase] = CreateTone(230, 105, 0.34f, WaveShape.Saw);
-        _sounds[Cue.Victory] = CreateTriad(392, 523, 659, 0.48f);
-        _sounds[Cue.Defeat] = CreateTone(190, 58, 0.48f, WaveShape.Saw);
+        try
+        {
+            _sounds[Cue.Place] = CreateTone(280, 470, 0.10f, WaveShape.Triangle);
+            _sounds[Cue.Upgrade] = CreateTone(480, 760, 0.14f, WaveShape.Sine);
+            _sounds[Cue.Sell] = CreateTone(360, 210, 0.12f, WaveShape.Triangle);
+            _sounds[Cue.Protocol] = CreateChord(390, 585, 0.20f);
+            _sounds[Cue.Kill] = CreateTone(720, 560, 0.045f, WaveShape.Square);
+            _sounds[Cue.Leak] = CreateTone(150, 72, 0.22f, WaveShape.Saw);
+            _sounds[Cue.WaveStart] = CreateTone(260, 540, 0.24f, WaveShape.Triangle);
+            _sounds[Cue.WaveClear] = CreateChord(520, 780, 0.28f);
+            _sounds[Cue.Plate] = CreateNoisePulse(0.11f);
+            _sounds[Cue.Forge] = CreateTone(620, 980, 0.16f, WaveShape.Sine);
+            _sounds[Cue.BossPhase] = CreateTone(230, 105, 0.34f, WaveShape.Saw);
+            _sounds[Cue.Victory] = CreateTriad(392, 523, 659, 0.48f);
+            _sounds[Cue.Defeat] = CreateTone(190, 58, 0.48f, WaveShape.Saw);
+        }
+        catch
+        {
+            foreach (var sound in _sounds.Values) sound.Dispose();
+            _sounds.Clear();
+            throw;
+        }
     }
 
     public static AudioManager? TryCreate()
@@ -113,7 +122,7 @@ public sealed class AudioManager : IDisposable
             };
             samples[index] = ToSample(wave * Envelope(t) * 0.34f);
         }
-        return SoundEffect.FromStream(CreateWaveStream(samples));
+        return CreateSoundEffect(samples);
     }
 
     private static SoundEffect CreateChord(float firstFrequency, float secondFrequency, float seconds)
@@ -128,7 +137,7 @@ public sealed class AudioManager : IDisposable
                        MathF.Sin(MathHelper.TwoPi * secondFrequency * time) * 0.45f;
             samples[index] = ToSample(wave * Envelope(t) * 0.28f);
         }
-        return SoundEffect.FromStream(CreateWaveStream(samples));
+        return CreateSoundEffect(samples);
     }
 
     private static SoundEffect CreateTriad(float firstFrequency, float secondFrequency, float thirdFrequency, float seconds)
@@ -144,7 +153,7 @@ public sealed class AudioManager : IDisposable
                        MathF.Sin(MathHelper.TwoPi * thirdFrequency * time) * 0.28f;
             samples[index] = ToSample(wave * Envelope(t) * 0.27f);
         }
-        return SoundEffect.FromStream(CreateWaveStream(samples));
+        return CreateSoundEffect(samples);
     }
 
     private static SoundEffect CreateNoisePulse(float seconds)
@@ -161,7 +170,7 @@ public sealed class AudioManager : IDisposable
             var t = index / (float)Math.Max(1, count - 1);
             samples[index] = ToSample((noise * 0.38f + body * 0.62f) * Envelope(t) * 0.32f);
         }
-        return SoundEffect.FromStream(CreateWaveStream(samples));
+        return CreateSoundEffect(samples);
     }
 
     private static float Envelope(float t)
@@ -195,6 +204,12 @@ public sealed class AudioManager : IDisposable
         }
         stream.Position = 0;
         return stream;
+    }
+
+    private static SoundEffect CreateSoundEffect(IReadOnlyList<short> samples)
+    {
+        using var stream = CreateWaveStream(samples);
+        return SoundEffect.FromStream(stream);
     }
 
     public void Dispose()
