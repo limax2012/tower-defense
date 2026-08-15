@@ -44,6 +44,7 @@ Network code never implements a second copy of placement, affordability, upgrade
 
 - Length-prefixed UTF-8 JSON envelopes over `TcpClient`/`TcpListener`.
 - Protocol, message-kind, direction, player identity, semantic field, command, receipt, and snapshot validation before gameplay dispatch.
+- Snapshot reconstruction cross-checks authored wave/group progress against queued contacts, enforces legal tower branch progression, bounds status tick phase, and rejects orphaned homing targets before the repaired simulation resumes.
 - Maximum frame size: 2 MiB. Declared size is checked before payload allocation, and each connection permits at most 64 queued outbound frames.
 - TCP `NoDelay` enabled for command responsiveness.
 - Six-character code and recursive executable/content fingerprint handshake before the host accepts Player 2. Both sides abandon a half-open handshake after ten seconds.
@@ -58,10 +59,10 @@ Network code never implements a second copy of placement, affordability, upgrade
 - Invalid join-code rejection at client and host.
 - DNS, IPv4/default-port, explicit-port, and bracketed IPv6 endpoint parsing.
 - Shared cross-player targeting, doctrine/final upgrades, Protocol control, selling, forge management, and duplicate rejection while preserving original placer identity.
-- Mirrored deterministic placement, wave start, Overdrive, active duration, cooldown, ownership, and final checksum.
+- Mirrored deterministic placement, wave start, Protocol activation, active duration, cooldown, ownership, and final checksum.
 - Wave-ready coordinator behavior.
 - Map/difficulty/challenge identity and latent future-entity state in checksums and session construction.
-- Active-combat snapshot round trip, future-command restoration, post-reconnect combat soak, repeated loopback reconnection, and graceful connection close detection.
+- Active-combat snapshot round trip, future-command restoration, authored wave-progress invariants, branch/status/projectile rejection, post-reconnect combat soak, repeated loopback reconnection, and graceful connection close detection.
 - Per-connection Player 2 request-session rotation, allowing a restarted client to begin request numbering again without resetting authoritative command sequence or pending simulation state.
 - Jittered 0-5 tick command delivery across shared placement, branching, targeting, Protocols, speed, and selling, plus explicit rejection once the six-tick authority buffer has been missed.
 - Real loopback coverage for bounded framing, malformed-envelope rejection, shared pause transport, restart requests, reconnect listener reuse, and post-snapshot checksum fencing.

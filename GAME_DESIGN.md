@@ -89,7 +89,7 @@ Tactical controls live in the sidebar so they never cover usable battlefield spa
 - Two-player direct internet TCP on port `28741`; host shares a public IP/DNS endpoint and six-character code.
 - The host sequences authoritative commands; both peers execute the same fixed-tick deterministic stream and compare checksums.
 - Credits, lives, plate inventory, forge, waves, speed, and victory/defeat are shared.
-- Towers and forge retain visible P1/P2 placement attribution, but either player may upgrade, specialize, retarget, Overdrive, or sell any shared defense.
+- Towers and forge retain visible P1/P2 placement attribution, but either player may upgrade, specialize, retarget, activate/automate a Protocol, or sell any shared defense.
 - Both players must ready a wave. Calling during intermission grants the normal shared early reward.
 - Middle-click pings are color-coded by player.
 - Pause is disabled during co-op; either peer may command shared speed.
