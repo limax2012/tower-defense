@@ -69,9 +69,11 @@ public sealed class AutoPlayer
 
             if (upgrade is { } up)
             {
-                var upgraded = up.SpecializationId is null
-                    ? session.TryUpgradeTower(up.Tower.Id)
-                    : session.TrySpecializeTower(up.Tower.Id, up.SpecializationId);
+                var upgraded = up.DoctrineId is not null
+                    ? session.TryChooseTowerDoctrine(up.Tower.Id, up.DoctrineId)
+                    : up.SpecializationId is not null
+                        ? session.TrySpecializeTower(up.Tower.Id, up.SpecializationId)
+                        : session.TryUpgradeTower(up.Tower.Id);
                 if (upgraded) continue;
             }
             return;
@@ -295,12 +297,52 @@ public sealed class AutoPlayer
         foreach (var tower in session.Towers)
         {
             var current = UpgradeValue(session, tower, tower.Level, threat);
+            if (tower.RequiresDoctrine)
+            {
+                TowerDoctrineDefinition? selectedDoctrine = null;
+                var selectedFit = float.MinValue;
+                var upgradePace = 0f;
+                foreach (var doctrine in tower.Definition.Tier2Doctrines.Where(x => x.UpgradeCost <= spendable))
+                {
+                    var next = tower.Definition.Levels[1].WithDoctrine(doctrine);
+                    var immediateGain = MathF.Max(0.01f, UpgradeValue(session, tower, next, threat) - current);
+                    var immediateGainPerCredit = immediateGain / doctrine.UpgradeCost;
+                    var finalGainPerCredit = tower.Definition.Specializations.Count == 0
+                        ? immediateGainPerCredit
+                        : tower.Definition.Specializations.Max(specialization =>
+                            MathF.Max(0.01f,
+                                UpgradeValue(session, tower, specialization.Level.WithDoctrine(doctrine), threat) - current) /
+                            (doctrine.UpgradeCost + specialization.UpgradeCost));
+
+                    // A doctrine is both an immediate tier-two upgrade and a commitment
+                    // to one of several final builds. Preserve short-term discipline while
+                    // allowing deliberate sidegrades (for example Ice Needle) to be chosen
+                    // when their completed build fits the current threat profile.
+                    var doctrineValue = immediateGainPerCredit * 0.72f + finalGainPerCredit * 0.28f;
+                    var doctrineWeight = DoctrineWeight(doctrine, threat);
+                    var fit = doctrineValue * doctrineWeight;
+                    if (fit > selectedFit)
+                    {
+                        selectedFit = fit;
+                        selectedDoctrine = doctrine;
+                    }
+
+                    // Branch foresight must not make the tower jump ahead of unrelated
+                    // purchases. Retain the immediate-value upgrade cadence that the
+                    // baseline balance matrix was tuned against.
+                    upgradePace = MathF.Max(upgradePace, immediateGainPerCredit * doctrineWeight);
+                }
+                if (selectedDoctrine is not null)
+                    Consider(new UpgradeOption(tower, selectedDoctrine.Id, null,
+                        upgradePace * StrategyWeight(tower.Definition.Id, threat)));
+                continue;
+            }
             if (tower.RequiresSpecialization)
             {
                 foreach (var specialization in tower.Definition.Specializations.Where(x => x.UpgradeCost <= spendable))
                 {
-                    var next = UpgradeValue(session, tower, specialization.Level, threat);
-                    Consider(new UpgradeOption(tower, specialization.Id,
+                    var next = UpgradeValue(session, tower, specialization.Level.WithDoctrine(tower.Doctrine), threat);
+                    Consider(new UpgradeOption(tower, null, specialization.Id,
                         MathF.Max(0.01f, next - current) * StrategyWeight(tower.Definition.Id, threat) *
                         SpecializationWeight(tower.Definition.Id, specialization.Id, threat) / specialization.UpgradeCost));
                 }
@@ -308,7 +350,7 @@ public sealed class AutoPlayer
             }
             if (!tower.CanUpgrade || tower.UpgradeCost > spendable) continue;
             var linearNext = UpgradeValue(session, tower, tower.Definition.Levels[tower.LevelIndex + 1], threat);
-            Consider(new UpgradeOption(tower, null,
+            Consider(new UpgradeOption(tower, null, null,
                 MathF.Max(0.01f, linearNext - current) * StrategyWeight(tower.Definition.Id, threat) / tower.UpgradeCost));
         }
         return best;
@@ -498,6 +540,58 @@ public sealed class AutoPlayer
             ("signal_beacon", "horizon_beacon", AutoPlayerStrategy.Adaptive) when threat.Fast > 0.3f || threat.HasBoss => 1.40f,
             _ => 1f
         };
+    }
+
+    private float DoctrineWeight(TowerDoctrineDefinition doctrine, ThreatProfile threat)
+    {
+        var weight = (doctrine.Id, _strategy) switch
+        {
+            ("needle_cycler", AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.Spam or AutoPlayerStrategy.AntiSwarm) => 1.35f,
+            ("needle_calibrator", AutoPlayerStrategy.AntiArmor or AutoPlayerStrategy.LongRange or AutoPlayerStrategy.UpgradeFocused) => 1.30f,
+            ("shard_scatter", AutoPlayerStrategy.AntiSwarm or AutoPlayerStrategy.Spam or AutoPlayerStrategy.Aggressive) => 1.55f,
+            ("shard_temper", AutoPlayerStrategy.AntiArmor or AutoPlayerStrategy.UpgradeFocused) => 1.35f,
+            ("watch_spotter", AutoPlayerStrategy.AntiSwarm or AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.Control or AutoPlayerStrategy.Tactical) => 1.45f,
+            ("watch_heavy_optics", AutoPlayerStrategy.AntiArmor or AutoPlayerStrategy.LongRange or AutoPlayerStrategy.UpgradeFocused) => 1.35f,
+            ("frost_deep_chill", AutoPlayerStrategy.Control or AutoPlayerStrategy.Conservative) => 1.35f,
+            // The control half of Frost scores very highly in the generic value model.
+            // Anti-swarm doctrine runs deliberately exercise the damage/control tradeoff
+            // instead of converging on Deep Chill in every simulation.
+            ("frost_ice_needle", AutoPlayerStrategy.AntiSwarm or AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.Spam) => 4.00f,
+            ("ember_kindling", AutoPlayerStrategy.AntiSwarm or AutoPlayerStrategy.Control or AutoPlayerStrategy.Aggressive) => 1.45f,
+            ("ember_hot_core", AutoPlayerStrategy.AntiArmor or AutoPlayerStrategy.LongRange or AutoPlayerStrategy.UpgradeFocused) => 1.35f,
+            ("breaker_repeater", AutoPlayerStrategy.AntiSwarm or AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.Spam) => 1.75f,
+            ("breaker_bored", AutoPlayerStrategy.AntiArmor or AutoPlayerStrategy.LongRange or AutoPlayerStrategy.UpgradeFocused) => 1.35f,
+            ("arc_fork", AutoPlayerStrategy.AntiSwarm or AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.Spam) => 1.65f,
+            ("arc_capacitor", AutoPlayerStrategy.Control or AutoPlayerStrategy.AntiArmor or AutoPlayerStrategy.Conservative) => 1.40f,
+            ("mortar_loader", AutoPlayerStrategy.AntiSwarm or AutoPlayerStrategy.Aggressive) => 1.95f,
+            ("mortar_survey", AutoPlayerStrategy.LongRange or AutoPlayerStrategy.Control or AutoPlayerStrategy.Conservative) => 1.35f,
+            ("prism_frequency", AutoPlayerStrategy.AntiSwarm or AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.Spam) => 2.60f,
+            ("prism_aperture", AutoPlayerStrategy.AntiArmor or AutoPlayerStrategy.LongRange or AutoPlayerStrategy.UpgradeFocused) => 1.35f,
+            ("beacon_amplifier", AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.UpgradeFocused or AutoPlayerStrategy.Tactical) => 1.35f,
+            ("beacon_repeater", AutoPlayerStrategy.LongRange or AutoPlayerStrategy.Control or AutoPlayerStrategy.Conservative) => 1.45f,
+            _ => 1f
+        };
+        if (_strategy is AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.Spam or AutoPlayerStrategy.AntiSwarm)
+            weight *= MathF.Max(0.75f, doctrine.AttackSpeedMultiplier);
+        if (_strategy is AutoPlayerStrategy.LongRange)
+            weight *= MathF.Max(0.75f, doctrine.RangeMultiplier * 1.08f);
+        if (_strategy is AutoPlayerStrategy.Control or AutoPlayerStrategy.Conservative)
+            weight *= MathF.Max(0.75f, doctrine.UtilityMultiplier * 1.06f);
+        if (_strategy is AutoPlayerStrategy.AntiArmor or AutoPlayerStrategy.UpgradeFocused)
+            weight *= MathF.Max(0.75f, doctrine.DamageMultiplier * doctrine.UtilityMultiplier);
+        if (_strategy == AutoPlayerStrategy.Adaptive)
+        {
+            if (doctrine.Id == "frost_ice_needle" && threat.Swarm > 0.4f) weight *= 3.2f;
+            if (doctrine.Id == "prism_frequency" && threat.Swarm > 0.4f) weight *= 3.4f;
+            if (doctrine.Id == "watch_spotter" && threat.Fast > 0.25f) weight *= 1.8f;
+            if (threat.Swarm > 0.4f)
+                weight *= doctrine.PelletCountBonus + doctrine.ChainCountBonus + doctrine.SplashTargetLimitBonus > 0
+                    ? 1.55f
+                    : doctrine.AttackSpeedMultiplier;
+            if (threat.Fast > 0.25f) weight *= doctrine.UtilityMultiplier;
+            if (threat.Armored > 0.25f || threat.HasElite || threat.HasBoss) weight *= doctrine.DamageMultiplier * doctrine.UtilityMultiplier;
+        }
+        return weight;
     }
 
     private void ConfigureTargeting(GameSession session, TowerInstance tower, ThreatProfile threat)

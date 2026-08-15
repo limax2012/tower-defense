@@ -90,6 +90,7 @@ public sealed class TowerRunMetrics
     public Dictionary<string, float> StatusEnemySeconds { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, float> StatusMagnitudeSeconds { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<int, float> DamageByLevel { get; init; } = new();
+    public Dictionary<string, int> Doctrines { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, int> Specializations { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public float ContributionDamage => Damage + SupportDamageEquivalent + ExposeDamageEquivalent + ArmorBreakDamageEquivalent;
     public float DamagePerCredit => CreditsSpent <= 0 ? 0 : ContributionDamage / CreditsSpent;
@@ -151,4 +152,4 @@ internal readonly record struct ThreatProfile(
 }
 
 internal readonly record struct PurchaseOption(Data.TowerDefinition Definition, Microsoft.Xna.Framework.Vector2 Position, float Score);
-internal readonly record struct UpgradeOption(Towers.TowerInstance Tower, string? SpecializationId, float Score);
+internal readonly record struct UpgradeOption(Towers.TowerInstance Tower, string? DoctrineId, string? SpecializationId, float Score);

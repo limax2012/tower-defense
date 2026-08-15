@@ -152,6 +152,7 @@ public sealed class TowerDefinition
     public TowerVisualData Visual { get; set; } = new();
     public TowerProtocolDefinition Protocol { get; set; } = new();
     public List<TowerLevelDefinition> Levels { get; set; } = new();
+    public List<TowerDoctrineDefinition> Tier2Doctrines { get; set; } = new();
     public List<TowerSpecializationDefinition> Specializations { get; set; } = new();
 }
 
@@ -185,6 +186,22 @@ public sealed class TowerSpecializationDefinition
     public TowerLevelDefinition Level { get; set; } = new();
 }
 
+public sealed class TowerDoctrineDefinition
+{
+    public string Id { get; set; } = "";
+    public string DisplayName { get; set; } = "";
+    public string ShortLabel { get; set; } = "";
+    public string Summary { get; set; } = "";
+    public int UpgradeCost { get; set; }
+    public float DamageMultiplier { get; set; } = 1f;
+    public float AttackSpeedMultiplier { get; set; } = 1f;
+    public float RangeMultiplier { get; set; } = 1f;
+    public float UtilityMultiplier { get; set; } = 1f;
+    public int PelletCountBonus { get; set; }
+    public int ChainCountBonus { get; set; }
+    public int SplashTargetLimitBonus { get; set; }
+}
+
 public sealed class TowerLevelDefinition
 {
     public float Range { get; set; }
@@ -214,6 +231,45 @@ public sealed class TowerLevelDefinition
     public float AuraAttackSpeedBonus { get; set; }
     public float AuraRangeBonus { get; set; }
     public bool IgnoreShield { get; set; }
+
+    public TowerLevelDefinition WithDoctrine(TowerDoctrineDefinition? doctrine)
+    {
+        if (doctrine is null) return this;
+        var damage = MathF.Max(0.01f, doctrine.DamageMultiplier);
+        var rate = MathF.Max(0.01f, doctrine.AttackSpeedMultiplier);
+        var range = MathF.Max(0.01f, doctrine.RangeMultiplier);
+        var utility = MathF.Max(0.01f, doctrine.UtilityMultiplier);
+        return new TowerLevelDefinition
+        {
+            Range = Range * range,
+            Damage = Damage * damage,
+            AttacksPerSecond = AttacksPerSecond * rate,
+            ProjectileSpeed = ProjectileSpeed,
+            UpgradeCost = UpgradeCost,
+            PelletCount = Math.Max(1, PelletCount + doctrine.PelletCountBonus),
+            PelletSpreadDegrees = PelletSpreadDegrees,
+            SplashRadius = SplashRadius * utility,
+            SplashTargetLimit = Math.Max(0, SplashTargetLimit + doctrine.SplashTargetLimitBonus),
+            ChainCount = Math.Max(0, ChainCount + doctrine.ChainCountBonus),
+            ChainDamage = ChainDamage * damage,
+            ChainRange = ChainRange * range,
+            SlowPercent = SlowPercent * utility,
+            SlowDuration = SlowDuration * utility,
+            BurnDamagePerSecond = BurnDamagePerSecond * damage,
+            BurnDuration = BurnDuration * utility,
+            BurnTickInterval = BurnTickInterval,
+            ArmorPierce = ArmorPierce * utility,
+            ArmorReduction = ArmorReduction * utility,
+            ArmorReductionDuration = ArmorReductionDuration * utility,
+            ExposePercent = ExposePercent * utility,
+            ExposeDuration = ExposeDuration * utility,
+            StunDuration = StunDuration * utility,
+            AuraRange = AuraRange * range,
+            AuraAttackSpeedBonus = AuraAttackSpeedBonus * utility,
+            AuraRangeBonus = AuraRangeBonus * utility,
+            IgnoreShield = IgnoreShield
+        };
+    }
 }
 
 public sealed class TowerVisualData

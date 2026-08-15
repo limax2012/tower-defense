@@ -169,6 +169,14 @@ public static class DataValidator
                 protocol.BurstStatusMagnitude < 0 || protocol.BurstStatusDuration < 0 ||
                 (!string.IsNullOrWhiteSpace(protocol.BurstStatus) && !Enum.TryParse<StatusType>(protocol.BurstStatus, true, out _)))
                 throw new InvalidDataException($"Invalid tower protocol: {tower.Id}");
+            if (tower.Tier2Doctrines.Count is not 0 and not 2 ||
+                tower.Tier2Doctrines.Any(x => string.IsNullOrWhiteSpace(x.Id) || string.IsNullOrWhiteSpace(x.DisplayName) ||
+                    string.IsNullOrWhiteSpace(x.ShortLabel) || string.IsNullOrWhiteSpace(x.Summary) || x.UpgradeCost <= 0 ||
+                    x.DamageMultiplier is < 0.5f or > 1.5f || x.AttackSpeedMultiplier is < 0.5f or > 1.5f ||
+                    x.RangeMultiplier is < 0.5f or > 1.5f || x.UtilityMultiplier is < 0.5f or > 1.5f ||
+                    x.PelletCountBonus is < 0 or > 2 || x.ChainCountBonus is < 0 or > 2 || x.SplashTargetLimitBonus is < 0 or > 2) ||
+                tower.Tier2Doctrines.Select(x => x.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() != tower.Tier2Doctrines.Count)
+                throw new InvalidDataException($"Invalid tower doctrines: {tower.Id}");
             var specializationNeedsCombatStats = !tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase);
             if (tower.Specializations.Count is not 0 and not 2 ||
                 tower.Specializations.Any(x => string.IsNullOrWhiteSpace(x.Id) || string.IsNullOrWhiteSpace(x.DisplayName) ||

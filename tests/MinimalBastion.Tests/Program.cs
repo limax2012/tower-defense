@@ -80,6 +80,7 @@ internal static class Program
             ("online endpoint parsing", OnlineEndpointParsing),
             ("tower information", TowerInformation),
             ("tower library reference", TowerLibraryReference),
+            ("tower tier two doctrines", TowerTierTwoDoctrines),
             ("tower specializations", TowerSpecializations),
             ("tower overdrive", TowerOverdrive),
             ("emergency pulse plates", EmergencyPulsePlates),
@@ -149,6 +150,11 @@ internal static class Program
         Check.True(content.Towers["prism_beam"].Levels.Select(x => x.ArmorPierce).SequenceEqual(new[] { 3f, 5f, 8f }), "prism beam penetration curve");
         Check.Equal(20, content.Towers.Values.Sum(x => x.Specializations.Count), "specialization count");
         Check.True(content.Towers.Values.All(x => x.Specializations.Count == 2), "every tower has two final roles");
+        Check.Equal(20, content.Towers.Values.Sum(x => x.Tier2Doctrines.Count), "tier two doctrine count");
+        Check.True(content.Towers.Values.All(x => x.Tier2Doctrines.Count == 2), "every tower has two tier two doctrines");
+        Check.True(content.Towers.Values.All(tower => tower.Tier2Doctrines.Any(x => x.AttackSpeedMultiplier > 1 || x.UtilityMultiplier > 1) &&
+                                                     tower.Tier2Doctrines.Any(x => x.DamageMultiplier > 1 || x.RangeMultiplier > 1)),
+            "doctrines offer distinct tempo/utility and power/reach tradeoffs");
         Check.Equal(10, content.Towers.Values.Select(x => x.Protocol.DisplayName).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             "every tower has a distinct named protocol");
         Check.True(content.Towers["signal_beacon"].Protocol.AuraAttackSpeedBonus > 0 &&
@@ -899,7 +905,13 @@ internal static class Program
     private static void CoOpChecksumCoverage()
     {
         var host = SessionWithWave();
+        host.Content.Towers["tower"].Tier2Doctrines = new List<TowerDoctrineDefinition>
+        {
+            new() { Id = "tempo", DisplayName = "Tempo", ShortLabel = "TEMPO", Summary = "Fast", UpgradeCost = 50, AttackSpeedMultiplier = 1.1f },
+            new() { Id = "focus", DisplayName = "Focus", ShortLabel = "FOCUS", Summary = "Hard", UpgradeCost = 50, DamageMultiplier = 1.1f }
+        };
         Check.True(host.TryPlaceTower("tower", new Vector2(50, 200)), "checksum coverage places tower");
+        Check.True(host.TryChooseTowerDoctrine(host.Towers[0].Id, "tempo"), "checksum coverage chooses doctrine");
         Check.True(host.StartNextWave(), "checksum coverage starts wave");
         host.Update(0.05f);
         Check.True(host.Enemies.Count > 0, "checksum coverage has active enemy");
@@ -929,6 +941,12 @@ internal static class Program
         var investmentDrift = GameSession.RestoreCoOpState(host.Content, investmentState, 2);
         Check.True(baseline != SessionChecksum.Compute(investmentDrift, tick),
             "checksum detects latent sale-value drift");
+
+        var doctrineState = host.CaptureCoOpState(tick, 0, false);
+        doctrineState.Towers[0].DoctrineId = "focus";
+        var doctrineDrift = GameSession.RestoreCoOpState(host.Content, doctrineState, 2);
+        Check.True(baseline != SessionChecksum.Compute(doctrineDrift, tick),
+            "checksum detects tier two doctrine drift");
     }
 
     private static void CoOpReconnectCombatSoak()
@@ -1468,21 +1486,22 @@ internal static class Program
         var recipient = new TowerInstance(1, needle, new Vector2(100, 100));
         var source = new TowerInstance(2, beacon, new Vector2(140, 100));
         var strongerSource = new TowerInstance(3, beacon, new Vector2(100, 140));
-        Check.True(strongerSource.TryUpgrade(), "stronger beacon reaches level two");
+        var amplifier = beacon.Tier2Doctrines.Single(x => x.Id == "beacon_amplifier");
+        Check.True(strongerSource.TryChooseDoctrine(amplifier.Id), "stronger beacon reaches level two through a doctrine");
         var buffs = new BuffSystem();
         buffs.Update(new[] { recipient, source, strongerSource });
         var signalBuff = buffs.Get(recipient);
         Check.True(signalBuff.IsActive, "beacon aura reports an active tower buff");
-        Check.Nearly(beacon.Levels[1].AuraAttackSpeedBonus, signalBuff.AttackSpeedBonus, "overlapping beacons use strongest rate instead of stacking");
-        Check.Nearly(beacon.Levels[1].AuraRangeBonus, signalBuff.RangeBonus, "overlapping beacons use strongest range instead of stacking");
+        Check.Nearly(strongerSource.Level.AuraAttackSpeedBonus, signalBuff.AttackSpeedBonus, "overlapping beacons use strongest rate instead of stacking");
+        Check.Nearly(strongerSource.Level.AuraRangeBonus, signalBuff.RangeBonus, "overlapping beacons use strongest range instead of stacking");
         var signalSummary = TowerInfo.SignalBeaconStatChange(recipient.Level, signalBuff);
         Check.True(signalSummary.Contains("SIGNAL BEACON", StringComparison.Ordinal), "beacon summary identifies its source");
-        Check.True(signalSummary.Contains("RATE 2>2.5/s", StringComparison.Ordinal), "beacon summary exposes exact strongest rate change");
-        Check.True(signalSummary.Contains("RANGE 125>145", StringComparison.Ordinal), "beacon summary exposes exact strongest range change");
+        Check.True(signalSummary.Contains("RATE 2>2.56/s", StringComparison.Ordinal), "beacon summary exposes exact strongest rate change");
+        Check.True(signalSummary.Contains("RANGE 125>147", StringComparison.Ordinal), "beacon summary exposes exact strongest range change");
 
         var effectiveUpgrade = TowerInfo.UpgradeSummary(needle, 0, signalBuff, default);
-        Check.True(effectiveUpgrade.Contains("RATE 2.5>2.75", StringComparison.Ordinal), "upgrade comparison includes beacon rate");
-        Check.True(effectiveUpgrade.Contains("RANGE 145>157", StringComparison.Ordinal), "upgrade comparison includes beacon range");
+        Check.True(effectiveUpgrade.Contains("RATE 2.56>2.82", StringComparison.Ordinal), "upgrade comparison includes beacon rate");
+        Check.True(effectiveUpgrade.Contains("RANGE 147>159", StringComparison.Ordinal), "upgrade comparison includes beacon range");
         var beaconUpgrade = TowerInfo.UpgradeSummary(beacon, 0);
         Check.True(beaconUpgrade.Contains("AURA 145>165", StringComparison.Ordinal), "beacon upgrade compares aura radius");
         Check.True(beaconUpgrade.Contains("RATE +15%>+25%", StringComparison.Ordinal), "beacon upgrade compares aura rate");
@@ -1522,6 +1541,19 @@ internal static class Program
                     $"{definition.Id} {specialization.Id} cumulative cost");
                 Check.True(TowerInfo.LibraryStatLines(definition, specialization.Level).Count > 0,
                     $"{definition.Id} {specialization.Id} library stats");
+            }
+
+            foreach (var doctrine in definition.Tier2Doctrines)
+            {
+                Check.Equal(definition.PurchaseCost + doctrine.UpgradeCost,
+                    TowerInfo.TotalCostToDoctrine(definition, doctrine), $"{definition.Id} {doctrine.Id} cumulative cost");
+                var doctrineLevel = definition.Levels[1].WithDoctrine(doctrine);
+                Check.True(TowerInfo.LibraryStatLines(definition, doctrineLevel).Count > 0,
+                    $"{definition.Id} {doctrine.Id} library stats");
+                foreach (var specialization in definition.Specializations)
+                    Check.Equal(definition.PurchaseCost + doctrine.UpgradeCost + specialization.UpgradeCost,
+                        TowerInfo.TotalCostToSpecialization(definition, doctrine, specialization),
+                        $"{definition.Id} {doctrine.Id} {specialization.Id} cumulative cost");
             }
         }
 
@@ -1855,6 +1887,45 @@ internal static class Program
         Check.Nearly(30, tower.Level.Damage, "specialization level stats active");
         Check.True(!session.TrySpecializeTower(tower.Id, "beta", 2), "branch choice is permanent");
         Check.Equal(1, session.Statistics.Towers.Single().Specializations["alpha"], "branch telemetry");
+    }
+
+    private static void TowerTierTwoDoctrines()
+    {
+        var session = Session();
+        var definition = session.Content.Towers["tower"];
+        definition.Tier2Doctrines = new List<TowerDoctrineDefinition>
+        {
+            new() { Id = "tempo", DisplayName = "Tempo Feed", ShortLabel = "TEMPO", Summary = "Faster", UpgradeCost = 50, DamageMultiplier = 0.9f, AttackSpeedMultiplier = 1.2f },
+            new() { Id = "focus", DisplayName = "Focus Feed", ShortLabel = "FOCUS", Summary = "Harder", UpgradeCost = 50, DamageMultiplier = 1.2f, AttackSpeedMultiplier = 0.9f, RangeMultiplier = 1.1f }
+        };
+        Check.True(session.TryPlaceTower("tower", new Vector2(50, 200), 2), "place doctrine tower");
+        var tower = session.Towers[0];
+        Check.True(tower.RequiresDoctrine, "tier two requires an explicit doctrine");
+        Check.True(!session.TryUpgradeTower(tower.Id, 1), "linear tier two upgrade is blocked");
+        Check.True(session.TryChooseTowerDoctrine(tower.Id, "tempo", 1), "other player chooses shared doctrine");
+        Check.Equal("tempo", tower.DoctrineId!, "doctrine identity");
+        Check.Equal(1, tower.LevelIndex, "doctrine reaches tier two");
+        Check.Nearly(10.8f, tower.Level.Damage, "doctrine damage tradeoff active");
+        Check.Nearly(1.32f, tower.Level.AttacksPerSecond, "doctrine cadence tradeoff active");
+        Check.True(tower.RequiresSpecialization, "final role follows doctrine");
+        Check.True(session.TrySpecializeTower(tower.Id, "alpha", 2), "either player chooses final role");
+        Check.Nearly(27, tower.Level.Damage, "doctrine persists into final role damage");
+        Check.Nearly(1.44f, tower.Level.AttacksPerSecond, "doctrine persists into final role cadence");
+        Check.Equal(1, session.Statistics.Towers.Single().Specializations["doctrine:tempo"], "doctrine telemetry");
+        var restored = GameSession.RestoreSaveGame(session.Content, session.CaptureSaveGame());
+        Check.Equal("tempo", restored.Towers[0].DoctrineId!, "checkpoint preserves doctrine");
+        Check.Nearly(tower.Level.Damage, restored.Towers[0].Level.Damage, "checkpoint restores doctrine stats");
+        var commandSession = Session();
+        commandSession.Content.Towers["tower"].Tier2Doctrines = definition.Tier2Doctrines;
+        Check.True(commandSession.TryPlaceTower("tower", new Vector2(50, 200)), "place network doctrine tower");
+        Check.True(GameCommandProcessor.Apply(commandSession, new GameCommand
+        {
+            PlayerId = 2,
+            Type = GameCommandType.ChooseDoctrine,
+            EntityId = commandSession.Towers[0].Id,
+            DoctrineId = "focus"
+        }).Accepted, "co-op doctrine command accepted");
+        Check.Equal("focus", commandSession.Towers[0].DoctrineId!, "co-op doctrine command applied");
     }
 
     private static void TowerOverdrive()

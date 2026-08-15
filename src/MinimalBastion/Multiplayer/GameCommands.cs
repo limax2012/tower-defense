@@ -7,6 +7,7 @@ public enum GameCommandType
 {
     PlaceTower,
     UpgradeTower,
+    ChooseDoctrine,
     SpecializeTower,
     OverdriveTower,
     ToggleAutoProtocol,
@@ -29,6 +30,7 @@ public sealed record GameCommand
     public GameCommandType Type { get; init; }
     public string TowerDefinitionId { get; init; } = "";
     public string SpecializationId { get; init; } = "";
+    public string DoctrineId { get; init; } = "";
     public int EntityId { get; init; }
     public float X { get; init; }
     public float Y { get; init; }
@@ -53,6 +55,7 @@ public static class GameCommandProcessor
         {
             GameCommandType.PlaceTower => session.TryPlaceTower(command.TowerDefinitionId, command.Position, command.PlayerId, false),
             GameCommandType.UpgradeTower => session.TryUpgradeTower(command.EntityId, command.PlayerId),
+            GameCommandType.ChooseDoctrine => session.TryChooseTowerDoctrine(command.EntityId, command.DoctrineId, command.PlayerId),
             GameCommandType.SpecializeTower => session.TrySpecializeTower(command.EntityId, command.SpecializationId, command.PlayerId),
             GameCommandType.OverdriveTower => session.TryOverdriveTower(command.EntityId, command.PlayerId),
             GameCommandType.ToggleAutoProtocol => session.TryToggleAutoProtocol(command.EntityId, command.PlayerId),

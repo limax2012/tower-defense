@@ -525,6 +525,16 @@ public sealed class GameSession
         return true;
     }
 
+    public bool TryChooseTowerDoctrine(int towerId, string doctrineId, int requestingPlayerId = 1)
+    {
+        var tower = Towers.FirstOrDefault(x => x.Id == towerId);
+        if (requestingPlayerId is < 1 or > 2 || tower is null || !tower.RequiresDoctrine) return false;
+        var doctrine = tower.Definition.Tier2Doctrines.FirstOrDefault(x => x.Id.Equals(doctrineId, StringComparison.OrdinalIgnoreCase));
+        if (doctrine is null || !Economy.TrySpend(doctrine.UpgradeCost) || !tower.TryChooseDoctrine(doctrine.Id)) return false;
+        TowerUpgraded?.Invoke(tower, doctrine.UpgradeCost);
+        return true;
+    }
+
     public bool TrySpecializeTower(int towerId, string specializationId, int requestingPlayerId = 1)
     {
         var tower = Towers.FirstOrDefault(x => x.Id == towerId);

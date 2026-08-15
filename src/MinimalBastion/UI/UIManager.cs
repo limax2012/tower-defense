@@ -92,6 +92,9 @@ public sealed class UIManager
     private UserSettings _settings = new();
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
     private int _towerLibraryIndex;
+    private int _towerLibraryDoctrineIndex;
+    private Rectangle _towerLibraryDoctrineAButton;
+    private Rectangle _towerLibraryDoctrineBButton;
     private IReadOnlyList<TowerDefinition> _libraryTowers = Array.Empty<TowerDefinition>();
     private readonly Rectangle _mapButton = new(440, 370, 190, 40);
     private readonly Rectangle _difficultyButton = new(640, 370, 90, 40);
@@ -526,12 +529,19 @@ public sealed class UIManager
         _hoveredPowerNode = session.Map.Definition.PowerNodes.FirstOrDefault(node =>
             Vector2.DistanceSquared(node.Position.ToVector2(), input.MousePosition) <= node.Radius * node.Radius);
         _specializationHint = null;
-        if (session.SelectedTower is { RequiresSpecialization: true } branchPreview)
+        if (session.SelectedTower is { RequiresDoctrine: true } doctrinePreview)
+        {
+            if (_specializationAButton.Contains(point) && doctrinePreview.Definition.Tier2Doctrines.Count > 0)
+                _specializationHint = TowerInfo.DoctrineSummary(doctrinePreview.Definition, doctrinePreview.Definition.Tier2Doctrines[0]);
+            else if (_specializationBButton.Contains(point) && doctrinePreview.Definition.Tier2Doctrines.Count > 1)
+                _specializationHint = TowerInfo.DoctrineSummary(doctrinePreview.Definition, doctrinePreview.Definition.Tier2Doctrines[1]);
+        }
+        else if (session.SelectedTower is { RequiresSpecialization: true } branchPreview)
         {
             if (_specializationAButton.Contains(point) && branchPreview.Definition.Specializations.Count > 0)
-                _specializationHint = TowerInfo.SpecializationSummary(branchPreview.Level, branchPreview.Definition.Specializations[0]);
+                _specializationHint = TowerInfo.SpecializationSummary(branchPreview.Level, branchPreview.Definition.Specializations[0], branchPreview.Doctrine);
             else if (_specializationBButton.Contains(point) && branchPreview.Definition.Specializations.Count > 1)
-                _specializationHint = TowerInfo.SpecializationSummary(branchPreview.Level, branchPreview.Definition.Specializations[1]);
+                _specializationHint = TowerInfo.SpecializationSummary(branchPreview.Level, branchPreview.Definition.Specializations[1], branchPreview.Doctrine);
         }
         _hoveredTacticalPlacement = _emergencyButton.Contains(point) ? TacticalPlacementKind.PulsePlate :
             _generatorButton.Contains(point) ? TacticalPlacementKind.ChargeForge : TacticalPlacementKind.None;
@@ -589,7 +599,13 @@ public sealed class UIManager
             return UiAction.None;
         }
 
-        if (session.SelectedTower is { RequiresSpecialization: true } branchingTower &&
+        if (session.SelectedTower is { RequiresDoctrine: true } doctrineTower &&
+            _specializationAButton.Contains(point) && doctrineTower.Definition.Tier2Doctrines.Count > 0)
+            RequestDoctrine(session, doctrineTower.Definition.Tier2Doctrines[0].Id, commandSink, playerId);
+        else if (session.SelectedTower is { RequiresDoctrine: true } alternateDoctrineTower &&
+            _specializationBButton.Contains(point) && alternateDoctrineTower.Definition.Tier2Doctrines.Count > 1)
+            RequestDoctrine(session, alternateDoctrineTower.Definition.Tier2Doctrines[1].Id, commandSink, playerId);
+        else if (session.SelectedTower is { RequiresSpecialization: true } branchingTower &&
             _specializationAButton.Contains(point) && branchingTower.Definition.Specializations.Count > 0)
             RequestSpecialization(session, branchingTower.Definition.Specializations[0].Id, commandSink, playerId);
         else if (session.SelectedTower is { RequiresSpecialization: true } alternateTower &&
@@ -655,6 +671,23 @@ public sealed class UIManager
             Type = GameCommandType.SpecializeTower,
             EntityId = tower.Id,
             SpecializationId = specializationId
+        });
+    }
+
+    private static void RequestDoctrine(MinimalBastion.GameSession session, string doctrineId, Action<GameCommand>? sink, int playerId)
+    {
+        if (session.SelectedTower is not { } tower) return;
+        if (sink is null)
+        {
+            session.TryChooseTowerDoctrine(tower.Id, doctrineId, playerId);
+            return;
+        }
+        sink(new GameCommand
+        {
+            PlayerId = playerId,
+            Type = GameCommandType.ChooseDoctrine,
+            EntityId = tower.Id,
+            DoctrineId = doctrineId
         });
     }
 
@@ -727,14 +760,28 @@ public sealed class UIManager
         _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, Math.Max(0, _libraryTowers.Count - 1));
         if (input.EscapePressed || input.PausePressed || input.RightPressed) return true;
         if (input.TowerHotkey > 0 && input.TowerHotkey <= _libraryTowers.Count)
+        {
             _towerLibraryIndex = input.TowerHotkey - 1;
+            _towerLibraryDoctrineIndex = 0;
+        }
         if (!input.LeftPressed) return false;
         var point = input.MousePosition.ToPoint();
         if (_towerLibraryCloseButton.Contains(point)) return true;
+        if (_towerLibraryDoctrineAButton.Contains(point))
+        {
+            _towerLibraryDoctrineIndex = 0;
+            return false;
+        }
+        if (_towerLibraryDoctrineBButton.Contains(point))
+        {
+            _towerLibraryDoctrineIndex = 1;
+            return false;
+        }
         for (var index = 0; index < _libraryTowers.Count; index++)
         {
             if (!TowerLibraryRow(index).Contains(point)) continue;
             _towerLibraryIndex = index;
+            _towerLibraryDoctrineIndex = 0;
             break;
         }
         return false;
@@ -1001,7 +1048,8 @@ public sealed class UIManager
         DrawText(batch, tower.Definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f);
         var ownership = session.IsCoOp ? $"   PLACED P{tower.OwnerPlayerId}" : "";
         var autoArmed = session.AutoOverdriveTowerId == tower.Id;
-        var levelTitle = tower.Specialization is { } chosen ? chosen.DisplayName.ToUpperInvariant() : $"LEVEL {tower.LevelIndex + 1}";
+        var doctrineSuffix = tower.Doctrine is { } doctrine ? $"  {doctrine.ShortLabel.ToUpperInvariant()}" : "";
+        var levelTitle = tower.Specialization is { } chosen ? chosen.DisplayName.ToUpperInvariant() + doctrineSuffix : $"LEVEL {tower.LevelIndex + 1}{doctrineSuffix}";
         if (autoArmed) levelTitle += "   AUTO";
         DrawText(batch, $"{levelTitle}   {TowerInfo.ShortRole(tower.Definition)}{ownership}", new Vector2(1036, 508), ColorPalette.Muted, 0.60f);
         var effectiveDamage = session.GetEffectiveDamage(tower, tower.Level.Damage);
@@ -1031,13 +1079,15 @@ public sealed class UIManager
         DrawFittedText(batch, secondaryHint, new Vector2(980, 610),
             powerHint is not null ? powerNodes[0].NodeColor : overdriveHint is not null ? ColorPalette.Coral : ColorPalette.Muted,
             powerHint is not null ? 0.44f : 0.50f, 280);
-        var upgradeLine = _specializationHint ?? (tower.RequiresSpecialization
+        var upgradeLine = _specializationHint ?? (tower.RequiresDoctrine
+            ? "CHOOSE A TIER 2 DOCTRINE"
+            : tower.RequiresSpecialization
             ? "CHOOSE A FINAL SPECIALIZATION"
             : tower.CanUpgrade
                 ? $"NEXT {tower.UpgradeCost}: {TowerInfo.UpgradeSummary(tower.Definition, tower.LevelIndex, supportBuff, power)}"
                 : "MAXIMUM LEVEL");
         DrawFittedText(batch, upgradeLine, new Vector2(980, 626),
-            _specializationHint is not null ? ColorPalette.Cobalt : tower.RequiresSpecialization || tower.CanUpgrade ? ColorPalette.Violet : ColorPalette.Muted,
+            _specializationHint is not null ? ColorPalette.Cobalt : tower.RequiresDoctrine || tower.RequiresSpecialization || tower.CanUpgrade ? ColorPalette.Violet : ColorPalette.Muted,
             0.52f, 280);
 
         _targetButton = new Rectangle(980, 670, 88, 30);
@@ -1046,7 +1096,7 @@ public sealed class UIManager
         _specializationAButton = Rectangle.Empty;
         _specializationBButton = Rectangle.Empty;
         var canManage = !_readOnlyInspection;
-        if (tower.RequiresSpecialization)
+        if (tower.RequiresDoctrine || tower.RequiresSpecialization)
         {
             _upgradeButton = Rectangle.Empty;
             // Keep the first branch in the normal upgrade position and place the
@@ -1055,11 +1105,13 @@ public sealed class UIManager
             _specializationAButton = new Rectangle(1074, 650, 118, 28);
             _specializationBButton = new Rectangle(1074, 686, 118, 28);
             _sellButton = new Rectangle(1198, 650, 68, 28);
-            var first = tower.Definition.Specializations[0];
-            var second = tower.Definition.Specializations[1];
+            var firstLabel = tower.RequiresDoctrine ? tower.Definition.Tier2Doctrines[0].ShortLabel : tower.Definition.Specializations[0].ShortLabel;
+            var secondLabel = tower.RequiresDoctrine ? tower.Definition.Tier2Doctrines[1].ShortLabel : tower.Definition.Specializations[1].ShortLabel;
+            var firstCost = tower.RequiresDoctrine ? tower.Definition.Tier2Doctrines[0].UpgradeCost : tower.Definition.Specializations[0].UpgradeCost;
+            var secondCost = tower.RequiresDoctrine ? tower.Definition.Tier2Doctrines[1].UpgradeCost : tower.Definition.Specializations[1].UpgradeCost;
             DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), canManage, ColorPalette.Cyan);
-            DrawButton(batch, p, _specializationAButton, $"{first.ShortLabel.ToUpperInvariant()} {first.UpgradeCost}", canManage && session.Economy.CanAfford(first.UpgradeCost), tower.Definition.Visual.PrimaryColor);
-            DrawButton(batch, p, _specializationBButton, $"{second.ShortLabel.ToUpperInvariant()} {second.UpgradeCost}", canManage && session.Economy.CanAfford(second.UpgradeCost), ColorPalette.Violet);
+            DrawButton(batch, p, _specializationAButton, $"{firstLabel.ToUpperInvariant()} {firstCost}", canManage && session.Economy.CanAfford(firstCost), tower.Definition.Visual.PrimaryColor);
+            DrawButton(batch, p, _specializationBButton, $"{secondLabel.ToUpperInvariant()} {secondCost}", canManage && session.Economy.CanAfford(secondCost), ColorPalette.Violet);
             DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange);
             return;
         }
@@ -1677,7 +1729,7 @@ public sealed class UIManager
         p.DrawRect(batch, panel, ColorPalette.Ink, 2);
 
         DrawText(batch, "TOWER LIBRARY", new Vector2(62, 48), ColorPalette.Navy, 1.25f);
-        DrawText(batch, "Exact base values. Surge Nodes, Signal Beacon, and active Protocols are excluded.", new Vector2(62, 82), ColorPalette.Muted, 0.56f);
+        DrawText(batch, "Exact values. Click a Tier 2 doctrine to preview how it carries into either final role.", new Vector2(62, 82), ColorPalette.Muted, 0.56f);
         DrawButton(batch, p, _towerLibraryCloseButton, "BACK", true, ColorPalette.Violet);
 
         var listPanel = new Rectangle(56, 112, 264, 540);
@@ -1720,6 +1772,8 @@ public sealed class UIManager
 
     private void DrawTowerLibraryDetails(SpriteBatch batch, PrimitiveRenderer p, TowerDefinition definition, Rectangle panel)
     {
+        _towerLibraryDoctrineAButton = Rectangle.Empty;
+        _towerLibraryDoctrineBButton = Rectangle.Empty;
         p.DrawShape(batch, new Vector2(panel.X + 36, panel.Y + 42), 20, definition.Visual.Shape,
             definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
         DrawText(batch, definition.DisplayName.ToUpperInvariant(), new Vector2(panel.X + 72, panel.Y + 16), ColorPalette.Ink, 0.94f);
@@ -1732,6 +1786,38 @@ public sealed class UIManager
 
         var levelOne = definition.Levels[0];
         var levelTwo = definition.Levels.Count > 1 ? definition.Levels[1] : levelOne;
+        if (definition.Tier2Doctrines.Count >= 2 && definition.Specializations.Count >= 2)
+        {
+            _towerLibraryDoctrineIndex = Math.Clamp(_towerLibraryDoctrineIndex, 0, 1);
+            var doctrine = definition.Tier2Doctrines[_towerLibraryDoctrineIndex];
+            const int doctrineWidth = 270;
+            var topY = panel.Y + 112;
+            _towerLibraryDoctrineAButton = new Rectangle(panel.X + 302, topY, doctrineWidth, 188);
+            _towerLibraryDoctrineBButton = new Rectangle(panel.X + 586, topY, doctrineWidth, 188);
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, topY, doctrineWidth, 188), definition,
+                levelOne, "LEVEL 1", $"BUILD {definition.PurchaseCost}  |  TOTAL {definition.PurchaseCost}", definition.Visual.PrimaryColor);
+            var firstDoctrine = definition.Tier2Doctrines[0];
+            var secondDoctrine = definition.Tier2Doctrines[1];
+            DrawTowerLibraryCard(batch, p, _towerLibraryDoctrineAButton, definition,
+                levelTwo.WithDoctrine(firstDoctrine), $"L2 {firstDoctrine.DisplayName.ToUpperInvariant()}",
+                $"UPGRADE {firstDoctrine.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToDoctrine(definition, firstDoctrine)}",
+                ColorPalette.Cyan, firstDoctrine.Summary, _towerLibraryDoctrineIndex == 0);
+            DrawTowerLibraryCard(batch, p, _towerLibraryDoctrineBButton, definition,
+                levelTwo.WithDoctrine(secondDoctrine), $"L2 {secondDoctrine.DisplayName.ToUpperInvariant()}",
+                $"UPGRADE {secondDoctrine.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToDoctrine(definition, secondDoctrine)}",
+                ColorPalette.Violet, secondDoctrine.Summary, _towerLibraryDoctrineIndex == 1);
+
+            for (var index = 0; index < 2; index++)
+            {
+                var specialization = definition.Specializations[index];
+                var accent = index == 0 ? definition.Visual.PrimaryColor : ColorPalette.Violet;
+                DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 310, 418, 214), definition,
+                    specialization.Level.WithDoctrine(doctrine), specialization.DisplayName.ToUpperInvariant(),
+                    $"AFTER {doctrine.ShortLabel.ToUpperInvariant()} {specialization.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToSpecialization(definition, doctrine, specialization)}",
+                    accent, specialization.Summary);
+            }
+            return;
+        }
         if (definition.Specializations.Count > 0)
         {
             var topWidth = 418;
@@ -1765,11 +1851,11 @@ public sealed class UIManager
     }
 
     private void DrawTowerLibraryCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, TowerDefinition definition,
-        TowerLevelDefinition level, string title, string cost, Color accent, string? summary = null)
+        TowerLevelDefinition level, string title, string cost, Color accent, string? summary = null, bool selected = false)
     {
         p.FillRect(batch, rect, ColorPalette.PanelAlt);
         p.FillRect(batch, new Rectangle(rect.X, rect.Y, rect.Width, 5), accent);
-        p.DrawRect(batch, rect, ColorPalette.CardOutline, 1);
+        p.DrawRect(batch, rect, selected ? accent : ColorPalette.CardOutline, selected ? 3 : 1);
         DrawFittedText(batch, title, new Vector2(rect.X + 12, rect.Y + 14), ColorPalette.Navy, 0.66f, rect.Width - 24);
         DrawFittedText(batch, cost, new Vector2(rect.X + 12, rect.Y + 38),
             ColorPalette.ReadableAccent(accent, ColorPalette.PanelAlt), 0.48f, rect.Width - 24);

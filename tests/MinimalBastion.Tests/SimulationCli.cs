@@ -57,6 +57,7 @@ internal static class SimulationCli
         PrintStrategySummary(runs);
         PrintMapSummary(runs);
         PrintTowerSummary(runs);
+        PrintDoctrineSummary(runs);
         PrintSpecializationSummary(runs);
         Console.WriteLine($"Early calls earned {runs.Sum(x => x.EarlyStartCreditsEarned)} credits; overdrives {runs.Sum(x => x.Overdrives)}. Emergency defenses: {runs.Sum(x => x.EmergencyDeployments)} deployed, {runs.Sum(x => x.EmergencyTriggers)} triggers, {runs.Sum(x => x.EmergencyKills)} kills, {runs.Sum(x => x.EmergencyDamage):0} damage; generators {runs.Sum(x => x.GeneratorPurchases)}.");
 
@@ -126,6 +127,32 @@ internal static class SimulationCli
         Console.WriteLine("FINAL SPECIALIZATIONS");
         var rows = runs
             .SelectMany(run => run.Towers.Values.SelectMany(tower => tower.Specializations.Select(choice => new
+            {
+                Tower = tower.TowerId,
+                Choice = choice.Key,
+                Picks = choice.Value,
+                WinningPicks = run.Won ? choice.Value : 0
+            })))
+            .GroupBy(row => (row.Tower, row.Choice))
+            .Select(group => new
+            {
+                group.Key.Tower,
+                group.Key.Choice,
+                Picks = group.Sum(row => row.Picks),
+                WinningPicks = group.Sum(row => row.WinningPicks)
+            })
+            .OrderBy(row => row.Tower)
+            .ThenBy(row => row.Choice);
+        foreach (var row in rows)
+            Console.WriteLine($"{row.Tower,-18} {row.Choice,-20} picks {row.Picks,4}  in winning runs {row.WinningPicks,4}");
+    }
+
+    private static void PrintDoctrineSummary(IEnumerable<SimulationRunResult> runs)
+    {
+        Console.WriteLine();
+        Console.WriteLine("TIER 2 DOCTRINES");
+        var rows = runs
+            .SelectMany(run => run.Towers.Values.SelectMany(tower => tower.Doctrines.Select(choice => new
             {
                 Tower = tower.TowerId,
                 Choice = choice.Key,

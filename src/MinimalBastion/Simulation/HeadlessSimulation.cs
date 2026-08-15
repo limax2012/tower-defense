@@ -211,6 +211,8 @@ public static class HeadlessSimulation
             metrics.CreditsSpent += cost;
             if (tower.SpecializationId is { } specializationId)
                 metrics.Specializations[specializationId] = metrics.Specializations.GetValueOrDefault(specializationId) + 1;
+            else if (tower.DoctrineId is { } doctrineId)
+                metrics.Doctrines[doctrineId] = metrics.Doctrines.GetValueOrDefault(doctrineId) + 1;
         }
 
         private void OnTowerSold(TowerInstance tower, int value)

@@ -18,7 +18,18 @@ public static class TowerInfo
     }
 
     public static int TotalCostToSpecialization(TowerDefinition definition, TowerSpecializationDefinition specialization) =>
-        definition.PurchaseCost + (definition.Levels.FirstOrDefault()?.UpgradeCost ?? 0) + specialization.UpgradeCost;
+        definition.PurchaseCost + Tier2Cost(definition) + specialization.UpgradeCost;
+
+    public static int TotalCostToSpecialization(TowerDefinition definition, TowerDoctrineDefinition doctrine,
+        TowerSpecializationDefinition specialization) =>
+        definition.PurchaseCost + doctrine.UpgradeCost + specialization.UpgradeCost;
+
+    public static int TotalCostToDoctrine(TowerDefinition definition, TowerDoctrineDefinition doctrine) =>
+        definition.PurchaseCost + doctrine.UpgradeCost;
+
+    private static int Tier2Cost(TowerDefinition definition) => definition.Tier2Doctrines.Count > 0
+        ? definition.Tier2Doctrines.Min(x => x.UpgradeCost)
+        : definition.Levels.FirstOrDefault()?.UpgradeCost ?? 0;
 
     public static string ProtocolBonuses(TowerProtocolDefinition protocol)
     {
@@ -194,9 +205,17 @@ public static class TowerInfo
         }
     }
 
-    public static string SpecializationSummary(TowerLevelDefinition current, TowerSpecializationDefinition specialization)
+    public static string DoctrineSummary(TowerDefinition definition, TowerDoctrineDefinition doctrine)
     {
-        var next = specialization.Level;
+        var current = definition.Levels[0];
+        var next = definition.Levels[Math.Min(1, definition.Levels.Count - 1)].WithDoctrine(doctrine);
+        return $"{doctrine.Summary}: {CoreChanges(current, next)}";
+    }
+
+    public static string SpecializationSummary(TowerLevelDefinition current, TowerSpecializationDefinition specialization,
+        TowerDoctrineDefinition? doctrine = null)
+    {
+        var next = specialization.Level.WithDoctrine(doctrine);
         var changes = new List<string>();
         if (next.AuraAttackSpeedBonus != current.AuraAttackSpeedBonus) changes.Add($"AURA RATE +{next.AuraAttackSpeedBonus:P0}");
         if (next.AuraRangeBonus != current.AuraRangeBonus) changes.Add($"AURA RANGE +{next.AuraRangeBonus:P0}");
@@ -212,6 +231,23 @@ public static class TowerInfo
         if (MathF.Abs(next.Damage - current.Damage) > 0.001f) changes.Add($"DAMAGE {next.Damage:0.#}");
         if (MathF.Abs(next.AttacksPerSecond - current.AttacksPerSecond) > 0.001f) changes.Add($"RATE {next.AttacksPerSecond:0.##}");
         return $"{specialization.Summary}: {string.Join("  ", changes.Take(2))}";
+    }
+
+    private static string CoreChanges(TowerLevelDefinition current, TowerLevelDefinition next)
+    {
+        var changes = new List<string>();
+        if (next.AuraRange > 0) changes.Add($"FIELD {next.AuraRange:0}");
+        if (next.AuraAttackSpeedBonus > 0) changes.Add($"AURA +{next.AuraAttackSpeedBonus:P0}");
+        if (next.Damage > 0) changes.Add($"DAMAGE {next.Damage:0.#}");
+        if (next.AttacksPerSecond > 0) changes.Add($"RATE {next.AttacksPerSecond:0.##}");
+        if (next.Range > 0) changes.Add($"RANGE {next.Range:0}");
+        if (next.PelletCount != current.PelletCount) changes.Add($"SHOTS {next.PelletCount}");
+        if (next.ChainCount != current.ChainCount) changes.Add($"CHAIN {next.ChainCount}");
+        if (next.SplashTargetLimit != current.SplashTargetLimit) changes.Add($"CAP {next.SplashTargetLimit}");
+        if (next.SlowPercent > current.SlowPercent) changes.Add($"SLOW {next.SlowPercent:P0}");
+        if (next.BurnDamagePerSecond > current.BurnDamagePerSecond) changes.Add($"BURN {next.BurnDamagePerSecond:0.#}/s");
+        if (next.ArmorPierce > current.ArmorPierce) changes.Add($"PIERCE {next.ArmorPierce:0.#}");
+        return string.Join("  ", changes.Take(3));
     }
 
     public static string PowerNodeBonus(PowerNodeData node)

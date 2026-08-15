@@ -57,6 +57,7 @@ public sealed class TowerSaveData
     public float X { get; set; }
     public float Y { get; set; }
     public int LevelIndex { get; set; }
+    public string? DoctrineId { get; set; }
     public string? SpecializationId { get; set; }
     public float CooldownRemaining { get; set; }
     public TargetMode TargetMode { get; set; }

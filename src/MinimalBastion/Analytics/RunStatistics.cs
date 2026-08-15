@@ -215,6 +215,8 @@ public sealed class RunStatistics
         metrics.CreditsSpent += cost;
         if (tower.SpecializationId is { } specializationId)
             metrics.Specializations[specializationId] = metrics.Specializations.GetValueOrDefault(specializationId) + 1;
+        else if (tower.DoctrineId is { } doctrineId)
+            metrics.Specializations[$"doctrine:{doctrineId}"] = metrics.Specializations.GetValueOrDefault($"doctrine:{doctrineId}") + 1;
         _towerByInstance[tower.Id] = metrics;
     }
 

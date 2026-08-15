@@ -21,7 +21,7 @@ CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--ch
 ## Architecture
 
 - `HeadlessSimulation` creates a normal `GameSession` and advances it at a fixed 0.05-second step without rendering.
-- `AutoPlayer` uses the same validated placement, targeting, upgrade, specialization, Protocol, sell, wave, Pulse Plate, and Charge Forge APIs as gameplay.
+- `AutoPlayer` uses the same validated placement, targeting, doctrine, final-role, Protocol, sell, wave, Pulse Plate, and Charge Forge APIs as gameplay.
 - Seeded randomness affects candidate tie-breaking and weighted policy choices; combat remains deterministic.
 - Runs stop on victory, defeat, selected wave limit, or timeout.
 - Runtime events plus `DamageResolver.DamageApplied` attribute damage, kills, spend, utility actions, and tactical outcomes.
@@ -50,7 +50,7 @@ Every JSON run includes:
 
 - result, map, strategy, seed, wave reached, elapsed time, lives, kills, and leaks;
 - credits earned, spent, unspent, recovered, and earned through early calls;
-- purchases, upgrades, sales, branch choices, invested credits, damage, kills, shield damage, armor absorption, overkill, and damage by level;
+- purchases, upgrades, sales, tier-two doctrines, final-role choices, invested credits, damage, kills, shield damage, armor absorption, overkill, and damage by level;
 - enemy-type and elite/boss kills/leaks;
 - per-wave archetype, duration, lives lost, kills, leaks, spending, and ending credits;
 - Pulse Plate deployments, direct purchases, triggers, hits, kills, and damage;
@@ -61,7 +61,7 @@ Batch summaries derive win rate, average wave/lives, map/strategy outcomes, and 
 
 ## Test hierarchy
 
-- Fast: 52 deterministic mechanics, content, transport, command, persistence, history, directive, and simulation regressions.
+- Fast: 53 deterministic mechanics, content, transport, command, persistence, history, directive, doctrine, and simulation regressions.
 - Medium: isolated `--balance` benchmark plus focused strategy/map batches.
 - Deep: `--simulate-full` across 12 strategies, all four maps, four difficulties, and multiple seeds.
 - Player-facing: self-contained native build inspection of menus, online setup, battlefield, workshop, tactical states, Surge Node hover, level marks, Protocols, forge timing, and result screens.
@@ -74,14 +74,14 @@ The current five-seed matrices cover 12 strategies across Foundry Loop, Crosswin
 | --- | ---: | ---: | ---: | ---: |
 | Easy | 200/240 | 83.3% | 19.4 | 24.8 |
 | Normal | 185/240 | 77.1% | 18.9 | 17.8 |
-| Hard | 144/240 | 60.0% | 18.0 | 10.1 |
+| Hard | 143/240 | 59.6% | 17.4 | 10.4 |
 | Bastion | 47/240 | 19.6% | 13.0 | 2.3 |
 
-Hard is the authored uncompromised baseline. Its map results are Foundry 41/60, Crosswind 38/60, Prism 38/60, and Surge 27/60. Surge is therefore materially harder despite its nine nodes; on Bastion it falls to 6/60 versus 15/60 Foundry, 12/60 Crosswind, and 14/60 Prism. Normal preserves recovery room without making undirected Economy or level-1 Spam policies successful.
+Hard is the authored uncompromised baseline. After the doctrine expansion, its map results are Crosswind 41/60, Foundry 39/60, Prism 35/60, and Surge 28/60. Surge is therefore materially harder despite its nine nodes. The Easy, Normal, and Bastion rows retain the previous matched profile baseline pending the next all-difficulty doctrine sweep.
 
-Hard strategy wins are Conservative 19/20, Economy 0/20, Aggressive 2/20, UpgradeFocused 11/20, Spam 0/20, AntiSwarm 19/20, AntiArmor 16/20, LongRange 15/20, Control 18/20, Tactical 19/20, Adaptive 16/20, and Randomized 9/20. Long range remains useful but is no longer the leading or seed-proof policy.
+Hard strategy wins are Conservative 19/20, Economy 0/20, Aggressive 0/20, UpgradeFocused 18/20, Spam 0/20, AntiSwarm 12/20, AntiArmor 15/20, LongRange 20/20, Control 17/20, Tactical 16/20, Adaptive 17/20, and Randomized 9/20. The global win rate stayed stable, but Long Range has returned as the only seed-perfect policy and is the primary target of the next balance pass.
 
-Canonical reports: `.build/balance/four-map-easy-5x.json`, `.build/balance/four-map-normal-5x.json`, `.build/balance/four-map-hard-5x.json`, and `.build/balance/four-map-bastion-5x.json`.
+Canonical reports: `.build/balance/four-map-easy-5x.json`, `.build/balance/four-map-normal-5x.json`, `.build/balance/doctrines-final-hard-5x.json`, and `.build/balance/four-map-bastion-5x.json`.
 
 ## Challenge directive baseline
 
@@ -106,13 +106,13 @@ Reports: `.build/balance/four-map-hard-close_quarters-3x.json`, `.build/balance/
 
 ## Current observations
 
-- Short/medium-range alternatives remain healthy on Hard: Control wins 18/20 and AntiSwarm 19/20, compared with LongRange at 15/20.
-- Crosswind specifically rewards its intended crossfire play: Control and AntiSwarm win 5/5 on Hard, while LongRange wins 3/5 despite the route's generous total length.
-- Conservative and Tactical are the most stable policies at 19/20, while Adaptive is strong but imperfect at 16/20. The game rewards broad coverage without requiring one exact roster.
+- The doctrine matrix preserves the overall Hard baseline almost exactly (143/240 versus 144/240), but its policy distribution shifted: LongRange is 20/20 while AntiSwarm is 12/20. This is a real follow-up target rather than a reason to hide the result with a global health change.
+- Crosswind remains the most forgiving doctrine-era arena at 41/60, while Surge remains hardest at 28/60 despite its nodes.
+- Conservative is stable at 19/20; UpgradeFocused reaches 18/20; Control and Adaptive reach 17/20; Tactical reaches 16/20. Multiple mixed approaches remain successful even though LongRange currently leads.
 - Economy reaches wave 15.5 on average on Hard without winning; its delayed Forge investment remains meaningful but risky. Spam also remains intentionally nonviable.
 - Tactical wins 19/20 while deploying 1,312 plates across the matrix. The 16-field cap, active-wave escalating direct cost, knockback grace, and boss resistance prevent the former endless plate lock despite making the system useful.
 - Mortar's deterministic shell caps reduce Hard aggregate damage/credit to 14.2 and keep it below Watchtower, Breaker, Needle, Shard, Frost, and Ember rather than allowing unlimited crowded-wave scaling.
-- Every final specialization appears in winning Hard runs. Rare choices such as Quake Shell are successful in all 37 Hard selections, while lower-volume Spectrum Split and Lance Fan still appear 73 and 107 times in winning runs; selection frequency alone is not treated as branch failure.
+- Every tier-two doctrine and every final specialization appears in winning Hard runs. Rare High Frequency has 16 winning placements and Quake Shell 19; Ice Needle has 261 winning placements paired across both Frost finals. Selection frequency alone is not treated as branch failure, but each branch now has a demonstrated success scenario.
 - The Beacon benchmark now measures indirect output. Tempo contributes 18.4 assisted DPS to a compact three-Needle cluster, while Horizon contributes 12.0 versus Tempo's 8.0 in a spread three-Watchtower formation by reaching two extra recipients.
 - Campaign telemetry now records source-attributed Slow, Stun, Exposed, and Armor Break enemy-seconds plus Beacon recipient-seconds and marginal attack-rate damage-equivalent. A one-seed, 36-run Hard sweep measured 1,539,911 Beacon assist damage, 131,592 supported tower-seconds, 130,230 control enemy-seconds, 45,313 expose enemy-seconds, and 83,348 armor-break enemy-seconds without changing gameplay outcomes.
 - The same attribution is now retained per deployed tower at runtime. Tower Intel can distinguish a specific Beacon's assisted damage and a specific control/expose/break source's enemy-seconds instead of showing only its direct damage and kills; saves and co-op checksums include these records.

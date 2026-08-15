@@ -18,11 +18,13 @@ public sealed class TowerInstance
 {
     private const float DeployAnimationDuration = 0.24f;
     private const float RecoilAnimationDuration = 0.12f;
+    private TowerLevelDefinition? _effectiveLevel;
     public int Id { get; }
     public int OwnerPlayerId { get; }
     public TowerDefinition Definition { get; }
     public Vector2 Position { get; }
     public int LevelIndex { get; private set; }
+    public string? DoctrineId { get; private set; }
     public string? SpecializationId { get; private set; }
     public float CooldownRemaining { get; set; }
     public TargetMode TargetMode { get; set; }
@@ -44,7 +46,10 @@ public sealed class TowerInstance
     public TowerSpecializationDefinition? Specialization => SpecializationId is null
         ? null
         : Definition.Specializations.FirstOrDefault(x => x.Id.Equals(SpecializationId, StringComparison.OrdinalIgnoreCase));
-    public TowerLevelDefinition Level => Specialization?.Level ?? Definition.Levels[LevelIndex];
+    public TowerDoctrineDefinition? Doctrine => DoctrineId is null
+        ? null
+        : Definition.Tier2Doctrines.FirstOrDefault(x => x.Id.Equals(DoctrineId, StringComparison.OrdinalIgnoreCase));
+    public TowerLevelDefinition Level => _effectiveLevel ??= (Specialization?.Level ?? Definition.Levels[LevelIndex]).WithDoctrine(Doctrine);
 
     public TowerInstance(int id, TowerDefinition definition, Vector2 position, int ownerPlayerId = 1)
     {
@@ -57,8 +62,9 @@ public sealed class TowerInstance
         TargetMode = Enum.TryParse<TargetMode>(definition.DefaultTargetMode, true, out var mode) ? mode : TargetMode.First;
     }
 
+    public bool RequiresDoctrine => LevelIndex == 0 && DoctrineId is null && Definition.Tier2Doctrines.Count > 0;
     public bool RequiresSpecialization => LevelIndex == 1 && SpecializationId is null && Definition.Specializations.Count > 0;
-    public bool CanUpgrade => !RequiresSpecialization && LevelIndex < Definition.Levels.Count - 1 && Level.UpgradeCost.HasValue;
+    public bool CanUpgrade => !RequiresDoctrine && !RequiresSpecialization && LevelIndex < Definition.Levels.Count - 1 && Level.UpgradeCost.HasValue;
     public int UpgradeCost => Level.UpgradeCost ?? 0;
     public int SellValue => (int)MathF.Floor(InvestedCredits * GameConstants.SellRatio);
     public float VisualScale
@@ -76,6 +82,19 @@ public sealed class TowerInstance
         if (!CanUpgrade) return false;
         InvestedCredits += UpgradeCost;
         LevelIndex++;
+        _effectiveLevel = null;
+        return true;
+    }
+
+    public bool TryChooseDoctrine(string doctrineId)
+    {
+        if (!RequiresDoctrine) return false;
+        var doctrine = Definition.Tier2Doctrines.FirstOrDefault(x => x.Id.Equals(doctrineId, StringComparison.OrdinalIgnoreCase));
+        if (doctrine is null) return false;
+        InvestedCredits += doctrine.UpgradeCost;
+        DoctrineId = doctrine.Id;
+        LevelIndex = 1;
+        _effectiveLevel = null;
         return true;
     }
 
@@ -87,6 +106,7 @@ public sealed class TowerInstance
         InvestedCredits += specialization.UpgradeCost;
         SpecializationId = specialization.Id;
         LevelIndex = Definition.Levels.Count - 1;
+        _effectiveLevel = null;
         return true;
     }
 
@@ -137,6 +157,7 @@ public sealed class TowerInstance
         X = Position.X,
         Y = Position.Y,
         LevelIndex = LevelIndex,
+        DoctrineId = DoctrineId,
         SpecializationId = SpecializationId,
         CooldownRemaining = CooldownRemaining,
         TargetMode = TargetMode,
@@ -156,6 +177,9 @@ public sealed class TowerInstance
     {
         if (data.LevelIndex < 0 || data.LevelIndex >= definition.Levels.Count)
             throw new InvalidDataException($"Saved level is invalid for {definition.Id}.");
+        if (data.DoctrineId is not null &&
+            !definition.Tier2Doctrines.Any(x => x.Id.Equals(data.DoctrineId, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidDataException($"Saved doctrine is invalid for {definition.Id}.");
         if (data.SpecializationId is not null &&
             !definition.Specializations.Any(x => x.Id.Equals(data.SpecializationId, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidDataException($"Saved specialization is invalid for {definition.Id}.");
@@ -163,6 +187,7 @@ public sealed class TowerInstance
         var tower = new TowerInstance(data.Id, definition, new Vector2(data.X, data.Y), data.OwnerPlayerId)
         {
             LevelIndex = data.LevelIndex,
+            DoctrineId = data.DoctrineId,
             SpecializationId = data.SpecializationId,
             CooldownRemaining = MathF.Max(0, data.CooldownRemaining),
             TargetMode = data.TargetMode,

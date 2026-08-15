@@ -18,7 +18,7 @@ Tower identities should be visible in their range, cadence, targeting, silhouett
 
 Minimal Bastion application:
 
-- Preserve the ten-tower roster and three levels rather than adding breadth prematurely; use final-level branches only where they create a distinct role.
+- Preserve the ten-tower roster and three levels rather than adding breadth prematurely. Two tier-two doctrines establish an early build direction, while either final role remains available so each tower has four completed combinations without a sprawling progression tree.
 - Strengthen combinations already supported by the combat model: burn reduces effective armor, Arc Relay rewards slowed targets, and exposed targets reward follow-up damage.
 - Use deterministic telemetry to verify that a tower's intended job appears in damage, kill, control, and support outcomes.
 
@@ -70,8 +70,8 @@ Minimal Bastion application:
 
 ## Near-term implementation order informed by this research
 
-1. Preserve the reproducible two-map, twelve-strategy balance baseline.
-2. Human-playtest the implemented branches, active intervention, Surge Zones, and end-run analysis.
+1. Preserve the reproducible four-map, twelve-strategy balance baseline while expanding build choices.
+2. Human-playtest doctrine/final-role combinations, active intervention, Surge Nodes, and end-run analysis.
 3. Human-playtest the implemented map/difficulty/directive combinations and preserve statistically persistent outliers.
-4. Measure support/status contribution more directly before changing low-damage utility towers.
-5. Field-test direct internet co-op, then add fingerprinting/reconnect before considering hosted relay infrastructure.
+4. Use existing source-attributed support/status telemetry before changing low-damage utility towers.
+5. Field-test direct internet co-op and reconnect before considering hosted relay infrastructure.
