@@ -21,6 +21,7 @@ Updated: 2026-08-15
 - Agents use continuous placement, Surge Nodes, route coverage, reserves, upgrades, selling, branches, targeting, early calls, plates, forge production, elites/boss reads, and Protocols.
 - Telemetry covers economy, purchases/upgrades/sales, branches, attributed damage/kills, armor/shield/overkill, enemies, waves, plates, forge production, Protocol activations, and early-call rewards.
 - CLI supports `--simulate`, `--simulate-full`, `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, `--no-protocols`, and `--output`.
+- A matched Hard control measured Protocol value at 73/144 wins enabled versus 52/144 disabled. Every tower's Protocol activated; Tactical gained the most, confirming the active layer rewards engagement without becoming mandatory.
 
 ### Waves, enemies, and strategic information
 
@@ -56,6 +57,7 @@ Updated: 2026-08-15
 - Trimmed every build-zone boundary to the real tower-center road/edge clearance and added geometric content validation, so cyan fields never advertise an invalid strip beside a route or screen edge.
 - Added Surge Divide (internal ID `relay_divide`) with nine compact, non-stacking Surge Nodes for rate, range, damage, or armor-pierce placement decisions. Its independently authored wave roster is deliberately harder to compensate for that positional upside.
 - Added Crosswind Basin and Prism Circuit, each with distinct route geometry, visual treatment, starting economy, and independently authored 20-wave campaign.
+- Calibrated directive economy across 144-run Hard audits: Close Quarters remains matched at 48.6%, No Reserves now uses a 5% opening cushion and lands at 50.0%, while Core Six is explicitly presented as an advanced roster puzzle with a 30% fixed opening cushion.
 - Renamed player-facing relay terminology to Surge Node and added placement/hover/selected-tower intel with exact radius, active bonus, and resulting stat deltas.
 - Moved Pulse Plate, Charge Forge, and Overdrive controls from the battlefield into the sidebar, preserving the full 960-pixel play area.
 - Added auto-fitting button labels, colorful tower/enemy silhouettes, rank treatment, recoil/pulse/ring/impact feedback, polished menus, pause, and post-run analysis.
@@ -106,6 +108,10 @@ Updated: 2026-08-15
   - `.build/balance/overnight-audit-easy-breaker-cap4-3x.json`
   - `.build/balance/overnight-audit-normal-breaker-cap4-3x.json`
   - `.build/balance/overnight-audit-bastion-breaker-cap4-3x.json`
+  - `.build/balance/overnight-audit-hard-cap4-no-protocols-3x.json`
+  - `.build/balance/challenge-close-hard-3x.json`
+  - `.build/balance/challenge-core6-130-hard-3x.json`
+  - `.build/balance/challenge-noreserves-105-hard-3x.json`
 
 ### Current difficulty audit
 

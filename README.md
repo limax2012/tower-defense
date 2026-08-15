@@ -90,7 +90,7 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 
 ## Gameplay notes
 
-- The title selector separates arena, difficulty, and directive. **Standard** enables every system; **Close Quarters** removes Watchtower/Mortar; **Core Six** limits the roster to Needle/Frost/Shard/Ember/Breaker/Beacon; and **No Reserves** disables Pulse Plates/Forge. Fixed opening-credit compensation belongs to the directive and never changes tower stats by wave or elapsed time. Directive identity persists through saves, co-op, results, and run history.
+- The title selector separates arena, difficulty, and directive. **Standard** enables every system; **Close Quarters** removes Watchtower/Mortar with 10% more opening credits; **Core Six** is an advanced Needle/Frost/Shard/Ember/Breaker/Beacon roster lock with 30% more opening credits; and **No Reserves** disables Pulse Plates/Forge with 5% more opening credits. Compensation is fixed at session start and never changes tower stats by wave or elapsed time. Directive identity persists through saves, co-op, results, and run history.
 
 - Foundry Loop, Crosswind Basin, Prism Circuit, and Surge Divide each use a separately authored 20-wave roster matched to their route geometry. Their base starting credits are 400, 390, 380, and 360 before the selected difficulty modifier. Crosswind is runner-led and folds a continuous channel around three compact crossfire islands.
 - The title-screen arena selector derives a compact campaign forecast directly from that map's wave JSON: opening threat mix, total contacts, peak wave density, final health multiplier, and first boss wave. Balance edits therefore update planning intel without a second hand-maintained description.

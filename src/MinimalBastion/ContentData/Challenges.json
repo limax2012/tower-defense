@@ -23,8 +23,8 @@
     "id": "core_six",
     "displayName": "Core Six",
     "menuLabel": "Core 6",
-    "description": "Use Needle, Frost, Shard, Ember, Breaker, and Beacon with 15% more starting credits.",
-    "startingCreditsMultiplier": 1.15,
+    "description": "Advanced roster lock: use Needle, Frost, Shard, Ember, Breaker, and Beacon with 30% more starting credits.",
+    "startingCreditsMultiplier": 1.30,
     "tacticalSystemsEnabled": true,
     "excludedTowerIds": ["watchtower", "arc_relay", "siege_mortar", "prism_beam"],
     "accent": "#7C53DA"
@@ -33,8 +33,8 @@
     "id": "no_reserves",
     "displayName": "No Reserves",
     "menuLabel": "No Reserve",
-    "description": "Pulse Plates and the Charge Forge are offline; tower funding begins 10% higher.",
-    "startingCreditsMultiplier": 1.10,
+    "description": "Pulse Plates and the Charge Forge are offline; tower funding begins 5% higher.",
+    "startingCreditsMultiplier": 1.05,
     "tacticalSystemsEnabled": false,
     "excludedTowerIds": [],
     "accent": "#EC5062"

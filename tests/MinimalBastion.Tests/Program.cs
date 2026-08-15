@@ -325,8 +325,10 @@ internal static class Program
             "restricted towers report an explicit directive failure");
         Check.True(core.IsTowerAvailable("ember_coil") && !core.IsTowerAvailable("prism_beam"),
             "core-six roster retains its authored compact arsenal");
+        Check.Equal(520, core.Economy.Credits, "advanced core-six roster receives its fixed opening cushion");
         Check.True(!noReserves.TacticalSystemsEnabled && noReserves.EmergencyInventory == 0,
             "no-reserves disables tactical inventory");
+        Check.Equal(420, noReserves.Economy.Credits, "no-reserves compensation stays matched to standard difficulty");
         Check.Equal(PlacementFailure.TacticalSystemsDisabled,
             noReserves.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(200, 30)),
             "no-reserves rejects pulse placement explicitly");
