@@ -22,6 +22,7 @@ public sealed class EnemyInstance
     public bool IsElite => Rank == EnemyRank.Elite;
     public bool IsBoss => Rank == EnemyRank.Boss;
     public bool BossPhaseActive { get; private set; }
+    public bool BossPhasePulsePending => _bossPhasePulsePending;
     public int Reward { get; }
     public int LivesLost { get; }
     public float ControlResistance { get; }

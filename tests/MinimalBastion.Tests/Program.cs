@@ -980,6 +980,16 @@ internal static class Program
         Check.True(host.StartNextWave(), "checksum coverage starts wave");
         host.Update(0.05f);
         Check.True(host.Enemies.Count > 0, "checksum coverage has active enemy");
+        host.Projectiles.Add(new ProjectileInstance(
+            new Vector2(40, 40),
+            host.Enemies[0].Position,
+            host.Enemies[0],
+            120,
+            ProjectileKind.Homing,
+            0,
+            new DamagePayload { Damage = 5, SourceTowerId = host.Towers[0].Id },
+            Color.Cyan,
+            3));
         var tick = 1L;
         var baseline = SessionChecksum.Compute(host, tick);
 
@@ -1012,6 +1022,36 @@ internal static class Program
         var doctrineDrift = GameSession.RestoreCoOpState(host.Content, doctrineState, 2);
         Check.True(baseline != SessionChecksum.Compute(doctrineDrift, tick),
             "checksum detects tier two doctrine drift");
+
+        var deathState = host.CaptureCoOpState(tick, 0, false);
+        deathState.Enemies[0].IsDead = true;
+        var deathDrift = GameSession.RestoreCoOpState(host.Content, deathState, 2);
+        Check.True(baseline != SessionChecksum.Compute(deathDrift, tick),
+            "checksum detects enemy death-transition drift before cleanup");
+
+        var escapeState = host.CaptureCoOpState(tick, 0, false);
+        escapeState.Enemies[0].HasEscaped = true;
+        var escapeDrift = GameSession.RestoreCoOpState(host.Content, escapeState, 2);
+        Check.True(baseline != SessionChecksum.Compute(escapeDrift, tick),
+            "checksum detects enemy escape-transition drift before cleanup");
+
+        var bossPulseState = host.CaptureCoOpState(tick, 0, false);
+        bossPulseState.Enemies[0].BossPhasePulsePending = true;
+        var bossPulseDrift = GameSession.RestoreCoOpState(host.Content, bossPulseState, 2);
+        Check.True(baseline != SessionChecksum.Compute(bossPulseDrift, tick),
+            "checksum detects pending boss-phase feedback drift");
+
+        var projectileVisualState = host.CaptureCoOpState(tick, 0, false);
+        projectileVisualState.Projectiles[0].PackedColor = Color.Coral.PackedValue;
+        var projectileVisualDrift = GameSession.RestoreCoOpState(host.Content, projectileVisualState, 2);
+        Check.True(baseline != SessionChecksum.Compute(projectileVisualDrift, tick),
+            "checksum detects projectile visual identity drift");
+
+        var projectileRadiusState = host.CaptureCoOpState(tick, 0, false);
+        projectileRadiusState.Projectiles[0].Radius += 1;
+        var projectileRadiusDrift = GameSession.RestoreCoOpState(host.Content, projectileRadiusState, 2);
+        Check.True(baseline != SessionChecksum.Compute(projectileRadiusDrift, tick),
+            "checksum detects projectile radius drift");
     }
 
     private static void CoOpReconnectCombatSoak()

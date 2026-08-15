@@ -109,6 +109,7 @@ public static class SessionChecksum
         Add(ref hash, session.AutoOverdriveTowerId);
         Add(ref hash, session.Waves.QueuedEnemies);
         var wave = session.Waves.CaptureCoOpState();
+        Add(ref hash, wave.CurrentWaveNumber);
         Add(ref hash, wave.ActiveWaveNumber);
         Add(ref hash, wave.GroupIndex);
         Add(ref hash, wave.SpawnedInGroup);
@@ -148,6 +149,9 @@ public static class SessionChecksum
             Add(ref hash, enemy.Definition.Id);
             Add(ref hash, (int)enemy.Rank);
             Add(ref hash, enemy.BossPhaseActive ? 1 : 0);
+            Add(ref hash, enemy.IsDead ? 1 : 0);
+            Add(ref hash, enemy.HasEscaped ? 1 : 0);
+            Add(ref hash, enemy.BossPhasePulsePending ? 1 : 0);
             Add(ref hash, enemy.HealthScale);
             Add(ref hash, enemy.MovementSpeedScale);
             Add(ref hash, enemy.DistanceAlongPath);
@@ -181,6 +185,8 @@ public static class SessionChecksum
             Add(ref hash, projectile.Payload.ArmorPierce);
             Add(ref hash, projectile.Payload.IgnoreShield ? 1 : 0);
             Add(ref hash, projectile.Payload.IsDamageOverTime ? 1 : 0);
+            Add(ref hash, projectile.Color.PackedValue);
+            Add(ref hash, projectile.Radius);
             if (projectile.Payload.Status is { } status)
             {
                 Add(ref hash, (int)status.Type);

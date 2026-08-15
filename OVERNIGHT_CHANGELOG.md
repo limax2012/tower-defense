@@ -37,6 +37,7 @@ Date: 2026-08-15
 - Added compact procedural sound cues for placement, upgrades, sales, Protocols, kills, leaks, waves, Pulse Plates, and the Charge Forge. Audio initialization fails safely to silent play on systems without a usable device.
 - Completed the procedural audio event language with distinct boss-phase, victory, and defeat cues, plus Plate deployment and Forge sale feedback. Attack-by-attack sounds remain intentionally omitted to preserve clarity during dense late-game fire.
 - Added a deterministic two-player jitter regression that delivers authoritative shared-control commands 0-5 ticks late across placement, upgrades, targeting, Protocols, speed, and sales. Both peers must retain an identical checksum, while commands that miss the six-tick authority window are rejected for repair.
+- Hardened periodic co-op checksums around transitional combat state: enemy death/escape cleanup, pending boss-phase feedback, active-wave identity, and projectile color/radius now trigger authoritative repair if peers differ.
 - Revalidated current endless progression over 144 Hard runs: 83 reached the campaign end, survivors averaged wave 26.5, Control averaged 34.2 and peaked at 39, and none reached 40. Campaign intel now explains final-roster inheritance and bounded scaling, while a regression proves every arena generates a distinct wave 21.
 - Refined large attack flashes with crisp geometric impact spokes and added true-radius impact rings to Frost, Ember, Breaker, and Mortar splash hits. Reduced-effects mode retains only the essential outer ring.
 - Bounded Mortar's extreme-crowd scaling with deterministic, UI-visible shell caps: 6/7 through the base levels, 7 for rapid Salvo shells, and 10 for Quake's wider control impact. Radius and low fire rate still define its area role.
@@ -45,7 +46,7 @@ Date: 2026-08-15
 - Gave every tower protocol its own restrained geometric signature and audio pitch while active. Reduced-effects mode keeps only the essential native-color protocol ring.
 - Re-ran 180 deterministic campaign agents per key difficulty after the map, branch, protocol, Mortar, and support changes. Normal cleared 137/180 (76.1%), Hard 106/180 (58.9%), and Bastion 35/180 (19.4%); on Hard, Foundry cleared 41/60, Prism 38/60, and Surge 27/60, confirming the intended arena ordering.
 - Added source-aware utility telemetry: Signal Beacon damage-equivalent and recipient-seconds plus Slow, Stun, Exposed, and Armor Break enemy-seconds. End-run contribution bars now include Beacon-assisted output while keeping direct damage visibly separate.
-- Current verification: 52/52 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
+- Current verification: 55/55 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
 
 ## Range, branch, and menu harmony pass
 
