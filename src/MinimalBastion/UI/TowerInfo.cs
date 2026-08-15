@@ -64,6 +64,9 @@ public static class TowerInfo
         return string.Join("  ", effects.Take(3));
     }
 
+    public static string ProtocolEffectSummary(TowerProtocolDefinition protocol, bool active) =>
+        $"{(active ? "ACTIVE EFFECT" : "WHEN ACTIVE")}  {ProtocolLiveSummary(protocol)}";
+
     public static string ProtocolSummary(TowerDefinition definition) =>
         $"PROTOCOL: {definition.Protocol.DisplayName.ToUpperInvariant()}  {definition.Protocol.DurationSeconds:0.#}s  |  {ProtocolBonuses(definition.Protocol)}";
 

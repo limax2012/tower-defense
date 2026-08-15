@@ -3374,6 +3374,12 @@ internal static class Program
         Check.True(breakerLiveProtocol.Contains("PULSE 20 / AREA 185", StringComparison.Ordinal) &&
             breakerLiveProtocol.Contains("BREAK 4/5s", StringComparison.Ordinal),
             "live Protocol Intel prioritizes the immediate area payload and status");
+        Check.True(TowerInfo.ProtocolEffectSummary(content.Towers["needle_turret"].Protocol, false)
+                .StartsWith("WHEN ACTIVE", StringComparison.Ordinal),
+            "ready Protocol Intel identifies its boost as conditional rather than currently applied");
+        Check.True(TowerInfo.ProtocolEffectSummary(content.Towers["needle_turret"].Protocol, true)
+                .StartsWith("ACTIVE EFFECT", StringComparison.Ordinal),
+            "running Protocol Intel explicitly identifies its applied boost");
     }
 
     private static void TowerLibraryReference()

@@ -1773,7 +1773,11 @@ public sealed class UIManager
             DrawBranchPreview(batch, _specializationHint, ColorPalette.Cobalt);
         else
         {
-            DrawFittedText(batch, TowerInfo.ProtocolLiveSummary(tower.Protocol), new Vector2(980, 615), ColorPalette.Coral, 0.44f, 280);
+            // Protocol payload is always violet and explicitly conditional until
+            // activation. Applied map/support modifiers retain their source color
+            // on the next row, so equal numerical boosts cannot imply equal state.
+            DrawFittedText(batch, TowerInfo.ProtocolEffectSummary(tower.Protocol, tower.IsOverdriven),
+                new Vector2(980, 615), ColorPalette.Violet, 0.44f, 280);
             var appliedModifiers = AppliedTowerModifiers(powerNodes, supportBuff);
             if (!string.IsNullOrWhiteSpace(appliedModifiers))
                 DrawFittedText(batch, appliedModifiers, new Vector2(980, 633),
@@ -1861,10 +1865,10 @@ public sealed class UIManager
             var beacon = new List<string>();
             if (supportBuff.AttackSpeedBonus > 0) beacon.Add($"RATE +{supportBuff.AttackSpeedBonus:P0}");
             if (supportBuff.RangeBonus > 0) beacon.Add($"RANGE +{supportBuff.RangeBonus:P0}");
-            modifiers.Add($"BEACON {string.Join(" ", beacon)}");
+            modifiers.Add($"ACTIVE BEACON {string.Join(" ", beacon)}");
         }
         if (powerNodes.Count > 0)
-            modifiers.Add($"{PowerNodeNames(powerNodes)} {string.Join(" ", powerNodes.Select(TowerInfo.PowerNodeBonus))}");
+            modifiers.Add($"ACTIVE {PowerNodeNames(powerNodes)} {string.Join(" ", powerNodes.Select(TowerInfo.PowerNodeBonus))}");
         return modifiers.Count == 0 ? null : string.Join("  |  ", modifiers);
     }
 
