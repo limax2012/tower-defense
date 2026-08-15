@@ -43,13 +43,14 @@ Date: 2026-08-15
 - Revalidated current endless progression over 144 Hard runs: 83 reached the campaign end, survivors averaged wave 26.5, Control averaged 34.2 and peaked at 39, and none reached 40. Campaign intel now explains final-roster inheritance and bounded scaling, while a regression proves every arena generates a distinct wave 21.
 - Added a `--no-protocols` matched-control mode and per-tower activation reporting. Against the same 240 Hard seeds, disabling Protocols reduced clears from 140 to 110 while LongRange and UpgradeFocused retained their full 18/20 and 17/20 results, confirming that active execution matters without becoming universally mandatory.
 - Refined large attack flashes with crisp geometric impact spokes and added true-radius impact rings to Frost, Ember, Breaker, and Mortar splash hits. Reduced-effects mode retains only the essential outer ring.
+- Bounded dense-wave visuals to 384 transient effects plus eight protected co-op pings. At capacity, major tactical flashes displace beam noise so late-endless fire cannot grow an unbounded render/allocation queue.
 - Bounded Mortar's extreme-crowd scaling with deterministic, UI-visible shell caps: 6/7 through the base levels, 7 for rapid Salvo shells, and 10 for Quake's wider control impact. Radius and low fire rate still define its area role.
 - Made balance-agent Beacon branch scoring placement-aware. Horizon now wins when its larger field reaches additional towers, while Tempo remains preferable for compact clusters; branch telemetry is printed in every full simulation report.
 - Added compact-versus-spread Signal Beacon economy benchmarks. Tempo leads compact three-tower throughput while Horizon's added recipients win the spread formation, confirming distinct support roles.
 - Gave every tower protocol its own restrained geometric signature and audio pitch while active. Reduced-effects mode keeps only the essential native-color protocol ring.
 - Re-ran 180 deterministic campaign agents per key difficulty after the map, branch, protocol, Mortar, and support changes. Normal cleared 137/180 (76.1%), Hard 106/180 (58.9%), and Bastion 35/180 (19.4%); on Hard, Foundry cleared 41/60, Prism 38/60, and Surge 27/60, confirming the intended arena ordering.
 - Added source-aware utility telemetry: Signal Beacon damage-equivalent and recipient-seconds plus Slow, Stun, Exposed, and Armor Break enemy-seconds. End-run contribution bars now include Beacon-assisted output while keeping direct damage visibly separate.
-- Current verification: 55/55 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
+- Current verification: 56/56 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
 
 ## Range, branch, and menu harmony pass
 

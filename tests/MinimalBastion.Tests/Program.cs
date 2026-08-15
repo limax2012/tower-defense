@@ -54,6 +54,7 @@ internal static class Program
             ("damage and armor", DamageAndArmor),
             ("damage over time floor", DamageOverTimeFloor),
             ("status effects", StatusEffects),
+            ("effect budget", EffectBudget),
             ("elite and boss ranks", EliteAndBossRanks),
             ("economy", EconomyRules),
             ("placement rules", PlacementRules),
@@ -562,6 +563,30 @@ internal static class Program
         Check.Nearly(16, statuses.ConsumeBurnDamage(1), "burn tick");
         statuses.Update(2.1f);
         Check.Equal(0, statuses.Active.Count, "status expiry");
+    }
+
+    private static void EffectBudget()
+    {
+        var effects = new EffectSystem();
+        effects.AddPing(new Vector2(10, 10), Color.Cyan);
+        for (var index = 0; index < EffectSystem.MaximumEffects * 2; index++)
+            effects.AddBeam(Vector2.Zero, Vector2.One * index, Color.Coral, 0.2f);
+
+        Check.Equal(EffectSystem.MaximumEffects, effects.Effects.Count, "dense transient effects remain hard-capped");
+        Check.Equal(1, effects.Effects.Count(effect => effect.Kind == EffectKind.Ping),
+            "co-op ping survives transient-effect pressure");
+        effects.AddFlash(new Vector2(20, 20), Color.Gold, 0.4f, 80);
+        Check.Equal(1, effects.Effects.Count(effect => effect.Kind == EffectKind.Flash),
+            "large tactical flash displaces beam noise at capacity");
+
+        for (var index = 0; index < EffectSystem.MaximumPings * 2; index++)
+            effects.AddPing(new Vector2(index, index), Color.Cyan);
+        Check.Equal(EffectSystem.MaximumPings, effects.Effects.Count(effect => effect.Kind == EffectKind.Ping),
+            "co-op ping history has its own bounded budget");
+        Check.True(effects.Effects.Count <= EffectSystem.MaximumEffects, "combined effect budget remains bounded");
+
+        effects.Update(2f);
+        Check.Equal(0, effects.Effects.Count, "expired effects are released after the budgeted burst");
     }
 
     private static void EliteAndBossRanks()

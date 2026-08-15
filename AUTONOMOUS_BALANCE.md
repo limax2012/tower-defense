@@ -62,7 +62,7 @@ Batch summaries derive win rate, average wave/lives, map/strategy outcomes, and 
 
 ## Test hierarchy
 
-- Fast: 55 deterministic mechanics, content, transport, command, persistence, history, directive, doctrine, and simulation regressions.
+- Fast: 56 deterministic mechanics, content, transport, command, persistence, history, directive, doctrine, effect-budget, and simulation regressions.
 - Medium: isolated `--balance` benchmark plus focused strategy/map batches.
 - Deep: `--simulate-full` across 12 strategies, all four maps, four difficulties, and multiple seeds.
 - Player-facing: self-contained native build inspection of menus, online setup, battlefield, workshop, tactical states, Surge Node hover, level marks, Protocols, forge timing, and result screens.
