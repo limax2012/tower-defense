@@ -931,6 +931,22 @@ internal static class Program
             "individual tower damage remains finite");
         Check.True(float.IsFinite(restoredTower.LifetimeSupportDamageEquivalent) && restoredTower.LifetimeSupportDamageEquivalent == float.MaxValue,
             "individual tower assist remains finite");
+
+        var active = SessionWithWave();
+        Check.True(active.StartNextWave(), "start extreme direct-purchase wave");
+        var extremeState = active.CaptureCoOpState(0, 0, false);
+        extremeState.EmergencyInventory = 0;
+        extremeState.EmergencyDirectPurchasesThisWave = int.MaxValue;
+        extremeState.Economy.Credits = int.MaxValue;
+        var extremePurchases = GameSession.RestoreCoOpState(active.Content, extremeState, 1);
+        Check.Equal(int.MaxValue, extremePurchases.CurrentEmergencyDirectPurchaseCost,
+            "extreme direct Plate price saturates before purchase");
+        Check.True(extremePurchases.TryDeployEmergencyDefense(new Vector2(100, 30)),
+            "extreme run can spend its final capped direct-purchase price");
+        Check.Equal(int.MaxValue, extremePurchases.EmergencyDirectPurchasesThisWave,
+            "direct Plate purchase count saturates instead of wrapping negative");
+        Check.Equal(int.MaxValue, extremePurchases.CurrentEmergencyDirectPurchaseCost,
+            "saturated purchase count keeps the next Plate price valid");
     }
 
     private static void SoldTowerUtilityPersistence()

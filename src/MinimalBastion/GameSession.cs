@@ -489,7 +489,7 @@ public sealed class GameSession
         if (purchased)
         {
             if (!Waves.IsActive || !Economy.TrySpend(CurrentEmergencyDirectPurchaseCost)) return false;
-            EmergencyDirectPurchasesThisWave++;
+            EmergencyDirectPurchasesThisWave = MetricMath.Add(EmergencyDirectPurchasesThisWave);
         }
         else
         {

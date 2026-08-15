@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Saturated the per-wave direct Pulse Plate purchase counter. An extreme restored endless state at the integer limit can no longer wrap its escalating-price counter negative after paying the capped price.
 - Isolated save-storage failures from gameplay startup and frame pacing. New Game, Host, and Restart now fall back to an unslotted run if slot discovery fails; Load Saves reports an unavailable store without crashing; and autosave makes one attempt per completed wave instead of hammering a failing disk every frame. Manual Save and the next wave still retry normally.
 - Kept Signal Beacon topology live during shared co-op pause. Deterministically placed, sold, or upgraded support towers now update planning intel and effective ranges immediately while every combat/economy/cooldown timer remains frozen.
 - Unified branch-planning math with live combat math. Tier-two doctrine and tier-three specialization hover previews now include the selected tower's strongest Signal Beacon and Surge Node modifiers in every displayed damage, rate, range, and pierce comparison, matching the existing linear `NEXT` preview.
