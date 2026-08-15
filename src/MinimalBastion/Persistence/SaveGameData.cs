@@ -62,6 +62,10 @@ public sealed class TowerSaveData
     public float OverdriveRemaining { get; set; }
     public float LifetimeDamage { get; set; }
     public int LifetimeKills { get; set; }
+    public float LifetimeSupportDamageEquivalent { get; set; }
+    public float LifetimeControlSeconds { get; set; }
+    public float LifetimeExposeSeconds { get; set; }
+    public float LifetimeArmorBreakSeconds { get; set; }
 }
 
 public sealed class PulsePlateSaveData
@@ -116,6 +120,9 @@ public sealed class RunTowerStatisticsSaveData
     public int Overdrives { get; set; }
     public float Damage { get; set; }
     public float SupportDamageEquivalent { get; set; }
+    public float ControlSeconds { get; set; }
+    public float ExposeSeconds { get; set; }
+    public float ArmorBreakSeconds { get; set; }
     public float ArmorAbsorbed { get; set; }
     public float Overkill { get; set; }
     public Dictionary<string, int> Specializations { get; set; } = new(StringComparer.OrdinalIgnoreCase);

@@ -1,6 +1,7 @@
 using MinimalBastion.Combat;
 using MinimalBastion.Core;
 using MinimalBastion.Enemies;
+using MinimalBastion.Effects;
 using MinimalBastion.Persistence;
 using MinimalBastion.Tactics;
 using MinimalBastion.Towers;
@@ -62,7 +63,24 @@ public sealed class RunStatistics
         session.EmergencyChargeProduced += () => GeneratedCharges++;
     }
 
-    public void Advance(float deltaSeconds) => SimulatedSeconds += MathF.Max(0, deltaSeconds);
+    public void Advance(float deltaSeconds)
+    {
+        deltaSeconds = MathF.Max(0, deltaSeconds);
+        SimulatedSeconds += deltaSeconds;
+        if (deltaSeconds <= 0) return;
+
+        foreach (var enemy in _session.Enemies)
+        foreach (var status in enemy.StatusEffects.Active)
+        {
+            if (status.Type == StatusType.Burn || !_towerByInstance.TryGetValue(status.SourceId, out var metrics)) continue;
+            var activeSeconds = MathF.Min(deltaSeconds, MathF.Max(0, status.RemainingSeconds));
+            if (status.Type is StatusType.Slow or StatusType.Stun) metrics.ControlSeconds += activeSeconds;
+            else if (status.Type == StatusType.Exposed) metrics.ExposeSeconds += activeSeconds;
+            else if (status.Type == StatusType.ArmorBreak) metrics.ArmorBreakSeconds += activeSeconds;
+            if (_towerInstances.TryGetValue(status.SourceId, out var sourceTower))
+                sourceTower.RecordStatusUptime(status.Type, activeSeconds);
+        }
+    }
 
     public RunStatisticsSaveData CaptureSaveData() => new()
     {
@@ -90,6 +108,9 @@ public sealed class RunStatistics
             Overdrives = x.Overdrives,
             Damage = x.Damage,
             SupportDamageEquivalent = x.SupportDamageEquivalent,
+            ControlSeconds = x.ControlSeconds,
+            ExposeSeconds = x.ExposeSeconds,
+            ArmorBreakSeconds = x.ArmorBreakSeconds,
             ArmorAbsorbed = x.ArmorAbsorbed,
             Overkill = x.Overkill,
             Specializations = new Dictionary<string, int>(x.Specializations, StringComparer.OrdinalIgnoreCase)
@@ -135,6 +156,9 @@ public sealed class RunStatistics
                 Overdrives = Math.Max(0, saved.Overdrives),
                 Damage = MathF.Max(0, saved.Damage),
                 SupportDamageEquivalent = MathF.Max(0, saved.SupportDamageEquivalent),
+                ControlSeconds = MathF.Max(0, saved.ControlSeconds),
+                ExposeSeconds = MathF.Max(0, saved.ExposeSeconds),
+                ArmorBreakSeconds = MathF.Max(0, saved.ArmorBreakSeconds),
                 ArmorAbsorbed = MathF.Max(0, saved.ArmorAbsorbed),
                 Overkill = MathF.Max(0, saved.Overkill)
             };
@@ -221,7 +245,10 @@ public sealed class RunStatistics
                 var power = _session.Map.GetPowerBuff(tower.Position);
                 var protocol = tower.IsOverdriven ? tower.Protocol.AttackSpeedBonus : 0f;
                 var totalRateMultiplier = 1f + support.AttackSpeedBonus + power.AttackSpeedBonus + protocol;
-                supportMetrics.SupportDamageEquivalent += appliedDamage * support.AttackSpeedBonus / MathF.Max(1f, totalRateMultiplier);
+                var supportContribution = appliedDamage * support.AttackSpeedBonus / MathF.Max(1f, totalRateMultiplier);
+                supportMetrics.SupportDamageEquivalent += supportContribution;
+                if (_towerInstances.TryGetValue(support.AttackSpeedSourceTowerId, out var supportTower))
+                    supportTower.RecordSupport(supportContribution);
             }
         }
     }
@@ -256,6 +283,9 @@ public sealed class RunTowerStatistics
     public int Overdrives { get; internal set; }
     public float Damage { get; internal set; }
     public float SupportDamageEquivalent { get; internal set; }
+    public float ControlSeconds { get; internal set; }
+    public float ExposeSeconds { get; internal set; }
+    public float ArmorBreakSeconds { get; internal set; }
     public float ArmorAbsorbed { get; internal set; }
     public float Overkill { get; internal set; }
     public Dictionary<string, int> Specializations { get; } = new(StringComparer.OrdinalIgnoreCase);

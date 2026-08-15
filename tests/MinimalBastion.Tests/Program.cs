@@ -463,6 +463,8 @@ internal static class Program
         statuses.Apply(new StatusApplication { Type = StatusType.Slow, Duration = 2, Magnitude = 0.3f, SourceId = 1 });
         statuses.Apply(new StatusApplication { Type = StatusType.Slow, Duration = 1, Magnitude = 0.5f, SourceId = 2 });
         Check.Nearly(0.5f, statuses.SlowFactor, "strongest slow");
+        Check.Equal(2, statuses.Active.Single(x => x.Type == StatusType.Slow).SourceId,
+            "stronger status transfers utility attribution to its source");
         statuses.Apply(new StatusApplication { Type = StatusType.Burn, Duration = 2, Magnitude = 5, SourceId = 1 });
         statuses.Apply(new StatusApplication { Type = StatusType.Burn, Duration = 2, Magnitude = 7, SourceId = 2 });
         statuses.Apply(new StatusApplication { Type = StatusType.Burn, Duration = 2, Magnitude = 9, SourceId = 3 });
@@ -566,16 +568,35 @@ internal static class Program
         Check.Equal(0, idleTower.LifetimeKills, "other instances do not inherit aggregate kills");
         Check.Nearly(100f / 3f, beaconStats.SupportDamageEquivalent, "beacon receives marginal attack-rate contribution credit");
         Check.Nearly(100f / 3f, beaconStats.ContributionDamage, "support contribution participates in run impact");
-        var restoredStatistics = GameSession.RestoreSaveGame(session.Content, session.CaptureSaveGame()).Statistics;
+        Check.Nearly(100f / 3f, beacon.LifetimeSupportDamageEquivalent, "individual beacon retains its assisted damage");
+        var statusTarget = new EnemyInstance(3, session.Content.Enemies["armored"], session.Map.Path, 1, 1);
+        statusTarget.StatusEffects.Apply(new StatusApplication
+        {
+            Type = StatusType.Slow,
+            Duration = 1,
+            Magnitude = 0.4f,
+            SourceId = tower.Id
+        });
+        session.Enemies.Add(statusTarget);
+        session.Statistics.Advance(0.2f);
+        Check.Nearly(0.2f, towerStats.ControlSeconds, "run telemetry attributes source control uptime");
+        Check.Nearly(0.2f, tower.LifetimeControlSeconds, "individual tower retains control uptime");
+        session.Enemies.Remove(statusTarget);
+        var restoredSession = GameSession.RestoreSaveGame(session.Content, session.CaptureSaveGame());
+        var restoredStatistics = restoredSession.Statistics;
         Check.Nearly(100f / 3f, restoredStatistics.Towers.Single(metrics => metrics.TowerId == "beacon").SupportDamageEquivalent,
             "support contribution survives save restoration");
+        Check.Nearly(100f / 3f, restoredSession.Towers.Single(candidate => candidate.Definition.Id == "beacon").LifetimeSupportDamageEquivalent,
+            "individual support contribution survives save restoration");
+        Check.Nearly(0.2f, restoredSession.Towers.Single(candidate => candidate.Id == tower.Id).LifetimeControlSeconds,
+            "individual control uptime survives save restoration");
 
         var escaped = new EnemyInstance(2, session.Content.Enemies["armored"], session.Map.Path, 1, 1);
         session.OnEnemyEscaped(escaped);
         Check.Equal("armored", session.Statistics.GreatestLeakThreat!.EnemyId, "stats leak threat");
         Check.Equal(1, session.Statistics.GreatestLeakThreat.LivesLost, "stats lives lost");
         session.Update(0.05f);
-        Check.Nearly(0.06f, session.Statistics.SimulatedSeconds, "stats defense time");
+        Check.Nearly(0.26f, session.Statistics.SimulatedSeconds, "stats defense time");
     }
 
     private static void DefeatFieldInspection()

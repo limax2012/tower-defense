@@ -32,6 +32,10 @@ public sealed class TowerInstance
     public float OverdriveRemaining { get; private set; }
     public float LifetimeDamage { get; private set; }
     public int LifetimeKills { get; private set; }
+    public float LifetimeSupportDamageEquivalent { get; private set; }
+    public float LifetimeControlSeconds { get; private set; }
+    public float LifetimeExposeSeconds { get; private set; }
+    public float LifetimeArmorBreakSeconds { get; private set; }
     public bool IsOverdriven => OverdriveRemaining > 0;
     public TowerProtocolDefinition Protocol => Definition.Protocol;
     public bool IsSupport => Definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase);
@@ -106,6 +110,17 @@ public sealed class TowerInstance
         if (killed) LifetimeKills++;
     }
 
+    internal void RecordSupport(float damageEquivalent) =>
+        LifetimeSupportDamageEquivalent += MathF.Max(0, damageEquivalent);
+
+    internal void RecordStatusUptime(Effects.StatusType type, float activeSeconds)
+    {
+        activeSeconds = MathF.Max(0, activeSeconds);
+        if (type is Effects.StatusType.Slow or Effects.StatusType.Stun) LifetimeControlSeconds += activeSeconds;
+        else if (type == Effects.StatusType.Exposed) LifetimeExposeSeconds += activeSeconds;
+        else if (type == Effects.StatusType.ArmorBreak) LifetimeArmorBreakSeconds += activeSeconds;
+    }
+
     public TowerSaveData CaptureSaveData() => new()
     {
         Id = Id,
@@ -120,7 +135,11 @@ public sealed class TowerInstance
         InvestedCredits = InvestedCredits,
         OverdriveRemaining = OverdriveRemaining,
         LifetimeDamage = LifetimeDamage,
-        LifetimeKills = LifetimeKills
+        LifetimeKills = LifetimeKills,
+        LifetimeSupportDamageEquivalent = LifetimeSupportDamageEquivalent,
+        LifetimeControlSeconds = LifetimeControlSeconds,
+        LifetimeExposeSeconds = LifetimeExposeSeconds,
+        LifetimeArmorBreakSeconds = LifetimeArmorBreakSeconds
     };
 
     public static TowerInstance RestoreSaveData(TowerSaveData data, TowerDefinition definition)
@@ -142,7 +161,11 @@ public sealed class TowerInstance
             RecoilAnimationRemaining = 0,
             OverdriveRemaining = MathF.Max(0, data.OverdriveRemaining),
             LifetimeDamage = MathF.Max(0, data.LifetimeDamage),
-            LifetimeKills = Math.Max(0, data.LifetimeKills)
+            LifetimeKills = Math.Max(0, data.LifetimeKills),
+            LifetimeSupportDamageEquivalent = MathF.Max(0, data.LifetimeSupportDamageEquivalent),
+            LifetimeControlSeconds = MathF.Max(0, data.LifetimeControlSeconds),
+            LifetimeExposeSeconds = MathF.Max(0, data.LifetimeExposeSeconds),
+            LifetimeArmorBreakSeconds = MathF.Max(0, data.LifetimeArmorBreakSeconds)
         };
         return tower;
     }

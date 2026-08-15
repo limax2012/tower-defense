@@ -900,8 +900,7 @@ public sealed class UIManager
             : $"ACTIVE  DAMAGE {effectiveDamage:0.#}   DPS {effectiveDps:0.#}   RANGE {session.GetEffectiveRange(tower):0}",
             new Vector2(980, 540), ColorPalette.Ink, 0.56f, 280);
         DrawText(batch, TowerInfo.Special(tower.Definition, tower.Level), new Vector2(980, 559), ColorPalette.Ink, 0.56f);
-        DrawFittedText(batch, $"THIS TOWER  |  {tower.LifetimeDamage:0} DAMAGE  |  {tower.LifetimeKills} KILLS",
-            new Vector2(980, 578), ColorPalette.Cobalt, 0.50f, 280);
+        DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, 578), ColorPalette.Cobalt, 0.48f, 280);
         var power = session.Map.GetPowerBuff(tower.Position);
         var powerNodes = session.Map.GetPowerNodes(tower.Position);
         var powerHint = powerNodes.Count > 0
@@ -955,6 +954,21 @@ public sealed class UIManager
         if (!tower.IsSupport) DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), canManage, ColorPalette.Cyan);
         DrawButton(batch, p, _upgradeButton, tower.CanUpgrade ? $"UP {tower.UpgradeCost}" : "MAX", canManage && tower.CanUpgrade && session.Economy.CanAfford(tower.UpgradeCost), ColorPalette.Violet);
         DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange);
+    }
+
+    private static string TowerLifetimeSummary(TowerInstance tower)
+    {
+        var utility = tower.LifetimeSupportDamageEquivalent > 0
+            ? $"{tower.LifetimeSupportDamageEquivalent:0} SUPPORT"
+            : tower.LifetimeControlSeconds > 0
+                ? $"{tower.LifetimeControlSeconds:0}s CONTROL"
+                : tower.LifetimeExposeSeconds > 0
+                    ? $"{tower.LifetimeExposeSeconds:0}s EXPOSE"
+                    : tower.LifetimeArmorBreakSeconds > 0
+                        ? $"{tower.LifetimeArmorBreakSeconds:0}s BREAK"
+                        : null;
+        var summary = $"LIFETIME  {tower.LifetimeDamage:0} DAMAGE  {tower.LifetimeKills} KILLS";
+        return utility is null ? summary : $"{summary}  {utility}";
     }
 
     private void DrawDefinitionIntel(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session, TowerDefinition definition, bool placing)

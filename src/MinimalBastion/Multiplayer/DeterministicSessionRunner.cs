@@ -124,6 +124,10 @@ public static class SessionChecksum
             Add(ref hash, (int)tower.TargetMode);
             Add(ref hash, tower.LifetimeDamage);
             Add(ref hash, tower.LifetimeKills);
+            Add(ref hash, tower.LifetimeSupportDamageEquivalent);
+            Add(ref hash, tower.LifetimeControlSeconds);
+            Add(ref hash, tower.LifetimeExposeSeconds);
+            Add(ref hash, tower.LifetimeArmorBreakSeconds);
         }
 
         foreach (var enemy in session.Enemies.OrderBy(x => x.Id))

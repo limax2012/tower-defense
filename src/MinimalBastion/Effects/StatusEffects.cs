@@ -23,7 +23,7 @@ public sealed class ActiveStatus
     public StatusType Type { get; init; }
     public float RemainingSeconds { get; set; }
     public float Magnitude { get; set; }
-    public int SourceId { get; init; }
+    public int SourceId { get; set; }
     public float TickInterval { get; set; } = 0.5f;
     public float TickProgress { get; set; }
 }
@@ -79,7 +79,12 @@ public sealed class StatusEffectController
             return;
         }
 
-        if (application.Magnitude >= existing.Magnitude) existing.Magnitude = application.Magnitude;
+        if (application.Magnitude > existing.Magnitude ||
+            application.Magnitude == existing.Magnitude && application.Duration >= existing.RemainingSeconds)
+        {
+            existing.Magnitude = application.Magnitude;
+            existing.SourceId = application.SourceId;
+        }
         existing.RemainingSeconds = MathF.Max(existing.RemainingSeconds, application.Duration);
     }
 
