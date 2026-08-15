@@ -45,6 +45,10 @@ public enum UiAction
 
 public sealed class UIManager
 {
+    // Keep every Intel silhouette inside the two-line header. The largest
+    // authored tower has a 29px outer ring, so Y=503 clears both the card's
+    // top border and the first detail row at Y=534.
+    private static readonly Vector2 TowerIntelIconCenter = new(1000, 503);
     private readonly SpriteFont _font;
     private readonly Dictionary<string, Rectangle> _towerCards = new(StringComparer.OrdinalIgnoreCase);
     private Rectangle _startWaveButton;
@@ -1743,7 +1747,7 @@ public sealed class UIManager
         var intelCard = new Rectangle(972, 474, 296, 174);
         p.FillRect(batch, intelCard, ColorPalette.PanelAlt);
         p.DrawRect(batch, intelCard, tower.Definition.Visual.PrimaryColor, 1);
-        p.DrawShape(batch, new Vector2(1000, 512), tower.Definition.Visual.Radius, tower.Definition.Visual.Shape,
+        p.DrawShape(batch, TowerIntelIconCenter, tower.Definition.Visual.Radius, tower.Definition.Visual.Shape,
             tower.Definition.Visual.PrimaryColor, tower.Definition.Visual.AccentColor, tower.LevelIndex + 1, true, levelMarks: true);
         DrawFittedText(batch, tower.Definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f, 228);
         var ownership = session.IsCoOp ? $"   PLACED P{tower.OwnerPlayerId}" : "";
@@ -1853,7 +1857,7 @@ public sealed class UIManager
         var level = definition.Levels[0];
         p.FillRect(batch, new Rectangle(972, 474, 296, 202), ColorPalette.PanelAlt);
         p.DrawRect(batch, new Rectangle(972, 474, 296, 202), definition.Visual.PrimaryColor, 1);
-        p.DrawShape(batch, new Vector2(1000, 512), definition.Visual.Radius, definition.Visual.Shape,
+        p.DrawShape(batch, TowerIntelIconCenter, definition.Visual.Radius, definition.Visual.Shape,
             definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
         DrawFittedText(batch, definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f, 228);
         DrawFittedText(batch, $"{definition.PurchaseCost} CREDITS   {TowerInfo.ShortRole(definition)}",
@@ -1895,7 +1899,7 @@ public sealed class UIManager
         var definition = session.Content.Tactics.EmergencyDefense;
         p.FillRect(batch, new Rectangle(972, 474, 296, 202), ColorPalette.PanelAlt);
         p.DrawRect(batch, new Rectangle(972, 474, 296, 202), definition.Visual.PrimaryColor, 1);
-        p.DrawShape(batch, new Vector2(1000, 512), definition.Visual.Radius + 2, definition.Visual.Shape,
+        p.DrawShape(batch, TowerIntelIconCenter, definition.Visual.Radius + 2, definition.Visual.Shape,
             definition.Visual.PrimaryColor, definition.Visual.AccentColor, definition.Charges, true);
         DrawText(batch, definition.DisplayName, new Vector2(1028, 486), ColorPalette.Ink, 0.86f);
         DrawText(batch, $"STORED {session.EmergencyInventory}   FIELD {session.EmergencyDefenses.Count}/{definition.MaximumActive}", new Vector2(1028, 508), ColorPalette.Muted, 0.60f);
@@ -1923,8 +1927,8 @@ public sealed class UIManager
         _specializationBButton = Rectangle.Empty;
         p.FillRect(batch, new Rectangle(972, 474, 296, 202), ColorPalette.PanelAlt);
         p.DrawRect(batch, new Rectangle(972, 474, 296, 202), zone.NodeColor, 1);
-        p.DrawPolygon(batch, new Vector2(1000, 512), 17, 4, false, zone.NodeColor, MathHelper.PiOver4);
-        p.DrawPolygon(batch, new Vector2(1000, 512), 8, 4, false, ColorPalette.Paper, MathHelper.PiOver4);
+        p.DrawPolygon(batch, TowerIntelIconCenter, 17, 4, false, zone.NodeColor, MathHelper.PiOver4);
+        p.DrawPolygon(batch, TowerIntelIconCenter, 8, 4, false, ColorPalette.Paper, MathHelper.PiOver4);
         DrawFittedText(batch, zone.DisplayName, new Vector2(1028, 486), ColorPalette.Ink, 0.82f, 236);
         DrawText(batch, "SURGE NODE", new Vector2(1028, 508), zone.NodeColor, 0.60f);
         var bonus = zone.AttackSpeedBonus > 0 ? $"ATTACK RATE +{zone.AttackSpeedBonus:P0}" :
@@ -1945,7 +1949,7 @@ public sealed class UIManager
         var level = active?.Level ?? definition.Levels[0];
         p.FillRect(batch, new Rectangle(972, 474, 296, active is null ? 202 : 156), ColorPalette.PanelAlt);
         p.DrawRect(batch, new Rectangle(972, 474, 296, active is null ? 202 : 156), definition.Visual.PrimaryColor, 1);
-        p.DrawShape(batch, new Vector2(1000, 512), definition.Visual.Radius, definition.Visual.Shape,
+        p.DrawShape(batch, TowerIntelIconCenter, definition.Visual.Radius, definition.Visual.Shape,
             definition.Visual.PrimaryColor, definition.Visual.AccentColor, (active?.LevelIndex ?? 0) + 1, true, levelMarks: true);
         DrawFittedText(batch, definition.DisplayName, new Vector2(1028, 486), ColorPalette.Ink, 0.86f, 236);
         var generatorOwner = active is not null && session.IsCoOp ? $"   PLACED P{active.OwnerPlayerId}" : "";
