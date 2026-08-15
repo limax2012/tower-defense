@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MinimalBastion.Core;
 using Microsoft.Xna.Framework;
 
 namespace MinimalBastion.Data;
@@ -115,8 +116,29 @@ public sealed class TowerDefinition
     public int PurchaseCost { get; set; }
     public string DefaultTargetMode { get; set; } = "First";
     public TowerVisualData Visual { get; set; } = new();
+    public TowerProtocolDefinition Protocol { get; set; } = new();
     public List<TowerLevelDefinition> Levels { get; set; } = new();
     public List<TowerSpecializationDefinition> Specializations { get; set; } = new();
+}
+
+public sealed class TowerProtocolDefinition
+{
+    public string DisplayName { get; set; } = "Overdrive";
+    public string Summary { get; set; } = "Temporarily increases attack speed.";
+    public float DurationSeconds { get; set; } = GameConstants.OverdriveDurationSeconds;
+    public float CooldownSeconds { get; set; } = GameConstants.OverdriveCooldownSeconds;
+    public float AttackSpeedBonus { get; set; } = GameConstants.OverdriveAttackSpeedBonus;
+    public float DamageBonus { get; set; }
+    public float RangeBonus { get; set; }
+    public float ArmorPierceBonus { get; set; }
+    public float AuraAttackSpeedBonus { get; set; }
+    public float AuraRangeBonus { get; set; }
+    public int AutoTriggerCount { get; set; } = 4;
+    public float BurstRadius { get; set; }
+    public float BurstDamage { get; set; }
+    public string BurstStatus { get; set; } = "";
+    public float BurstStatusMagnitude { get; set; }
+    public float BurstStatusDuration { get; set; }
 }
 
 public sealed class TowerSpecializationDefinition

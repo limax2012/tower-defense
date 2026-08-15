@@ -156,7 +156,7 @@ public sealed class GameRenderer
     }
 
     private static float DisplayRange(MinimalBastion.GameSession session, TowerInstance tower) =>
-        tower.IsSupport ? tower.Level.AuraRange : session.GetEffectiveRange(tower);
+        tower.IsSupport ? session.GetEffectiveAuraRange(tower) : session.GetEffectiveRange(tower);
 
     private static void DrawTacticalDefenses(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
@@ -207,7 +207,10 @@ public sealed class GameRenderer
             if (session.Map.GetPowerBuff(tower.Position).IsPowered)
                 p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 10, ColorPalette.WithAlpha(ColorPalette.Gold, 190), 12, 2);
             if (tower.IsOverdriven)
-                p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 15 + MathF.Sin(time * 8f) * 2f, ColorPalette.Coral, 16, 3);
+                p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 15 + MathF.Sin(time * 8f) * 2f,
+                    tower.Definition.Visual.PrimaryColor, 16, 3);
+            else if (session.AutoOverdriveTowerId == tower.Id)
+                DrawAutoProtocolEffect(batch, p, tower, time);
 
             if (session.IsCoOp)
                 p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 8, tower.OwnerPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral, 2);
@@ -217,8 +220,16 @@ public sealed class GameRenderer
                 p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + (session.IsCoOp ? 12 : 8), ColorPalette.Gold, 3);
 
             if (tower.IsSupport)
-                p.DashedRing(batch, tower.Position, tower.Level.AuraRange, ColorPalette.WithAlpha(accent, 120), 28, 2);
+                p.DashedRing(batch, tower.Position, session.GetEffectiveAuraRange(tower), ColorPalette.WithAlpha(accent, 120), 28, 2);
         }
+    }
+
+    private static void DrawAutoProtocolEffect(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)
+    {
+        var pulse = (MathF.Sin(time * 3.5f + tower.Id) + 1f) * 0.5f;
+        var marker = tower.Position + new Vector2(-tower.Definition.Visual.Radius * 0.58f, tower.Definition.Visual.Radius * 0.58f);
+        p.Circle(batch, marker, 4.3f, ColorPalette.WithAlpha(ColorPalette.Navy, 225));
+        p.DrawPolygon(batch, marker, 2.8f + pulse * 0.45f, 4, false, ColorPalette.Cobalt, MathHelper.PiOver4);
     }
 
     private static void DrawSignalBeaconEffect(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)

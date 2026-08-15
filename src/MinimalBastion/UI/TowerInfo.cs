@@ -20,6 +20,23 @@ public static class TowerInfo
     public static int TotalCostToSpecialization(TowerDefinition definition, TowerSpecializationDefinition specialization) =>
         definition.PurchaseCost + (definition.Levels.FirstOrDefault()?.UpgradeCost ?? 0) + specialization.UpgradeCost;
 
+    public static string ProtocolBonuses(TowerProtocolDefinition protocol)
+    {
+        var bonuses = new List<string>();
+        if (protocol.AttackSpeedBonus > 0) bonuses.Add($"RATE +{protocol.AttackSpeedBonus:P0}");
+        if (protocol.DamageBonus > 0) bonuses.Add($"DAMAGE +{protocol.DamageBonus:P0}");
+        if (protocol.RangeBonus > 0) bonuses.Add($"RANGE +{protocol.RangeBonus:P0}");
+        if (protocol.ArmorPierceBonus > 0) bonuses.Add($"PIERCE +{protocol.ArmorPierceBonus:0.#}");
+        if (protocol.AuraAttackSpeedBonus > 0) bonuses.Add($"AURA RATE +{protocol.AuraAttackSpeedBonus:P0}");
+        if (protocol.AuraRangeBonus > 0) bonuses.Add($"AURA RANGE +{protocol.AuraRangeBonus:P0}");
+        if (protocol.BurstDamage > 0) bonuses.Add($"PULSE {protocol.BurstDamage:0.#}");
+        if (!string.IsNullOrWhiteSpace(protocol.BurstStatus)) bonuses.Add(protocol.BurstStatus.ToUpperInvariant());
+        return string.Join("  ", bonuses.Take(3));
+    }
+
+    public static string ProtocolSummary(TowerDefinition definition) =>
+        $"PROTOCOL: {definition.Protocol.DisplayName.ToUpperInvariant()}  {definition.Protocol.DurationSeconds:0.#}s  |  {ProtocolBonuses(definition.Protocol)}";
+
     public static IReadOnlyList<string> LibraryStatLines(TowerDefinition definition, TowerLevelDefinition level)
     {
         var lines = new List<string>();

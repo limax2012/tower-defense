@@ -1,5 +1,6 @@
 using System.Text.Json;
 using MinimalBastion.Core;
+using MinimalBastion.Effects;
 
 namespace MinimalBastion.Data;
 
@@ -140,6 +141,15 @@ public static class DataValidator
             if (tower.PurchaseCost <= 0 || tower.Levels.Count != 3) throw new InvalidDataException($"Invalid tower: {tower.Id}");
             if (tower.Levels.Any(x => x.Range < 0 || (!tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) && x.Range <= 0) || x.AttacksPerSecond < 0 || x.Damage < 0))
                 throw new InvalidDataException($"Invalid tower levels: {tower.Id}");
+            var protocol = tower.Protocol;
+            if (string.IsNullOrWhiteSpace(protocol.DisplayName) || string.IsNullOrWhiteSpace(protocol.Summary) ||
+                protocol.DurationSeconds <= 0 || protocol.CooldownSeconds < protocol.DurationSeconds ||
+                protocol.AutoTriggerCount <= 0 || protocol.AttackSpeedBonus < 0 || protocol.DamageBonus < 0 ||
+                protocol.RangeBonus < 0 || protocol.ArmorPierceBonus < 0 || protocol.AuraAttackSpeedBonus < 0 ||
+                protocol.AuraRangeBonus < 0 || protocol.BurstRadius < 0 || protocol.BurstDamage < 0 ||
+                protocol.BurstStatusMagnitude < 0 || protocol.BurstStatusDuration < 0 ||
+                (!string.IsNullOrWhiteSpace(protocol.BurstStatus) && !Enum.TryParse<StatusType>(protocol.BurstStatus, true, out _)))
+                throw new InvalidDataException($"Invalid tower protocol: {tower.Id}");
             var specializationNeedsCombatStats = !tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase);
             if (tower.Specializations.Count is not 0 and not 2 ||
                 tower.Specializations.Any(x => string.IsNullOrWhiteSpace(x.Id) || string.IsNullOrWhiteSpace(x.DisplayName) ||

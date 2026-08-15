@@ -141,6 +141,11 @@ internal static class Program
         Check.True(content.Towers["prism_beam"].Levels.Select(x => x.ArmorPierce).SequenceEqual(new[] { 3f, 5f, 8f }), "prism beam penetration curve");
         Check.Equal(20, content.Towers.Values.Sum(x => x.Specializations.Count), "specialization count");
         Check.True(content.Towers.Values.All(x => x.Specializations.Count == 2), "every tower has two final roles");
+        Check.Equal(10, content.Towers.Values.Select(x => x.Protocol.DisplayName).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+            "every tower has a distinct named protocol");
+        Check.True(content.Towers["signal_beacon"].Protocol.AuraAttackSpeedBonus > 0 &&
+            content.Towers["frost_spire"].Protocol.BurstStatus.Equals("Slow", StringComparison.OrdinalIgnoreCase),
+            "support and control protocols expose thematic effects");
 
         var shard = content.Towers["shard_fan"];
         var watchtower = content.Towers["watchtower"];
@@ -577,10 +582,19 @@ internal static class Program
         {
             Sequence = 6,
             PlayerId = 1,
+            Type = GameCommandType.ToggleAutoProtocol,
+            EntityId = session.Towers[0].Id
+        }).Accepted, "other player arms shared automatic protocol");
+        Check.Equal(session.Towers[0].Id, session.AutoOverdriveTowerId, "automatic protocol selection is shared");
+        Check.True(GameCommandProcessor.Apply(session, new GameCommand
+        {
+            Sequence = 7,
+            PlayerId = 1,
             Type = GameCommandType.SellTower,
             EntityId = session.Towers[0].Id
         }).Accepted, "other player can sell tower");
         Check.Equal(0, session.Towers.Count, "shared sale removes tower");
+        Check.Equal(0, session.AutoOverdriveTowerId, "selling armed tower clears automation");
         session.Economy.AddCredits(1_000);
         Check.True(session.TryPlaceGenerator(new Vector2(50, 200), 2), "player two places forge");
         Check.True(session.TryUpgradeGenerator(1), "other player upgrades forge");
@@ -623,16 +637,19 @@ internal static class Program
             Y = 200
         };
         var start = new GameCommand { Sequence = 2, ClientRequestId = 2, PlayerId = 1, Type = GameCommandType.StartWave };
-        var overdrive = new GameCommand { Sequence = 3, ClientRequestId = 3, PlayerId = 2, Type = GameCommandType.OverdriveTower, EntityId = 1 };
+        var auto = new GameCommand { Sequence = 3, ClientRequestId = 3, PlayerId = 1, Type = GameCommandType.ToggleAutoProtocol, EntityId = 1 };
+        var overdrive = new GameCommand { Sequence = 4, ClientRequestId = 4, PlayerId = 2, Type = GameCommandType.OverdriveTower, EntityId = 1 };
         Check.True(firstRunner.Schedule(0, placement) && secondRunner.Schedule(0, placement), "schedule mirrored placement");
         Check.True(firstRunner.Schedule(1, start) && secondRunner.Schedule(1, start), "schedule mirrored wave");
-        Check.True(firstRunner.Schedule(2, overdrive) && secondRunner.Schedule(2, overdrive), "schedule mirrored overdrive");
+        Check.True(firstRunner.Schedule(2, auto) && secondRunner.Schedule(2, auto), "schedule mirrored protocol automation");
+        Check.True(firstRunner.Schedule(3, overdrive) && secondRunner.Schedule(3, overdrive), "schedule mirrored protocol activation");
         firstRunner.RunTicks(80);
         secondRunner.RunTicks(80);
         Check.Equal(SessionChecksum.Compute(first, firstRunner.Tick), SessionChecksum.Compute(second, secondRunner.Tick), "mirrored state checksum");
         Check.Equal(2, first.Towers[0].OwnerPlayerId, "mirrored ownership");
         Check.True(first.Towers[0].IsOverdriven, "mirrored active ability state");
         Check.True(first.OverdriveCooldownRemaining > 0, "mirrored cooldown state");
+        Check.Equal(1, first.AutoOverdriveTowerId, "mirrored auto protocol state");
     }
 
     private static void CoOpActiveStateSnapshot()
@@ -659,6 +676,7 @@ internal static class Program
         Check.True(host.TryDeployEmergencyDefense(new Vector2(200, 30)), "snapshot stored plate deployment");
         Check.True(host.TryDeployEmergencyDefense(new Vector2(300, 30)), "snapshot direct plate deployment");
         Check.True(host.Enemies[0].TryApplyKnockback(4, 0.75f, host.Map.Path), "snapshot enemy knockback grace");
+        Check.True(host.TryToggleAutoProtocol(host.Towers[0].Id, 2), "snapshot automatic protocol armed");
 
         var future = new GameCommand { Sequence = 3, ClientRequestId = 3, PlayerId = 2, Type = GameCommandType.SetSpeed, Speed = 2f };
         Check.True(hostRunner.Schedule(hostRunner.Tick + 3, future), "future command scheduled before snapshot");
@@ -672,6 +690,7 @@ internal static class Program
 
         Check.Equal(SessionChecksum.Compute(host, hostRunner.Tick), SessionChecksum.Compute(client, clientRunner.Tick), "snapshot checksum matches immediately");
         Check.Equal(2, client.Towers[0].OwnerPlayerId, "snapshot preserves original placer");
+        Check.Equal(host.Towers[0].Id, client.AutoOverdriveTowerId, "snapshot restores automatic protocol tower");
         Check.Equal(1, client.Enemies[0].StatusEffects.Active.Count, "snapshot restores status effects");
         Check.Equal(1, client.EmergencyDirectPurchasesThisWave, "snapshot restores escalating plate purchase count");
         Check.Nearly(host.Enemies[0].KnockbackGraceRemaining, client.Enemies[0].KnockbackGraceRemaining, "snapshot restores plate knockback grace");
@@ -1339,6 +1358,7 @@ internal static class Program
         var tower = session.Towers[0];
         Check.True(session.TryUpgradeTower(tower.Id), "checkpoint tower upgrade");
         Check.True(session.TrySetTargetMode(tower.Id, TargetMode.Armored), "checkpoint target mode");
+        Check.True(session.TryToggleAutoProtocol(tower.Id), "checkpoint automatic protocol armed");
         Check.True(session.StartNextWave(), "start wave before checkpoint");
         ResolveSingleEnemyWave(session);
         var telemetryTarget = new EnemyInstance(99, session.Content.Enemies["enemy"], session.Map.Path, 1, 1);
@@ -1352,6 +1372,7 @@ internal static class Program
         Check.Equal(1, restored.Towers.Count, "saved tower restored");
         Check.Equal(1, restored.Towers[0].LevelIndex, "saved tower level restored");
         Check.Equal(TargetMode.Armored, restored.Towers[0].TargetMode, "saved targeting restored");
+        Check.Equal(restored.Towers[0].Id, restored.AutoOverdriveTowerId, "saved automatic protocol restored");
         Check.Nearly(tower.LifetimeDamage, restored.Towers[0].LifetimeDamage, "saved per-tower damage restored");
         Check.Equal(tower.LifetimeKills, restored.Towers[0].LifetimeKills, "saved per-tower kills restored");
         Check.Equal(1, restored.Statistics.Towers.Single().Purchases, "saved statistics restored");
@@ -1460,6 +1481,30 @@ internal static class Program
         Check.True(session.OverdriveCooldownRemaining > 0, "cooldown outlasts effect");
         for (var index = 0; index < 130; index++) session.Update(0.1f);
         Check.True(session.TryOverdriveTower(tower.Id, 2), "overdrive recharges");
+
+        var automatic = Session();
+        automatic.Content.Towers["tower"].Levels[0].Range = 220;
+        automatic.Content.Towers["tower"].Protocol = new TowerProtocolDefinition
+        {
+            DisplayName = "Test Pulse",
+            Summary = "Test protocol",
+            DurationSeconds = 4,
+            CooldownSeconds = 10,
+            AttackSpeedBonus = 0.5f,
+            DamageBonus = 0.25f,
+            AutoTriggerCount = 1,
+            BurstRadius = 250,
+            BurstDamage = 10
+        };
+        Check.True(automatic.TryPlaceTower("tower", new Vector2(50, 200)), "place automatic protocol tower");
+        var automaticTower = automatic.Towers[0];
+        Check.True(automatic.TryToggleAutoProtocol(automaticTower.Id, 2), "arm automatic protocol from player two");
+        automatic.SpawnEnemy("enemy", 1, 1);
+        automatic.Update(0.1f);
+        Check.True(automaticTower.IsOverdriven, "automatic protocol activates under configured pressure");
+        Check.Nearly(1.5f, automatic.GetEffectiveAttacksPerSecond(automaticTower), "protocol-specific rate bonus");
+        Check.Nearly(12.5f, automatic.GetEffectiveDamage(automaticTower, 10), "protocol-specific damage bonus");
+        Check.True(automatic.Enemies[0].Health < automatic.Enemies[0].MaxHealth, "protocol activation pulse applies damage");
     }
 
     private static GameSession Session()

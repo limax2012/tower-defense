@@ -607,12 +607,11 @@ public sealed class AutoPlayer
                        session.Economy.Lives <= session.Economy.StartingLives * 0.6f;
         if (!pressure) return;
         var candidate = session.Towers
-            .Where(tower => !tower.IsSupport && !tower.IsOverdriven)
+            .Where(tower => !tower.IsOverdriven)
             .Select(tower => new
             {
                 Tower = tower,
-                Targets = session.Enemies.Count(enemy => !enemy.IsDead && !enemy.HasEscaped &&
-                    Vector2.DistanceSquared(tower.Position, enemy.Position) <= session.GetEffectiveRange(tower) * session.GetEffectiveRange(tower))
+                Targets = session.GetProtocolTargets(tower).Count
             })
             .Where(x => x.Targets > 0)
             .OrderByDescending(x => x.Targets * 20 + x.Tower.InvestedCredits)

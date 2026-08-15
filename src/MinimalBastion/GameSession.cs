@@ -68,6 +68,7 @@ public sealed class GameSession
     public PlacementFailure PlacementFailure { get; private set; }
     public float Speed { get; private set; } = 1f;
     public float OverdriveCooldownRemaining { get; private set; }
+    public int AutoOverdriveTowerId { get; private set; }
     public bool IsVictory { get; private set; }
     public bool IsDefeat { get; private set; }
     public bool IsCoOp { get; private set; }
@@ -131,6 +132,7 @@ public sealed class GameSession
         Waves.Update(deltaSeconds, this);
         _enemySystem.Update(deltaSeconds, this);
         _tacticalDefenseSystem.Update(deltaSeconds, this);
+        TryActivateAutomaticProtocol();
         _buffSystem.Update(Towers);
         _towerSystem.Update(deltaSeconds, this);
         Projectiles.Update(deltaSeconds, this);
@@ -515,6 +517,7 @@ public sealed class GameSession
         var value = tower.SellValue;
         Economy.RecoverSale(value);
         Towers.Remove(tower);
+        if (AutoOverdriveTowerId == tower.Id) AutoOverdriveTowerId = 0;
         if (SelectedTower == tower) SelectedTower = null;
         TowerSold?.Invoke(tower, value);
         return true;
@@ -531,13 +534,96 @@ public sealed class GameSession
     public bool TryOverdriveTower(int towerId, int requestingPlayerId = 1)
     {
         var tower = Towers.FirstOrDefault(x => x.Id == towerId);
-        if (requestingPlayerId is < 1 or > 2 || tower is null || tower.IsSupport || tower.IsOverdriven || OverdriveCooldownRemaining > 0)
+        if (requestingPlayerId is < 1 or > 2 || tower is null || tower.IsOverdriven || OverdriveCooldownRemaining > 0)
             return false;
         tower.ActivateOverdrive();
-        OverdriveCooldownRemaining = GameConstants.OverdriveCooldownSeconds;
-        Effects.AddFlash(tower.Position, tower.Definition.Visual.PrimaryColor, 0.35f, 44);
+        OverdriveCooldownRemaining = tower.Protocol.CooldownSeconds;
+        ApplyProtocolBurst(tower);
+        Effects.AddFlash(tower.Position, tower.Definition.Visual.PrimaryColor, 0.42f,
+            MathF.Max(44, tower.Protocol.BurstRadius));
         TowerOverdriven?.Invoke(tower);
         return true;
+    }
+
+    public bool TryToggleAutoProtocol(int towerId, int requestingPlayerId = 1)
+    {
+        if (requestingPlayerId is < 1 or > 2) return false;
+        if (AutoOverdriveTowerId == towerId)
+        {
+            AutoOverdriveTowerId = 0;
+            return true;
+        }
+        if (Towers.All(x => x.Id != towerId)) return false;
+        AutoOverdriveTowerId = towerId;
+        return true;
+    }
+
+    private void TryActivateAutomaticProtocol()
+    {
+        if (AutoOverdriveTowerId <= 0 || OverdriveCooldownRemaining > 0 || Enemies.Count == 0) return;
+        var tower = Towers.FirstOrDefault(x => x.Id == AutoOverdriveTowerId);
+        if (tower is null)
+        {
+            AutoOverdriveTowerId = 0;
+            return;
+        }
+
+        var targets = GetProtocolTargets(tower).ToArray();
+        if (targets.Length < tower.Protocol.AutoTriggerCount && !targets.Any(x => x.IsElite || x.IsBoss)) return;
+        TryOverdriveTower(tower.Id);
+    }
+
+    public IReadOnlyList<EnemyInstance> GetProtocolTargets(TowerInstance tower)
+    {
+        if (!tower.IsSupport)
+        {
+            var range = GetEffectiveRange(tower);
+            return Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped &&
+                Vector2.DistanceSquared(tower.Position, enemy.Position) <= range * range).ToArray();
+        }
+
+        var auraRange = GetEffectiveAuraRange(tower);
+        var recipients = Towers.Where(recipient => !recipient.IsSupport &&
+            Vector2.DistanceSquared(tower.Position, recipient.Position) <= auraRange * auraRange).ToArray();
+        return Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped && recipients.Any(recipient =>
+        {
+            var range = GetEffectiveRange(recipient);
+            return Vector2.DistanceSquared(recipient.Position, enemy.Position) <= range * range;
+        })).ToArray();
+    }
+
+    private void ApplyProtocolBurst(TowerInstance tower)
+    {
+        var protocol = tower.Protocol;
+        if (protocol.BurstRadius <= 0 || (protocol.BurstDamage <= 0 && string.IsNullOrWhiteSpace(protocol.BurstStatus))) return;
+        StatusType? statusType = Enum.TryParse<StatusType>(protocol.BurstStatus, true, out var parsedStatus) ? parsedStatus : null;
+        foreach (var enemy in Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped &&
+                     Vector2.DistanceSquared(tower.Position, enemy.Position) <= protocol.BurstRadius * protocol.BurstRadius).ToArray())
+        {
+            StatusApplication? status = statusType is null || protocol.BurstStatusMagnitude <= 0 || protocol.BurstStatusDuration <= 0
+                ? null
+                : new StatusApplication
+                {
+                    Type = statusType.Value,
+                    Duration = protocol.BurstStatusDuration,
+                    Magnitude = protocol.BurstStatusMagnitude,
+                    SourceId = tower.Id
+                };
+            if (protocol.BurstDamage > 0)
+            {
+                DamageResolver.Apply(enemy, new DamagePayload
+                {
+                    Damage = GetEffectiveDamage(tower, protocol.BurstDamage),
+                    ArmorPierce = GetEffectiveArmorPierce(tower, tower.Level.ArmorPierce),
+                    Status = status,
+                    SourceTowerId = tower.Id
+                });
+            }
+            else if (status is not null)
+            {
+                enemy.ApplyStatus(status);
+            }
+        }
     }
 
     public void CycleSelectedTarget()
@@ -586,25 +672,31 @@ public sealed class GameSession
     {
         var support = _buffSystem.Get(tower);
         var power = Map.GetPowerBuff(tower.Position);
-        return tower.Level.Range * (1f + support.RangeBonus + power.RangeBonus);
+        var protocol = tower.IsOverdriven ? tower.Protocol.RangeBonus : 0f;
+        return tower.Level.Range * (1f + support.RangeBonus + power.RangeBonus + protocol);
     }
+
+    public float GetEffectiveAuraRange(TowerInstance tower) => tower.Level.AuraRange *
+        (1f + (tower.IsOverdriven ? tower.Protocol.AuraRangeBonus : 0f));
 
     public float GetEffectiveAttacksPerSecond(TowerInstance tower)
     {
         var support = _buffSystem.Get(tower);
         var power = Map.GetPowerBuff(tower.Position);
-        var overdrive = tower.IsOverdriven ? GameConstants.OverdriveAttackSpeedBonus : 0f;
+        var overdrive = tower.IsOverdriven ? tower.Protocol.AttackSpeedBonus : 0f;
         return tower.Level.AttacksPerSecond * (1f + support.AttackSpeedBonus + power.AttackSpeedBonus + overdrive);
     }
 
     public float GetEffectiveDamage(TowerInstance tower, float baseDamage)
     {
-        return baseDamage * (1f + Map.GetPowerBuff(tower.Position).DamageBonus);
+        var protocol = tower.IsOverdriven ? tower.Protocol.DamageBonus : 0f;
+        return baseDamage * (1f + Map.GetPowerBuff(tower.Position).DamageBonus + protocol);
     }
 
     public float GetEffectiveArmorPierce(TowerInstance tower, float baseArmorPierce)
     {
-        return baseArmorPierce + Map.GetPowerBuff(tower.Position).ArmorPierceBonus;
+        var protocol = tower.IsOverdriven ? tower.Protocol.ArmorPierceBonus : 0f;
+        return baseArmorPierce + Map.GetPowerBuff(tower.Position).ArmorPierceBonus + protocol;
     }
 
     public void SpawnEnemy(string enemyId, float healthMultiplier, float speedMultiplier, string rank = "Standard")
@@ -689,6 +781,7 @@ public sealed class GameSession
             DifficultyId = DifficultyId,
             Speed = Speed,
             OverdriveCooldownRemaining = OverdriveCooldownRemaining,
+            AutoOverdriveTowerId = AutoOverdriveTowerId,
             EmergencyInventory = EmergencyInventory,
             EmergencyDirectPurchasesThisWave = EmergencyDirectPurchasesThisWave,
             NextEnemyId = _nextEnemyId,
@@ -713,6 +806,7 @@ public sealed class GameSession
         WaveEarlyBonusQueued = waveEarlyBonusQueued,
         Speed = Speed,
         OverdriveCooldownRemaining = OverdriveCooldownRemaining,
+        AutoOverdriveTowerId = AutoOverdriveTowerId,
         EmergencyInventory = EmergencyInventory,
         EmergencyDirectPurchasesThisWave = EmergencyDirectPurchasesThisWave,
         NextEnemyId = _nextEnemyId,
@@ -748,6 +842,9 @@ public sealed class GameSession
         session.Waves.RestoreCoOpState(data.Waves);
         session.Speed = data.Speed >= 1.5f ? 2f : 1f;
         session.OverdriveCooldownRemaining = MathF.Max(0, data.OverdriveCooldownRemaining);
+        session.AutoOverdriveTowerId = data.Towers.Any(tower => tower.Id == data.AutoOverdriveTowerId)
+            ? data.AutoOverdriveTowerId
+            : 0;
         session.EmergencyInventory = Math.Max(0, data.EmergencyInventory);
         session.EmergencyDirectPurchasesThisWave = Math.Max(0, data.EmergencyDirectPurchasesThisWave);
 
@@ -801,6 +898,9 @@ public sealed class GameSession
         session.Waves.RestoreSaveData(data.Waves);
         session.Speed = data.Speed >= 1.5f ? 2f : 1f;
         session.OverdriveCooldownRemaining = MathF.Max(0, data.OverdriveCooldownRemaining);
+        session.AutoOverdriveTowerId = data.Towers.Any(tower => tower.Id == data.AutoOverdriveTowerId)
+            ? data.AutoOverdriveTowerId
+            : 0;
         session.EmergencyInventory = Math.Max(0, data.EmergencyInventory);
         session.EmergencyDirectPurchasesThisWave = Math.Max(0, data.EmergencyDirectPurchasesThisWave);
 

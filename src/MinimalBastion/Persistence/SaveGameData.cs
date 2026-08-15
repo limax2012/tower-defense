@@ -12,6 +12,7 @@ public sealed class SaveGameData
     public string DifficultyId { get; set; } = "";
     public float Speed { get; set; } = 1f;
     public float OverdriveCooldownRemaining { get; set; }
+    public int AutoOverdriveTowerId { get; set; }
     public int EmergencyInventory { get; set; }
     public int EmergencyDirectPurchasesThisWave { get; set; }
     public int NextEnemyId { get; set; } = 1;

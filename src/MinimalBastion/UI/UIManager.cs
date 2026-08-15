@@ -50,6 +50,7 @@ public sealed class UIManager
     private Rectangle _emergencyButton;
     private Rectangle _generatorButton;
     private Rectangle _overdriveButton;
+    private Rectangle _autoProtocolButton;
     private string? _hoveredTowerCardId;
     private string? _specializationHint;
     private PowerNodeData? _hoveredPowerNode;
@@ -434,6 +435,11 @@ public sealed class UIManager
             RequestOverdrive(session, commandSink, playerId);
             return UiAction.None;
         }
+        if (_autoProtocolButton.Contains(point))
+        {
+            RequestAutoProtocol(session, commandSink, playerId);
+            return UiAction.None;
+        }
 
         foreach (var pair in _towerCards)
         {
@@ -513,13 +519,24 @@ public sealed class UIManager
 
     private static void RequestOverdrive(MinimalBastion.GameSession session, Action<GameCommand>? sink, int playerId)
     {
-        if (session.SelectedTower is not { IsSupport: false } tower) return;
+        if (session.SelectedTower is not { } tower) return;
         if (sink is null)
         {
             session.TryOverdriveTower(tower.Id, playerId);
             return;
         }
         sink(new GameCommand { PlayerId = playerId, Type = GameCommandType.OverdriveTower, EntityId = tower.Id });
+    }
+
+    private static void RequestAutoProtocol(MinimalBastion.GameSession session, Action<GameCommand>? sink, int playerId)
+    {
+        if (session.SelectedTower is not { } tower) return;
+        if (sink is null)
+        {
+            session.TryToggleAutoProtocol(tower.Id, playerId);
+            return;
+        }
+        sink(new GameCommand { PlayerId = playerId, Type = GameCommandType.ToggleAutoProtocol, EntityId = tower.Id });
     }
 
     private static void RequestSell(MinimalBastion.GameSession session, Action<GameCommand>? sink, int playerId)
@@ -701,7 +718,8 @@ public sealed class UIManager
     {
         _emergencyButton = new Rectangle(972, 98, 296, 28);
         _generatorButton = new Rectangle(972, 132, 296, 28);
-        _overdriveButton = new Rectangle(972, 166, 296, 28);
+        _overdriveButton = new Rectangle(972, 166, 218, 28);
+        _autoProtocolButton = new Rectangle(1196, 166, 72, 28);
         var defense = session.Content.Tactics.EmergencyDefense;
         var plateFieldFull = session.EmergencyDefenses.Count >= defense.MaximumActive;
         var emergencyReady = !plateFieldFull && (session.EmergencyInventory > 0 || session.CanDirectPurchaseEmergencyDefense);
@@ -721,13 +739,15 @@ public sealed class UIManager
 
         var selected = session.SelectedTower;
         var activeOverdrive = session.Towers.FirstOrDefault(x => x.IsOverdriven);
-        var overdriveReady = selected is { IsSupport: false } && session.OverdriveCooldownRemaining <= 0 && !selected.IsOverdriven;
-        var overdriveLabel = activeOverdrive is not null ? $"[E] OVERDRIVE | ACTIVE {activeOverdrive.OverdriveRemaining:0.0}s" :
-            session.OverdriveCooldownRemaining > 0 ? $"[E] OVERDRIVE | COOLDOWN {session.OverdriveCooldownRemaining:0.0}s" :
-            selected is null ? "[E] OVERDRIVE | SELECT TOWER" :
-            selected.IsSupport ? "[E] OVERDRIVE | COMBAT ONLY" :
-            $"[E] OVERDRIVE | {selected.Definition.DisplayName.ToUpperInvariant()}";
+        var overdriveReady = selected is not null && session.OverdriveCooldownRemaining <= 0 && !selected.IsOverdriven;
+        var overdriveLabel = activeOverdrive is not null ? $"[E] {activeOverdrive.Protocol.DisplayName.ToUpperInvariant()} {activeOverdrive.OverdriveRemaining:0.0}s" :
+            session.OverdriveCooldownRemaining > 0 ? $"[E] PROTOCOL | {session.OverdriveCooldownRemaining:0.0}s" :
+            selected is null ? "[E] PROTOCOL | SELECT" :
+            $"[E] {selected.Protocol.DisplayName.ToUpperInvariant()}";
         DrawButton(batch, p, _overdriveButton, overdriveLabel, overdriveReady, ColorPalette.Coral);
+        var autoActive = selected is not null && session.AutoOverdriveTowerId == selected.Id;
+        DrawButton(batch, p, _autoProtocolButton, autoActive ? "AUTO ON" : "AUTO", selected is not null,
+            autoActive ? ColorPalette.Green : ColorPalette.Cobalt);
     }
 
     private void DrawSidebar(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -826,7 +846,9 @@ public sealed class UIManager
             tower.Definition.Visual.PrimaryColor, tower.Definition.Visual.AccentColor, tower.LevelIndex + 1, true, levelMarks: true);
         DrawText(batch, tower.Definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f);
         var ownership = session.IsCoOp ? $"   PLACED P{tower.OwnerPlayerId}" : "";
+        var autoArmed = session.AutoOverdriveTowerId == tower.Id;
         var levelTitle = tower.Specialization is { } chosen ? chosen.DisplayName.ToUpperInvariant() : $"LEVEL {tower.LevelIndex + 1}";
+        if (autoArmed) levelTitle += "   AUTO";
         DrawText(batch, $"{levelTitle}   {TowerInfo.ShortRole(tower.Definition)}{ownership}", new Vector2(1036, 508), ColorPalette.Muted, 0.60f);
         var effectiveDamage = session.GetEffectiveDamage(tower, tower.Level.Damage);
         var effectiveRate = session.GetEffectiveAttacksPerSecond(tower);
@@ -845,7 +867,9 @@ public sealed class UIManager
             : null;
         var supportBuff = session.GetSupportBuff(tower);
         var beaconHint = supportBuff.IsActive ? TowerInfo.SignalBeaconStatChange(tower.Level, supportBuff) : null;
-        var overdriveHint = tower.IsOverdriven ? $"OVERDRIVE ACTIVE  {tower.OverdriveRemaining:0.0}s  RATE +{GameConstants.OverdriveAttackSpeedBonus:P0}" : null;
+        var overdriveHint = tower.IsOverdriven
+            ? $"{tower.Protocol.DisplayName.ToUpperInvariant()}  {tower.OverdriveRemaining:0.0}s  {TowerInfo.ProtocolBonuses(tower.Protocol)}"
+            : autoArmed ? $"AUTO ARMED: {tower.Protocol.DisplayName.ToUpperInvariant()}  |  THREAT {tower.Protocol.AutoTriggerCount}+" : null;
         var primaryHint = beaconHint ?? TowerInfo.Strength(tower.Definition);
         var secondaryHint = powerHint ?? overdriveHint ?? (beaconHint is not null ? TowerInfo.Strength(tower.Definition) : TowerInfo.Limitation(tower.Definition));
         DrawFittedText(batch, primaryHint, new Vector2(980, 597),
@@ -917,7 +941,7 @@ public sealed class UIManager
         else
         {
             DrawText(batch, TowerInfo.Strength(definition), new Vector2(980, 590), ColorPalette.Muted, 0.54f);
-            DrawText(batch, TowerInfo.Limitation(definition), new Vector2(980, 612), ColorPalette.Muted, 0.54f);
+            DrawFittedText(batch, TowerInfo.ProtocolSummary(definition), new Vector2(980, 612), ColorPalette.Coral, 0.46f, 280);
         }
         DrawFittedText(batch, $"L2 {level.UpgradeCost}: {TowerInfo.UpgradeSummary(definition, 0)}",
             new Vector2(980, 638), ColorPalette.Violet, 0.51f, 280);
@@ -1388,7 +1412,7 @@ public sealed class UIManager
         p.DrawRect(batch, panel, ColorPalette.Ink, 2);
 
         DrawText(batch, "TOWER LIBRARY", new Vector2(62, 48), ColorPalette.Navy, 1.25f);
-        DrawText(batch, "Exact unbuffed values. Surge Nodes, Signal Beacon, and Overdrive are excluded.", new Vector2(62, 82), ColorPalette.Muted, 0.56f);
+        DrawText(batch, "Exact base values. Surge Nodes, Signal Beacon, and active Protocols are excluded.", new Vector2(62, 82), ColorPalette.Muted, 0.56f);
         DrawButton(batch, p, _towerLibraryCloseButton, "BACK", true, ColorPalette.Violet);
 
         var listPanel = new Rectangle(56, 112, 264, 540);
@@ -1436,8 +1460,9 @@ public sealed class UIManager
         DrawText(batch, definition.DisplayName.ToUpperInvariant(), new Vector2(panel.X + 72, panel.Y + 16), ColorPalette.Ink, 0.94f);
         DrawText(batch, $"{TowerInfo.ShortRole(definition).ToUpperInvariant()}  |  BUILD {definition.PurchaseCost}  |  DEFAULT TARGET {definition.DefaultTargetMode.ToUpperInvariant()}",
             new Vector2(panel.X + 72, panel.Y + 43), ColorPalette.Muted, 0.53f);
+        DrawFittedText(batch, TowerInfo.ProtocolSummary(definition), new Vector2(panel.X + 72, panel.Y + 64), ColorPalette.Coral, 0.43f, panel.Width - 90);
         DrawFittedText(batch, $"{TowerInfo.Strength(definition)}  |  {TowerInfo.Limitation(definition)}",
-            new Vector2(panel.X + 18, panel.Y + 76), ColorPalette.ReadableAccent(definition.Visual.PrimaryColor, ColorPalette.Panel), 0.49f, panel.Width - 36);
+            new Vector2(panel.X + 18, panel.Y + 82), ColorPalette.ReadableAccent(definition.Visual.PrimaryColor, ColorPalette.Panel), 0.44f, panel.Width - 36);
         p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 99, panel.Width - 36, 2), definition.Visual.PrimaryColor);
 
         var levelOne = definition.Levels[0];

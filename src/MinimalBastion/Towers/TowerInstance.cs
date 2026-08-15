@@ -29,6 +29,7 @@ public sealed class TowerInstance
     public float LifetimeDamage { get; private set; }
     public int LifetimeKills { get; private set; }
     public bool IsOverdriven => OverdriveRemaining > 0;
+    public TowerProtocolDefinition Protocol => Definition.Protocol;
     public bool IsSupport => Definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase);
     public TowerSpecializationDefinition? Specialization => SpecializationId is null
         ? null
@@ -93,7 +94,7 @@ public sealed class TowerInstance
     }
 
     public void OnFired() => RecoilAnimationRemaining = RecoilAnimationDuration;
-    public void ActivateOverdrive() => OverdriveRemaining = GameConstants.OverdriveDurationSeconds;
+    public void ActivateOverdrive() => OverdriveRemaining = Protocol.DurationSeconds;
 
     internal void RecordCombat(float appliedDamage, bool killed)
     {

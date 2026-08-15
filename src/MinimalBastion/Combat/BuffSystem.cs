@@ -14,14 +14,18 @@ public sealed class BuffSystem
         {
             if (!tower.IsSupport) continue;
             var level = tower.Level;
+            var protocol = tower.IsOverdriven ? tower.Protocol : null;
+            var auraRange = level.AuraRange * (1f + (protocol?.AuraRangeBonus ?? 0));
+            var attackSpeedBonus = level.AuraAttackSpeedBonus + (protocol?.AuraAttackSpeedBonus ?? 0);
+            var rangeBonus = level.AuraRangeBonus + (protocol?.AuraRangeBonus ?? 0);
             foreach (var recipient in towers)
             {
                 if (recipient.Id == tower.Id || recipient.IsSupport) continue;
-                if (Vector2.DistanceSquared(tower.Position, recipient.Position) > level.AuraRange * level.AuraRange) continue;
+                if (Vector2.DistanceSquared(tower.Position, recipient.Position) > auraRange * auraRange) continue;
                 var current = _buffs.TryGetValue(recipient.Id, out var existing) ? existing : new TowerBuff(0, 0);
                 _buffs[recipient.Id] = new TowerBuff(
-                    MathF.Max(current.AttackSpeedBonus, level.AuraAttackSpeedBonus),
-                    MathF.Max(current.RangeBonus, level.AuraRangeBonus));
+                    MathF.Max(current.AttackSpeedBonus, attackSpeedBonus),
+                    MathF.Max(current.RangeBonus, rangeBonus));
             }
         }
     }

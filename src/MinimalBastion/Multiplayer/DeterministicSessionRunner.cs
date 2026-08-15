@@ -98,6 +98,7 @@ public static class SessionChecksum
         Add(ref hash, session.EmergencyInventory);
         Add(ref hash, session.EmergencyDirectPurchasesThisWave);
         Add(ref hash, session.OverdriveCooldownRemaining);
+        Add(ref hash, session.AutoOverdriveTowerId);
         Add(ref hash, session.Waves.QueuedEnemies);
         var wave = session.Waves.CaptureCoOpState();
         Add(ref hash, wave.ActiveWaveNumber);
