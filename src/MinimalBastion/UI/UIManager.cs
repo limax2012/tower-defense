@@ -93,9 +93,12 @@ public sealed class UIManager
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
     private int _towerLibraryIndex;
     private int _towerLibraryDoctrineIndex;
+    private int _enemyLibraryIndex;
+    private bool _libraryShowsThreats;
     private Rectangle _towerLibraryDoctrineAButton;
     private Rectangle _towerLibraryDoctrineBButton;
     private IReadOnlyList<TowerDefinition> _libraryTowers = Array.Empty<TowerDefinition>();
+    private IReadOnlyList<EnemyDefinition> _libraryEnemies = Array.Empty<EnemyDefinition>();
     private readonly Rectangle _mapButton = new(440, 370, 190, 40);
     private readonly Rectangle _difficultyButton = new(640, 370, 90, 40);
     private readonly Rectangle _challengeButton = new(740, 370, 100, 40);
@@ -133,6 +136,8 @@ public sealed class UIManager
     private readonly Rectangle _restartButton = new(500, 444, 280, 46);
     private readonly Rectangle _mainMenuButton = new(500, 496, 280, 46);
     private readonly Rectangle _towerLibraryCloseButton = new(1080, 48, 130, 38);
+    private readonly Rectangle _towerLibraryTowerTabButton = new(760, 48, 140, 38);
+    private readonly Rectangle _towerLibraryThreatTabButton = new(910, 48, 140, 38);
     private readonly Rectangle _resultContinueButton = new(296, 580, 206, 46);
     private readonly Rectangle _resultRestartButton = new(518, 580, 206, 46);
     private readonly Rectangle _resultMenuButton = new(740, 580, 206, 46);
@@ -157,6 +162,8 @@ public sealed class UIManager
     public string SelectedChallengeName => _challenges.Count == 0 ? "Standard" : _challenges[_selectedChallengeIndex].DisplayName;
     public int SelectedSaveSlot => _selectedSaveSlot;
     public string? SelectedRunHistoryId => _selectedRunHistoryId;
+    public bool LibraryShowsThreats => _libraryShowsThreats;
+    public string? SelectedLibraryEnemyId => _libraryEnemies.Count == 0 ? null : _libraryEnemies[_enemyLibraryIndex].Id;
 
     public void ConfigureSettings(UserSettings settings) => _settings = settings;
     public void SetSettingsStatus(string status) => _settingsStatus = status;
@@ -291,10 +298,12 @@ public sealed class UIManager
         _selectedChallengeIndex = defaultIndex >= 0 ? defaultIndex : 0;
     }
 
-    public void ConfigureTowerLibrary(IEnumerable<TowerDefinition> towers)
+    public void ConfigureTowerLibrary(IEnumerable<TowerDefinition> towers, IEnumerable<EnemyDefinition>? enemies = null)
     {
         _libraryTowers = towers.OrderBy(x => x.PurchaseCost).ThenBy(x => x.Id).ToArray();
+        _libraryEnemies = enemies?.OrderBy(x => x.MaxHealth).ThenBy(x => x.Id).ToArray() ?? Array.Empty<EnemyDefinition>();
         _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, Math.Max(0, _libraryTowers.Count - 1));
+        _enemyLibraryIndex = Math.Clamp(_enemyLibraryIndex, 0, Math.Max(0, _libraryEnemies.Count - 1));
     }
 
     public UiAction HandleMainMenu(InputSnapshot input)
@@ -758,15 +767,38 @@ public sealed class UIManager
     private bool HandleTowerLibraryInput(InputSnapshot input)
     {
         _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, Math.Max(0, _libraryTowers.Count - 1));
+        _enemyLibraryIndex = Math.Clamp(_enemyLibraryIndex, 0, Math.Max(0, _libraryEnemies.Count - 1));
         if (input.EscapePressed || input.PausePressed || input.RightPressed) return true;
-        if (input.TowerHotkey > 0 && input.TowerHotkey <= _libraryTowers.Count)
+        var activeCount = _libraryShowsThreats ? _libraryEnemies.Count : _libraryTowers.Count;
+        if (input.TowerHotkey > 0 && input.TowerHotkey <= activeCount)
         {
-            _towerLibraryIndex = input.TowerHotkey - 1;
+            if (_libraryShowsThreats) _enemyLibraryIndex = input.TowerHotkey - 1;
+            else _towerLibraryIndex = input.TowerHotkey - 1;
             _towerLibraryDoctrineIndex = 0;
         }
         if (!input.LeftPressed) return false;
         var point = input.MousePosition.ToPoint();
         if (_towerLibraryCloseButton.Contains(point)) return true;
+        if (_towerLibraryTowerTabButton.Contains(point))
+        {
+            _libraryShowsThreats = false;
+            return false;
+        }
+        if (_towerLibraryThreatTabButton.Contains(point) && _libraryEnemies.Count > 0)
+        {
+            _libraryShowsThreats = true;
+            return false;
+        }
+        if (_libraryShowsThreats)
+        {
+            for (var index = 0; index < _libraryEnemies.Count; index++)
+            {
+                if (!EnemyLibraryRow(index).Contains(point)) continue;
+                _enemyLibraryIndex = index;
+                break;
+            }
+            return false;
+        }
         if (_towerLibraryDoctrineAButton.Contains(point))
         {
             _towerLibraryDoctrineIndex = 0;
@@ -1728,8 +1760,17 @@ public sealed class UIManager
         p.FillRect(batch, new Rectangle(panel.X, panel.Y, panel.Width, 7), ColorPalette.Cyan);
         p.DrawRect(batch, panel, ColorPalette.Ink, 2);
 
-        DrawText(batch, "TOWER LIBRARY", new Vector2(62, 48), ColorPalette.Navy, 1.25f);
-        DrawText(batch, "Exact values. Click a Tier 2 doctrine to preview how it carries into either final role.", new Vector2(62, 82), ColorPalette.Muted, 0.56f);
+        DrawText(batch, "TACTICAL LIBRARY", new Vector2(62, 48), ColorPalette.Navy, 1.25f);
+        DrawText(batch, _libraryShowsThreats
+            ? "Base enemy profiles, rank rules, counterplay, and battlefield status symbols."
+            : "Exact tower values. Click a Tier 2 doctrine to preview either final role.",
+            new Vector2(62, 82), ColorPalette.Muted, 0.56f);
+        DrawButton(batch, p, _towerLibraryTowerTabButton, "TOWERS", true,
+            _libraryShowsThreats ? ColorPalette.PanelAlt : ColorPalette.Cyan,
+            _libraryShowsThreats ? ColorPalette.Ink : ColorPalette.Navy);
+        DrawButton(batch, p, _towerLibraryThreatTabButton, "THREATS", _libraryEnemies.Count > 0,
+            _libraryShowsThreats ? ColorPalette.Coral : ColorPalette.PanelAlt,
+            _libraryShowsThreats ? ColorPalette.Paper : ColorPalette.Ink);
         DrawButton(batch, p, _towerLibraryCloseButton, "BACK", true, ColorPalette.Violet);
 
         var listPanel = new Rectangle(56, 112, 264, 540);
@@ -1738,8 +1779,14 @@ public sealed class UIManager
         p.DrawRect(batch, listPanel, ColorPalette.CardOutline, 1);
         p.FillRect(batch, detailPanel, ColorPalette.Panel);
         p.DrawRect(batch, detailPanel, ColorPalette.CardOutline, 1);
-        DrawText(batch, "SELECT TOWER", new Vector2(68, 122), ColorPalette.Navy, 0.63f);
-        DrawText(batch, "1-0", new Vector2(302, 122), ColorPalette.Muted, 0.48f, true);
+        DrawText(batch, _libraryShowsThreats ? "SELECT THREAT" : "SELECT TOWER", new Vector2(68, 122), ColorPalette.Navy, 0.63f);
+        DrawText(batch, _libraryShowsThreats ? "1-5" : "1-0", new Vector2(302, 122), ColorPalette.Muted, 0.48f, true);
+
+        if (_libraryShowsThreats)
+        {
+            DrawEnemyLibrary(batch, p, detailPanel, returnDestination);
+            return;
+        }
 
         var towers = _libraryTowers;
         if (towers.Count == 0)
@@ -1769,6 +1816,159 @@ public sealed class UIManager
         DrawTowerLibraryDetails(batch, p, towers[_towerLibraryIndex], detailPanel);
         DrawText(batch, $"Click a tower or press 1-0.  ESC, right-click, or BACK returns to {returnDestination}.", new Vector2(640, 674), ColorPalette.Muted, 0.49f, true);
     }
+
+    private void DrawEnemyLibrary(SpriteBatch batch, PrimitiveRenderer p, Rectangle detailPanel, string returnDestination)
+    {
+        _towerLibraryDoctrineAButton = Rectangle.Empty;
+        _towerLibraryDoctrineBButton = Rectangle.Empty;
+        if (_libraryEnemies.Count == 0)
+        {
+            DrawText(batch, "NO THREAT DEFINITIONS AVAILABLE", new Vector2(detailPanel.Center.X, detailPanel.Center.Y), ColorPalette.Coral, 0.72f, true);
+            return;
+        }
+
+        _enemyLibraryIndex = Math.Clamp(_enemyLibraryIndex, 0, _libraryEnemies.Count - 1);
+        for (var index = 0; index < _libraryEnemies.Count; index++)
+        {
+            var definition = _libraryEnemies[index];
+            var row = EnemyLibraryRow(index);
+            var selected = index == _enemyLibraryIndex;
+            var selectedFill = ColorPalette.Tint(definition.Visual.PrimaryColor, 0.80f);
+            p.FillRect(batch, row, selected ? selectedFill : ColorPalette.PanelAlt);
+            p.DrawRect(batch, row, selected ? definition.Visual.PrimaryColor : ColorPalette.CardOutline, selected ? 2 : 1);
+            p.DrawShape(batch, new Vector2(row.X + 32, row.Center.Y), Math.Min(19, definition.Visual.Radius), definition.Visual.Shape,
+                definition.Visual.PrimaryColor, definition.Visual.AccentColor, definition.Visual.Marks, definition.Visual.Ring);
+            DrawFittedText(batch, definition.DisplayName, new Vector2(row.X + 62, row.Y + 15), ColorPalette.Ink, 0.63f, 148);
+            DrawText(batch, $"HP {definition.MaxHealth:0}  |  SPD {definition.Speed:0}", new Vector2(row.X + 62, row.Y + 43), ColorPalette.Muted, 0.45f);
+            DrawTextRight(batch, (index + 1).ToString(), new Vector2(row.Right - 10, row.Y + 9),
+                selected ? ColorPalette.ReadableAccent(definition.Visual.PrimaryColor, selectedFill) : ColorPalette.Muted, 0.43f);
+        }
+
+        DrawEnemyLibraryDetails(batch, p, _libraryEnemies[_enemyLibraryIndex], detailPanel);
+        DrawText(batch, $"Click a threat or press 1-5.  Values precede wave and difficulty scaling.  ESC, right-click, or BACK returns to {returnDestination}.",
+            new Vector2(640, 674), ColorPalette.Muted, 0.46f, true);
+    }
+
+    private void DrawEnemyLibraryDetails(SpriteBatch batch, PrimitiveRenderer p, EnemyDefinition definition, Rectangle panel)
+    {
+        var accent = definition.Visual.PrimaryColor;
+        p.DrawShape(batch, new Vector2(panel.X + 42, panel.Y + 45), Math.Min(29, definition.Visual.Radius + 5), definition.Visual.Shape,
+            accent, definition.Visual.AccentColor, definition.Visual.Marks, definition.Visual.Ring);
+        DrawText(batch, definition.DisplayName.ToUpperInvariant(), new Vector2(panel.X + 84, panel.Y + 17), ColorPalette.Ink, 0.98f);
+        DrawText(batch, ThreatRole(definition), new Vector2(panel.X + 84, panel.Y + 49),
+            ColorPalette.ReadableAccent(accent, ColorPalette.Panel), 0.57f);
+        DrawFittedText(batch, ThreatCounter(definition), new Vector2(panel.X + 18, panel.Y + 82), ColorPalette.Muted, 0.48f, panel.Width - 36);
+        p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 103, panel.Width - 36, 2), accent);
+
+        var profileY = panel.Y + 116;
+        DrawEnemyInfoCard(batch, p, new Rectangle(panel.X + 18, profileY, 270, 142), "BASE PROFILE", ColorPalette.Cyan,
+        [
+            $"HEALTH  {definition.MaxHealth:0}",
+            $"SPEED  {definition.Speed:0} px/s",
+            $"REWARD  {definition.Reward} CREDITS",
+            $"BREACH  {definition.LivesLost} {(definition.LivesLost == 1 ? "LIFE" : "LIVES")}"
+        ]);
+        DrawEnemyInfoCard(batch, p, new Rectangle(panel.X + 306, profileY, 270, 142), "DEFENSES", ColorPalette.Violet,
+        [
+            $"ARMOR  {definition.Armor:0.#}",
+            $"SHIELD  {definition.Shield:0}",
+            $"REGEN  {definition.RegenerationPerSecond:0.#}/s",
+            $"BODY RADIUS  {definition.Visual.Radius}"
+        ]);
+        DrawEnemyInfoCard(batch, p, new Rectangle(panel.X + 594, profileY, 278, 142), "BEST ANSWERS", ColorPalette.Green,
+            ThreatAnswers(definition));
+
+        DrawText(batch, "RANK MODIFIERS", new Vector2(panel.X + 18, panel.Y + 270), ColorPalette.Navy, 0.62f);
+        var rankY = panel.Y + 294;
+        DrawEnemyInfoCard(batch, p, new Rectangle(panel.X + 18, rankY, 270, 112), "STANDARD", accent,
+        [
+            "HEALTH x1.00  |  SPEED x1.00",
+            "ARMOR +0  |  CONTROL RESIST 0%",
+            "REWARD x1  |  BASE BREACH"
+        ], 0.42f);
+        DrawEnemyInfoCard(batch, p, new Rectangle(panel.X + 306, rankY, 270, 112), "ELITE", ColorPalette.Gold,
+        [
+            "HEALTH x1.85  |  SPEED x1.07",
+            "ARMOR +2  |  CONTROL RESIST 30%",
+            "REWARD x2  |  BREACH +1 LIFE"
+        ], 0.42f);
+        DrawEnemyInfoCard(batch, p, new Rectangle(panel.X + 594, rankY, 278, 112), "BOSS", ColorPalette.Coral,
+        [
+            "HEALTH x4.50  |  SPEED x0.92",
+            "ARMOR +4  |  CONTROL RESIST 60%",
+            "REWARD x5  |  BREACH AT LEAST 10",
+            "50% PHASE: SHIELD +12%; SPEED x1.28"
+        ], 0.40f, 16);
+
+        DrawText(batch, "BATTLEFIELD STATUS LANGUAGE", new Vector2(panel.X + 18, panel.Y + 420), ColorPalette.Navy, 0.62f);
+        var statusY = panel.Y + 449;
+        DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 18, statusY, 162, 70), "SLOW", "DASHED CYAN", "Movement reduced", ColorPalette.Slow, "ring");
+        DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 186, statusY, 162, 70), "EXPOSE", "VIOLET DIAMOND", "All damage rises", ColorPalette.Violet, "diamond");
+        DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 354, statusY, 162, 70), "BREAK", "GOLD CHEVRON", "Armor reduced", ColorPalette.Gold, "triangle");
+        DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 522, statusY, 162, 70), "BURN", "CORAL INNER RING", "Damage; armor -2", ColorPalette.Coral, "circle");
+        DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 690, statusY, 182, 70), "STUN", "GREEN SQUARE", "Movement halted", ColorPalette.Green, "square");
+    }
+
+    private void DrawEnemyInfoCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string title, Color accent,
+        IReadOnlyList<string> lines, float lineScale = 0.47f, int lineSpacing = 19)
+    {
+        p.FillRect(batch, rect, ColorPalette.PanelAlt);
+        p.FillRect(batch, new Rectangle(rect.X, rect.Y, rect.Width, 5), accent);
+        p.DrawRect(batch, rect, ColorPalette.CardOutline, 1);
+        DrawFittedText(batch, title, new Vector2(rect.X + 12, rect.Y + 14),
+            ColorPalette.ReadableAccent(accent, ColorPalette.PanelAlt), 0.61f, rect.Width - 24);
+        var y = rect.Y + 43;
+        foreach (var line in lines)
+        {
+            if (y + 14 > rect.Bottom - 5) break;
+            DrawFittedText(batch, line, new Vector2(rect.X + 12, y), ColorPalette.Ink, lineScale, rect.Width - 24);
+            y += lineSpacing;
+        }
+    }
+
+    private void DrawStatusLegendEntry(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string title,
+        string symbol, string meaning, Color accent, string shape)
+    {
+        p.FillRect(batch, rect, ColorPalette.PanelAlt);
+        p.DrawRect(batch, rect, ColorPalette.CardOutline, 1);
+        var center = new Vector2(rect.X + 18, rect.Y + 19);
+        if (shape == "ring") p.DashedRing(batch, center, 9, accent, 10, 2);
+        else if (shape == "circle") p.Ring(batch, center, 8, accent, 3);
+        else p.DrawShape(batch, center, 8, shape, accent, ColorPalette.Ink, 0, false);
+        DrawText(batch, title, new Vector2(rect.X + 34, rect.Y + 7), ColorPalette.Navy, 0.49f);
+        DrawFittedText(batch, symbol, new Vector2(rect.X + 9, rect.Y + 34), accent, 0.36f, rect.Width - 18);
+        DrawFittedText(batch, meaning, new Vector2(rect.X + 9, rect.Y + 50), ColorPalette.Muted, 0.36f, rect.Width - 18);
+    }
+
+    private static string ThreatRole(EnemyDefinition definition) => definition.RegenerationPerSecond > 0
+        ? "SUSTAINED REGENERATOR"
+        : definition.Shield > 0
+            ? "SHIELDED HEAVY"
+            : definition.Speed >= 100
+                ? "FAST BREAKTHROUGH"
+                : definition.Armor >= 4
+                    ? "ARMORED BRUISER"
+                    : "LIGHT SWARM UNIT";
+
+    private static string ThreatCounter(EnemyDefinition definition) => definition.RegenerationPerSecond > 0
+        ? "Keep pressure continuous; focused damage and armor break prevent recovery windows."
+        : definition.Shield > 0
+            ? "Use sustained or shield-bypassing fire, then concentrated anti-armor damage."
+            : definition.Speed >= 100
+                ? "Cover early route sections with rapid fire, slowing fields, or reliable chain attacks."
+                : definition.Armor >= 4
+                    ? "Favor armor pierce, armor break, and high-impact shots over many light hits."
+                    : "Efficient rapid fire and area coverage stop numbers from consuming targeting time.";
+
+    private static string[] ThreatAnswers(EnemyDefinition definition) => definition.RegenerationPerSecond > 0
+        ? ["PRISM / BREAKER", "SEARING EMBER", "WATCH PRIORITY FIRE", "NO LONG DAMAGE GAPS"]
+        : definition.Shield > 0
+            ? ["PRISM BYPASSES SHIELD", "BREAKER AFTER SHIELD", "FOCUS TARGETING", "CONTROL BUYS TIME"]
+            : definition.Speed >= 100
+                ? ["FROST AREA SLOW", "NEEDLE RAPID FIRE", "ARC CHAIN COVERAGE", "FIRST TARGETING"]
+                : definition.Armor >= 4
+                    ? ["BREAKER CANNON", "RAIL / LANCE ROLES", "PRISM EXPOSURE", "STRONGEST TARGETING"]
+                    : ["SHARD FAN", "NEEDLE ARRAY", "ARC RELAY", "AREA CONTROL"];
 
     private void DrawTowerLibraryDetails(SpriteBatch batch, PrimitiveRenderer p, TowerDefinition definition, Rectangle panel)
     {
@@ -1876,6 +2076,7 @@ public sealed class UIManager
     }
 
     private static Rectangle TowerLibraryRow(int index) => new(66, 148 + index * 49, 244, 44);
+    private static Rectangle EnemyLibraryRow(int index) => new(66, 148 + index * 96, 244, 82);
 
     private void DrawButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string text, bool enabled, Color fillColor, Color? textColor = null)
     {

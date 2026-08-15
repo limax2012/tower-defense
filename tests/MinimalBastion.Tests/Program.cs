@@ -1521,10 +1521,18 @@ internal static class Program
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
         var ui = new UIManager(null!);
-        ui.ConfigureTowerLibrary(content.Towers.Values);
+        ui.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values);
         Check.Equal(UiAction.TowerLibrary,
             ui.HandleMainMenu(WorldInput(new Vector2(712, 442)) with { LeftPressed = true }),
             "title screen opens tower library");
+        Check.Equal(UiAction.None,
+            ui.HandleTitleTowerLibrary(WorldInput(new Vector2(980, 67)) with { LeftPressed = true }),
+            "threat reference remains inside tactical library");
+        Check.True(ui.LibraryShowsThreats, "tactical library switches to threat reference");
+        ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TowerHotkey = 3 });
+        Check.Equal("t3_brute", ui.SelectedLibraryEnemyId!, "threat hotkeys select the health-ordered archetype");
+        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(830, 67)) with { LeftPressed = true });
+        Check.True(!ui.LibraryShowsThreats, "tactical library returns to tower planning");
         Check.Equal(UiAction.MainMenu,
             ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { EscapePressed = true }),
             "title library escape returns to title screen");
