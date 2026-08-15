@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Buffers.Binary;
+using System.IO.Compression;
 using System.Text.Json;
 using System.Threading.Channels;
 
@@ -29,7 +30,7 @@ public enum CoOpMessageType
 
 public sealed record CoOpEnvelope
 {
-    public const int CurrentProtocolVersion = 8;
+    public const int CurrentProtocolVersion = 9;
     public CoOpMessageType Type { get; init; }
     public int ProtocolVersion { get; init; } = CurrentProtocolVersion;
     public string JoinCode { get; init; } = "";
@@ -47,6 +48,100 @@ public sealed record CoOpEnvelope
     public float Y { get; init; }
     public int EntityId { get; init; }
     public CoOpStateSnapshot? State { get; init; }
+}
+
+public static class CoOpFrameCodec
+{
+    public const int MaximumWireBytes = 2_097_152;
+    public const int MaximumDecodedBytes = 8_388_608;
+    public const int CompressionThresholdBytes = 32_768;
+
+    public static byte[] EncodeFrame(ReadOnlySpan<byte> payload)
+    {
+        if (payload.Length <= 0 || payload.Length > MaximumDecodedBytes)
+            throw new InvalidDataException("Co-op message exceeds the decoded protocol limit.");
+
+        var wirePayload = payload.ToArray();
+        var signedLength = wirePayload.Length;
+        if (payload.Length >= CompressionThresholdBytes)
+        {
+            var compressed = Compress(payload);
+            if (compressed.Length < wirePayload.Length)
+            {
+                wirePayload = compressed;
+                signedLength = -wirePayload.Length;
+            }
+        }
+        if (wirePayload.Length > MaximumWireBytes)
+            throw new InvalidDataException("Co-op message exceeds the wire protocol limit.");
+
+        var frame = new byte[wirePayload.Length + sizeof(int)];
+        BinaryPrimitives.WriteInt32BigEndian(frame.AsSpan(0, sizeof(int)), signedLength);
+        wirePayload.CopyTo(frame.AsSpan(sizeof(int)));
+        return frame;
+    }
+
+    public static byte[] DecodeFrame(ReadOnlySpan<byte> frame)
+    {
+        if (frame.Length < sizeof(int)) throw new InvalidDataException("Co-op frame header is incomplete.");
+        var signedLength = BinaryPrimitives.ReadInt32BigEndian(frame);
+        var wireLength = ValidateSignedLength(signedLength);
+        if (frame.Length != wireLength + sizeof(int))
+            throw new InvalidDataException("Co-op frame length does not match its header.");
+        return DecodePayload(signedLength, frame[sizeof(int)..]);
+    }
+
+    public static int ValidateSignedLength(int signedLength)
+    {
+        if (signedLength == 0 || signedLength == int.MinValue)
+            throw new InvalidDataException("Co-op message has an invalid frame length.");
+        var wireLength = Math.Abs(signedLength);
+        if (wireLength > MaximumWireBytes)
+            throw new InvalidDataException("Co-op message exceeds the wire protocol limit.");
+        return wireLength;
+    }
+
+    public static byte[] DecodePayload(int signedLength, ReadOnlySpan<byte> wirePayload)
+    {
+        var wireLength = ValidateSignedLength(signedLength);
+        if (wirePayload.Length != wireLength)
+            throw new InvalidDataException("Co-op frame payload is incomplete.");
+        if (signedLength > 0) return wirePayload.ToArray();
+
+        try
+        {
+            using var input = new MemoryStream(wirePayload.ToArray(), writable: false);
+            using var brotli = new BrotliStream(input, CompressionMode.Decompress);
+            using var output = new MemoryStream(Math.Min(wireLength * 4, MaximumDecodedBytes));
+            var buffer = new byte[81_920];
+            while (true)
+            {
+                var read = brotli.Read(buffer, 0, buffer.Length);
+                if (read == 0) break;
+                if (output.Length + read > MaximumDecodedBytes)
+                    throw new InvalidDataException("Compressed co-op message exceeds the decoded protocol limit.");
+                output.Write(buffer, 0, read);
+            }
+            if (output.Length == 0) throw new InvalidDataException("Compressed co-op message was empty.");
+            return output.ToArray();
+        }
+        catch (InvalidDataException)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is IOException or ArgumentException)
+        {
+            throw new InvalidDataException("Compressed co-op message is invalid.", exception);
+        }
+    }
+
+    private static byte[] Compress(ReadOnlySpan<byte> payload)
+    {
+        using var output = new MemoryStream();
+        using (var brotli = new BrotliStream(output, CompressionLevel.Fastest, leaveOpen: true))
+            brotli.Write(payload);
+        return output.ToArray();
+    }
 }
 
 public static class CoOpEnvelopeValidator
@@ -162,7 +257,8 @@ public static class CoOpEnvelopeValidator
 
 public sealed class LanCoOpConnection : IAsyncDisposable
 {
-    public const int MaximumMessageBytes = 2_097_152;
+    public const int MaximumMessageBytes = CoOpFrameCodec.MaximumWireBytes;
+    public const int MaximumDecodedMessageBytes = CoOpFrameCodec.MaximumDecodedBytes;
     public const int MaximumQueuedSends = 64;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly TcpClient _client;
@@ -198,10 +294,7 @@ public sealed class LanCoOpConnection : IAsyncDisposable
         try
         {
             var payload = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonOptions);
-            if (payload.Length > MaximumMessageBytes) throw new InvalidDataException("Co-op message exceeds the protocol limit.");
-            var frame = new byte[payload.Length + sizeof(int)];
-            BinaryPrimitives.WriteInt32BigEndian(frame.AsSpan(0, sizeof(int)), payload.Length);
-            payload.CopyTo(frame.AsSpan(sizeof(int)));
+            var frame = CoOpFrameCodec.EncodeFrame(payload);
             var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             await _sendQueue.Writer.WriteAsync(new PendingSend(frame, completion, cancellationToken), cancellationToken);
             await completion.Task.WaitAsync(cancellationToken);
@@ -218,11 +311,11 @@ public sealed class LanCoOpConnection : IAsyncDisposable
         var firstByte = await _stream.ReadAsync(header.AsMemory(0, 1), cancellationToken);
         if (firstByte == 0) return null;
         await _stream.ReadExactlyAsync(header.AsMemory(1), cancellationToken);
-        var payloadLength = BinaryPrimitives.ReadInt32BigEndian(header);
-        if (payloadLength <= 0 || payloadLength > MaximumMessageBytes)
-            throw new InvalidDataException("Co-op message exceeds the protocol limit.");
-        var payload = new byte[payloadLength];
-        await _stream.ReadExactlyAsync(payload, cancellationToken);
+        var signedLength = BinaryPrimitives.ReadInt32BigEndian(header);
+        var wireLength = CoOpFrameCodec.ValidateSignedLength(signedLength);
+        var wirePayload = new byte[wireLength];
+        await _stream.ReadExactlyAsync(wirePayload, cancellationToken);
+        var payload = CoOpFrameCodec.DecodePayload(signedLength, wirePayload);
         var envelope = JsonSerializer.Deserialize<CoOpEnvelope>(payload, JsonOptions)
             ?? throw new InvalidDataException("Co-op message was empty.");
         if (envelope.ProtocolVersion != CoOpEnvelope.CurrentProtocolVersion)

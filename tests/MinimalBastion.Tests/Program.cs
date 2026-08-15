@@ -1790,6 +1790,18 @@ internal static class Program
             "connection-level outbound queue retains a small explicit bound");
         Check.Equal(10, LanCoOpHost.HandshakeTimeoutSeconds,
             "friend handshake has a bounded but practical recovery window");
+        var largePayload = System.Text.Encoding.UTF8.GetBytes(new string('A',
+            LanCoOpConnection.MaximumMessageBytes + 1024));
+        var compressedFrame = CoOpFrameCodec.EncodeFrame(largePayload);
+        Check.True(System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(compressedFrame) < 0,
+            "large repetitive snapshots use compressed frame signaling");
+        Check.True(CoOpFrameCodec.DecodeFrame(compressedFrame).SequenceEqual(largePayload),
+            "compressed frame payload round trips exactly");
+        Check.Throws<InvalidDataException>(() => CoOpFrameCodec.DecodePayload(-4, [1, 2, 3, 4]),
+            "malformed compressed frames are rejected before JSON parsing");
+        Check.Throws<InvalidDataException>(() => CoOpFrameCodec.EncodeFrame(
+                new byte[LanCoOpConnection.MaximumDecodedMessageBytes + 1]),
+            "decoded snapshot ceiling prevents compression bombs from being authored");
         Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope { Type = (CoOpMessageType)999 }),
             "undefined message kinds are rejected before dispatch");
         Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
@@ -1912,10 +1924,23 @@ internal static class Program
         await using var secondClient = await LanCoOpClient.ConnectAsync("localhost", host.Port, "return", timeout.Token);
         await using var secondServer = await secondAccept;
         var snapshot = SessionWithWave().CaptureCoOpState(7, 0b01, false);
+        snapshot.Projectiles = Enumerable.Range(0, 1500).Select(index => new ProjectileRuntimeState
+        {
+            X = 100 + index % 400,
+            Y = 120 + index % 300,
+            AimX = 700,
+            AimY = 500,
+            Speed = 240,
+            Kind = (int)ProjectileKind.ImpactPoint,
+            Damage = 12,
+            Radius = 5,
+            PackedColor = 0xFF00FFFF
+        }).ToList();
         await secondServer.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.StateSnapshot, PlayerId = 1, Tick = 7, State = snapshot }, timeout.Token);
         var received = await secondClient.ReceiveAsync(timeout.Token);
         Check.Equal(CoOpMessageType.StateSnapshot, received!.Type, "same listener accepts returning player");
         Check.Equal(7L, received.State!.Tick, "authoritative reconnect state survives transport");
+        Check.Equal(1500, received.State.Projectiles.Count, "dense compressed projectile state survives reconnect transport");
     }
 
     private static void CoOpWaveReady()

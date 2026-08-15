@@ -73,6 +73,7 @@ Updated: 2026-08-15
 - Host-authoritative sequenced commands, future fixed ticks, periodic checksums, duplicate rejection, strict message-direction validation, and build/content fingerprint negotiation remain intact.
 - Shared credits/lives/waves/speed/pause/inventory and shared tower/Forge control; owner tint remains attribution only. Both-player wave ready, map/difficulty/directive synchronization, remote cursors/selections, colored middle-click pings, and clear disconnect states are implemented.
 - A returning Player 2 receives a validated authoritative active-combat snapshot with enemies, projectiles, effects-driving state, towers/branches/Protocols, economy, wave/readiness timers, tactical systems, telemetry, and pending commands before both peers resume.
+- Large reconnect snapshots now use bounded Brotli framing, raising dense-endless headroom without relaxing the 2 MiB wire cap or permitting more than 8 MiB of decoded state.
 - Added endpoint parser coverage for DNS, IPv4, and IPv6.
 
 ## Measurements

@@ -9,7 +9,7 @@ Minimal Bastion supports direct internet co-op between two copies of the same bu
 3. Host shares the displayed six-character code plus public IP/DNS name.
 4. Player 2 enters `host`, `host:port`, IPv4, DNS, or bracketed IPv6 plus the code.
 
-The listener is dual-stack and binds all adapters. The join code is a lightweight session gate, not encryption or account authentication. A peer-to-peer VPN can provide reachability when router forwarding is unavailable.
+The listener is dual-stack and binds all adapters. The join code is a lightweight session gate, not encryption or account authentication. A peer-to-peer VPN can provide reachability when router forwarding is unavailable. Large state snapshots use bounded Brotli frames: wire payloads remain capped at 2 MiB and decoded payloads at 8 MiB, while ordinary commands remain uncompressed.
 
 ## Match rules
 
