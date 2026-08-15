@@ -1598,13 +1598,14 @@ public sealed class UIManager
         p.DrawRect(batch, intelCard, tower.Definition.Visual.PrimaryColor, 1);
         p.DrawShape(batch, new Vector2(1000, 512), tower.Definition.Visual.Radius, tower.Definition.Visual.Shape,
             tower.Definition.Visual.PrimaryColor, tower.Definition.Visual.AccentColor, tower.LevelIndex + 1, true, levelMarks: true);
-        DrawText(batch, tower.Definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f);
+        DrawFittedText(batch, tower.Definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f, 228);
         var ownership = session.IsCoOp ? $"   PLACED P{tower.OwnerPlayerId}" : "";
         var autoArmed = session.AutoOverdriveTowerId == tower.Id;
         var doctrineSuffix = tower.Doctrine is { } doctrine ? $"  {doctrine.ShortLabel.ToUpperInvariant()}" : "";
         var levelTitle = tower.Specialization is { } chosen ? chosen.DisplayName.ToUpperInvariant() + doctrineSuffix : $"LEVEL {tower.LevelIndex + 1}{doctrineSuffix}";
         if (autoArmed) levelTitle += "   AUTO";
-        DrawText(batch, $"{levelTitle}   {TowerInfo.ShortRole(tower.Definition)}{ownership}", new Vector2(1036, 508), ColorPalette.Muted, 0.60f);
+        DrawFittedText(batch, $"{levelTitle}   {TowerInfo.ShortRole(tower.Definition)}{ownership}",
+            new Vector2(1036, 508), ColorPalette.Muted, 0.60f, 228);
         var effectiveDamage = session.GetEffectiveDamage(tower, tower.Level.Damage);
         var effectiveRate = session.GetEffectiveAttacksPerSecond(tower);
         var effectiveDps = effectiveDamage * effectiveRate * Math.Max(1, tower.Level.PelletCount);
@@ -1701,13 +1702,14 @@ public sealed class UIManager
         p.DrawRect(batch, new Rectangle(972, 474, 296, 202), definition.Visual.PrimaryColor, 1);
         p.DrawShape(batch, new Vector2(1000, 512), definition.Visual.Radius, definition.Visual.Shape,
             definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
-        DrawText(batch, definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f);
-        DrawText(batch, $"{definition.PurchaseCost} CREDITS   {TowerInfo.ShortRole(definition)}", new Vector2(1036, 508), ColorPalette.Muted, 0.60f);
+        DrawFittedText(batch, definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f, 228);
+        DrawFittedText(batch, $"{definition.PurchaseCost} CREDITS   {TowerInfo.ShortRole(definition)}",
+            new Vector2(1036, 508), ColorPalette.Muted, 0.60f, 228);
         DrawFittedText(batch, definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase)
             ? $"AURA {level.AuraRange:0}   RATE +{level.AuraAttackSpeedBonus:P0}   RANGE +{level.AuraRangeBonus:P0}"
             : $"DAMAGE {level.Damage:0.#}   DPS {TowerInfo.RawDps(level):0.#}   RATE {level.AttacksPerSecond:0.##}/s   RANGE {level.Range:0}",
             new Vector2(980, 542), ColorPalette.Ink, 0.57f, 280);
-        DrawText(batch, TowerInfo.Special(definition, level), new Vector2(980, 565), ColorPalette.Ink, 0.57f);
+        DrawFittedText(batch, TowerInfo.Special(definition, level), new Vector2(980, 565), ColorPalette.Ink, 0.57f, 280);
         var powerNodes = placing ? session.Map.GetPowerNodes(session.PlacementPosition) : Array.Empty<PowerNodeData>();
         if (powerNodes.Count > 0)
         {
@@ -1719,12 +1721,13 @@ public sealed class UIManager
         }
         else
         {
-            DrawText(batch, TowerInfo.Strength(definition), new Vector2(980, 590), ColorPalette.Muted, 0.54f);
+            DrawFittedText(batch, TowerInfo.Strength(definition), new Vector2(980, 590), ColorPalette.Muted, 0.54f, 280);
             DrawFittedText(batch, TowerInfo.ProtocolSummary(definition), new Vector2(980, 612), ColorPalette.Coral, 0.46f, 280);
         }
         DrawFittedText(batch, $"L2 {level.UpgradeCost}: {TowerInfo.UpgradeSummary(definition, 0)}",
             new Vector2(980, 638), ColorPalette.Violet, 0.51f, 280);
-        DrawText(batch, placing ? "CLICK MAP TO DEPLOY   |   ESC TO CANCEL" : "CLICK CARD TO PREPARE PLACEMENT", new Vector2(980, 658), placing ? ColorPalette.Green : ColorPalette.Cobalt, 0.50f);
+        DrawFittedText(batch, placing ? "CLICK MAP TO DEPLOY   |   ESC TO CANCEL" : "CLICK CARD TO PREPARE PLACEMENT",
+            new Vector2(980, 658), placing ? ColorPalette.Green : ColorPalette.Cobalt, 0.50f, 280);
     }
 
     private static string PowerNodeNames(IReadOnlyList<PowerNodeData> nodes) => nodes.Count == 1
@@ -1754,7 +1757,8 @@ public sealed class UIManager
             ? $"Direct {session.CurrentEmergencyDirectPurchaseCost}   +{definition.DirectPurchaseCostIncrease} extra   resets next wave"
             : $"Direct buying activates in waves   Base {definition.PurchaseCost}";
         DrawFittedText(batch, directIntel, new Vector2(980, 638), session.Waves.IsActive ? ColorPalette.Gold : ColorPalette.Green, 0.49f, 280);
-        DrawText(batch, session.TacticalPlacement == TacticalPlacementKind.PulsePlate ? "CLICK THE ROAD TO DEPLOY   |   ESC TO CANCEL" : "Q OR CLICK ABOVE TO PREPARE", new Vector2(980, 658), ColorPalette.Cobalt, 0.49f);
+        DrawFittedText(batch, session.TacticalPlacement == TacticalPlacementKind.PulsePlate ? "CLICK THE ROAD TO DEPLOY   |   ESC TO CANCEL" : "Q OR CLICK ABOVE TO PREPARE",
+            new Vector2(980, 658), ColorPalette.Cobalt, 0.49f, 280);
     }
 
     private void DrawSurgeZoneIntel(SpriteBatch batch, PrimitiveRenderer p, PowerNodeData zone)
@@ -1768,7 +1772,7 @@ public sealed class UIManager
         p.DrawRect(batch, new Rectangle(972, 474, 296, 202), zone.NodeColor, 1);
         p.DrawPolygon(batch, new Vector2(1000, 512), 17, 4, false, zone.NodeColor, MathHelper.PiOver4);
         p.DrawPolygon(batch, new Vector2(1000, 512), 8, 4, false, ColorPalette.Paper, MathHelper.PiOver4);
-        DrawText(batch, zone.DisplayName, new Vector2(1028, 486), ColorPalette.Ink, 0.82f);
+        DrawFittedText(batch, zone.DisplayName, new Vector2(1028, 486), ColorPalette.Ink, 0.82f, 236);
         DrawText(batch, "SURGE NODE", new Vector2(1028, 508), zone.NodeColor, 0.60f);
         var bonus = zone.AttackSpeedBonus > 0 ? $"ATTACK RATE +{zone.AttackSpeedBonus:P0}" :
             zone.RangeBonus > 0 ? $"TOWER RANGE +{zone.RangeBonus:P0}" :
@@ -1776,9 +1780,9 @@ public sealed class UIManager
             $"ARMOR PIERCE +{zone.ArmorPierceBonus:0}";
         DrawText(batch, bonus, new Vector2(980, 546), ColorPalette.Ink, 0.68f);
         DrawText(batch, $"FIELD RADIUS {zone.Radius:0}", new Vector2(980, 570), ColorPalette.Muted, 0.56f);
-        DrawText(batch, "Center one or two towers in this compact field", new Vector2(980, 602), ColorPalette.Ink, 0.51f);
-        DrawText(batch, "to apply its focused bonus for the entire match.", new Vector2(980, 623), ColorPalette.Ink, 0.51f);
-        DrawText(batch, "Node bonuses do not stack with other nodes.", new Vector2(980, 652), ColorPalette.Gold, 0.49f);
+        DrawFittedText(batch, "Center one or two towers in this compact field", new Vector2(980, 602), ColorPalette.Ink, 0.51f, 280);
+        DrawFittedText(batch, "to apply its focused bonus for the entire match.", new Vector2(980, 623), ColorPalette.Ink, 0.51f, 280);
+        DrawFittedText(batch, "Node bonuses do not stack with other nodes.", new Vector2(980, 652), ColorPalette.Gold, 0.49f, 280);
     }
 
     private void DrawGeneratorIntel(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session, ChargeForgeInstance? active)
@@ -1790,9 +1794,10 @@ public sealed class UIManager
         p.DrawRect(batch, new Rectangle(972, 474, 296, active is null ? 202 : 156), definition.Visual.PrimaryColor, 1);
         p.DrawShape(batch, new Vector2(1000, 512), definition.Visual.Radius, definition.Visual.Shape,
             definition.Visual.PrimaryColor, definition.Visual.AccentColor, (active?.LevelIndex ?? 0) + 1, true, levelMarks: true);
-        DrawText(batch, definition.DisplayName, new Vector2(1028, 486), ColorPalette.Ink, 0.86f);
+        DrawFittedText(batch, definition.DisplayName, new Vector2(1028, 486), ColorPalette.Ink, 0.86f, 236);
         var generatorOwner = active is not null && session.IsCoOp ? $"   PLACED P{active.OwnerPlayerId}" : "";
-        DrawText(batch, active is null ? $"{definition.PurchaseCost} CREDITS   GENERATOR" : $"LEVEL {active.LevelIndex + 1}   GENERATOR{generatorOwner}", new Vector2(1028, 508), ColorPalette.Muted, 0.60f);
+        DrawFittedText(batch, active is null ? $"{definition.PurchaseCost} CREDITS   GENERATOR" : $"LEVEL {active.LevelIndex + 1}   GENERATOR{generatorOwner}",
+            new Vector2(1028, 508), ColorPalette.Muted, 0.60f, 236);
         DrawText(batch, $"Produces 1 plate every {level.ProductionSeconds:0}s", new Vector2(980, 548), ColorPalette.Ink, 0.59f);
         DrawFittedText(batch, $"Storage {session.EmergencyInventory}/{level.Capacity}   Plate DAMAGE +{level.DefenseDamageBonus:P0}",
             new Vector2(980, 571), ColorPalette.Ink, 0.57f, 280);
@@ -1806,7 +1811,8 @@ public sealed class UIManager
             var next = definition.Levels[1];
             DrawFittedText(batch, $"L2 {level.UpgradeCost}: {next.ProductionSeconds:0}s   CAP {next.Capacity}   DAMAGE +{next.DefenseDamageBonus:P0}",
                 new Vector2(980, 638), ColorPalette.Violet, 0.52f, 280);
-            DrawText(batch, session.TacticalPlacement == TacticalPlacementKind.ChargeForge ? "CLICK A BUILD ZONE   |   ESC TO CANCEL" : "G OR CLICK ABOVE TO PREPARE", new Vector2(980, 658), ColorPalette.Cobalt, 0.49f);
+            DrawFittedText(batch, session.TacticalPlacement == TacticalPlacementKind.ChargeForge ? "CLICK A BUILD ZONE   |   ESC TO CANCEL" : "G OR CLICK ABOVE TO PREPARE",
+                new Vector2(980, 658), ColorPalette.Cobalt, 0.49f, 280);
             return;
         }
 
