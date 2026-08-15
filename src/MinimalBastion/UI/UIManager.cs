@@ -192,6 +192,19 @@ public sealed class UIManager
     public void ConfigureSettings(UserSettings settings) => _settings = settings;
     public void SetSettingsStatus(string status) => _settingsStatus = status;
 
+    public void PreparePauseScreen()
+    {
+        _pauseMenuSelection = 0;
+        _restartArmed = false;
+        _towerLibraryOpen = false;
+    }
+
+    public void PrepareResultScreen()
+    {
+        _resultMenuSelection = 0;
+        _restartArmed = false;
+    }
+
     public static string PauseCheckpointStatus(bool canSave) => canSave
         ? "Between waves - save slots are available."
         : "Active wave - saving unlocks after it clears.";

@@ -536,6 +536,10 @@ internal static class Program
         Check.Equal(UiAction.Restart,
             keyboardRestartUi.HandlePausedInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, keyboardRestartSession),
             "second focused pause restart activation confirms the reset");
+        keyboardRestartUi.PreparePauseScreen();
+        Check.Equal(UiAction.Resume,
+            keyboardRestartUi.HandlePausedInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, keyboardRestartSession),
+            "a newly opened pause screen safely resets focus to Resume");
 
         var coOpSession = Session();
         coOpSession.ConfigureCoOp(2);
@@ -1007,6 +1011,10 @@ internal static class Program
         Check.Equal(UiAction.Restart,
             keyboardResults.HandleResultInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, false),
             "focused result restart requires a second activation");
+        keyboardResults.PrepareResultScreen();
+        Check.Equal(UiAction.ViewField,
+            keyboardResults.HandleResultInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, false),
+            "a later result screen safely resets focus to its primary action");
         Check.Equal(UiAction.ViewResults,
             ui.HandleDefeatFieldInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),
             "inspection escape returns to results");

@@ -212,6 +212,7 @@ public sealed class Game1 : Game
         }
         if (_ui.HandleDefeatFieldInput(input) == UiAction.ViewResults)
         {
+            _ui.PrepareResultScreen();
             _state = GameState.Defeat;
             return;
         }
@@ -241,6 +242,7 @@ public sealed class Game1 : Game
         var action = _ui.HandleGameplayInput(input, _session, commandSink, _localPlayerId);
         if (_networkRunner is null && action == UiAction.Pause)
         {
+            _ui.PreparePauseScreen();
             _state = GameState.Paused;
             return;
         }
@@ -252,8 +254,16 @@ public sealed class Game1 : Game
             _networkRunner.Advance((float)gameTime.ElapsedGameTime.TotalSeconds);
             if (_coOpWaveReady.StartQueued && _session.Waves.IsActive) ResetCoOpWaveReadyState(_isNetworkHost);
         }
-        if (_session.IsVictory) _state = GameState.Victory;
-        else if (_session.IsDefeat) _state = GameState.Defeat;
+        if (_session.IsVictory)
+        {
+            _ui.PrepareResultScreen();
+            _state = GameState.Victory;
+        }
+        else if (_session.IsDefeat)
+        {
+            _ui.PrepareResultScreen();
+            _state = GameState.Defeat;
+        }
         else if ((_networkRunner is null || _isNetworkHost) && _session.CanSaveCheckpoint && _session.CurrentWave > 0 && _session.CurrentWave != _lastAutosavedWave)
             SaveCheckpoint(true);
     }
@@ -771,6 +781,7 @@ public sealed class Game1 : Game
     private void ResumeNetworkSessionState()
     {
         if (_session is null) return;
+        if (_session.IsVictory || _session.IsDefeat) _ui.PrepareResultScreen();
         _state = _session.IsVictory ? GameState.Victory : _session.IsDefeat ? GameState.Defeat : GameState.Playing;
     }
 
