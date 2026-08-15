@@ -66,8 +66,27 @@ internal static class BalanceSimulation
             Console.WriteLine($"{tower.DisplayName,-20}  {fast.DamagePerSecond,8:0.0}  {swarm.Kills,2}/{swarm.Survivors,2}/{swarm.Leaks,-2}  {swarm.HealthRemovedPercent,5:0.0}%  {WastePercent(swarm),7:0.0}  {dense.DamagePerSecond,19:0.0}  {boss.DamagePerSecond,8:0.0}");
         }
 
+        PrintFinalRoleScenarios(content);
+
         PrintSupportEconomy(content);
         Console.WriteLine("Metrics include projectile travel, path movement, armor, shields, DOT persistence, overkill, kills, leaks, and damage reports.");
+    }
+
+    private static void PrintFinalRoleScenarios(GameContent content)
+    {
+        Console.WriteLine();
+        Console.WriteLine("FINAL-ROLE PRACTICALS (moving 45-health rush; K/S/L = kills/survivors/leaks)");
+        Console.WriteLine("Tower / final role             Cost  K/S/L     HP cut  Waste %");
+        Console.WriteLine("-----------------------------  ----  --------  ------  -------");
+
+        foreach (var tower in content.Towers.Values.OrderBy(x => x.PurchaseCost))
+        {
+            foreach (var row in TierRows(tower).Where(x => x.LevelIndex == 2))
+            {
+                var swarm = Swarm(content, tower, row.LevelIndex, row.SpecializationId, row.DoctrineId);
+                Console.WriteLine($"{tower.DisplayName + " " + row.Label,-29}  {row.CumulativeCost,4}  {swarm.Kills,2}/{swarm.Survivors,2}/{swarm.Leaks,-2}  {swarm.HealthRemovedPercent,5:0.0}%  {WastePercent(swarm),7:0.0}");
+            }
+        }
     }
 
     private static void PrintTierEconomy(GameContent content)
@@ -207,11 +226,16 @@ internal static class BalanceSimulation
         return metrics.ToResult(4, target);
     }
 
-    private static SimulationResult Swarm(GameContent content, TowerDefinition tower)
+    private static SimulationResult Swarm(
+        GameContent content,
+        TowerDefinition tower,
+        int levelIndex = 0,
+        string? specializationId = null,
+        string? doctrineId = null)
     {
         var enemy = EnemyLike(content.Enemies.Values.First(), "benchmark_swarm", 45, 30, 0, 0, 0);
         var session = CreateSession(content, new[] { tower }, new[] { enemy }, SwarmMap());
-        AddTower(session, tower, new Vector2(400, 300), 0);
+        AddTower(session, tower, new Vector2(400, 300), levelIndex, specializationId, doctrineId);
         var targets = Enumerable.Range(0, 24).Select(_ => AddEnemy(session, enemy)).ToArray();
         var metrics = new Metrics();
         session.DamageResolver.DamageApplied += metrics.Record;
