@@ -1690,6 +1690,29 @@ internal static class Program
         var intermissionClient = GameSession.RestoreCoOpState(intermissionHost.Content, intermissionState, 2);
         Check.Equal(SessionChecksum.Compute(intermissionHost, 40), SessionChecksum.Compute(intermissionClient, 40),
             "intermission reconnect preserves the complete authoritative checksum");
+
+        var compactionHost = Session();
+        Check.True(compactionHost.TryPlaceTower("tower", new Vector2(50, 200)),
+            "place tower for attribution-phase reconnect");
+        for (var index = 0; index < 15; index++) compactionHost.Update(0.05f);
+        var compactionState = compactionHost.CaptureCoOpState(50, 0, false);
+        var compactionClient = GameSession.RestoreCoOpState(compactionHost.Content, compactionState, 2);
+        Check.Nearly(compactionHost.Statistics.AttributionCompactionRemaining,
+            compactionClient.Statistics.AttributionCompactionRemaining,
+            "reconnect preserves telemetry compaction phase");
+        Check.True(compactionHost.TrySellTower(compactionHost.Towers[0].Id), "sell host tower after reconnect capture");
+        Check.True(compactionClient.TrySellTower(compactionClient.Towers[0].Id), "sell client tower after reconnect capture");
+        for (var index = 0; index < 26; index++)
+        {
+            compactionHost.Update(0.05f);
+            compactionClient.Update(0.05f);
+        }
+        Check.Equal(0, compactionHost.Statistics.TowerDefinitionByInstance.Count,
+            "host prunes sold attribution source on restored phase");
+        Check.Equal(0, compactionClient.Statistics.TowerDefinitionByInstance.Count,
+            "client prunes sold attribution source on restored phase");
+        Check.Equal(SessionChecksum.Compute(compactionHost, 51), SessionChecksum.Compute(compactionClient, 51),
+            "sold-source cleanup remains synchronized after reconnect");
     }
 
     private static void CoOpMalformedSnapshotRejection()
@@ -1918,6 +1941,11 @@ internal static class Program
         missingStatistics.Statistics.Towers = null!;
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, missingStatistics, 2),
             "missing nested telemetry state is rejected cleanly");
+
+        var invalidCompactionPhase = session.CaptureCoOpState(0, 0, false);
+        invalidCompactionPhase.Statistics.AttributionCompactionRemaining = 0;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, invalidCompactionPhase, 2),
+            "current reconnect snapshots cannot omit the telemetry maintenance phase");
     }
 
     private static void CoOpChecksumCoverage()

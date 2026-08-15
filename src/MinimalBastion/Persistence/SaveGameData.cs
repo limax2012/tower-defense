@@ -98,6 +98,7 @@ public sealed class GeneratorSaveData
 public sealed class RunStatisticsSaveData
 {
     public float SimulatedSeconds { get; set; }
+    public float AttributionCompactionRemaining { get; set; }
     public int EmergencyDeployments { get; set; }
     public int EmergencyDirectPurchases { get; set; }
     public int EmergencyTriggers { get; set; }

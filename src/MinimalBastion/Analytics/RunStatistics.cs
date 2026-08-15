@@ -20,6 +20,7 @@ public sealed class RunStatistics
     private float _attributionCompactionRemaining = AttributionCompactionInterval;
 
     public float SimulatedSeconds { get; private set; }
+    public float AttributionCompactionRemaining => _attributionCompactionRemaining;
     public int EmergencyDeployments { get; private set; }
     public int EmergencyDirectPurchases { get; private set; }
     public int EmergencyTriggers { get; private set; }
@@ -105,6 +106,7 @@ public sealed class RunStatistics
         return new RunStatisticsSaveData
         {
             SimulatedSeconds = SimulatedSeconds,
+            AttributionCompactionRemaining = _attributionCompactionRemaining,
             EmergencyDeployments = EmergencyDeployments,
             EmergencyDirectPurchases = EmergencyDirectPurchases,
             EmergencyTriggers = EmergencyTriggers,
@@ -164,7 +166,11 @@ public sealed class RunStatistics
         _towerByInstance.Clear();
         _towerDefinitionByInstance.Clear();
         _towerInstances.Clear();
-        _attributionCompactionRemaining = AttributionCompactionInterval;
+        // Zero identifies checkpoints from before this private timer was
+        // serialized. Current co-op snapshots require the exact positive phase.
+        _attributionCompactionRemaining = data.AttributionCompactionRemaining > 0
+            ? MathF.Min(data.AttributionCompactionRemaining, AttributionCompactionInterval)
+            : AttributionCompactionInterval;
         _towers.Clear();
         _enemies.Clear();
 

@@ -147,7 +147,9 @@ internal static class CoOpSnapshotValidator
         var towers = statistics.Towers ?? throw new InvalidDataException("Co-op snapshot tower statistics are missing.");
         var enemies = statistics.Enemies ?? throw new InvalidDataException("Co-op snapshot enemy statistics are missing.");
         var sources = statistics.TowerDefinitionByInstance ?? throw new InvalidDataException("Co-op snapshot source statistics are missing.");
-        if (!IsNonnegativeFinite(statistics.SimulatedSeconds) || statistics.EmergencyDeployments < 0 ||
+        if (!IsNonnegativeFinite(statistics.SimulatedSeconds) ||
+            !IsPositiveFinite(statistics.AttributionCompactionRemaining) || statistics.AttributionCompactionRemaining > 2f ||
+            statistics.EmergencyDeployments < 0 ||
             statistics.EmergencyDirectPurchases < 0 || statistics.EmergencyTriggers < 0 ||
             statistics.EmergencyHits < 0 || statistics.EmergencyKills < 0 ||
             !IsNonnegativeFinite(statistics.EmergencyDamage) || statistics.GeneratedCharges < 0 ||

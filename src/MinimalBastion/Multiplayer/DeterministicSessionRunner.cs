@@ -257,6 +257,7 @@ public static class SessionChecksum
 
         var statistics = session.Statistics;
         Add(ref hash, statistics.SimulatedSeconds);
+        Add(ref hash, statistics.AttributionCompactionRemaining);
         Add(ref hash, statistics.EmergencyDeployments);
         Add(ref hash, statistics.EmergencyDirectPurchases);
         Add(ref hash, statistics.EmergencyTriggers);

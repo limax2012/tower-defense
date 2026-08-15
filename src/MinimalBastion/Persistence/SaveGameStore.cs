@@ -336,7 +336,9 @@ public sealed class SaveSlotRepository
 
     private static void ValidateStatistics(RunStatisticsSaveData statistics)
     {
-        if (!IsNonnegativeFinite(statistics.SimulatedSeconds) || statistics.EmergencyDeployments < 0 ||
+        if (!IsNonnegativeFinite(statistics.SimulatedSeconds) ||
+            !IsNonnegativeFinite(statistics.AttributionCompactionRemaining) || statistics.AttributionCompactionRemaining > 2f ||
+            statistics.EmergencyDeployments < 0 ||
             statistics.EmergencyDirectPurchases < 0 || statistics.EmergencyTriggers < 0 || statistics.EmergencyHits < 0 ||
             statistics.EmergencyKills < 0 || !IsNonnegativeFinite(statistics.EmergencyDamage) ||
             statistics.GeneratedCharges < 0 || statistics.GeneratorPurchases < 0 || statistics.GeneratorUpgrades < 0 ||
