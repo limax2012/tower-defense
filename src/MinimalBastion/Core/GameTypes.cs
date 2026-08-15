@@ -111,7 +111,11 @@ public readonly record struct InputSnapshot(
     bool BackspacePressed,
     bool EnterPressed,
     bool CopyPressed = false,
-    bool TabPressed = false);
+    bool TabPressed = false,
+    bool NavigateUpPressed = false,
+    bool NavigateDownPressed = false,
+    bool NavigateLeftPressed = false,
+    bool NavigateRightPressed = false);
 
 public sealed class ViewportTransform
 {
@@ -195,7 +199,11 @@ public sealed class InputRouter
             ShouldBackspace(keyboard),
             IsPressed(keyboard, _previousKeyboard, Microsoft.Xna.Framework.Input.Keys.Enter),
             controlDown && IsPressed(keyboard, _previousKeyboard, Keys.C),
-            IsPressed(keyboard, _previousKeyboard, Keys.Tab));
+            IsPressed(keyboard, _previousKeyboard, Keys.Tab),
+            IsPressed(keyboard, _previousKeyboard, Keys.Up),
+            IsPressed(keyboard, _previousKeyboard, Keys.Down),
+            IsPressed(keyboard, _previousKeyboard, Keys.Left),
+            IsPressed(keyboard, _previousKeyboard, Keys.Right));
         _previousKeyboard = keyboard;
         _previousMouse = mouse;
         return snapshot;

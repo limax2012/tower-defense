@@ -2107,6 +2107,11 @@ internal static class Program
         var ui = new UIManager(null!);
         ui.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
         ui.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values);
+        var firstTower = ui.SelectedLibraryTowerId;
+        ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
+        Check.True(ui.SelectedLibraryTowerId != firstTower, "tower library Down selects the next tower");
+        ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
+        Check.Equal(firstTower!, ui.SelectedLibraryTowerId!, "tower library Up returns to the previous tower");
         var tabUi = new UIManager(null!);
         tabUi.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
         tabUi.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values);
@@ -2126,11 +2131,16 @@ internal static class Program
         Check.True(ui.LibraryShowsThreats, "tactical library switches to threat reference");
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TowerHotkey = 3 });
         Check.Equal("t3_brute", ui.SelectedLibraryEnemyId!, "threat hotkeys select the health-ordered archetype");
+        ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
+        Check.Equal("t1_crawler", ui.SelectedLibraryEnemyId!, "threat library supports health-ordered arrow selection");
         ui.HandleTitleTowerLibrary(WorldInput(new Vector2(982, 67)) with { LeftPressed = true });
         Check.True(ui.LibraryShowsCampaign, "tactical library switches to campaign reference");
         Check.Equal(20, ui.SelectedLibraryCampaignWaveCount, "campaign reference exposes all authored waves");
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TowerHotkey = 2 });
         Check.Equal(20, ui.SelectedLibraryCampaignWaveCount, "campaign hotkey selects another complete arena roster");
+        var secondMap = ui.SelectedLibraryCampaignMapId;
+        ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
+        Check.True(ui.SelectedLibraryCampaignMapId != secondMap, "campaign library supports arrow selection");
         ui.HandleTitleTowerLibrary(WorldInput(new Vector2(672, 67)) with { LeftPressed = true });
         Check.True(!ui.LibraryShowsThreats, "tactical library returns to tower planning");
         Check.True(!ui.LibraryShowsCampaign, "tower planning closes campaign reference");
@@ -2369,6 +2379,13 @@ internal static class Program
 
             var slotUi = new UIManager(null!);
             slotUi.ConfigureSaveSlots(slots, false);
+            slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
+            Check.Equal(2, slotUi.SelectedSaveSlot, "save browser Down selects the next slot");
+            slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { NavigateRightPressed = true });
+            Check.Equal(6, slotUi.SelectedSaveSlot, "save browser Right advances to the next page");
+            slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
+            Check.Equal(5, slotUi.SelectedSaveSlot, "save browser Up crosses back to the previous page");
+            slotUi.ConfigureSaveSlots(slots, false);
             Check.Equal(UiAction.ConfirmSaveSlot,
                 slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { EnterPressed = true }),
                 "save browser Enter confirms the selected usable slot");
@@ -2510,6 +2527,12 @@ internal static class Program
 
             repository.Upsert(first with { RunId = "run-b", CompletedAtUtc = first.CompletedAtUtc.AddHours(2) });
             Check.Equal("run-b", repository.GetEntries()[0].RunId, "run history is newest first");
+            var historyUi = new UIManager(null!);
+            historyUi.ConfigureRunHistory(repository.GetEntries());
+            historyUi.HandleRunHistory(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
+            Check.Equal("run-a", historyUi.SelectedRunHistoryId!, "run history Down selects the next record");
+            historyUi.HandleRunHistory(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
+            Check.Equal("run-b", historyUi.SelectedRunHistoryId!, "run history Up returns to the previous record");
             Check.True(repository.Delete("run-a"), "individual history entries can be deleted");
             Check.Equal(1, repository.GetEntries().Count, "deleting history leaves unrelated records intact");
 

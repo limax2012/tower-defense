@@ -171,6 +171,7 @@ public sealed class UIManager
     public string? SelectedRunHistoryId => _selectedRunHistoryId;
     public bool LibraryShowsThreats => _libraryShowsThreats;
     public bool LibraryShowsCampaign => _libraryShowsCampaign;
+    public string? SelectedLibraryTowerId => _libraryTowers.Count == 0 ? null : _libraryTowers[_towerLibraryIndex].Id;
     public string? SelectedLibraryEnemyId => _libraryEnemies.Count == 0 ? null : _libraryEnemies[_enemyLibraryIndex].Id;
     public string? SelectedLibraryCampaignMapId => _maps.Count == 0 ? null : _maps[_campaignLibraryMapIndex].Id;
     public int SelectedLibraryCampaignWaveCount => SelectedLibraryCampaignMapId is { } mapId && _libraryCampaignWaves.TryGetValue(mapId, out var waves)
@@ -399,6 +400,16 @@ public sealed class UIManager
             }
             return UiAction.CloseSaveSlots;
         }
+        if (input.NavigateUpPressed || input.NavigateDownPressed)
+        {
+            MoveSaveSlotSelection(input.NavigateUpPressed ? -1 : 1);
+            return UiAction.None;
+        }
+        if (input.NavigateLeftPressed || input.NavigateRightPressed)
+        {
+            MoveSaveSlotPage(input.NavigateLeftPressed ? -1 : 1);
+            return UiAction.None;
+        }
         if (input.EnterPressed)
         {
             var enterSelection = _saveSlots.FirstOrDefault(slot => slot.Slot == _selectedSaveSlot);
@@ -459,6 +470,16 @@ public sealed class UIManager
                 return UiAction.None;
             }
             return UiAction.CloseRunHistory;
+        }
+        if (input.NavigateUpPressed || input.NavigateDownPressed)
+        {
+            MoveRunHistorySelection(input.NavigateUpPressed ? -1 : 1);
+            return UiAction.None;
+        }
+        if (input.NavigateLeftPressed || input.NavigateRightPressed)
+        {
+            MoveRunHistoryPage(input.NavigateLeftPressed ? -1 : 1);
+            return UiAction.None;
         }
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
@@ -810,6 +831,8 @@ public sealed class UIManager
         if (input.EscapePressed || input.PausePressed || input.RightPressed) return true;
         _campaignLibraryMapIndex = Math.Clamp(_campaignLibraryMapIndex, 0, Math.Max(0, _maps.Count - 1));
         if (input.TabPressed) CycleTowerLibraryTab();
+        if (input.NavigateUpPressed || input.NavigateDownPressed)
+            MoveTowerLibrarySelection(input.NavigateUpPressed ? -1 : 1);
         var activeCount = _libraryShowsCampaign ? _maps.Count : _libraryShowsThreats ? _libraryEnemies.Count : _libraryTowers.Count;
         if (input.TowerHotkey > 0 && input.TowerHotkey <= activeCount)
         {
@@ -894,6 +917,65 @@ public sealed class UIManager
         }
         _libraryShowsThreats = false;
         _libraryShowsCampaign = false;
+    }
+
+    private void MoveSaveSlotSelection(int delta)
+    {
+        if (_saveSlots.Count == 0) return;
+        var current = _saveSlots.ToList().FindIndex(slot => slot.Slot == _selectedSaveSlot);
+        var next = Math.Clamp(current < 0 ? 0 : current + delta, 0, _saveSlots.Count - 1);
+        _selectedSaveSlot = _saveSlots[next].Slot;
+        _saveSlotPage = next / _saveSlotRows.Length;
+        _saveSlotDeleteArmed = false;
+    }
+
+    private void MoveSaveSlotPage(int delta)
+    {
+        if (_saveSlots.Count == 0) return;
+        var pageCount = Math.Max(1, (_saveSlots.Count + _saveSlotRows.Length - 1) / _saveSlotRows.Length);
+        var nextPage = Math.Clamp(_saveSlotPage + delta, 0, pageCount - 1);
+        if (nextPage == _saveSlotPage) return;
+        _saveSlotPage = nextPage;
+        _selectedSaveSlot = _saveSlots[_saveSlotPage * _saveSlotRows.Length].Slot;
+        _saveSlotDeleteArmed = false;
+    }
+
+    private void MoveRunHistorySelection(int delta)
+    {
+        if (_runHistory.Count == 0) return;
+        var current = _runHistory.ToList().FindIndex(entry => entry.RunId == _selectedRunHistoryId);
+        var next = Math.Clamp(current < 0 ? 0 : current + delta, 0, _runHistory.Count - 1);
+        _selectedRunHistoryId = _runHistory[next].RunId;
+        _runHistoryPage = next / _saveSlotRows.Length;
+        _runHistoryDeleteArmed = false;
+    }
+
+    private void MoveRunHistoryPage(int delta)
+    {
+        if (_runHistory.Count == 0) return;
+        var pageCount = Math.Max(1, (_runHistory.Count + _saveSlotRows.Length - 1) / _saveSlotRows.Length);
+        var nextPage = Math.Clamp(_runHistoryPage + delta, 0, pageCount - 1);
+        if (nextPage == _runHistoryPage) return;
+        _runHistoryPage = nextPage;
+        _selectedRunHistoryId = _runHistory[_runHistoryPage * _saveSlotRows.Length].RunId;
+        _runHistoryDeleteArmed = false;
+    }
+
+    private void MoveTowerLibrarySelection(int delta)
+    {
+        if (_libraryShowsCampaign)
+        {
+            if (_maps.Count > 0) _campaignLibraryMapIndex = Math.Clamp(_campaignLibraryMapIndex + delta, 0, _maps.Count - 1);
+        }
+        else if (_libraryShowsThreats)
+        {
+            if (_libraryEnemies.Count > 0) _enemyLibraryIndex = Math.Clamp(_enemyLibraryIndex + delta, 0, _libraryEnemies.Count - 1);
+        }
+        else if (_libraryTowers.Count > 0)
+        {
+            _towerLibraryIndex = Math.Clamp(_towerLibraryIndex + delta, 0, _libraryTowers.Count - 1);
+            _towerLibraryDoctrineIndex = 0;
+        }
     }
 
     public UiAction HandleResultInput(InputSnapshot input, bool victory)
@@ -1583,7 +1665,7 @@ public sealed class UIManager
         DrawButton(batch, p, _saveSlotPreviousButton, "PREVIOUS", _saveSlotPage > 0, ColorPalette.Cyan);
         DrawButton(batch, p, _saveSlotBackButton, "BACK", true, ColorPalette.Violet);
         DrawButton(batch, p, _saveSlotNextButton, "NEXT", _saveSlotPage + 1 < pageCount, ColorPalette.Cyan);
-        DrawText(batch, _persistenceStatus, new Vector2(640, 654), ColorPalette.Muted, 0.52f, true);
+        DrawText(batch, $"ARROWS SELECT  |  ENTER CONFIRMS  |  {_persistenceStatus}", new Vector2(640, 654), ColorPalette.Muted, 0.48f, true);
     }
 
     private void DrawRunHistory(SpriteBatch batch, PrimitiveRenderer p)
@@ -1631,7 +1713,7 @@ public sealed class UIManager
         DrawButton(batch, p, _saveSlotPreviousButton, "PREVIOUS", _runHistoryPage > 0, ColorPalette.Cyan);
         DrawButton(batch, p, _saveSlotBackButton, "BACK TO SAVES", true, ColorPalette.Violet);
         DrawButton(batch, p, _saveSlotNextButton, "NEXT", _runHistoryPage + 1 < pageCount, ColorPalette.Cyan);
-        DrawText(batch, _runHistoryStatus, new Vector2(640, 654), ColorPalette.Muted, 0.52f, true);
+        DrawText(batch, $"ARROWS SELECT  |  {_runHistoryStatus}", new Vector2(640, 654), ColorPalette.Muted, 0.48f, true);
     }
 
     private void DrawCoOpMenu(SpriteBatch batch, PrimitiveRenderer p)
@@ -1935,7 +2017,7 @@ public sealed class UIManager
         }
 
         DrawTowerLibraryDetails(batch, p, towers[_towerLibraryIndex], detailPanel);
-        DrawText(batch, $"Click a tower or press 1-0.  TAB changes page.  ESC, right-click, or BACK returns to {returnDestination}.", new Vector2(640, 674), ColorPalette.Muted, 0.47f, true);
+        DrawText(batch, $"Click, press 1-0, or use UP/DOWN.  TAB changes page.  ESC, right-click, or BACK returns to {returnDestination}.", new Vector2(640, 674), ColorPalette.Muted, 0.45f, true);
     }
 
     private void DrawCampaignLibrary(SpriteBatch batch, PrimitiveRenderer p, Rectangle detailPanel, string returnDestination)
@@ -1993,7 +2075,7 @@ public sealed class UIManager
         }
 
         DrawFittedCenteredText(batch,
-            $"W21+ inherits this arena's final roster; HP accelerates, density/cadence stay capped, and a boss returns every 5 waves.  TAB changes page; ESC or BACK returns to {returnDestination}.",
+            $"W21+ inherits this arena's final roster; HP accelerates, density/cadence stay capped, and a boss returns every 5 waves.  UP/DOWN selects; TAB changes page; ESC or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
     }
 
@@ -2055,7 +2137,7 @@ public sealed class UIManager
         }
 
         DrawEnemyLibraryDetails(batch, p, _libraryEnemies[_enemyLibraryIndex], detailPanel);
-        DrawText(batch, $"Click a threat or press 1-5.  Values precede scaling.  TAB changes page; ESC, right-click, or BACK returns to {returnDestination}.",
+        DrawText(batch, $"Click, press 1-5, or use UP/DOWN.  Values precede scaling.  TAB changes page; ESC, right-click, or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.45f, true);
     }
 

@@ -1,5 +1,7 @@
 # Overnight Changelog
 
+- Added conventional arrow-key navigation to dynamic save slots, paginated run history, and every Tactical Library page. Selection follows page changes, cancels armed deletes, and keeps Enter confirmation deterministic.
+
 ## Arena progression, roles, protocols, and presentation pass
 
 Date: 2026-08-15
