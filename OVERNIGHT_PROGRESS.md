@@ -69,6 +69,7 @@ Updated: 2026-08-15
 - Moved Pulse Plate, Charge Forge, and Overdrive controls from the battlefield into the sidebar, preserving the full 960-pixel play area.
 - Added auto-fitting button labels, colorful tower/enemy silhouettes, rank treatment, recoil/pulse/ring/impact feedback, polished menus, pause, and post-run analysis.
 - Added short geometric projectile motion streaks at full effect density, improving attack-direction readability without particle clutter; Reduced Effects preserves shape-only shots.
+- Gave true area impacts their own expanding double-ring and six-spoke burst language instead of reusing generic tactical flashes. Reduced Effects keeps only the clean outer ring.
 - Added a seamless procedural tactical music bed with mild arena-specific tuning and an independent persisted volume control; it remains optional presentation state and requires no external audio assets.
 - Added compact synthesized confirm, back, and delete cues to the complete menu/pause/save/library flow. They share the persisted SFX control and never enter gameplay state, snapshots, or checksums.
 - Presentation-only settings now apply without resetting the graphics device, avoiding fullscreen flicker when changing effect density or audio volume.

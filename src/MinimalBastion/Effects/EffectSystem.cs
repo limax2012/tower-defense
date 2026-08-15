@@ -7,6 +7,7 @@ public enum EffectKind
     Flash,
     Beam,
     Impact,
+    Splash,
     Ping
 }
 
@@ -54,6 +55,22 @@ public sealed class EffectSystem
             Duration = duration,
             Remaining = duration,
             Radius = MathF.Max(4, radius)
+        });
+    }
+
+    public void AddSplash(Vector2 position, Color color, float radius)
+    {
+        const float duration = 0.24f;
+        if (!ReserveTransientSlot(EffectKind.Splash)) return;
+        _effects.Add(new EffectInstance
+        {
+            Kind = EffectKind.Splash,
+            Start = position,
+            End = position,
+            Color = color,
+            Duration = duration,
+            Remaining = duration,
+            Radius = MathF.Max(10, radius)
         });
     }
 

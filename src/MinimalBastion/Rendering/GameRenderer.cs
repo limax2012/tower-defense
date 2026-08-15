@@ -546,6 +546,26 @@ public sealed class GameRenderer
                     }
                 }
             }
+            else if (effect.Kind == EffectKind.Splash)
+            {
+                var age = 1f - progress;
+                var radius = effect.Radius * MathHelper.SmoothStep(0.18f, 1f, age);
+                p.Ring(batch, effect.Start, MathF.Max(3, radius), effectColor, ReducedEffects ? 2 : 4);
+                if (!ReducedEffects)
+                {
+                    p.Ring(batch, effect.Start, MathF.Max(2, radius * 0.64f),
+                        ColorPalette.WithAlpha(ColorPalette.Paper, (byte)(alpha * 0.72f)), 2);
+                    for (var index = 0; index < 6; index++)
+                    {
+                        var angle = index * MathHelper.TwoPi / 6f;
+                        var direction = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+                        var inner = radius * 0.72f;
+                        p.Line(batch, effect.Start + direction * inner,
+                            effect.Start + direction * MathF.Min(effect.Radius, inner + 7 + age * 5),
+                            effectColor, 2);
+                    }
+                }
+            }
             else
             {
                 var radius = effect.Radius * (1.2f - progress * 0.2f);

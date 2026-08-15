@@ -56,10 +56,9 @@ public sealed class ProjectileSystem
 
     private static void AddSplashEffect(MinimalBastion.GameSession session, ProjectileInstance projectile)
     {
-        session.Effects.AddFlash(
+        session.Effects.AddSplash(
             projectile.Position,
             projectile.Color,
-            0.22f,
             MathF.Max(10, projectile.SplashRadius));
     }
 

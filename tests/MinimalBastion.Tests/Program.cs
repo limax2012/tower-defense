@@ -849,6 +849,9 @@ internal static class Program
         effects.AddFlash(new Vector2(20, 20), Color.Gold, 0.4f, 80);
         Check.Equal(1, effects.Effects.Count(effect => effect.Kind == EffectKind.Flash),
             "large tactical flash displaces beam noise at capacity");
+        effects.AddSplash(new Vector2(21, 20), Color.Orange, 52);
+        Check.Equal(1, effects.Effects.Count(effect => effect.Kind == EffectKind.Splash),
+            "area impact receives a distinct bounded geometric cue at capacity");
 
         var impactCount = effects.Effects.Count(effect => effect.Kind == EffectKind.Impact);
         effects.AddImpact(new Vector2(22, 20), Color.Coral);
@@ -2596,7 +2599,7 @@ internal static class Program
         Check.Nearly(92, nearby.Health, "frost damages nearby enemy");
         Check.Nearly(100, distant.Health, "frost area is bounded");
         Check.Nearly(0.4f, nearby.StatusEffects.SlowFactor, "frost applies area slow");
-        var impact = session.Effects.Effects.Single(effect => effect.Kind == EffectKind.Flash);
+        var impact = session.Effects.Effects.Single(effect => effect.Kind == EffectKind.Splash);
         Check.Nearly(level.SplashRadius, impact.Radius, "splash effect communicates the actual impact radius");
 
         var directSession = Session();
