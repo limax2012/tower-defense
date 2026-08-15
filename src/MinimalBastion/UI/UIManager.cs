@@ -1798,7 +1798,9 @@ public sealed class UIManager
             : tower.RequiresDoctrine || tower.RequiresSpecialization || tower.CanUpgrade
                 ? ColorPalette.Violet
                 : ColorPalette.Muted;
-        if (tower.RequiresDoctrine || tower.RequiresSpecialization)
+        if (_specializationHint is not null)
+            DrawBranchPreview(batch, _specializationHint, upgradeColor);
+        else if (tower.RequiresDoctrine || tower.RequiresSpecialization)
             DrawFittedText(batch, upgradeLine, new Vector2(980, 630), upgradeColor, 0.45f, 280);
         else
             DrawWrappedText(batch, upgradeLine, new Rectangle(980, 630, 280, 30), upgradeColor, 0.45f, 2);
@@ -1831,6 +1833,24 @@ public sealed class UIManager
         if (!tower.IsSupport) DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), canManage, ColorPalette.Cyan);
         DrawButton(batch, p, _upgradeButton, tower.CanUpgrade ? $"UP {tower.UpgradeCost}" : "MAX", canManage && tower.CanUpgrade && session.Economy.CanAfford(tower.UpgradeCost), ColorPalette.Violet);
         DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange);
+    }
+
+    private void DrawBranchPreview(SpriteBatch batch, string preview, Color color)
+    {
+        var separator = preview.IndexOf(':');
+        if (separator <= 0 || separator >= preview.Length - 1)
+        {
+            DrawFittedText(batch, preview, new Vector2(980, 630), color, 0.44f, 280);
+            return;
+        }
+
+        // Branch summaries carry two different kinds of information. Keeping
+        // the purpose and the numerical delta on separate rows avoids either
+        // shrinking into illegibility or running into the branch buttons.
+        var purpose = preview[..separator].Trim();
+        var changes = preview[(separator + 1)..].Trim();
+        DrawFittedText(batch, purpose, new Vector2(980, 619), color, 0.44f, 280);
+        DrawFittedText(batch, changes, new Vector2(980, 634), color, 0.42f, 280);
     }
 
     private static string TowerLifetimeSummary(TowerInstance tower)
