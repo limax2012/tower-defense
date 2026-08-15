@@ -18,6 +18,7 @@ public sealed class GameRenderer
         primitives.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight), session.Map.Definition.Background.BaseColor);
         DrawTerrain(batch, primitives, session);
         DrawPath(batch, primitives, session);
+        DrawMarkers(batch, primitives, session);
         DrawTacticalDefenses(batch, primitives, session);
         DrawRanges(batch, primitives, session);
         DrawTowers(batch, primitives, session);
@@ -27,7 +28,6 @@ public sealed class GameRenderer
             DrawProjectiles(batch, primitives, session);
             DrawEffects(batch, primitives, session);
         }
-        DrawMarkers(batch, primitives, session);
     }
 
     private static void DrawTerrain(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -715,11 +715,69 @@ public sealed class GameRenderer
 
     private static void DrawMarkers(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
-        var spawn = session.Map.Definition.Spawn.ToVector2();
-        var goal = session.Map.Definition.Goal.ToVector2();
-        spawn.X = MathF.Max(spawn.X, 16);
-        goal.X = MathF.Min(goal.X, GameConstants.MapWidth - 16);
-        p.DrawShape(batch, spawn, 11, "square", ColorPalette.Cyan, ColorPalette.Navy, 1, false);
-        p.DrawShape(batch, goal, 12, "triangle", ColorPalette.Coral, ColorPalette.Paper, 1, false);
+        var points = session.Map.Definition.Path.Select(point => point.ToVector2()).ToArray();
+        if (points.Length < 2) return;
+
+        var entryDirection = SafeDirection(points[1] - points[0]);
+        var exitDirection = SafeDirection(points[^1] - points[^2]);
+        var inset = Math.Max(30f, session.Map.Definition.PathWidth * 0.75f);
+        var markerSpan = Math.Clamp(session.Map.Definition.PathWidth * 0.28f, 10f, 18f);
+
+        var entry = ClampMarkerToField(points[0] + entryDirection * inset, markerSpan);
+        var exit = ClampMarkerToField(points[^1] - exitDirection * inset, markerSpan);
+
+        // Route markings are painted beneath units and defenses so they read as
+        // navigation infrastructure, never as placeable tower silhouettes.
+        DrawEntryMark(batch, p, entry, entryDirection, markerSpan);
+        DrawFinishMark(batch, p, exit, exitDirection, markerSpan);
+    }
+
+    private static void DrawEntryMark(SpriteBatch batch, PrimitiveRenderer p, Vector2 center,
+        Vector2 direction, float markerSpan)
+    {
+        var normal = new Vector2(-direction.Y, direction.X);
+        var gateCenter = center - direction * 9f;
+        p.Line(batch, gateCenter - normal * markerSpan, gateCenter + normal * markerSpan,
+            ColorPalette.Cyan, 3);
+
+        for (var index = 0; index < 3; index++)
+        {
+            var tip = center + direction * (index * 10f);
+            var back = tip - direction * 6f;
+            p.Line(batch, back + normal * 5f, tip, ColorPalette.Cyan, 3);
+            p.Line(batch, back - normal * 5f, tip, ColorPalette.Cyan, 3);
+        }
+    }
+
+    private static void DrawFinishMark(SpriteBatch batch, PrimitiveRenderer p, Vector2 center,
+        Vector2 direction, float markerSpan)
+    {
+        var normal = new Vector2(-direction.Y, direction.X);
+        const float halfDepth = 5f;
+        var firstBar = center - direction * halfDepth;
+        var secondBar = center + direction * halfDepth;
+        p.Line(batch, firstBar - normal * markerSpan, firstBar + normal * markerSpan,
+            ColorPalette.Coral, 3);
+        p.Line(batch, secondBar - normal * markerSpan, secondBar + normal * markerSpan,
+            ColorPalette.Coral, 3);
+
+        for (var offset = -markerSpan + 4f; offset <= markerSpan - 4f; offset += 8f)
+        {
+            p.Line(batch, firstBar + normal * offset, secondBar + normal * offset,
+                ColorPalette.Paper, 3);
+        }
+    }
+
+    private static Vector2 ClampMarkerToField(Vector2 position, float markerSpan)
+    {
+        var margin = markerSpan + 3f;
+        return new Vector2(
+            Math.Clamp(position.X, margin, GameConstants.MapWidth - margin),
+            Math.Clamp(position.Y, margin, GameConstants.LogicalHeight - margin));
+    }
+
+    private static Vector2 SafeDirection(Vector2 delta)
+    {
+        return delta.LengthSquared() > 0.001f ? Vector2.Normalize(delta) : Vector2.UnitX;
     }
 }
