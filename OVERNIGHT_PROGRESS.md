@@ -5,7 +5,7 @@ Updated: 2026-08-15
 ## Verified checkpoint
 
 - Release build: 0 warnings, 0 errors with the workspace-local .NET 10 SDK.
-- Deterministic regression suite: 66/66 passing.
+- Deterministic regression suite: 67/67 passing.
 - Self-contained Windows x64 publish: `.build/publish/MinimalBastion.exe`.
 - Content: 4 maps with independently authored campaigns, 10 towers with 20 tier-two doctrines and 20 final specializations, 10 distinct Protocols, 5 enemy bases plus elite/boss ranks, difficulty/directive profiles, tactical reserves, and endless continuation.
 - Canonical five-seed Hard matrix: 140/240 wins (58.3%). A fresh three-seed audit on the current executable produced 75/144 wins (52.1%), with the reworked Rapid Array active and Surge Divide remaining the hardest arena.
@@ -21,6 +21,7 @@ Updated: 2026-08-15
 - Agents use continuous placement, Surge Nodes, route coverage, reserves, upgrades, selling, branches, targeting, early calls, plates, forge production, elites/boss reads, and Protocols.
 - Telemetry covers economy, purchases/upgrades/sales, branches, attributed damage/kills, armor/shield/overkill, enemies, waves, plates, forge production, Protocol activations, and early-call rewards.
 - CLI supports `--simulate`, `--simulate-full`, `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, `--no-protocols`, and `--output`.
+- Forced-build reports now distinguish the requested path from paths actually completed in each run, including completion coverage, wins among completed runs, completed tower count, and completed-run impact per credit. Expensive or late paths can no longer look weak merely because a failed run never afforded them.
 - A matched Hard control measured Protocol value at 73/144 wins enabled versus 52/144 disabled. Every tower's Protocol activated; Tactical gained the most, confirming the active layer rewards engagement without becoming mandatory.
 
 ### Waves, enemies, and strategic information

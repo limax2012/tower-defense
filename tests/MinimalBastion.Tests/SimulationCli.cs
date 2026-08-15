@@ -62,7 +62,7 @@ internal static class SimulationCli
         Console.WriteLine();
         Console.WriteLine($"Runs {runs.Count}, wins {batch.Wins}, win rate {batch.WinRate:P1}, average wave {batch.AverageWaveReached:0.0}, average lives {batch.AverageLivesRemaining:0.0}.");
         if (forcedBuilds.Count == 1 && forcedBuilds[0] is { } onlyForcedBuild)
-            Console.WriteLine($"Forced completed path: {onlyForcedBuild.TowerId}:{onlyForcedBuild.DoctrineId}>{onlyForcedBuild.SpecializationId}");
+            Console.WriteLine($"Forced requested path: {onlyForcedBuild.TowerId}:{onlyForcedBuild.DoctrineId}>{onlyForcedBuild.SpecializationId}");
         if (!useProtocols) Console.WriteLine("Protocol activations disabled for this control group.");
         PrintStrategySummary(runs);
         PrintDifficultySummary(runs);
@@ -244,23 +244,63 @@ internal static class SimulationCli
         }
     }
 
-    private static void PrintForcedBuildSummary(IEnumerable<SimulationRunResult> runs)
+    internal static IReadOnlyList<ForcedBuildSummary> SummarizeForcedBuilds(IEnumerable<SimulationRunResult> runs)
     {
         var materialized = runs.Where(run => run.ForcedBuildPath is not null).ToArray();
-        if (materialized.Length == 0) return;
+        if (materialized.Length == 0) return Array.Empty<ForcedBuildSummary>();
+
+        return materialized.GroupBy(run => run.ForcedBuildPath!).OrderBy(group => group.Key).Select(group =>
+        {
+            var groupedRuns = group.ToArray();
+            var towerId = groupedRuns[0].ForcedTowerId!;
+            var branchPath = group.Key[(towerId.Length + 1)..];
+            var entries = groupedRuns.Select(run =>
+            {
+                run.Towers.TryGetValue(towerId, out var metrics);
+                return new
+                {
+                    Run = run,
+                    Metrics = metrics,
+                    CompletedTowers = metrics?.BuildPaths.GetValueOrDefault(branchPath) ?? 0
+                };
+            }).ToArray();
+            var completedEntries = entries.Where(entry => entry.CompletedTowers > 0).ToArray();
+            var completedSpent = completedEntries.Sum(entry => entry.Metrics!.CreditsSpent);
+            var completedImpact = completedEntries.Sum(entry => entry.Metrics!.ContributionDamage);
+            return new ForcedBuildSummary(
+                group.Key,
+                groupedRuns.Length,
+                groupedRuns.Count(run => run.Won),
+                (float)groupedRuns.Average(run => run.WaveReached),
+                (float)groupedRuns.Average(run => run.LivesRemaining),
+                completedEntries.Length,
+                completedEntries.Count(entry => entry.Run.Won),
+                completedEntries.Sum(entry => entry.CompletedTowers),
+                completedSpent == 0 ? 0 : completedImpact / completedSpent);
+        }).ToArray();
+    }
+
+    private static void PrintForcedBuildSummary(IEnumerable<SimulationRunResult> runs)
+    {
+        var rows = SummarizeForcedBuilds(runs);
+        if (rows.Count == 0) return;
 
         Console.WriteLine();
         Console.WriteLine("FORCED BUILD PATHS");
-        foreach (var group in materialized.GroupBy(run => run.ForcedBuildPath!).OrderBy(group => group.Key))
-        {
-            var towerId = group.First().ForcedTowerId!;
-            var towerMetrics = group.Select(run => run.Towers.GetValueOrDefault(towerId)).Where(metrics => metrics is not null).ToArray();
-            var completed = towerMetrics.Sum(metrics => metrics!.BuildPaths.GetValueOrDefault(group.Key[(towerId.Length + 1)..]));
-            var spent = towerMetrics.Sum(metrics => metrics!.CreditsSpent);
-            var impact = towerMetrics.Sum(metrics => metrics!.ContributionDamage);
-            Console.WriteLine($"{group.Key,-58} {group.Count(run => run.Won),2}/{group.Count(),-2} wins  avg wave {group.Average(run => run.WaveReached),4:0.0}  lives {group.Average(run => run.LivesRemaining),4:0.0}  completed {completed,3}  impact/credit {(spent == 0 ? 0 : impact / spent),6:0.0}");
-        }
+        foreach (var row in rows)
+            Console.WriteLine($"{row.Path,-58} {row.Wins,2}/{row.Runs,-2} wins  avg wave {row.AverageWave,4:0.0}  lives {row.AverageLives,4:0.0}  complete {row.CompletedRuns,2}/{row.Runs,-2} runs ({row.CompletedWins,2} wins, {row.CompletedTowers,3} towers)  complete impact/credit {row.CompletedImpactPerCredit,6:0.0}");
     }
+
+    internal sealed record ForcedBuildSummary(
+        string Path,
+        int Runs,
+        int Wins,
+        float AverageWave,
+        float AverageLives,
+        int CompletedRuns,
+        int CompletedWins,
+        int CompletedTowers,
+        float CompletedImpactPerCredit);
 
     private static void PrintTowerSummary(IEnumerable<SimulationRunResult> runs)
     {

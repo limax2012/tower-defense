@@ -105,6 +105,7 @@ internal static class Program
             ("save slot recovery backup", SaveSlotRecoveryBackup),
             ("persistent run history", PersistentRunHistory),
             ("headless simulation deterministic", HeadlessSimulationDeterministic),
+            ("forced build completion summary", ForcedBuildCompletionSummary),
             ("simulation campaign default", SimulationCampaignDefault)
         };
 
@@ -161,6 +162,68 @@ internal static class Program
         Check.Equal(40, allPaths.Count, "complete forced sweep covers all forty finished build paths");
         Check.Equal(40, allPaths.Select(candidate => $"{candidate!.TowerId}:{candidate.DoctrineId}>{candidate.SpecializationId}")
             .Distinct(StringComparer.OrdinalIgnoreCase).Count(), "complete forced sweep has no duplicate build paths");
+    }
+
+    private static void ForcedBuildCompletionSummary()
+    {
+        const string towerId = "needle_turret";
+        const string doctrineId = "cycler_feed";
+        const string specializationId = "rapid_array";
+        const string branchPath = doctrineId + ">" + specializationId;
+
+        static SimulationRunResult Run(bool won, bool completed, int completedTowers, int seed)
+        {
+            var metrics = new TowerRunMetrics
+            {
+                TowerId = towerId,
+                Purchases = 2,
+                CreditsSpent = completed ? 200 : 90,
+                Damage = completed ? 160 : 45,
+                SupportDamageEquivalent = completed ? 40 : 0
+            };
+            if (completed) metrics.BuildPaths[branchPath] = completedTowers;
+            return new SimulationRunResult
+            {
+                MapId = "foundry_loop",
+                DifficultyId = "hard",
+                ChallengeId = "standard",
+                Strategy = AutoPlayerStrategy.Adaptive,
+                Seed = seed,
+                ForcedTowerId = towerId,
+                ForcedDoctrineId = doctrineId,
+                ForcedSpecializationId = specializationId,
+                Result = won ? "Victory" : "Defeat",
+                WaveReached = won ? 20 : 12,
+                LivesRemaining = won ? 5 : 0,
+                Kills = 0,
+                EscapedEnemies = 0,
+                CreditsEarned = 0,
+                CreditsSpent = metrics.CreditsSpent,
+                CreditsUnspent = 0,
+                SaleCreditsRecovered = 0,
+                SimulatedSeconds = 60,
+                Towers = new Dictionary<string, TowerRunMetrics>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [towerId] = metrics
+                },
+                EnemyKills = new Dictionary<string, int>(),
+                EnemyLeaks = new Dictionary<string, int>(),
+                Waves = Array.Empty<WaveRunMetrics>()
+            };
+        }
+
+        var summary = SimulationCli.SummarizeForcedBuilds([
+            Run(true, true, 2, 1),
+            Run(false, false, 0, 2),
+            Run(false, true, 1, 3)
+        ]).Single();
+        Check.Equal($"{towerId}:{branchPath}", summary.Path, "forced summary path identity");
+        Check.Equal(3, summary.Runs, "forced summary total runs");
+        Check.Equal(1, summary.Wins, "forced summary overall wins");
+        Check.Equal(2, summary.CompletedRuns, "forced summary completion coverage");
+        Check.Equal(1, summary.CompletedWins, "forced summary wins among completed runs");
+        Check.Equal(3, summary.CompletedTowers, "forced summary completed tower count");
+        Check.Nearly(1, summary.CompletedImpactPerCredit, "forced summary excludes incomplete-run efficiency");
     }
 
     private static void CrashReportFallback()
