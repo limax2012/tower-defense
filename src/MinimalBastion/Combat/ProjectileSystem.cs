@@ -35,19 +35,11 @@ public sealed class ProjectileSystem
             if (!projectile.Update(deltaSeconds)) continue;
             if (projectile.Kind == ProjectileKind.ImpactPoint)
             {
-                foreach (var enemy in session.Enemies)
-                {
-                    if (!enemy.IsDead && !enemy.HasEscaped && Vector2.DistanceSquared(enemy.Position, projectile.Position) <= projectile.SplashRadius * projectile.SplashRadius)
-                        session.DamageResolver.Apply(enemy, projectile.Payload);
-                }
+                ApplySplash(session, projectile);
             }
             else if (projectile.Kind == ProjectileKind.Homing && projectile.SplashRadius > 0)
             {
-                foreach (var enemy in session.Enemies)
-                {
-                    if (!enemy.IsDead && !enemy.HasEscaped && Vector2.DistanceSquared(enemy.Position, projectile.Position) <= projectile.SplashRadius * projectile.SplashRadius)
-                        session.DamageResolver.Apply(enemy, projectile.Payload);
-                }
+                ApplySplash(session, projectile);
             }
             else if (projectile.Target is { IsDead: false, HasEscaped: false } target)
             {
@@ -56,5 +48,19 @@ public sealed class ProjectileSystem
             projectile.Expire();
         }
         _projectiles.RemoveAll(x => x.IsExpired);
+    }
+
+    private static void ApplySplash(MinimalBastion.GameSession session, ProjectileInstance projectile)
+    {
+        var radiusSquared = projectile.SplashRadius * projectile.SplashRadius;
+        IEnumerable<EnemyInstance> targets = session.Enemies.Where(enemy =>
+            !enemy.IsDead && !enemy.HasEscaped &&
+            Vector2.DistanceSquared(enemy.Position, projectile.Position) <= radiusSquared);
+        if (projectile.SplashTargetLimit > 0)
+            targets = targets
+                .OrderBy(enemy => Vector2.DistanceSquared(enemy.Position, projectile.Position))
+                .ThenBy(enemy => enemy.Id)
+                .Take(projectile.SplashTargetLimit);
+        foreach (var enemy in targets) session.DamageResolver.Apply(enemy, projectile.Payload);
     }
 }

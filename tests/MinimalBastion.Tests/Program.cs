@@ -180,6 +180,9 @@ internal static class Program
         var quake = mortar.Specializations.Single(x => x.Id == "quake_shell").Level;
         Check.True(salvo.AttacksPerSecond > quake.AttacksPerSecond && quake.SplashRadius > salvo.SplashRadius && quake.SlowPercent > 0,
             "Mortar branches separate frequent shells from wide control");
+        Check.True(mortar.Levels.Select(level => level.SplashTargetLimit).SequenceEqual(new[] { 6, 7, 8 }) &&
+            salvo.SplashTargetLimit == 7 && quake.SplashTargetLimit == 10,
+            "Mortar impact caps bound extreme crowd scaling while Quake owns wider control");
         var beacon = content.Towers["signal_beacon"];
         Check.True(beacon.Specializations.Any(x => x.Level.AuraAttackSpeedBonus >= 0.45f) &&
             beacon.Specializations.Any(x => x.Level.AuraRangeBonus >= 0.35f),
@@ -1158,7 +1161,7 @@ internal static class Program
             PurchaseCost = 1,
             Levels = new List<TowerLevelDefinition>
             {
-                new() { Range = 300, Damage = 40, AttacksPerSecond = 1, ProjectileSpeed = 100, SplashRadius = 45 }
+                new() { Range = 300, Damage = 40, AttacksPerSecond = 1, ProjectileSpeed = 100, SplashRadius = 45, SplashTargetLimit = 3 }
             }
         };
         var tower = new TowerInstance(8, definition, new Vector2(100, 150));
@@ -1168,6 +1171,35 @@ internal static class Program
         var shell = session.Projectiles.Projectiles.Single();
         Check.True(shell.AimPoint.X > target.Position.X + 5, "mortar leads moving target");
         Check.Nearly(0, shell.Payload.Status?.Magnitude ?? 0, "mortar no longer hides a slow effect");
+        Check.Equal(3, shell.CaptureCoOpState().SplashTargetLimit, "mortar cap survives active-projectile snapshots");
+
+        var capSession = Session();
+        var capDefinition = new TowerDefinition
+        {
+            Id = "capped_mortar",
+            DisplayName = "Capped Mortar",
+            Behavior = "splash_projectile",
+            PurchaseCost = 1,
+            Levels = new List<TowerLevelDefinition>
+            {
+                new() { Range = 300, Damage = 40, AttacksPerSecond = 1, ProjectileSpeed = 10_000, SplashRadius = 45, SplashTargetLimit = 3 }
+            }
+        };
+        var capTower = new TowerInstance(12, capDefinition, new Vector2(100, 150));
+        var crowded = Enumerable.Range(0, 5)
+            .Select(index => new EnemyInstance(20 + index, capSession.Content.Enemies["enemy"], capSession.Map.Path, 1, 1))
+            .ToArray();
+        capSession.Enemies.AddRange(crowded);
+        TowerBehaviorRegistry.Create("splash_projectile").Attack(new TowerInstanceContext
+        {
+            Tower = capTower,
+            Target = crowded[0],
+            Session = capSession
+        });
+        capSession.Projectiles.Update(1, capSession);
+        Check.Equal(3, crowded.Count(enemy => enemy.Health < enemy.MaxHealth), "mortar damages only its nearest capped targets");
+        Check.True(crowded.Take(3).All(enemy => enemy.Health < enemy.MaxHealth) && crowded.Skip(3).All(enemy => enemy.Health == enemy.MaxHealth),
+            "equal-distance mortar cap resolves deterministically by enemy id");
     }
 
     private static void TowerInformation()

@@ -82,6 +82,7 @@ public sealed class ProjectileRuntimeState
     public float Speed { get; set; }
     public int Kind { get; set; }
     public float SplashRadius { get; set; }
+    public int SplashTargetLimit { get; set; }
     public float Damage { get; set; }
     public float ArmorPierce { get; set; }
     public bool IgnoreShield { get; set; }

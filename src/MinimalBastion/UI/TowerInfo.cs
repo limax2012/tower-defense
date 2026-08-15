@@ -59,6 +59,7 @@ public static class TowerInfo
         if (level.ProjectileSpeed > 0) lines.Add($"PROJECTILE SPEED  {level.ProjectileSpeed:0}");
         if (level.PelletCount > 1) lines.Add($"PROJECTILES  {level.PelletCount}    SPREAD  {level.PelletSpreadDegrees:0.#} deg");
         if (level.SplashRadius > 0) lines.Add($"SPLASH RADIUS  {level.SplashRadius:0.#}");
+        if (level.SplashTargetLimit > 0) lines.Add($"IMPACT CAP  {level.SplashTargetLimit} TARGETS");
         if (level.SlowPercent > 0) lines.Add($"SLOW  {level.SlowPercent:P0} FOR {level.SlowDuration:0.#}s");
         if (level.BurnDamagePerSecond > 0)
         {
@@ -107,7 +108,9 @@ public static class TowerInfo
                 : $"Burn {level.BurnDamagePerSecond:0.#}/s; scorched armor -2",
             "armor_projectile" => level.ArmorReduction > 0 ? $"Pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0}" : $"Armor pierce {level.ArmorPierce:0}",
             "chain" => $"Chain {level.ChainCount}; +35% damage to slowed",
-            "splash_projectile" => $"Splash radius {level.SplashRadius:0}",
+            "splash_projectile" => level.SplashTargetLimit > 0
+                ? $"Splash radius {level.SplashRadius:0}; up to {level.SplashTargetLimit} targets"
+                : $"Splash radius {level.SplashRadius:0}",
             "beam" => $"Expose: +{level.ExposePercent:P0} all incoming damage for {level.ExposeDuration:0.#}s",
             "aura" => $"Aura +{level.AuraAttackSpeedBonus:P0} rate, +{level.AuraRangeBonus:P0} range",
             _ => "Reliable direct projectile"
@@ -177,6 +180,7 @@ public static class TowerInfo
         if (next.ArmorPierce != current.ArmorPierce)
             changes.Add($"PIERCE {current.ArmorPierce + powerBuff.ArmorPierceBonus:0.#}>{next.ArmorPierce + powerBuff.ArmorPierceBonus:0.#}");
         if (next.ChainCount != current.ChainCount) changes.Add($"CHAIN {current.ChainCount}>{next.ChainCount}");
+        if (next.SplashTargetLimit != current.SplashTargetLimit) changes.Add($"CAP {current.SplashTargetLimit}>{next.SplashTargetLimit}");
         return string.Join("  ", changes.Take(3));
 
         void Add(string label, float before, float after, string format)
@@ -199,6 +203,7 @@ public static class TowerInfo
         if (next.AuraRange != current.AuraRange && next.AuraRange > 0) changes.Add($"FIELD {next.AuraRange:0}");
         if (MathF.Abs(next.BurnDamagePerSecond - current.BurnDamagePerSecond) > 0.001f) changes.Add($"BURN {next.BurnDamagePerSecond:0.#}/s");
         if (next.SplashRadius > 0) changes.Add($"SPLASH {next.SplashRadius:0}");
+        if (next.SplashTargetLimit > 0) changes.Add($"CAP {next.SplashTargetLimit}");
         if (next.SlowPercent > current.SlowPercent) changes.Add($"SLOW {next.SlowPercent:P0}");
         if (next.ArmorPierce > current.ArmorPierce) changes.Add($"PIERCE {next.ArmorPierce:0}");
         if (next.PelletCount != current.PelletCount) changes.Add($"SHOTS {next.PelletCount}");

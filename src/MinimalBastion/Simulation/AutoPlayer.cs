@@ -294,12 +294,12 @@ public sealed class AutoPlayer
         UpgradeOption? best = null;
         foreach (var tower in session.Towers)
         {
-            var current = TowerValue(tower.Definition, tower.Level, threat);
+            var current = UpgradeValue(session, tower, tower.Level, threat);
             if (tower.RequiresSpecialization)
             {
                 foreach (var specialization in tower.Definition.Specializations.Where(x => x.UpgradeCost <= spendable))
                 {
-                    var next = TowerValue(tower.Definition, specialization.Level, threat);
+                    var next = UpgradeValue(session, tower, specialization.Level, threat);
                     Consider(new UpgradeOption(tower, specialization.Id,
                         MathF.Max(0.01f, next - current) * StrategyWeight(tower.Definition.Id, threat) *
                         SpecializationWeight(tower.Definition.Id, specialization.Id, threat) / specialization.UpgradeCost));
@@ -307,7 +307,7 @@ public sealed class AutoPlayer
                 continue;
             }
             if (!tower.CanUpgrade || tower.UpgradeCost > spendable) continue;
-            var linearNext = TowerValue(tower.Definition, tower.Definition.Levels[tower.LevelIndex + 1], threat);
+            var linearNext = UpgradeValue(session, tower, tower.Definition.Levels[tower.LevelIndex + 1], threat);
             Consider(new UpgradeOption(tower, null,
                 MathF.Max(0.01f, linearNext - current) * StrategyWeight(tower.Definition.Id, threat) / tower.UpgradeCost));
         }
@@ -320,6 +320,28 @@ public sealed class AutoPlayer
             option = option with { Score = score };
             if (best is null || score > best.Value.Score) best = option;
         }
+    }
+
+    private float UpgradeValue(GameSession session, TowerInstance tower, TowerLevelDefinition level, ThreatProfile threat)
+    {
+        if (!tower.IsSupport) return TowerValue(tower.Definition, level, threat);
+
+        // Support upgrades are positional decisions. A wider Horizon aura is
+        // valuable only when it actually reaches additional defenses, while a
+        // compact cluster should prefer Tempo's stronger rate multiplier.
+        var value = 1f;
+        foreach (var supported in session.Towers.Where(candidate => !candidate.IsSupport && candidate != tower))
+        {
+            if (Vector2.DistanceSquared(tower.Position, supported.Position) > level.AuraRange * level.AuraRange) continue;
+            var supportedLevel = supported.Level;
+            var throughput = supportedLevel.Damage * supportedLevel.AttacksPerSecond;
+            throughput *= 1f + MathF.Max(0, supportedLevel.PelletCount - 1) * 0.3f;
+            throughput += supportedLevel.ChainDamage * supportedLevel.ChainCount * supportedLevel.AttacksPerSecond * 0.35f;
+            throughput += supportedLevel.BurnDamagePerSecond * 0.5f;
+            throughput += supported.InvestedCredits * 0.018f;
+            value += 3f + throughput * (level.AuraAttackSpeedBonus + level.AuraRangeBonus * 0.42f);
+        }
+        return value;
     }
 
     private Vector2? FindBestPosition(GameSession session, TowerDefinition definition, ThreatProfile threat)

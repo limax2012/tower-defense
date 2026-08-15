@@ -53,6 +53,7 @@ internal static class SimulationCli
         PrintStrategySummary(runs);
         PrintMapSummary(runs);
         PrintTowerSummary(runs);
+        PrintSpecializationSummary(runs);
         Console.WriteLine($"Early calls earned {runs.Sum(x => x.EarlyStartCreditsEarned)} credits; overdrives {runs.Sum(x => x.Overdrives)}. Emergency defenses: {runs.Sum(x => x.EmergencyDeployments)} deployed, {runs.Sum(x => x.EmergencyTriggers)} triggers, {runs.Sum(x => x.EmergencyKills)} kills, {runs.Sum(x => x.EmergencyDamage):0} damage; generators {runs.Sum(x => x.GeneratorPurchases)}.");
 
         var root = FindProjectRoot();
@@ -107,6 +108,32 @@ internal static class SimulationCli
             .OrderByDescending(x => x.Damage);
         foreach (var row in towerRows)
             Console.WriteLine($"{row.Id,-20} picks {row.Picks,3}  upgrades {row.Upgrades,3}  damage {row.Damage,10:0}  damage/credit {(row.Spent == 0 ? 0 : row.Damage / row.Spent),6:0.0}");
+    }
+
+    private static void PrintSpecializationSummary(IEnumerable<SimulationRunResult> runs)
+    {
+        Console.WriteLine();
+        Console.WriteLine("FINAL SPECIALIZATIONS");
+        var rows = runs
+            .SelectMany(run => run.Towers.Values.SelectMany(tower => tower.Specializations.Select(choice => new
+            {
+                Tower = tower.TowerId,
+                Choice = choice.Key,
+                Picks = choice.Value,
+                WinningPicks = run.Won ? choice.Value : 0
+            })))
+            .GroupBy(row => (row.Tower, row.Choice))
+            .Select(group => new
+            {
+                group.Key.Tower,
+                group.Key.Choice,
+                Picks = group.Sum(row => row.Picks),
+                WinningPicks = group.Sum(row => row.WinningPicks)
+            })
+            .OrderBy(row => row.Tower)
+            .ThenBy(row => row.Choice);
+        foreach (var row in rows)
+            Console.WriteLine($"{row.Tower,-18} {row.Choice,-20} picks {row.Picks,4}  in winning runs {row.WinningPicks,4}");
     }
 
     private static string? ReadValue(string[] args, string name)

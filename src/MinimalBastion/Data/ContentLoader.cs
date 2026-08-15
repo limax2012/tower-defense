@@ -139,7 +139,7 @@ public static class DataValidator
         {
             var tower = towers[i];
             if (tower.PurchaseCost <= 0 || tower.Levels.Count != 3) throw new InvalidDataException($"Invalid tower: {tower.Id}");
-            if (tower.Levels.Any(x => x.Range < 0 || (!tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) && x.Range <= 0) || x.AttacksPerSecond < 0 || x.Damage < 0))
+            if (tower.Levels.Any(x => x.Range < 0 || (!tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) && x.Range <= 0) || x.AttacksPerSecond < 0 || x.Damage < 0 || x.SplashTargetLimit < 0))
                 throw new InvalidDataException($"Invalid tower levels: {tower.Id}");
             var protocol = tower.Protocol;
             if (string.IsNullOrWhiteSpace(protocol.DisplayName) || string.IsNullOrWhiteSpace(protocol.Summary) ||
@@ -154,7 +154,7 @@ public static class DataValidator
             if (tower.Specializations.Count is not 0 and not 2 ||
                 tower.Specializations.Any(x => string.IsNullOrWhiteSpace(x.Id) || string.IsNullOrWhiteSpace(x.DisplayName) ||
                     string.IsNullOrWhiteSpace(x.ShortLabel) || x.UpgradeCost <= 0 ||
-                    specializationNeedsCombatStats && (x.Level.Range <= 0 || x.Level.AttacksPerSecond <= 0 || x.Level.Damage < 0) ||
+                    specializationNeedsCombatStats && (x.Level.Range <= 0 || x.Level.AttacksPerSecond <= 0 || x.Level.Damage < 0 || x.Level.SplashTargetLimit < 0) ||
                     !specializationNeedsCombatStats && (x.Level.AuraRange <= 0 || x.Level.AuraAttackSpeedBonus < 0 || x.Level.AuraRangeBonus < 0)) ||
                 tower.Specializations.Select(x => x.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() != tower.Specializations.Count)
                 throw new InvalidDataException($"Invalid tower specializations: {tower.Id}");

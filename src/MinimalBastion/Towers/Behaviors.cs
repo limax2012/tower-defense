@@ -58,9 +58,9 @@ internal static class BehaviorHelpers
         };
     }
 
-    public static void Projectile(TowerInstanceContext context, EnemyInstance target, ProjectileKind kind, Vector2 aimPoint, float splashRadius, DamagePayload payload, float speed, Color color, float radius = 5f)
+    public static void Projectile(TowerInstanceContext context, EnemyInstance target, ProjectileKind kind, Vector2 aimPoint, float splashRadius, DamagePayload payload, float speed, Color color, float radius = 5f, int splashTargetLimit = 0)
     {
-        context.Session.Projectiles.Add(new ProjectileInstance(context.Tower.Position, aimPoint, target, speed, kind, splashRadius, payload, color, radius));
+        context.Session.Projectiles.Add(new ProjectileInstance(context.Tower.Position, aimPoint, target, speed, kind, splashRadius, payload, color, radius, splashTargetLimit));
     }
 }
 
@@ -165,7 +165,8 @@ public sealed class SplashProjectileBehavior : ITowerBehavior
         var status = BehaviorHelpers.Status(context, StatusType.Slow, level.SlowDuration, level.SlowPercent);
         var aimPoint = PredictImpactPoint(context, level.ProjectileSpeed);
         BehaviorHelpers.Projectile(context, context.Target, ProjectileKind.ImpactPoint, aimPoint, level.SplashRadius,
-            BehaviorHelpers.Payload(context, level, level.Damage, status), level.ProjectileSpeed, context.Tower.Definition.Visual.PrimaryColor, 7f);
+            BehaviorHelpers.Payload(context, level, level.Damage, status), level.ProjectileSpeed, context.Tower.Definition.Visual.PrimaryColor, 7f,
+            level.SplashTargetLimit);
     }
 
     private static Vector2 PredictImpactPoint(TowerInstanceContext context, float projectileSpeed)

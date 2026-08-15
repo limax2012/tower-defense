@@ -144,18 +144,18 @@
     "visual": { "shape": "circle", "primary": "#384E65", "accent": "#EC5062", "radius": 23, "marks": 1, "ring": true },
     "protocol": { "displayName": "Fire Mission", "summary": "Calls a sustained high-tempo bombardment", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.5, "damageBonus": 0.2, "rangeBonus": 0.1, "autoTriggerCount": 5 },
     "levels": [
-      { "range": 275, "damage": 42, "attacksPerSecond": 0.29, "projectileSpeed": 240, "splashRadius": 45, "upgradeCost": 240 },
-      { "range": 285, "damage": 58, "attacksPerSecond": 0.32, "projectileSpeed": 250, "splashRadius": 52, "upgradeCost": 360 },
-      { "range": 300, "damage": 78, "attacksPerSecond": 0.35, "projectileSpeed": 260, "splashRadius": 58, "upgradeCost": null }
+      { "range": 275, "damage": 42, "attacksPerSecond": 0.29, "projectileSpeed": 240, "splashRadius": 45, "splashTargetLimit": 6, "upgradeCost": 240 },
+      { "range": 285, "damage": 58, "attacksPerSecond": 0.32, "projectileSpeed": 250, "splashRadius": 52, "splashTargetLimit": 7, "upgradeCost": 360 },
+      { "range": 300, "damage": 78, "attacksPerSecond": 0.35, "projectileSpeed": 260, "splashRadius": 58, "splashTargetLimit": 8, "upgradeCost": null }
     ],
     "specializations": [
       {
         "id": "salvo_rack", "displayName": "Salvo Rack", "shortLabel": "SALVO", "summary": "Frequent compact predictive shells", "upgradeCost": 345,
-        "level": { "range": 292, "damage": 60, "attacksPerSecond": 0.48, "projectileSpeed": 310, "splashRadius": 48, "upgradeCost": null }
+        "level": { "range": 292, "damage": 60, "attacksPerSecond": 0.48, "projectileSpeed": 310, "splashRadius": 48, "splashTargetLimit": 7, "upgradeCost": null }
       },
       {
         "id": "quake_shell", "displayName": "Quake Shell", "shortLabel": "QUAKE", "summary": "Wide control impact with lower DPS", "upgradeCost": 365,
-        "level": { "range": 315, "damage": 74, "attacksPerSecond": 0.28, "projectileSpeed": 275, "splashRadius": 70, "slowPercent": 0.25, "slowDuration": 1.4, "upgradeCost": null }
+        "level": { "range": 315, "damage": 74, "attacksPerSecond": 0.28, "projectileSpeed": 275, "splashRadius": 70, "splashTargetLimit": 10, "slowPercent": 0.25, "slowDuration": 1.4, "upgradeCost": null }
       }
     ]
   },

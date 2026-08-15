@@ -183,7 +183,7 @@ public sealed class GameRenderer
             p.Ring(batch, generator.Position, visual.Radius + (session.IsCoOp ? 12 : 8), ColorPalette.Gold, 3);
     }
 
-    private static void DrawTowers(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    private void DrawTowers(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
         var time = session.Statistics.SimulatedSeconds;
         foreach (var tower in session.Towers)
@@ -209,8 +209,11 @@ public sealed class GameRenderer
             if (session.Map.GetPowerBuff(tower.Position).IsPowered)
                 p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 10, ColorPalette.WithAlpha(ColorPalette.Gold, 190), 12, 2);
             if (tower.IsOverdriven)
+            {
                 p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 15 + MathF.Sin(time * 8f) * 2f,
                     tower.Definition.Visual.PrimaryColor, 16, 3);
+                if (!ReducedEffects) DrawProtocolSignature(batch, p, tower, time);
+            }
             else if (session.AutoOverdriveTowerId == tower.Id)
                 DrawAutoProtocolEffect(batch, p, tower, time);
 
@@ -224,6 +227,81 @@ public sealed class GameRenderer
             if (tower.IsSupport)
                 p.DashedRing(batch, tower.Position, session.GetEffectiveAuraRange(tower), ColorPalette.WithAlpha(accent, 120), 28, 2);
         }
+    }
+
+    private static void DrawProtocolSignature(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)
+    {
+        var position = tower.Position;
+        var radius = tower.Definition.Visual.Radius;
+        var color = ColorPalette.WithAlpha(tower.Definition.Visual.AccentColor, 220);
+        var rotation = time * 2.8f + tower.Id * 0.17f;
+        var pulse = (MathF.Sin(time * 9f + tower.Id) + 1f) * 0.5f;
+
+        switch (tower.Definition.Id)
+        {
+            case "needle_turret":
+                DrawOrbitMarkers(batch, p, position, radius + 9, rotation, 3, 3.2f, "diamond", color);
+                break;
+            case "frost_spire":
+                p.Ring(batch, position, radius + 5 + pulse * 6, color, 2);
+                p.DashedRing(batch, position, radius + 15, ColorPalette.WithAlpha(ColorPalette.Slow, 180), 12, 2);
+                break;
+            case "shard_fan":
+                DrawRadialSpokes(batch, p, position, radius + 4, radius + 17 + pulse * 3, rotation, 3, color, 3);
+                break;
+            case "watchtower":
+                DrawCrosshair(batch, p, position, radius + 7, 8 + pulse * 3, color);
+                break;
+            case "ember_coil":
+                p.DashedRing(batch, position, radius + 7 + pulse * 7, ColorPalette.WithAlpha(ColorPalette.Orange, 215), 10, 3);
+                break;
+            case "breaker_cannon":
+                DrawOrbitMarkers(batch, p, position, radius + 10 + pulse * 2, rotation * 0.45f, 4, 3.4f, "diamond", color);
+                break;
+            case "arc_relay":
+                DrawRadialSpokes(batch, p, position, radius + 3, radius + 14 + pulse * 5, rotation, 6, color, 2);
+                break;
+            case "siege_mortar":
+                p.Ring(batch, position, radius + 7 + pulse * 4, color, 3);
+                DrawRadialSpokes(batch, p, position, radius + 10, radius + 18, -MathHelper.PiOver2, 3, color, 2);
+                break;
+            case "prism_beam":
+                DrawRadialSpokes(batch, p, position, 5, radius + 16 + pulse * 3, rotation, 3, color, 2);
+                break;
+            case "signal_beacon":
+                DrawOrbitMarkers(batch, p, position, radius + 10, -rotation * 0.7f, 4, 3f, "square", color);
+                break;
+        }
+    }
+
+    private static void DrawOrbitMarkers(SpriteBatch batch, PrimitiveRenderer p, Vector2 center, float radius,
+        float rotation, int count, float markerRadius, string shape, Color color)
+    {
+        for (var index = 0; index < count; index++)
+        {
+            var angle = rotation + MathHelper.TwoPi * index / count;
+            var marker = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * radius;
+            p.DrawShape(batch, marker, (int)MathF.Round(markerRadius), shape, color, ColorPalette.Paper, 0, false);
+        }
+    }
+
+    private static void DrawRadialSpokes(SpriteBatch batch, PrimitiveRenderer p, Vector2 center, float innerRadius,
+        float outerRadius, float rotation, int count, Color color, float thickness)
+    {
+        for (var index = 0; index < count; index++)
+        {
+            var angle = rotation + MathHelper.TwoPi * index / count;
+            var direction = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+            p.Line(batch, center + direction * innerRadius, center + direction * outerRadius, color, thickness);
+        }
+    }
+
+    private static void DrawCrosshair(SpriteBatch batch, PrimitiveRenderer p, Vector2 center, float radius, float length, Color color)
+    {
+        p.Line(batch, center + new Vector2(-radius - length, 0), center + new Vector2(-radius, 0), color, 2);
+        p.Line(batch, center + new Vector2(radius, 0), center + new Vector2(radius + length, 0), color, 2);
+        p.Line(batch, center + new Vector2(0, -radius - length), center + new Vector2(0, -radius), color, 2);
+        p.Line(batch, center + new Vector2(0, radius), center + new Vector2(0, radius + length), color, 2);
     }
 
     private static void DrawAutoProtocolEffect(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)

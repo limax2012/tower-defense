@@ -1068,6 +1068,25 @@ public sealed class Game1 : Game
     private void ApplyUserSettings()
     {
         _settings.Normalize();
+        try
+        {
+            ApplyGraphicsSettings();
+            UserSettingsStore.Save(_settings);
+            _ui.SetSettingsStatus("Settings saved. Tactical canvas, geometry, and palette are unchanged.");
+        }
+        catch (Exception exception)
+        {
+            _settings.Fullscreen = false;
+            _settings.WindowWidth = GameConstants.LogicalWidth;
+            _settings.WindowHeight = GameConstants.LogicalHeight;
+            try { ApplyGraphicsSettings(); } catch { }
+            try { UserSettingsStore.Save(_settings); } catch { }
+            _ui.SetSettingsStatus($"Display mode was unsupported; restored 1280 x 720 windowed. {exception.GetBaseException().Message}");
+        }
+    }
+
+    private void ApplyGraphicsSettings()
+    {
         _graphics.PreferredBackBufferWidth = _settings.WindowWidth;
         _graphics.PreferredBackBufferHeight = _settings.WindowHeight;
         _graphics.SynchronizeWithVerticalRetrace = _settings.VSync;
@@ -1076,7 +1095,6 @@ public sealed class Game1 : Game
         _graphics.ApplyChanges();
         _gameRenderer.ReducedEffects = _settings.ReducedEffects;
         if (_audio is not null) _audio.Volume = _settings.SfxVolume;
-        UserSettingsStore.Save(_settings);
     }
 
     private void AssignSession(GameSession? session)

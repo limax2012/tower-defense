@@ -39,6 +39,7 @@ public sealed class ProjectileInstance
     public float Speed { get; }
     public ProjectileKind Kind { get; }
     public float SplashRadius { get; }
+    public int SplashTargetLimit { get; }
     public DamagePayload Payload { get; }
     public bool IsExpired { get; private set; }
     public Color Color { get; }
@@ -53,7 +54,8 @@ public sealed class ProjectileInstance
         float splashRadius,
         DamagePayload payload,
         Color color,
-        float radius)
+        float radius,
+        int splashTargetLimit = 0)
     {
         Position = position;
         AimPoint = aimPoint;
@@ -64,6 +66,7 @@ public sealed class ProjectileInstance
         Payload = payload;
         Color = color;
         Radius = radius;
+        SplashTargetLimit = Math.Max(0, splashTargetLimit);
     }
 
     public bool Update(float deltaSeconds)
@@ -93,6 +96,7 @@ public sealed class ProjectileInstance
         Speed = Speed,
         Kind = (int)Kind,
         SplashRadius = SplashRadius,
+        SplashTargetLimit = SplashTargetLimit,
         Damage = Payload.Damage,
         ArmorPierce = Payload.ArmorPierce,
         IgnoreShield = Payload.IgnoreShield,
@@ -125,7 +129,8 @@ public sealed class ProjectileInstance
                 SourceTowerId = data.SourceTowerId
             },
             new Color(data.PackedColor),
-            MathF.Max(0, data.Radius));
+            MathF.Max(0, data.Radius),
+            Math.Max(0, data.SplashTargetLimit));
     }
 }
 

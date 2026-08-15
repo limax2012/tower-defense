@@ -42,7 +42,7 @@ public sealed class AudioManager : IDisposable
         session.TowerPlaced += _ => Play(Cue.Place, 0.72f);
         session.TowerUpgraded += (_, _) => Play(Cue.Upgrade, 0.78f);
         session.TowerSold += (_, _) => Play(Cue.Sell, 0.62f);
-        session.TowerOverdriven += _ => Play(Cue.Protocol, 0.9f);
+        session.TowerOverdriven += tower => Play(Cue.Protocol, 0.9f, ProtocolPitch(tower.Definition.Id));
         session.EnemyKilled += _ => PlayKill();
         session.EnemyEscaped += _ => Play(Cue.Leak, 0.9f);
         session.EmergencyDefenseTriggered += (_, _) => Play(Cue.Plate, 0.72f);
@@ -60,11 +60,32 @@ public sealed class AudioManager : IDisposable
         Play(Cue.Kill, 0.28f);
     }
 
-    private void Play(Cue cue, float cueVolume)
+    private void Play(Cue cue, float cueVolume, float pitch = 0)
     {
         if (_disposed || Volume <= 0 || !_sounds.TryGetValue(cue, out var sound)) return;
-        sound.Play(Math.Clamp(Volume * cueVolume, 0, 1), 0, 0);
+        try { sound.Play(Math.Clamp(Volume * cueVolume, 0, 1), Math.Clamp(pitch, -1, 1), 0); }
+        catch
+        {
+            // Audio is presentational only. A device disappearing mid-match must
+            // never interrupt the deterministic game session.
+            Volume = 0;
+        }
     }
+
+    private static float ProtocolPitch(string towerId) => towerId.ToLowerInvariant() switch
+    {
+        "siege_mortar" => -0.25f,
+        "breaker_cannon" => -0.16f,
+        "ember_coil" => -0.08f,
+        "watchtower" => -0.03f,
+        "needle_turret" => 0.04f,
+        "shard_fan" => 0.10f,
+        "signal_beacon" => 0.14f,
+        "frost_spire" => 0.18f,
+        "arc_relay" => 0.22f,
+        "prism_beam" => 0.28f,
+        _ => 0
+    };
 
     private static SoundEffect CreateTone(float startFrequency, float endFrequency, float seconds, WaveShape shape)
     {

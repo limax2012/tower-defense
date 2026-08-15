@@ -80,6 +80,7 @@ public sealed class UIManager
     private bool _readOnlyInspection;
     private bool _towerLibraryOpen;
     private UserSettings _settings = new();
+    private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
     private int _towerLibraryIndex;
     private IReadOnlyList<TowerDefinition> _libraryTowers = Array.Empty<TowerDefinition>();
     private readonly Rectangle _mapButton = new(500, 370, 190, 40);
@@ -139,6 +140,7 @@ public sealed class UIManager
     public int SelectedSaveSlot => _selectedSaveSlot;
 
     public void ConfigureSettings(UserSettings settings) => _settings = settings;
+    public void SetSettingsStatus(string status) => _settingsStatus = status;
 
     public static string PauseCheckpointStatus(bool canSave) => canSave
         ? "Between waves - save slots are available."
@@ -1182,6 +1184,7 @@ public sealed class UIManager
 
         DrawText(batch, "Rendering remains crisp at every output size through the fixed high-resolution scene target.",
             new Vector2(640, 540), ColorPalette.Muted, 0.54f, true);
+        DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 574), ColorPalette.Cobalt, 0.50f, 820);
     }
 
     private void DrawSaveSlots(SpriteBatch batch, PrimitiveRenderer p)
@@ -1612,7 +1615,9 @@ public sealed class UIManager
             "burn_projectile" => $"Burn {level.BurnDamagePerSecond:0.#}/s",
             "armor_projectile" => $"Pierce {level.ArmorPierce:0.#}",
             "chain" => $"Chain {level.ChainCount} targets",
-            "splash_projectile" => $"Splash {level.SplashRadius:0} px",
+            "splash_projectile" => level.SplashTargetLimit > 0
+                ? $"Splash {level.SplashRadius:0}; cap {level.SplashTargetLimit}"
+                : $"Splash {level.SplashRadius:0} px",
             "beam" => $"Expose +{level.ExposePercent:P0} all incoming damage",
             _ => "Reliable direct fire"
         };

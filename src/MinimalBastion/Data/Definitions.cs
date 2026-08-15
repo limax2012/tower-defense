@@ -161,6 +161,7 @@ public sealed class TowerLevelDefinition
     public int PelletCount { get; set; } = 1;
     public float PelletSpreadDegrees { get; set; }
     public float SplashRadius { get; set; }
+    public int SplashTargetLimit { get; set; }
     public int ChainCount { get; set; }
     public float ChainDamage { get; set; }
     public float ChainRange { get; set; }
