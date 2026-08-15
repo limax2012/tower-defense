@@ -42,6 +42,7 @@ internal static class Program
             ("high-resolution viewport", HighResolutionViewport),
             ("tactical color palette", TacticalColorPalette),
             ("map roster and power nodes", MapRosterAndPowerNodes),
+            ("difficulty profiles and persistence", DifficultyProfilesAndPersistence),
             ("power node tower intel", PowerNodeTowerIntel),
             ("pause UI glyph coverage", PauseUiGlyphCoverage),
             ("opening wave balance", OpeningWaveBalance),
@@ -80,7 +81,8 @@ internal static class Program
             ("charge forge production", ChargeForgeProduction),
             ("checkpoint round trip", CheckpointRoundTrip),
             ("independent solo and co-op save slots", IndependentSaveSlots),
-            ("headless simulation deterministic", HeadlessSimulationDeterministic)
+            ("headless simulation deterministic", HeadlessSimulationDeterministic),
+            ("simulation campaign default", SimulationCampaignDefault)
         };
 
         var failed = 0;
@@ -99,6 +101,13 @@ internal static class Program
         }
         Console.WriteLine($"{tests.Length - failed}/{tests.Length} tests passed");
         return failed == 0 ? 0 : 1;
+    }
+
+    private static void SimulationCampaignDefault()
+    {
+        Check.Equal(20, SimulationCli.ResolveMaximumWave(["--simulate-full"], 20), "default simulation wave cap");
+        Check.Equal(30, SimulationCli.ResolveMaximumWave(["--simulate-full", "--max-wave", "30"], 20), "explicit endless wave cap");
+        Check.Equal(1, SimulationCli.ResolveMaximumWave(["--simulate", "--max-wave=0"], 20), "minimum explicit wave cap");
     }
 
     private static void ContentCounts()
@@ -156,6 +165,46 @@ internal static class Program
         Check.True(searing.BurnDamagePerSecond >= wildfire.BurnDamagePerSecond * 2f && searing.ArmorPierce > 0,
             "Searing owns durable single-target burn");
         Check.True(new[] { "needle_turret", "frost_spire", "ember_coil", "breaker_cannon" }.All(id => content.Towers[id].Specializations.Count == 2), "branching tower roster");
+    }
+
+    private static void DifficultyProfilesAndPersistence()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        Check.Equal(4, content.Difficulties.Count, "difficulty count");
+
+        var hard = new GameSession(content, "foundry_loop", "hard");
+        var normal = new GameSession(content, "foundry_loop", "normal");
+        var easy = new GameSession(content, "foundry_loop", "easy");
+        Check.Equal(400, hard.Economy.Credits, "hard preserves original starting credits");
+        Check.Equal(20, hard.Economy.StartingLives, "hard preserves original starting lives");
+        Check.Equal(450, normal.Economy.Credits, "normal starting credit allowance");
+        Check.Equal(24, normal.Economy.StartingLives, "normal starting lives");
+        Check.Equal(500, easy.Economy.Credits, "easy starting credit allowance");
+        Check.Equal(30, easy.Economy.StartingLives, "easy starting lives");
+
+        hard.SpawnEnemy("t1_crawler", 1, 1);
+        normal.SpawnEnemy("t1_crawler", 1, 1);
+        Check.Nearly(70, hard.Enemies[0].MaxHealth, "hard keeps authored enemy health");
+        Check.Nearly(63, normal.Enemies[0].MaxHealth, "normal applies its enemy health profile");
+        Check.Nearly(68.6f, normal.Enemies[0].CurrentSpeed, "normal applies its enemy speed profile");
+
+        var normalPersist = new GameSession(content, "foundry_loop", "normal");
+        var normalSave = normalPersist.CaptureSaveGame();
+        Check.Equal("normal", normalSave.DifficultyId, "save captures difficulty");
+        Check.Equal("normal", GameSession.RestoreSaveGame(content, normalSave).DifficultyId, "save restores difficulty");
+        var snapshot = normalPersist.CaptureCoOpState(4, 0, false);
+        Check.Equal("normal", GameSession.RestoreCoOpState(content, snapshot, 2).DifficultyId, "co-op snapshot restores difficulty");
+
+        normalSave.DifficultyId = "";
+        Check.Equal("hard", GameSession.RestoreSaveGame(content, normalSave).DifficultyId, "legacy saves retain original hard rules");
+        Check.True(SessionChecksum.Compute(hard, 0) != SessionChecksum.Compute(easy, 0), "difficulty identity contributes to checksum");
+
+        var ui = new UIManager(null!);
+        ui.ConfigureDifficulties(content.Difficulties.Values);
+        Check.Equal("normal", ui.SelectedDifficultyId, "new game UI defaults to normal");
+        ui.HandleMainMenu(WorldInput(new Vector2(740, 390)) with { LeftPressed = true });
+        Check.Equal("hard", ui.SelectedDifficultyId, "difficulty selector cycles profiles");
     }
 
     private static void HighResolutionViewport()

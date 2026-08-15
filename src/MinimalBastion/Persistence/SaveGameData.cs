@@ -9,6 +9,7 @@ public sealed class SaveGameData
     public DateTime SavedAtUtc { get; set; } = DateTime.UtcNow;
     public bool IsCoOp { get; set; }
     public string MapId { get; set; } = "";
+    public string DifficultyId { get; set; } = "";
     public float Speed { get; set; } = 1f;
     public float OverdriveCooldownRemaining { get; set; }
     public int EmergencyInventory { get; set; }

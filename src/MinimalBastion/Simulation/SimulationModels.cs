@@ -1,4 +1,5 @@
 using MinimalBastion.Core;
+using MinimalBastion.Data;
 
 namespace MinimalBastion.Simulation;
 
@@ -23,6 +24,7 @@ public sealed class SimulationOptions
     public int Seed { get; init; } = 1337;
     public AutoPlayerStrategy Strategy { get; init; } = AutoPlayerStrategy.Adaptive;
     public string? MapId { get; init; }
+    public string DifficultyId { get; init; } = DifficultyCatalog.LegacyId;
     public float StepSeconds { get; init; } = 0.05f;
     public float MaximumSimulatedSeconds { get; init; } = 3_600f;
     public int MaximumWave { get; init; } = int.MaxValue;
@@ -32,6 +34,7 @@ public sealed class SimulationOptions
 public sealed class SimulationRunResult
 {
     public required string MapId { get; init; }
+    public required string DifficultyId { get; init; }
     public required AutoPlayerStrategy Strategy { get; init; }
     public required int Seed { get; init; }
     public required string Result { get; init; }

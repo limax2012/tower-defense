@@ -1,0 +1,42 @@
+[
+  {
+    "id": "easy",
+    "displayName": "Easy",
+    "description": "More room to experiment and recover from leaks.",
+    "enemyHealthMultiplier": 0.80,
+    "enemySpeedMultiplier": 0.95,
+    "startingCreditsMultiplier": 1.25,
+    "startingLives": 30,
+    "accent": "#2AC275"
+  },
+  {
+    "id": "normal",
+    "displayName": "Normal",
+    "description": "A balanced defense with a little strategic breathing room.",
+    "enemyHealthMultiplier": 0.90,
+    "enemySpeedMultiplier": 0.98,
+    "startingCreditsMultiplier": 1.125,
+    "startingLives": 24,
+    "accent": "#2C7AE7"
+  },
+  {
+    "id": "hard",
+    "displayName": "Hard",
+    "description": "The original uncompromised defense economy and threat level.",
+    "enemyHealthMultiplier": 1.0,
+    "enemySpeedMultiplier": 1.0,
+    "startingCreditsMultiplier": 1.0,
+    "startingLives": 20,
+    "accent": "#EC5062"
+  },
+  {
+    "id": "bastion",
+    "displayName": "Bastion",
+    "description": "A severe tactical test with tougher, faster threats and little margin.",
+    "enemyHealthMultiplier": 1.15,
+    "enemySpeedMultiplier": 1.04,
+    "startingCreditsMultiplier": 1.0,
+    "startingLives": 15,
+    "accent": "#7C53DA"
+  }
+]

@@ -11,7 +11,43 @@ public sealed class GameContent
     public required WaveSetDefinition Waves { get; init; }
     public Dictionary<string, MapDefinition> Maps { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, WaveSetDefinition> WaveSets { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, DifficultyDefinition> Difficulties { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public TacticsDefinition Tactics { get; init; } = new();
+}
+
+public sealed class DifficultyDefinition
+{
+    public string Id { get; set; } = "hard";
+    public string DisplayName { get; set; } = "Hard";
+    public string Description { get; set; } = "The original uncompromised defense.";
+    public float EnemyHealthMultiplier { get; set; } = 1f;
+    public float EnemySpeedMultiplier { get; set; } = 1f;
+    public float StartingCreditsMultiplier { get; set; } = 1f;
+    public int StartingLives { get; set; } = 20;
+    public string Accent { get; set; } = "#EC5062";
+    public Color AccentColor => TowerVisualData.ParseColor(Accent);
+}
+
+public static class DifficultyCatalog
+{
+    public const string DefaultId = "normal";
+    public const string LegacyId = "hard";
+
+    private static readonly DifficultyDefinition LegacyDifficulty = new();
+
+    public static DifficultyDefinition Resolve(GameContent content, string? difficultyId)
+    {
+        var requested = string.IsNullOrWhiteSpace(difficultyId) ? LegacyId : difficultyId;
+        if (content.Difficulties.TryGetValue(requested, out var difficulty)) return difficulty;
+        if (content.Difficulties.Count > 0) throw new ArgumentException($"Unknown difficulty profile '{requested}'.", nameof(difficultyId));
+        return LegacyDifficulty;
+    }
+
+    public static int StartingCredits(MapDefinition map, DifficultyDefinition difficulty)
+    {
+        var baseCredits = map.StartingCredits > 0 ? map.StartingCredits : Core.GameConstants.StartingCredits;
+        return Math.Max(0, (int)MathF.Round(baseCredits * difficulty.StartingCreditsMultiplier / 5f) * 5);
+    }
 }
 
 public sealed class TacticsDefinition

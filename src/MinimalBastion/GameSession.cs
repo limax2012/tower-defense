@@ -30,6 +30,8 @@ public sealed class GameSession
     private int _nextEmergencyDefenseId = 1;
 
     public GameContent Content => _content;
+    public DifficultyDefinition Difficulty { get; }
+    public string DifficultyId => Difficulty.Id;
     public MapRuntime Map { get; }
     public EconomyService Economy { get; }
     public WaveManager Waves { get; }
@@ -96,14 +98,14 @@ public sealed class GameSession
     public event Action<ChargeForgeInstance, int>? GeneratorSold;
     public event Action? EmergencyChargeProduced;
 
-    public GameSession(GameContent content, string? mapId = null)
+    public GameSession(GameContent content, string? mapId = null, string? difficultyId = null)
     {
         _content = content;
         var mapDefinition = mapId is not null && content.Maps.TryGetValue(mapId, out var selectedMap) ? selectedMap : content.Map;
         var waveSet = content.WaveSets.TryGetValue(mapDefinition.WaveSet, out var selectedWaves) ? selectedWaves : content.Waves;
+        Difficulty = DifficultyCatalog.Resolve(content, difficultyId);
         Map = new MapRuntime(mapDefinition);
-        Economy = new EconomyService(mapDefinition.StartingCredits > 0 ? mapDefinition.StartingCredits : GameConstants.StartingCredits,
-            mapDefinition.StartingLives > 0 ? mapDefinition.StartingLives : GameConstants.StartingLives);
+        Economy = new EconomyService(DifficultyCatalog.StartingCredits(mapDefinition, Difficulty), Difficulty.StartingLives);
         Waves = new WaveManager(waveSet.Waves);
         DamageResolver = new DamageResolver(this);
         Statistics = new RunStatistics(this);
@@ -608,7 +610,10 @@ public sealed class GameSession
     public void SpawnEnemy(string enemyId, float healthMultiplier, float speedMultiplier, string rank = "Standard")
     {
         if (!_content.Enemies.TryGetValue(enemyId, out var definition)) return;
-        var enemy = new EnemyInstance(_nextEnemyId++, definition, Map.Path, healthMultiplier, speedMultiplier, rank);
+        var enemy = new EnemyInstance(_nextEnemyId++, definition, Map.Path,
+            healthMultiplier * Difficulty.EnemyHealthMultiplier,
+            speedMultiplier * Difficulty.EnemySpeedMultiplier,
+            rank);
         Enemies.Add(enemy);
         if (enemy.IsBoss)
         {
@@ -681,6 +686,7 @@ public sealed class GameSession
         {
             IsCoOp = IsCoOp,
             MapId = Map.Definition.Id,
+            DifficultyId = DifficultyId,
             Speed = Speed,
             OverdriveCooldownRemaining = OverdriveCooldownRemaining,
             EmergencyInventory = EmergencyInventory,
@@ -700,6 +706,7 @@ public sealed class GameSession
     public CoOpStateSnapshot CaptureCoOpState(long tick, int readyMask, bool waveStartQueued, bool waveEarlyBonusQueued = false) => new()
     {
         MapId = Map.Definition.Id,
+        DifficultyId = DifficultyId,
         Tick = Math.Max(0, tick),
         ReadyMask = readyMask,
         WaveStartQueued = waveStartQueued,
@@ -735,7 +742,7 @@ public sealed class GameSession
         var knownMap = content.Maps.ContainsKey(data.MapId) || content.Map.Id.Equals(data.MapId, StringComparison.OrdinalIgnoreCase);
         if (!knownMap) throw new InvalidDataException($"Network map '{data.MapId}' is not available.");
 
-        var session = new GameSession(content, data.MapId);
+        var session = new GameSession(content, data.MapId, data.DifficultyId);
         session.ConfigureCoOp(localPlayerId);
         session.Economy.RestoreSaveData(data.Economy);
         session.Waves.RestoreCoOpState(data.Waves);
@@ -788,7 +795,7 @@ public sealed class GameSession
         var knownMap = content.Maps.ContainsKey(data.MapId) || content.Map.Id.Equals(data.MapId, StringComparison.OrdinalIgnoreCase);
         if (!knownMap) throw new InvalidDataException($"Saved map '{data.MapId}' is not available.");
 
-        var session = new GameSession(content, data.MapId);
+        var session = new GameSession(content, data.MapId, data.DifficultyId);
         if (data.IsCoOp) session.ConfigureCoOp(1);
         session.Economy.RestoreSaveData(data.Economy);
         session.Waves.RestoreSaveData(data.Waves);

@@ -85,6 +85,7 @@ public static class SessionChecksum
         var hash = Offset;
         Add(ref hash, tick);
         Add(ref hash, session.Map.Definition.Id);
+        Add(ref hash, session.DifficultyId);
         Add(ref hash, session.CurrentWave);
         Add(ref hash, session.Speed);
         Add(ref hash, session.IsVictory ? 1 : 0);

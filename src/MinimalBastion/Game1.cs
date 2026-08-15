@@ -102,6 +102,7 @@ public sealed class Game1 : Game
             var font = Content.Load<SpriteFont>("Fonts/Interface");
             _ui = new UIManager(font);
             _ui.ConfigureMaps(_content.Maps.Values);
+            _ui.ConfigureDifficulties(_content.Difficulties.Values);
             _ui.ConfigureTowerLibrary(_content.Towers.Values);
             _ui.SetSaveState(SaveGameStore.Exists);
             _debug = new DebugOverlay(font);
@@ -224,7 +225,7 @@ public sealed class Game1 : Game
     {
         if (action == UiAction.Play)
         {
-            _session = new GameSession(_content, _ui.SelectedMapId);
+            _session = new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId);
             _lastAutosavedWave = -1;
             _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
             _state = GameState.Playing;
@@ -391,7 +392,7 @@ public sealed class Game1 : Game
     {
         if (_session is null)
         {
-            _session = new GameSession(_content, _ui.SelectedMapId);
+            _session = new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId);
             _session.ConfigureCoOp(1);
         }
         else if (!_session.IsCoOp)
@@ -831,7 +832,8 @@ public sealed class Game1 : Game
             return;
         }
         var mapId = _session?.Map.Definition.Id ?? _ui.SelectedMapId;
-        _session = new GameSession(_content, mapId);
+        var difficultyId = _session?.DifficultyId ?? _ui.SelectedDifficultyId;
+        _session = new GameSession(_content, mapId, difficultyId);
         _lastAutosavedWave = -1;
         _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
         _state = GameState.Playing;
@@ -858,7 +860,8 @@ public sealed class Game1 : Game
     {
         if (!_isNetworkHost || _session is null || _coOpConnection is null) return;
         var mapId = _session.Map.Definition.Id;
-        _session = new GameSession(_content, mapId);
+        var difficultyId = _session.DifficultyId;
+        _session = new GameSession(_content, mapId, difficultyId);
         _session.ConfigureCoOp(1);
         _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
         _lastAutosavedWave = -1;

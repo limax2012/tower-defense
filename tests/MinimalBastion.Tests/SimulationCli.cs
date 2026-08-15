@@ -21,9 +21,10 @@ internal static class SimulationCli
         var maps = selectedMap is not null && content.Maps.ContainsKey(selectedMap)
             ? new[] { selectedMap }
             : deep ? content.Maps.Keys.OrderBy(x => x).ToArray() : new[] { content.Map.Id };
-        var maximumWave = int.TryParse(ReadValue(args, "--max-wave"), out var parsedMaximumWave)
-            ? Math.Max(1, parsedMaximumWave)
-            : int.MaxValue;
+        var maximumWave = ResolveMaximumWave(args, content.Waves.Waves.Count);
+        var difficultyId = ReadValue(args, "--difficulty") ?? DifficultyCatalog.LegacyId;
+        if (!content.Difficulties.ContainsKey(difficultyId))
+            throw new ArgumentException($"Unknown difficulty '{difficultyId}'. Choose one of: {string.Join(", ", content.Difficulties.Keys.OrderBy(x => x))}.");
 
         var runs = new List<SimulationRunResult>();
         foreach (var mapId in maps)
@@ -37,11 +38,12 @@ internal static class SimulationCli
                         Strategy = strategy,
                         Seed = seed,
                         MapId = mapId,
+                        DifficultyId = difficultyId,
                         MaximumWave = maximumWave,
                         ContinueEndless = maximumWave > content.Waves.Waves.Count
                     });
                     runs.Add(result);
-                    Console.WriteLine($"{mapId,-15} {strategy,-16} seed {seed,7}  {result.Result,-7}  wave {result.WaveReached,2}  lives {result.LivesRemaining,2}  spent {result.CreditsSpent,5}  towers {result.Towers.Values.Sum(x => x.Purchases),2}  plates {result.EmergencyDeployments,2}");
+                    Console.WriteLine($"{mapId,-15} {difficultyId,-8} {strategy,-16} seed {seed,7}  {result.Result,-7}  wave {result.WaveReached,2}  lives {result.LivesRemaining,2}  spent {result.CreditsSpent,5}  towers {result.Towers.Values.Sum(x => x.Purchases),2}  plates {result.EmergencyDeployments,2}");
                 }
             }
 
@@ -62,6 +64,13 @@ internal static class SimulationCli
         File.WriteAllText(output, JsonSerializer.Serialize(batch, jsonOptions));
         Console.WriteLine($"Machine-readable report: {output}");
         return 0;
+    }
+
+    internal static int ResolveMaximumWave(string[] args, int campaignWaveCount)
+    {
+        return int.TryParse(ReadValue(args, "--max-wave"), out var parsedMaximumWave)
+            ? Math.Max(1, parsedMaximumWave)
+            : Math.Max(1, campaignWaveCount);
     }
 
     private static void PrintMapSummary(IEnumerable<SimulationRunResult> runs)

@@ -9,6 +9,7 @@ public sealed class CoOpStateSnapshot
     public const int CurrentSchemaVersion = 1;
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public string MapId { get; set; } = "";
+    public string DifficultyId { get; set; } = "";
     public long Tick { get; set; }
     public int ReadyMask { get; set; }
     public bool WaveStartQueued { get; set; }

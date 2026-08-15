@@ -17,6 +17,7 @@ public sealed class ContentLoader
         var towers = Read<List<TowerDefinition>>("Towers.json");
         var enemies = Read<List<EnemyDefinition>>("Enemies.json");
         var tactics = Read<TacticsDefinition>("Tactics.json");
+        var difficulties = Read<List<DifficultyDefinition>>("Difficulties.json");
         var maps = LoadMaps();
         var waveSets = LoadWaveSets();
         if (!maps.TryGetValue("foundry_loop", out var map)) throw new InvalidDataException("No foundry_loop map was found.");
@@ -27,6 +28,7 @@ public sealed class ContentLoader
                 throw new InvalidDataException($"No wave set found for map {candidateMap.Id}: {candidateMap.WaveSet}");
             DataValidator.Validate(towers, enemies, candidateMap, candidateWaves, tactics);
         }
+        DataValidator.ValidateDifficulties(difficulties);
 
         return new GameContent
         {
@@ -36,6 +38,7 @@ public sealed class ContentLoader
             Waves = waves,
             Maps = maps,
             WaveSets = waveSets,
+            Difficulties = difficulties.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase),
             Tactics = tactics
         };
     }
@@ -81,6 +84,18 @@ public sealed class ContentLoader
 
 public static class DataValidator
 {
+    public static void ValidateDifficulties(IReadOnlyList<DifficultyDefinition> difficulties)
+    {
+        if (difficulties.Count < 3) throw new InvalidDataException("At least three difficulty profiles are required.");
+        RequireUnique(difficulties.Select(x => x.Id), "difficulty");
+        if (!difficulties.Any(x => x.Id.Equals(DifficultyCatalog.DefaultId, StringComparison.OrdinalIgnoreCase)) ||
+            !difficulties.Any(x => x.Id.Equals(DifficultyCatalog.LegacyId, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidDataException("Difficulty profiles must include normal and hard.");
+        if (difficulties.Any(x => string.IsNullOrWhiteSpace(x.DisplayName) || x.EnemyHealthMultiplier <= 0 ||
+            x.EnemySpeedMultiplier <= 0 || x.StartingCreditsMultiplier < 0 || x.StartingLives <= 0))
+            throw new InvalidDataException("Invalid difficulty profile.");
+    }
+
     public static void Validate(
         IReadOnlyList<TowerDefinition> towers,
         IReadOnlyList<EnemyDefinition> enemies,

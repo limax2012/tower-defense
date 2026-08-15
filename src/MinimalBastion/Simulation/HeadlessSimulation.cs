@@ -9,7 +9,7 @@ public static class HeadlessSimulation
 {
     public static SimulationRunResult Run(Data.GameContent content, SimulationOptions options)
     {
-        var session = new GameSession(content, options.MapId);
+        var session = new GameSession(content, options.MapId, options.DifficultyId);
         var player = new AutoPlayer(session, options.Strategy, options.Seed);
         var telemetry = new RunTelemetry(session);
         var step = Math.Clamp(options.StepSeconds, 0.01f, 0.1f);
@@ -135,6 +135,7 @@ public static class HeadlessSimulation
             return new SimulationRunResult
             {
                 MapId = session.Map.Definition.Id,
+                DifficultyId = session.DifficultyId,
                 Strategy = options.Strategy,
                 Seed = options.Seed,
                 Result = result,

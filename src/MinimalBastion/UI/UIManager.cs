@@ -54,7 +54,9 @@ public sealed class UIManager
     private string? _specializationHint;
     private PowerNodeData? _hoveredPowerNode;
     private readonly List<(string Id, string Name, int PowerNodes)> _maps = new();
+    private readonly List<DifficultyDefinition> _difficulties = new();
     private int _selectedMapIndex;
+    private int _selectedDifficultyIndex;
     private TacticalPlacementKind _hoveredTacticalPlacement;
     private string _joinHostInput = "";
     private string _joinCodeInput = "";
@@ -75,7 +77,8 @@ public sealed class UIManager
     private bool _towerLibraryOpen;
     private int _towerLibraryIndex;
     private IReadOnlyList<TowerDefinition> _libraryTowers = Array.Empty<TowerDefinition>();
-    private readonly Rectangle _mapButton = new(500, 370, 280, 40);
+    private readonly Rectangle _mapButton = new(500, 370, 190, 40);
+    private readonly Rectangle _difficultyButton = new(700, 370, 80, 40);
     private readonly Rectangle _continueButton = new(500, 420, 135, 44);
     private readonly Rectangle _mainMenuLibraryButton = new(645, 420, 135, 44);
     private readonly Rectangle _playButton = new(500, 474, 280, 44);
@@ -118,6 +121,8 @@ public sealed class UIManager
     public string CoOpLobbyCode { get; private set; } = "";
     public string SelectedMapId => _maps.Count == 0 ? "foundry_loop" : _maps[_selectedMapIndex].Id;
     public string SelectedMapName => _maps.Count == 0 ? "Foundry Loop" : _maps[_selectedMapIndex].Name;
+    public string SelectedDifficultyId => _difficulties.Count == 0 ? DifficultyCatalog.DefaultId : _difficulties[_selectedDifficultyIndex].Id;
+    public string SelectedDifficultyName => _difficulties.Count == 0 ? "Normal" : _difficulties[_selectedDifficultyIndex].DisplayName;
     public int SelectedSaveSlot => _selectedSaveSlot;
 
     public static string PauseCheckpointStatus(bool canSave) => canSave
@@ -208,6 +213,14 @@ public sealed class UIManager
         _selectedMapIndex = Math.Clamp(_selectedMapIndex, 0, Math.Max(0, _maps.Count - 1));
     }
 
+    public void ConfigureDifficulties(IEnumerable<DifficultyDefinition> difficulties)
+    {
+        _difficulties.Clear();
+        _difficulties.AddRange(difficulties.OrderBy(x => DifficultyOrder(x.Id)).ThenBy(x => x.DisplayName));
+        var defaultIndex = _difficulties.FindIndex(x => x.Id.Equals(DifficultyCatalog.DefaultId, StringComparison.OrdinalIgnoreCase));
+        _selectedDifficultyIndex = defaultIndex >= 0 ? defaultIndex : 0;
+    }
+
     public void ConfigureTowerLibrary(IEnumerable<TowerDefinition> towers)
     {
         _libraryTowers = towers.OrderBy(x => x.PurchaseCost).ThenBy(x => x.Id).ToArray();
@@ -223,6 +236,11 @@ public sealed class UIManager
             _selectedMapIndex = (_selectedMapIndex + 1) % _maps.Count;
             return UiAction.None;
         }
+        if (_difficultyButton.Contains(point) && _difficulties.Count > 1)
+        {
+            _selectedDifficultyIndex = (_selectedDifficultyIndex + 1) % _difficulties.Count;
+            return UiAction.None;
+        }
         if (_continueButton.Contains(point) && _saveAvailable) return UiAction.LoadGame;
         if (_mainMenuLibraryButton.Contains(point)) return UiAction.TowerLibrary;
         if (_playButton.Contains(point)) return UiAction.Play;
@@ -230,6 +248,15 @@ public sealed class UIManager
         if (_quitButton.Contains(point)) return UiAction.Exit;
         return UiAction.None;
     }
+
+    private static int DifficultyOrder(string id) => id.ToLowerInvariant() switch
+    {
+        "easy" => 0,
+        "normal" => 1,
+        "hard" => 2,
+        "bastion" => 3,
+        _ => 4
+    };
 
     public UiAction HandleSaveSlots(InputSnapshot input)
     {
@@ -1048,13 +1075,17 @@ public sealed class UIManager
         DrawText(batch, "A colorful geometric tower-defense game", new Vector2(640, 345), ColorPalette.Muted, 0.9f, true);
         var map = _maps.Count == 0 ? (Id: "foundry_loop", Name: "Foundry Loop", PowerNodes: 0) : _maps[_selectedMapIndex];
         var mapSuffix = map.PowerNodes > 0 ? $"{map.PowerNodes} SURGE NODES" : "CLASSIC";
-        DrawButton(batch, p, _mapButton, $"{_selectedMapIndex + 1}/{Math.Max(1, _maps.Count)}  {map.Name.ToUpperInvariant()}  •  {mapSuffix}", true, ColorPalette.Berry);
+        var difficulty = _difficulties.Count == 0 ? null : _difficulties[_selectedDifficultyIndex];
+        DrawButton(batch, p, _mapButton, $"{_selectedMapIndex + 1}/{Math.Max(1, _maps.Count)}  {map.Name.ToUpperInvariant()}", true, ColorPalette.Berry);
+        DrawButton(batch, p, _difficultyButton, (difficulty?.DisplayName ?? "Normal").ToUpperInvariant(), true,
+            difficulty?.AccentColor ?? ColorPalette.Cobalt);
         DrawButton(batch, p, _continueButton, "LOAD SAVES", _saveAvailable, ColorPalette.Violet);
         DrawButton(batch, p, _mainMenuLibraryButton, "TOWER LIBRARY", true, ColorPalette.Cyan);
         DrawButton(batch, p, _playButton, "NEW GAME", true, ColorPalette.Cobalt);
         DrawButton(batch, p, _coOpButton, "ONLINE CO-OP", true, ColorPalette.Green);
         DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
-        DrawText(batch, "Click the map selector to change arenas", new Vector2(640, 646), ColorPalette.Muted, 0.54f, true);
+        var difficultySummary = difficulty?.Description ?? "A balanced defense.";
+        DrawFittedCenteredText(batch, $"{mapSuffix} | {difficultySummary}", new Vector2(640, 646), ColorPalette.Muted, 0.54f, 800);
         DrawText(batch, "Left click places/selects   \u2022   Right click cancels   \u2022   Escape pauses", new Vector2(640, 670), ColorPalette.Navy, 0.61f, true);
     }
 
@@ -1096,7 +1127,9 @@ public sealed class UIManager
             var mapName = _maps.FirstOrDefault(map => map.Id.Equals(slot.MapId, StringComparison.OrdinalIgnoreCase)).Name;
             if (string.IsNullOrWhiteSpace(mapName)) mapName = slot.MapId.Replace('_', ' ');
             var progress = slot.IsEndless ? $"ENDLESS {slot.CurrentWave}" : $"WAVE {slot.CurrentWave}/20";
-            DrawText(batch, $"{(slot.IsCoOp ? "CO-OP" : "SOLO")}  |  {mapName.ToUpperInvariant()}  |  {progress}",
+            var difficultyName = _difficulties.FirstOrDefault(x => x.Id.Equals(slot.DifficultyId, StringComparison.OrdinalIgnoreCase))?.DisplayName
+                ?? (string.IsNullOrWhiteSpace(slot.DifficultyId) ? "Hard" : slot.DifficultyId);
+            DrawText(batch, $"{(slot.IsCoOp ? "CO-OP" : "SOLO")}  |  {mapName.ToUpperInvariant()}  |  {difficultyName.ToUpperInvariant()}  |  {progress}",
                 new Vector2(rect.X + 150, rect.Y + 12), ColorPalette.Ink, 0.58f);
             var localTime = slot.SavedAtUtc.Kind == DateTimeKind.Unspecified
                 ? DateTime.SpecifyKind(slot.SavedAtUtc, DateTimeKind.Utc).ToLocalTime()
@@ -1128,7 +1161,7 @@ public sealed class UIManager
         DrawMenuFrame(batch, p);
         DrawText(batch, "ONLINE CO-OP", new Vector2(640, 120), ColorPalette.Ink, 1.9f, true);
         DrawText(batch, "Direct internet play. The host forwards TCP 28741; the friend enters the address and code.", new Vector2(640, 164), ColorPalette.Muted, 0.60f, true);
-        DrawText(batch, $"HOST MAP  {SelectedMapName.ToUpperInvariant()}", new Vector2(640, 194), ColorPalette.Violet, 0.58f, true);
+        DrawText(batch, $"HOST MAP  {SelectedMapName.ToUpperInvariant()}  |  {SelectedDifficultyName.ToUpperInvariant()}", new Vector2(640, 194), ColorPalette.Violet, 0.58f, true);
 
         DrawText(batch, "HOST ADDRESS  (PUBLIC IP OR DNS)", new Vector2(500, 242), _editingJoinCode ? ColorPalette.Muted : ColorPalette.Cobalt, 0.54f);
         p.FillRect(batch, _joinHostField, ColorPalette.PanelAlt);
