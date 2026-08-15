@@ -394,6 +394,7 @@ public sealed class GameSession
             if (_nextEmergencyDefenseId > GameConstants.MaximumPulsePlateId) return PlacementFailure.IdentityCapacityReached;
             if (EmergencyDefenses.Count >= definition.MaximumActive) return PlacementFailure.DefenseCapacityReached;
             if (EmergencyInventory <= 0 && !CanDirectPurchaseEmergencyDefense) return PlacementFailure.NoDefenseAvailable;
+            if (!IsBattlefieldPosition(position)) return PlacementFailure.MustBeOnPath;
             var projection = Map.Path.Project(position);
             if (projection.DistanceToPath > Map.Definition.PathWidth * 0.5f + definition.PlacementRoadTolerance)
                 return PlacementFailure.MustBeOnPath;
@@ -429,6 +430,8 @@ public sealed class GameSession
     public bool TryResolvePulsePlatePlacement(Vector2 cursorPosition, out Vector2 placementPosition)
     {
         var definition = _content.Tactics.EmergencyDefense;
+        placementPosition = cursorPosition;
+        if (!IsBattlefieldPosition(cursorPosition)) return false;
         var projection = Map.Path.Project(cursorPosition);
         placementPosition = projection.Position;
         if (!TacticalSystemsEnabled) return false;
@@ -475,12 +478,18 @@ public sealed class GameSession
         var definition = _content.Tactics.EmergencyDefense;
         if (EmergencyDefenses.Count >= definition.MaximumActive) return PlacementFailure.DefenseCapacityReached;
         if (EmergencyInventory <= 0 && !CanDirectPurchaseEmergencyDefense) return PlacementFailure.NoDefenseAvailable;
+        if (!IsBattlefieldPosition(cursorPosition)) return PlacementFailure.MustBeOnPath;
         var projection = Map.Path.Project(cursorPosition);
         if (projection.DistanceToPath > Map.Definition.PathWidth * 0.5f + definition.PlacementRoadTolerance)
             return PlacementFailure.MustBeOnPath;
         if (!hasPlacement) return PlacementFailure.OverlapsDefense;
         return ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, placementPosition);
     }
+
+    private static bool IsBattlefieldPosition(Vector2 position) =>
+        float.IsFinite(position.X) && float.IsFinite(position.Y) &&
+        position.X >= 0 && position.X < GameConstants.MapWidth &&
+        position.Y >= 0 && position.Y <= GameConstants.LogicalHeight;
 
     public bool TryDeployEmergencyDefense(Vector2 position, int ownerPlayerId = 1)
     {

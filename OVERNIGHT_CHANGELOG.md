@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Constrained Pulse Plate snapping and validation to the 960-pixel battlefield. Clicking its sidebar control near a route endpoint can no longer leak the same click into an immediate deployment, and malformed direct/co-op coordinates cannot project back onto the authored road from outside the playfield.
 - Extended real loopback reconnect coverage through the entire state pipeline. A dense 1,500-projectile authoritative session is now framed, compressed, sent over TCP, structurally/content validated, reconstructed, and required to match the host's complete checksum.
 - Serialized and checksummed the private sold-tower attribution compaction phase. Reconnecting peers now prune expired projectile/status source IDs on the same fixed tick instead of using host/client timers up to two seconds apart and falling into a delayed resync loop; old checkpoints safely default the newly recorded phase.
 - Canonicalized completed-wave runtime state before intermission snapshots. The host no longer retains the final group index/timers while a reconnecting client resets them, eliminating a concrete immediate checksum mismatch and resync loop between waves; an exact intermission snapshot regression now proves parity.

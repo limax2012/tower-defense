@@ -3254,6 +3254,16 @@ internal static class Program
         Check.Equal(PlacementFailure.MustBeOnPath, session.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(200, 100)), "off-road rejection");
         Check.Equal(PlacementFailure.TooCloseToPathEndpoint, session.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(20, 30)), "endpoint rejection");
 
+        var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        var authoredSession = new GameSession(content, "foundry_loop");
+        var pathEndpoint = authoredSession.Map.Definition.Path[^1].ToVector2();
+        var sidebarCursor = new Vector2(GameConstants.SidebarX + 5, pathEndpoint.Y);
+        Check.True(!authoredSession.TryResolvePulsePlatePlacement(sidebarCursor, out _),
+            "sidebar plate control cannot snap onto a nearby authored path endpoint");
+        Check.Equal(PlacementFailure.MustBeOnPath,
+            authoredSession.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, sidebarCursor),
+            "sidebar coordinates are never valid tactical deployment coordinates");
+
         session.BeginEmergencyPlacement();
         session.HandleWorldInput(WorldInput(new Vector2(200, 100)));
         Check.Equal(PlacementFailure.MustBeOnPath, session.PlacementFailure, "invalid preview reports immediately");
