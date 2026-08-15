@@ -1345,6 +1345,10 @@ internal static class Program
             var foundryMap = File.ReadAllText(foundryMapPath).Replace("\"foundry_waves\"", "\"prism_waves\"", StringComparison.Ordinal);
             File.WriteAllText(foundryMapPath, foundryMap);
             Check.Throws<InvalidDataException>(() => new ContentLoader(directory).Load(), "maps cannot bind another arena's campaign");
+
+            File.WriteAllText(foundryMapPath, File.ReadAllText(Path.Combine(source, "Maps", "FoundryLoop.json"))
+                .Replace("\"schemaVersion\": 1", "\"schemaVersion\": 2", StringComparison.Ordinal));
+            Check.Throws<InvalidDataException>(() => new ContentLoader(directory).Load(), "unknown map schemas fail clearly");
         }
         finally
         {

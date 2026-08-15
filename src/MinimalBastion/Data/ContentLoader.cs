@@ -1,6 +1,7 @@
 using System.Text.Json;
 using MinimalBastion.Core;
 using MinimalBastion.Effects;
+using Microsoft.Xna.Framework;
 
 namespace MinimalBastion.Data;
 
@@ -149,7 +150,22 @@ public static class DataValidator
         if (enemies.Count != 5) throw new InvalidDataException("Version 1 requires exactly 5 enemy tiers.");
         RequireUnique(towers.Select(x => x.Id), "tower");
         RequireUnique(enemies.Select(x => x.Id), "enemy");
-        if (map.Path.Count < 2) throw new InvalidDataException("Map path needs at least two points.");
+        if (map.SchemaVersion != 1 || waves.SchemaVersion != 1)
+            throw new InvalidDataException($"Unsupported content schema for map {map.Id} or wave set {waves.Id}.");
+        if (string.IsNullOrWhiteSpace(map.DisplayName) || string.IsNullOrWhiteSpace(map.Description) || string.IsNullOrWhiteSpace(map.WaveSet) ||
+            map.LogicalSize.Width != GameConstants.MapWidth || map.LogicalSize.Height != GameConstants.LogicalHeight ||
+            map.PathWidth <= 0 || map.StartingLives <= 0 || map.StartingCredits <= 0 || map.Path.Count < 2)
+            throw new InvalidDataException($"Invalid map fundamentals: {map.Id}");
+        if (map.BuildableRegions.Count == 0 || map.BuildableRegions.Any(region => !ValidMapRegion(region, map.LogicalSize)))
+            throw new InvalidDataException($"Invalid buildable region in map: {map.Id}");
+        if (map.RestrictedRegions.Any(region => !ValidMapRegion(region, map.LogicalSize)))
+            throw new InvalidDataException($"Invalid restricted region in map: {map.Id}");
+        if (map.Path.Any(point => point.X < -map.PathWidth || point.X > map.LogicalSize.Width + map.PathWidth ||
+                point.Y < 0 || point.Y > map.LogicalSize.Height) ||
+            map.Path.Zip(map.Path.Skip(1)).Any(segment => Vector2.DistanceSquared(segment.First.ToVector2(), segment.Second.ToVector2()) < 1f) ||
+            Vector2.DistanceSquared(map.Spawn.ToVector2(), map.Path[0].ToVector2()) > 1f ||
+            Vector2.DistanceSquared(map.Goal.ToVector2(), map.Path[^1].ToVector2()) > 1f)
+            throw new InvalidDataException($"Invalid route geometry in map: {map.Id}");
         if (map.ChallengeRating is < 1 or > 5 ||
             !map.PathVisual.Style.Equals("road", StringComparison.OrdinalIgnoreCase) &&
             !map.PathVisual.Style.Equals("conduit", StringComparison.OrdinalIgnoreCase) &&
@@ -157,6 +173,7 @@ public static class DataValidator
             throw new InvalidDataException($"Invalid map presentation: {map.Id}");
         if (map.PowerNodes.Any(x => string.IsNullOrWhiteSpace(x.Id) || x.Radius <= 0 || x.AttackSpeedBonus < 0 || x.RangeBonus < 0 ||
             x.DamageBonus < 0 || x.ArmorPierceBonus < 0 ||
+            x.Position.X < 0 || x.Position.X > map.LogicalSize.Width || x.Position.Y < 0 || x.Position.Y > map.LogicalSize.Height ||
             x.AttackSpeedBonus + x.RangeBonus + x.DamageBonus + x.ArmorPierceBonus <= 0))
             throw new InvalidDataException($"Invalid power node in map: {map.Id}");
         RequireUnique(map.PowerNodes.Select(x => x.Id), "power node");
@@ -220,7 +237,9 @@ public static class DataValidator
         for (var index = 0; index < waves.Waves.Count; index++)
         {
             var wave = waves.Waves[index];
-            if (wave.Number != index + 1 || wave.Groups.Count == 0) throw new InvalidDataException($"Invalid wave number/groups: {wave.Number}");
+            if (wave.Number != index + 1 || wave.Groups.Count == 0 || wave.HealthMultiplier <= 0 || wave.SpeedMultiplier <= 0 ||
+                string.IsNullOrWhiteSpace(wave.Archetype) || string.IsNullOrWhiteSpace(wave.Briefing))
+                throw new InvalidDataException($"Invalid wave number/scaling/groups: {wave.Number}");
             foreach (var group in wave.Groups)
             {
                 if (!enemyIds.Contains(group.EnemyId) || group.Count <= 0 || group.SpawnInterval <= 0 || group.DelayBefore < 0)
@@ -230,6 +249,10 @@ public static class DataValidator
             }
         }
     }
+
+    private static bool ValidMapRegion(RectangleData region, LogicalSizeData size) =>
+        region.Width > 0 && region.Height > 0 && region.X >= 0 && region.Y >= 0 &&
+        region.X + region.Width <= size.Width && region.Y + region.Height <= size.Height;
 
     private static void RequireUnique(IEnumerable<string> ids, string kind)
     {
