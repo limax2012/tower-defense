@@ -41,6 +41,8 @@ public sealed class SaveSlotRepository
         return Path.Combine(SavesDirectory, $"slot-{slot}.json");
     }
 
+    public string GetSlotBackupPath(int slot) => GetSlotPath(slot) + ".bak";
+
     public IReadOnlyList<SaveSlotInfo> GetSlots()
     {
         TryMigrateLegacySave();
@@ -73,12 +75,30 @@ public sealed class SaveSlotRepository
         ValidateSlot(slot);
         TryMigrateLegacySave();
         var path = GetSlotPath(slot);
-        if (!File.Exists(path)) throw new FileNotFoundException($"Save slot {slot} is empty.", path);
-        var data = JsonSerializer.Deserialize<SaveGameData>(File.ReadAllText(path), JsonOptions)
-            ?? throw new InvalidDataException($"Save slot {slot} is empty or invalid.");
-        if (data.SchemaVersion != SaveGameData.CurrentSchemaVersion)
-            throw new InvalidDataException($"Save schema {data.SchemaVersion} is not supported.");
-        return data;
+        var backupPath = GetSlotBackupPath(slot);
+        if (!File.Exists(path) && !File.Exists(backupPath))
+            throw new FileNotFoundException($"Save slot {slot} is empty.", path);
+
+        Exception? primaryFailure = null;
+        if (File.Exists(path))
+        {
+            try { return ReadSaveData(path); }
+            catch (Exception exception) when (exception is IOException or JsonException or InvalidDataException)
+            {
+                primaryFailure = exception;
+            }
+        }
+        if (File.Exists(backupPath))
+        {
+            try { return ReadSaveData(backupPath); }
+            catch (Exception exception) when (exception is IOException or JsonException or InvalidDataException)
+            {
+                throw new InvalidDataException(
+                    $"Save slot {slot} and its recovery copy are unreadable: {exception.GetBaseException().Message}",
+                    primaryFailure ?? exception);
+            }
+        }
+        throw new InvalidDataException($"Save slot {slot} is unreadable: {primaryFailure?.GetBaseException().Message}", primaryFailure);
     }
 
     public bool Delete(int slot)
@@ -86,15 +106,25 @@ public sealed class SaveSlotRepository
         ValidateSlot(slot);
         TryMigrateLegacySave();
         var path = GetSlotPath(slot);
-        if (!File.Exists(path)) return false;
-        File.Delete(path);
-        return true;
+        var backupPath = GetSlotBackupPath(slot);
+        var deleted = false;
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+            deleted = true;
+        }
+        if (File.Exists(backupPath))
+        {
+            File.Delete(backupPath);
+            deleted = true;
+        }
+        return deleted;
     }
 
     private SaveSlotInfo ReadSlotInfo(int slot)
     {
         var path = GetSlotPath(slot);
-        if (!File.Exists(path)) return new SaveSlotInfo(slot, false);
+        if (!File.Exists(path) && !File.Exists(GetSlotBackupPath(slot))) return new SaveSlotInfo(slot, false);
         try
         {
             var data = LoadData(slot);
@@ -135,8 +165,12 @@ public sealed class SaveSlotRepository
     private IReadOnlyList<int> GetExistingSlotNumbers()
     {
         if (!Directory.Exists(SavesDirectory)) return Array.Empty<int>();
-        return Directory.EnumerateFiles(SavesDirectory, "slot-*.json", SearchOption.TopDirectoryOnly)
-            .Select(path => Path.GetFileNameWithoutExtension(path))
+        return Directory.EnumerateFiles(SavesDirectory, "slot-*", SearchOption.TopDirectoryOnly)
+            .Select(path => Path.GetFileName(path)!)
+            .Where(name => name.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ||
+                name.EndsWith(".json.bak", StringComparison.OrdinalIgnoreCase))
+            .Select(name => name.EndsWith(".bak", StringComparison.OrdinalIgnoreCase) ? name[..^4] : name)
+            .Select(name => Path.GetFileNameWithoutExtension(name)!)
             .Where(name => name.StartsWith("slot-", StringComparison.OrdinalIgnoreCase))
             .Select(name => int.TryParse(name[5..], out var slot) && slot > 0 ? slot : 0)
             .Where(slot => slot > 0)
@@ -163,8 +197,26 @@ public sealed class SaveSlotRepository
         data.SavedAtUtc = DateTime.UtcNow;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temporaryPath = path + ".tmp";
-        File.WriteAllText(temporaryPath, JsonSerializer.Serialize(data, JsonOptions));
-        File.Move(temporaryPath, path, true);
+        var backupPath = path + ".bak";
+        try
+        {
+            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(data, JsonOptions));
+            if (File.Exists(path)) File.Copy(path, backupPath, true);
+            File.Move(temporaryPath, path, true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+        }
+    }
+
+    private static SaveGameData ReadSaveData(string path)
+    {
+        var data = JsonSerializer.Deserialize<SaveGameData>(File.ReadAllText(path), JsonOptions)
+            ?? throw new InvalidDataException($"Save file '{Path.GetFileName(path)}' is empty or invalid.");
+        if (data.SchemaVersion != SaveGameData.CurrentSchemaVersion)
+            throw new InvalidDataException($"Save schema {data.SchemaVersion} is not supported.");
+        return data;
     }
 
     private static void ValidateSlot(int slot)

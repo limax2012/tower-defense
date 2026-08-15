@@ -85,6 +85,7 @@ internal static class Program
             ("charge forge production", ChargeForgeProduction),
             ("checkpoint round trip", CheckpointRoundTrip),
             ("independent solo and co-op save slots", IndependentSaveSlots),
+            ("save slot recovery backup", SaveSlotRecoveryBackup),
             ("headless simulation deterministic", HeadlessSimulationDeterministic),
             ("simulation campaign default", SimulationCampaignDefault)
         };
@@ -1709,6 +1710,37 @@ internal static class Program
         {
             if (Directory.Exists(testRoot)) Directory.Delete(testRoot, true);
             if (Directory.Exists(legacyRoot)) Directory.Delete(legacyRoot, true);
+        }
+    }
+
+    private static void SaveSlotRecoveryBackup()
+    {
+        var testRoot = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var repository = new SaveSlotRepository(testRoot);
+            var session = Session();
+            var originalCredits = session.Economy.Credits;
+            repository.Save(session, 1);
+            session.Economy.AddCredits(25);
+            repository.Save(session, 1);
+            Check.True(File.Exists(repository.GetSlotBackupPath(1)), "overwriting a slot retains one recovery generation");
+
+            File.WriteAllText(repository.GetSlotPath(1), "{ not valid json");
+            var recovered = repository.LoadData(1);
+            Check.Equal(originalCredits, recovered.Economy.Credits, "corrupt primary transparently loads its recovery generation");
+            Check.True(repository.GetSlots().Single(slot => slot.Slot == 1).Error is null,
+                "backup recovery keeps slot metadata usable");
+
+            File.Delete(repository.GetSlotPath(1));
+            Check.True(repository.GetSlots().Single(slot => slot.Slot == 1).IsOccupied,
+                "backup-only interrupted slot remains discoverable");
+            Check.True(repository.Delete(1), "deleting a recovered slot removes its remaining generation");
+            Check.True(!File.Exists(repository.GetSlotBackupPath(1)), "slot recovery copy is deleted with the slot");
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot)) Directory.Delete(testRoot, true);
         }
     }
 
