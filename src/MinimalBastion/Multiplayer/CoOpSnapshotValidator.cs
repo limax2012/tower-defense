@@ -11,15 +11,21 @@ internal static class CoOpSnapshotValidator
     private const int MaximumPulsePlates = 256;
     private const int MaximumStatusesPerEnemy = 8;
     private const int MaximumStatisticsEntries = 4096;
+    private const int MaximumRunIdLength = 64;
+    private const int MaximumAnnouncementTitleLength = 128;
+    private const int MaximumAnnouncementSubtitleLength = 512;
 
     public static void Validate(CoOpStateSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         if (snapshot.SchemaVersion != CoOpStateSnapshot.CurrentSchemaVersion)
             throw new InvalidDataException($"Unsupported co-op state schema {snapshot.SchemaVersion}.");
-        if (string.IsNullOrWhiteSpace(snapshot.MapId) || snapshot.MapId.Length > 128 ||
+        if (string.IsNullOrWhiteSpace(snapshot.RunId) || snapshot.RunId.Length > MaximumRunIdLength ||
+            string.IsNullOrWhiteSpace(snapshot.MapId) || snapshot.MapId.Length > 128 ||
             string.IsNullOrWhiteSpace(snapshot.DifficultyId) || snapshot.DifficultyId.Length > 128 ||
             string.IsNullOrWhiteSpace(snapshot.ChallengeId) || snapshot.ChallengeId.Length > 128 ||
+            snapshot.AnnouncementTitle is { Length: > MaximumAnnouncementTitleLength } ||
+            snapshot.AnnouncementSubtitle is { Length: > MaximumAnnouncementSubtitleLength } ||
             snapshot.Tick < 0 || (snapshot.ReadyMask & ~0b11) != 0 ||
             snapshot.IsPaused && snapshot.PausedByPlayerId is not (1 or 2) ||
             !snapshot.IsPaused && snapshot.PausedByPlayerId != 0 ||
@@ -90,11 +96,15 @@ internal static class CoOpSnapshotValidator
         if (projectiles.Any(projectile => projectile is null ||
             !float.IsFinite(projectile.X) || !float.IsFinite(projectile.Y) ||
             !float.IsFinite(projectile.AimX) || !float.IsFinite(projectile.AimY) ||
+            projectile.TargetEnemyId < 0 ||
             !Enum.IsDefined(typeof(ProjectileKind), projectile.Kind) || !IsNonnegativeFinite(projectile.Speed) ||
             !IsNonnegativeFinite(projectile.SplashRadius) || projectile.SplashTargetLimit < 0 ||
             !IsNonnegativeFinite(projectile.Damage) || !IsNonnegativeFinite(projectile.ArmorPierce) ||
             !IsNonnegativeFinite(projectile.Radius) || !IsValidStatus(projectile.Status)))
             throw new InvalidDataException("Co-op snapshot projectile state is structurally invalid.");
+        if (projectiles.Any(projectile => projectile.Kind == (int)ProjectileKind.Homing &&
+            (projectile.TargetEnemyId <= 0 || enemies.All(enemy => enemy.Id != projectile.TargetEnemyId))))
+            throw new InvalidDataException("Co-op snapshot homing projectile target is missing.");
 
         ValidateCount(plates.Count, MaximumPulsePlates, "Pulse Plate");
         if (plates.Any(plate => plate is null) || plates.Select(plate => plate.Id).Distinct().Count() != plates.Count ||

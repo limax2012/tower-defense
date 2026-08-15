@@ -1460,6 +1460,11 @@ internal static class Program
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, stalePauseOwner, 2),
             "running snapshot rejects stale pause attribution");
 
+        var oversizedHeader = session.CaptureCoOpState(0, 0, false);
+        oversizedHeader.AnnouncementSubtitle = new string('X', 513);
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, oversizedHeader, 2),
+            "oversized presentational snapshot strings are rejected before reaching the UI");
+
         var missingCollection = session.CaptureCoOpState(0, 0, false);
         missingCollection.Towers = null!;
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, missingCollection, 2),
@@ -1498,6 +1503,18 @@ internal static class Program
         });
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, nonfiniteProjectile, 2),
             "nonfinite network combat state is rejected");
+
+        var orphanedHomingProjectile = session.CaptureCoOpState(0, 0, false);
+        orphanedHomingProjectile.Projectiles.Add(new ProjectileRuntimeState
+        {
+            TargetEnemyId = 99,
+            Kind = (int)ProjectileKind.Homing,
+            Speed = 100,
+            Damage = 10,
+            Radius = 2
+        });
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, orphanedHomingProjectile, 2),
+            "orphaned homing targets are rejected instead of becoming silent client-only misses");
 
         var excessivePending = session.CaptureCoOpState(0, 0, false);
         excessivePending.PendingCommands = Enumerable.Range(1, DeterministicSessionRunner.MaximumPendingCommands + 1)

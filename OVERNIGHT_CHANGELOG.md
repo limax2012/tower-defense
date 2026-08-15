@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Tightened reconnect snapshot validation around bounded run/announcement strings and live homing-projectile references. A malformed orphan projectile can no longer restore as a client-only miss and immediately provoke another checksum repair loop.
 - Removed the last visible legacy “relay node” label from Prism Circuit and standardized current documentation on Surge Nodes and tower-specific Protocols without changing stable IDs or save/network schemas.
 - Added crisp geometric impact cues for direct projectiles, closing the feedback gap where Needle, Shard, Ember, Frost, and Breaker shots could vanish on contact without a hit response. Minor cues obey the existing hard effect budget and yield before displacing co-op pings, beams, or tactical blast rings.
 - Expanded Tactical Library Protocol references beyond the compact live-label limit. Every unique burst now exposes its pulse damage plus exact Slow, Burn, Expose, Armor Break, or Stun magnitude/duration, while the battlefield continues showing only the first three bonuses to prevent sidebar clutter.
