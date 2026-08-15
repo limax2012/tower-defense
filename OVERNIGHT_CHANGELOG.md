@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Added exhaustive initial-state reconstruction coverage for all 64 selectable arena, difficulty, and directive combinations. Every profile now must survive both checkpoint restore and a structurally validated Player-2 authoritative snapshot with an exact deterministic checksum.
 - Corrected endless balance-report outcome semantics. Reaching a configured custom wave cap now counts as simulation success instead of an impossible post-victory `Victory`, while a dedicated progression block separately reports campaign clears, target reaches, deepest wave, average post-clear depth, and arena splits.
 - Audited 144 Hard/Normal/Easy defenses through wave 35 and 384 forced Ember Coil campaigns. Endless pressure terminates every sampled defense before 35 while still giving the strongest Easy/Normal control plans 31-33-wave runs; Ember's four paths remain tightly grouped at 55-57/96 Hard wins, so its high long-run burn efficiency did not justify another speculative stat change.
 - Made battlefield hit-testing honor all four logical-canvas boundaries. Clicks in widescreen letterbox bars no longer clear a tower selection, post-defeat inspection ignores off-canvas clicks, and co-op pings are emitted only from the live battlefield.

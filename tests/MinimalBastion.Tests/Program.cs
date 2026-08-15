@@ -49,6 +49,7 @@ internal static class Program
             ("map roster and power nodes", MapRosterAndPowerNodes),
             ("difficulty profiles and persistence", DifficultyProfilesAndPersistence),
             ("challenge directives and persistence", ChallengeDirectivesAndPersistence),
+            ("profile matrix state reconstruction", ProfileMatrixStateReconstruction),
             ("power node tower intel", PowerNodeTowerIntel),
             ("pause UI glyph coverage", PauseUiGlyphCoverage),
             ("opening wave balance", OpeningWaveBalance),
@@ -459,6 +460,42 @@ internal static class Program
         Check.Equal("standard", ui.SelectedChallengeId, "challenge UI defaults to standard");
         ui.HandleMainMenu(WorldInput(new Vector2(790, 390)) with { LeftPressed = true });
         Check.Equal("close_quarters", ui.SelectedChallengeId, "challenge selector advances to close quarters");
+    }
+
+    private static void ProfileMatrixStateReconstruction()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        var combinations = 0;
+        foreach (var map in content.Maps.Values)
+        foreach (var difficulty in content.Difficulties.Values)
+        foreach (var challenge in content.Challenges.Values)
+        {
+            var session = new GameSession(content, map.Id, difficulty.Id, challenge.Id);
+            var saved = GameSession.RestoreSaveGame(content, session.CaptureSaveGame());
+            Check.Equal(map.Id, saved.Map.Definition.Id, $"{map.Id}/{difficulty.Id}/{challenge.Id} save map");
+            Check.Equal(difficulty.Id, saved.DifficultyId, $"{map.Id}/{difficulty.Id}/{challenge.Id} save difficulty");
+            Check.Equal(challenge.Id, saved.ChallengeId, $"{map.Id}/{difficulty.Id}/{challenge.Id} save directive");
+            Check.Equal(SessionChecksum.Compute(session, 0), SessionChecksum.Compute(saved, 0),
+                $"{map.Id}/{difficulty.Id}/{challenge.Id} save checksum");
+
+            session.ConfigureCoOp(1);
+            var snapshot = session.CaptureCoOpState(17, 0, false);
+            Check.True(CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+            {
+                Type = CoOpMessageType.StateSnapshot,
+                PlayerId = 1,
+                Tick = snapshot.Tick,
+                State = snapshot
+            }), $"{map.Id}/{difficulty.Id}/{challenge.Id} snapshot envelope");
+            var peer = GameSession.RestoreCoOpState(content, snapshot, 2);
+            Check.Equal(SessionChecksum.Compute(session, 17), SessionChecksum.Compute(peer, 17),
+                $"{map.Id}/{difficulty.Id}/{challenge.Id} peer checksum");
+            combinations++;
+        }
+
+        Check.Equal(content.Maps.Count * content.Difficulties.Count * content.Challenges.Count, combinations,
+            "every selectable gameplay profile reconstructs through save and co-op state");
     }
 
     private static void HighResolutionViewport()
