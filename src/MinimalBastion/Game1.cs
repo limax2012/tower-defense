@@ -1309,6 +1309,7 @@ public sealed class Game1 : Game
         _session = session;
         _lastRecordedResultKey = "";
         if (session is not null) _audio?.Attach(session);
+        else _audio?.Detach();
     }
 
     protected override void Dispose(bool disposing)

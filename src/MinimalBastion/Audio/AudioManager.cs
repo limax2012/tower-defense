@@ -103,6 +103,12 @@ public sealed class AudioManager : IDisposable
             wave >= session.TotalWaves && !session.IsEndlessMode ? 0.92f : 0.82f);
     }
 
+    public void Detach()
+    {
+        _attachedSession = null;
+        _musicPitch = 0;
+    }
+
     private void PlayKill()
     {
         if (_killCooldown > 0) return;
