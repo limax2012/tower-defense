@@ -20,7 +20,7 @@ Updated: 2026-08-15
 - Added 12 agents: Conservative, Economy, Aggressive, UpgradeFocused, Spam, AntiSwarm, AntiArmor, LongRange, Control, Tactical, Adaptive, and Randomized.
 - Agents use continuous placement, Surge Zones, route coverage, reserves, upgrades, selling, branches, targeting, early calls, plates, forge production, elites/boss reads, and Overdrive.
 - Telemetry covers economy, purchases/upgrades/sales, branches, attributed damage/kills, armor/shield/overkill, enemies, waves, plates, forge production, Overdrives, and early-call rewards.
-- CLI supports `--simulate`, `--simulate-full`, `--strategy`, `--seed`, `--runs`, `--map`, and `--output`.
+- CLI supports `--simulate`, `--simulate-full`, `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, `--no-protocols`, and `--output`.
 
 ### Waves, enemies, and strategic information
 
@@ -33,14 +33,14 @@ Updated: 2026-08-15
 
 - Added pre-purchase, hover, placement, selection, and exact-upgrade tower intelligence.
 - Added targeting modes First, Last, Strongest, Weakest, Nearest, Fastest, and Armored.
-- Added mutually exclusive level-3 branches for Needle, Frost, Ember, and Breaker.
-- Added global Overdrive: +75% attack rate for 5 seconds on an owned combat tower, with an 18-second shared cooldown, synchronized commands, bot usage, telemetry, and explicit UI timers.
+- Added two mutually exclusive Tier-2 doctrines and two final specializations to all ten towers. Planning UI shows exact current, next, and completed-path stats before spending.
+- Replaced the generic Overdrive payload with ten thematic Protocols: each tower has its own duration, cooldown, stat package, burst/status effect, animation/audio feedback, synchronized command, telemetry, and optional pressure-aware automatic activation.
 - Removed Watchtower's latent level-3 armor pierce after fixing generic projectile behavior; long range and anti-armor now retain distinct jobs.
 - Replaced the separate level badges with integrated radial level marks: one top spoke at level 1, then fixed 120/240-degree spokes for levels 2/3. Every tower also uses the same outer ring.
 
 ### Tactical defenses and economy integrity
 
-- Added Pulse Plates: road-snapped, two charges, 32 area damage, radius 52, brief stun, and 2 armor pierce.
+- Added Pulse Plates: valid-road snapping, two charges, 38 area damage, radius 52, brief stun/slow, controlled knockback, and 2 armor pierce.
 - Added the three-level Charge Forge with capped inventory, production cadence, damage upgrades, ownership, UI, telemetry, and bot policy.
 - Forge production now advances only during active waves. Waiting before/between waves cannot generate plates.
 - Removed the Pulse Plate's hidden 0.8-second global trigger lockout. Plates remember handled enemy IDs, so the same enemy cannot spend both charges and a consecutive unhandled enemy triggers reliably.
@@ -52,8 +52,9 @@ Updated: 2026-08-15
 - Restored and extended the colorful geometric/schematic direction after rejecting the black-and-white pass.
 - Preserved seamless continuous roads with yellow dashes only: no tiles, seams, corner circles, square joints, or heavy outlines.
 - Replaced grid/debug-looking build regions with quiet tinted fields and exact corner brackets.
-- Added Surge Divide (internal ID `relay_divide`) with Overclock and Scope Surge Zones that change placement decisions.
-- Renamed player-facing relay terminology to Surge Zone and added hover intel with exact radius/bonus/stacking rules.
+- Added Surge Divide (internal ID `relay_divide`) with nine compact, non-stacking Surge Nodes for rate, range, damage, or armor-pierce placement decisions. Its independently authored wave roster is deliberately harder to compensate for that positional upside.
+- Added Crosswind Basin and Prism Circuit, each with distinct route geometry, visual treatment, starting economy, and independently authored 20-wave campaign.
+- Renamed player-facing relay terminology to Surge Node and added placement/hover/selected-tower intel with exact radius, active bonus, and resulting stat deltas.
 - Moved Pulse Plate, Charge Forge, and Overdrive controls from the battlefield into the sidebar, preserving the full 960-pixel play area.
 - Added auto-fitting button labels, colorful tower/enemy silhouettes, rank treatment, recoil/pulse/ring/impact feedback, polished menus, pause, and post-run analysis.
 - Fixed the original main-menu logo/title overlap and added intentional whitespace.
@@ -66,9 +67,9 @@ Updated: 2026-08-15
 
 - Replaced loopback-only same-PC co-op with direct internet host/join.
 - Host listens dual-stack on all adapters at TCP `28741`; friend enters public IP/DNS with optional port plus a six-character join code.
-- Host-authoritative sequenced commands, future fixed ticks, periodic checksums, duplicate rejection, and protocol version validation remain intact.
-- Shared credits/lives/waves/speed/inventory; visible owner-only tower/forge mutation; both-player wave ready; map synchronization; colored middle-click pings; clear disconnect failures.
-- Specialization and Overdrive commands are ownership-validated and deterministic.
+- Host-authoritative sequenced commands, future fixed ticks, periodic checksums, duplicate rejection, strict message-direction validation, and build/content fingerprint negotiation remain intact.
+- Shared credits/lives/waves/speed/pause/inventory and shared tower/Forge control; owner tint remains attribution only. Both-player wave ready, map/difficulty/directive synchronization, remote cursors/selections, colored middle-click pings, and clear disconnect states are implemented.
+- A returning Player 2 receives a validated authoritative active-combat snapshot with enemies, projectiles, effects-driving state, towers/branches/Protocols, economy, wave/readiness timers, tactical systems, telemetry, and pending commands before both peers resume.
 - Added endpoint parser coverage for DNS, IPv4, and IPv6.
 
 ## Measurements
@@ -86,6 +87,23 @@ Updated: 2026-08-15
   - `.build/balance/matrix-online-ui-surge-5x-20260814.json`
   - `.build/balance/tactical-wave-powered-forge-5x.json`
   - `.build/balance/economy-wave-powered-forge-5x.json`
+  - `.build/balance/overnight-audit-easy-3x.json`
+  - `.build/balance/overnight-audit-normal-3x.json`
+  - `.build/balance/overnight-audit-hard-3x.json`
+  - `.build/balance/overnight-audit-bastion-3x.json`
+
+### Current difficulty audit
+
+The current executable was rerun for three seeds across 12 strategies and all four maps (144 runs per profile):
+
+| Difficulty | Wins | Win rate | Average wave | Average lives |
+|---|---:|---:|---:|---:|
+| Easy | 120/144 | 83.3% | 19.4 | 24.5 |
+| Normal | 109/144 | 75.7% | 18.8 | 16.8 |
+| Hard | 79/144 | 54.9% | 17.1 | 9.7 |
+| Bastion | 21/144 | 14.6% | 12.9 | 1.7 |
+
+The clean separation supports preserving the current multipliers. On Hard, Surge clears 14/36 versus 20-23/36 elsewhere; on Bastion it clears 2/36. Easy remains broadly forgiving while the intentionally dysfunctional Economy and indiscriminate level-1 Spam policies still fail, so it does not collapse into an automatic win.
 
 ## Significant decisions and rejected designs
 
@@ -125,11 +143,9 @@ Updated: 2026-08-15
 ## Highest-value next priorities
 
 1. Add optional hosted relay/NAT traversal or automatic port mapping so online friends do not need manual TCP forwarding.
-2. Add reconnect snapshots and content/build fingerprint negotiation for longer online sessions.
-3. Human-playtest both maps and internet latency with two remote PCs; preserve reports for any balance change.
-4. Add audio hooks/settings, volume controls, and persistent settings.
-5. Add a third map designed to challenge the currently dominant LongRange policy.
-6. Add difficulty/challenge modes without disturbing the authored normal-campaign baseline.
+2. Human-playtest all four maps and real internet latency with two remote PCs; preserve reports for any balance change.
+3. Expand audio beyond procedural effects only if it can remain optional, lightweight, and stylistically coherent.
+4. Continue native-window QA for dense late-wave effects and unusually long localized labels.
 
 ## Blockers
 

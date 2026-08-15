@@ -9,7 +9,7 @@
 - `.build/balance/`: machine-readable simulation reports.
 - `GAME_DESIGN.md`, `AUTONOMOUS_BALANCE.md`, `OVERNIGHT_PROGRESS.md`, and `OVERNIGHT_CHANGELOG.md`: current design and project state.
 
-No Git repository is present. Preserve checkpoints through clean builds, published binaries, balance reports, and maintained documentation.
+The repository is tracked in Git and mirrored at `https://github.com/limax2012/tower-defense`. Preserve coherent checkpoints with tested commits on the active feature branch; do not merge or push `main` unless the user explicitly requests it.
 
 ## Commands
 
@@ -48,9 +48,10 @@ Do not casually replace this with ECS, dependency injection, a physics engine, o
 - Simulation must never depend on rendering, wall-clock time, hash-set iteration order, or unseeded randomness.
 - Host-accepted commands receive a monotonic sequence and future fixed tick; both peers apply the same stream.
 - State affecting future outcomes belongs in `SessionChecksum`. This includes map identity, ownership, specializations, Overdrive state, Pulse Plate handled-enemy IDs, forge timers, and shared economy.
-- Co-op uses shared credits/lives/inventory, but tower and forge mutation is owner-only.
-- Wave start requires both players ready. Speed is shared and command-synchronized; pause is solo-only.
-- Public internet play is direct TCP `28741` with a six-character join code. There is no matchmaking, relay server, automatic port mapping, encryption, reconnect snapshot, or version negotiation beyond protocol version.
+- Co-op uses shared credits/lives/inventory and shared defense control. Either player may upgrade, specialize, retarget, automate, Overdrive, or sell any tower/Forge; original ownership remains attribution only.
+- Wave start requires both players ready. Speed and pause are shared, command-synchronized state.
+- Public internet play is direct TCP `28741` with a six-character join code and build/content fingerprint negotiation. There is no matchmaking, relay server, automatic port mapping, or encryption; hosts still need a reachable address/port forward where NAT requires it.
+- A disconnected Player 2 can reconnect to the existing host. The host pauses the simulation, rotates that player's request-replay session, sends a validated authoritative snapshot (including combat, economy, wave, readiness, and pending-command state), then resumes both peers.
 - Keep stable internal IDs such as `relay_divide`; the player-facing map/feature names are `Surge Divide` and `Surge Zone`.
 
 ## Gameplay invariants
@@ -88,8 +89,10 @@ Do not casually replace this with ECS, dependency injection, a physics engine, o
 
 ## Current scope and constraints
 
-- Current content: 2 maps, 10 three-level towers, 8 mutually exclusive final specializations across 4 towers, 5 enemy bases plus elite/boss ranks, 20 waves, 1,090 spawns, Pulse Plates, a three-level Charge Forge, and Overdrive.
+- Current content: 4 maps with dedicated 20-wave rosters, 10 three-level towers, two mutually exclusive Tier-2 doctrines and two final specializations for every tower, 5 enemy bases plus elite/boss ranks, Pulse Plates, a three-level Charge Forge, and tower-specific Protocols with optional automatic activation.
+- Four difficulty profiles (Easy, Normal, Hard, Bastion) and four challenge directives alter the run before it begins. Surge Divide is intentionally the most demanding high-pressure arena because its compact Surge Nodes reward precise placement.
 - Direct online two-player co-op is functional when the host is reachable on TCP `28741`.
 - Headless gameplay is fast and deterministic; MonoGame rendering still requires a graphical Windows session.
-- No save/history, settings, audio, difficulty selector, hosted relay, matchmaking, reconnect recovery, or automatic NAT traversal exists.
+- Unlimited numbered solo/co-op save slots, atomic backup recovery, autosaves, run history, display/effect/audio settings, procedural sound effects, difficulty/challenge selectors, and basic reconnect recovery are implemented.
+- Hosted relay, matchmaking, automatic NAT traversal, music, and cloud save synchronization are not implemented.
 - Avoid changing map coordinates, costs, damage, wave totals, or tactical cadence without simulation evidence and updated tests/docs.
