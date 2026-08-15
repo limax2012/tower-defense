@@ -68,7 +68,7 @@ public sealed class TacticalDefenseSystem
                 plate.Definition.KnockbackDistance * knockbackMultiplier,
                 plate.Definition.KnockbackGraceSeconds,
                 session.Map.Path);
-            session.Effects.AddFlash(plate.Position, plate.Definition.Visual.PrimaryColor, 0.28f, plate.Definition.BlastRadius);
+            session.Effects.AddSplash(plate.Position, plate.Definition.Visual.PrimaryColor, plate.Definition.BlastRadius);
             session.OnEmergencyDefenseTriggered(plate, hitCount);
         }
 

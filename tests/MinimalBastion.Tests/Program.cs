@@ -3003,6 +3003,9 @@ internal static class Program
         Check.Nearly(62, session.Enemies[0].Health, "first pulse damage");
         Check.Nearly(172, session.Enemies[0].DistanceAlongPath, "first pulse applies bounded knockback");
         Check.Nearly(0.30f, session.Enemies[0].StatusEffects.SlowFactor, "first pulse slows enemy");
+        var plateBurst = session.Effects.Effects.Single(effect => effect.Kind == EffectKind.Splash);
+        Check.Nearly(session.Content.Tactics.EmergencyDefense.BlastRadius, plateBurst.Radius,
+            "plate burst communicates its exact affected radius");
         Check.Equal(1, session.EmergencyDefenses[0].ChargesRemaining, "one pulse remains");
         system.Update(0.01f, session);
         session.Enemies[0].StatusEffects.Update(2f);
@@ -3511,6 +3514,8 @@ internal static class Program
         Check.Nearly(1.5f, automatic.GetEffectiveAttacksPerSecond(automaticTower), "protocol-specific rate bonus");
         Check.Nearly(12.5f, automatic.GetEffectiveDamage(automaticTower, 10), "protocol-specific damage bonus");
         Check.True(automatic.Enemies[0].Health < automatic.Enemies[0].MaxHealth, "protocol activation pulse applies damage");
+        var protocolBurst = automatic.Effects.Effects.Single(effect => effect.Kind == EffectKind.Splash);
+        Check.Nearly(250, protocolBurst.Radius, "area protocol communicates its exact affected radius");
     }
 
     private static GameSession Session()

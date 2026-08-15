@@ -587,8 +587,15 @@ public sealed class GameSession
         tower.ActivateOverdrive();
         OverdriveCooldownRemaining = tower.Protocol.CooldownSeconds;
         ApplyProtocolBurst(tower);
-        Effects.AddFlash(tower.Position, tower.Definition.Visual.PrimaryColor, 0.42f,
-            MathF.Max(44, tower.Protocol.BurstRadius));
+        if (tower.Protocol.BurstRadius > 0 &&
+            (tower.Protocol.BurstDamage > 0 || !string.IsNullOrWhiteSpace(tower.Protocol.BurstStatus)))
+        {
+            Effects.AddSplash(tower.Position, tower.Definition.Visual.PrimaryColor, tower.Protocol.BurstRadius);
+        }
+        else
+        {
+            Effects.AddFlash(tower.Position, tower.Definition.Visual.PrimaryColor, 0.42f, 44);
+        }
         TowerOverdriven?.Invoke(tower);
         return true;
     }
