@@ -12,6 +12,7 @@ Updated: 2026-08-15
 - Native visual QA covers title/settings/co-op flows, all map treatments, tactical sidebar states, Surge Node overlap intel, Protocol/Beacon markers, Pulse Plates/Forge, high-resolution and wide-aspect rendering, result/field inspection, and the complete Tower/Threat/Campaign library. The latest isolated 1920-wide publish pass reconfirmed title layout, the opening battlefield, and a complete pause/resume round trip.
 - Git history is maintained on `agent/overnight-arena-progression` and mirrored to `origin`; tested feature units are committed incrementally while `main` remains untouched during the active overnight run.
 - Pulse Plate snapping now rejects sidebar/out-of-canvas coordinates before route projection, preventing a tactical-control click near the exit route from becoming an accidental deployment; the authored endpoint regression is included in the 68-test suite.
+- Endless simulations now distinguish authored campaign clears from reaching a requested endless target and report depth by arena. Current wave-35 audits show finite failure pressure across Easy, Normal, and Hard, while the strongest easier-profile control plans retain meaningful post-campaign runway.
 
 ## Completed work
 

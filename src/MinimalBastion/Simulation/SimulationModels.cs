@@ -52,6 +52,8 @@ public sealed class SimulationRunResult
         : $"{ForcedTowerId}:{ForcedDoctrineId}>{ForcedSpecializationId}";
     public required string Result { get; init; }
     public required int WaveReached { get; init; }
+    public int CampaignWaveCount { get; init; } = 20;
+    public bool CampaignCleared { get; init; }
     public required int LivesRemaining { get; init; }
     public required int Kills { get; init; }
     public required int EscapedEnemies { get; init; }
@@ -76,7 +78,8 @@ public sealed class SimulationRunResult
     public int GeneratedCharges { get; init; }
     public int Overdrives { get; init; }
     public bool ProtocolsEnabled { get; init; } = true;
-    public bool Won => Result == "Victory";
+    public int EndlessDepth => CampaignCleared ? Math.Max(0, WaveReached - CampaignWaveCount) : 0;
+    public bool Won => Result is "Victory" or "WaveLimit";
 }
 
 public sealed class TowerRunMetrics
@@ -144,6 +147,8 @@ public sealed class SimulationBatchResult
     public required IReadOnlyList<SimulationRunResult> Runs { get; init; }
     public int Wins => Runs.Count(x => x.Won);
     public float WinRate => Runs.Count == 0 ? 0 : Wins / (float)Runs.Count;
+    public int CampaignClears => Runs.Count(x => x.CampaignCleared);
+    public int DeepestWave => Runs.Count == 0 ? 0 : Runs.Max(x => x.WaveReached);
     public float AverageWaveReached => Runs.Count == 0 ? 0 : (float)Runs.Average(x => x.WaveReached);
     public float AverageLivesRemaining => Runs.Count == 0 ? 0 : (float)Runs.Average(x => x.LivesRemaining);
 }

@@ -2589,6 +2589,10 @@ internal static class Program
         Check.Nearly(first.Towers.Values.Sum(x => x.ArmorBreakDamageEquivalent), second.Towers.Values.Sum(x => x.ArmorBreakDamageEquivalent), "deterministic armor-break attribution");
         Check.Nearly(first.Towers.Values.Sum(x => x.StatusEnemySeconds.Values.Sum()), second.Towers.Values.Sum(x => x.StatusEnemySeconds.Values.Sum()), "deterministic status uptime");
         Check.True(first.WaveReached >= 2, "headless bot reaches requested wave limit");
+        Check.Equal("WaveLimit", first.Result, "bounded simulation identifies its configured target");
+        Check.True(first.Won, "reaching a configured simulation wave cap counts as a successful run");
+        Check.True(!first.CampaignCleared && first.EndlessDepth == 0,
+            "short diagnostic runs do not masquerade as campaign or endless clears");
         Check.True(first.Overdrives > 0 && first.ProtocolsEnabled, "default simulation exercises Protocol activations");
 
         var noProtocols = MinimalBastion.Simulation.HeadlessSimulation.Run(content, new MinimalBastion.Simulation.SimulationOptions

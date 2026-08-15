@@ -146,6 +146,8 @@ public static class HeadlessSimulation
                 ForcedSpecializationId = options.ForcedSpecializationId,
                 Result = result,
                 WaveReached = session.CurrentWave,
+                CampaignWaveCount = session.TotalWaves,
+                CampaignCleared = session.Waves.IsFinalWaveCleared,
                 LivesRemaining = session.Economy.Lives,
                 Kills = session.Economy.TotalKills,
                 EscapedEnemies = session.Economy.EscapedEnemies,

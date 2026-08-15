@@ -60,7 +60,10 @@ internal static class SimulationCli
 
         var batch = new SimulationBatchResult { Runs = runs };
         Console.WriteLine();
-        Console.WriteLine($"Runs {runs.Count}, wins {batch.Wins}, win rate {batch.WinRate:P1}, average wave {batch.AverageWaveReached:0.0}, average lives {batch.AverageLivesRemaining:0.0}.");
+        var endlessAudit = maximumWave > content.Waves.Waves.Count;
+        var outcomeLabel = endlessAudit ? $"wave {maximumWave} reaches" : "wins";
+        Console.WriteLine($"Runs {runs.Count}, {outcomeLabel} {batch.Wins}, rate {batch.WinRate:P1}, average wave {batch.AverageWaveReached:0.0}, average lives {batch.AverageLivesRemaining:0.0}.");
+        if (endlessAudit) PrintEndlessProgress(runs);
         if (forcedBuilds.Count == 1 && forcedBuilds[0] is { } onlyForcedBuild)
             Console.WriteLine($"Forced requested path: {onlyForcedBuild.TowerId}:{onlyForcedBuild.DoctrineId}>{onlyForcedBuild.SpecializationId}");
         if (!useProtocols) Console.WriteLine("Protocol activations disabled for this control group.");
@@ -158,6 +161,40 @@ internal static class SimulationCli
             new ForcedBuildPath(tower.Id, doctrine.Id, specialization.Id)));
 
     internal sealed record ForcedBuildPath(string TowerId, string DoctrineId, string SpecializationId);
+
+    internal static EndlessProgressSummary SummarizeEndlessProgress(IEnumerable<SimulationRunResult> runs)
+    {
+        var materialized = runs.ToArray();
+        var campaignClears = materialized.Where(run => run.CampaignCleared).ToArray();
+        return new EndlessProgressSummary(
+            materialized.Length,
+            campaignClears.Length,
+            materialized.Count(run => run.Result == "WaveLimit"),
+            materialized.Length == 0 ? 0 : materialized.Max(run => run.WaveReached),
+            campaignClears.Length == 0 ? 0 : (float)campaignClears.Average(run => run.EndlessDepth));
+    }
+
+    private static void PrintEndlessProgress(IEnumerable<SimulationRunResult> runs)
+    {
+        var materialized = runs.ToArray();
+        var total = SummarizeEndlessProgress(materialized);
+        Console.WriteLine();
+        Console.WriteLine("ENDLESS PROGRESSION");
+        Console.WriteLine($"Campaign clears {total.CampaignClears}/{total.Runs}; target reaches {total.TargetReaches}; deepest wave {total.DeepestWave}; average depth after a clear {total.AverageEndlessDepth:0.0}.");
+        Console.WriteLine("BY ARENA (campaign clears / deepest wave / average clear depth)");
+        foreach (var group in materialized.GroupBy(run => run.MapId).OrderBy(group => group.Key))
+        {
+            var row = SummarizeEndlessProgress(group);
+            Console.WriteLine($"{group.Key,-18} {row.CampaignClears,2}/{row.Runs,-2} clears  deepest {row.DeepestWave,2}  depth {row.AverageEndlessDepth,4:0.0}");
+        }
+    }
+
+    internal sealed record EndlessProgressSummary(
+        int Runs,
+        int CampaignClears,
+        int TargetReaches,
+        int DeepestWave,
+        float AverageEndlessDepth);
 
     private static void PrintMapSummary(IEnumerable<SimulationRunResult> runs)
     {
