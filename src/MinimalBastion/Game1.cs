@@ -257,7 +257,8 @@ public sealed class Game1 : Game
             return;
         }
 
-        _session.HandleWorldInput(input, commandSink, _localPlayerId);
+        if (action != UiAction.TowerLibrary)
+            _session.HandleWorldInput(input, commandSink, _localPlayerId);
         if (_networkRunner is null) _session.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
         else
         {

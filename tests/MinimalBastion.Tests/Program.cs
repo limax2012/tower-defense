@@ -591,6 +591,22 @@ internal static class Program
             "co-op Escape requests a shared pause without opening a divergent local overlay");
         Check.True(pauseRequest is { Type: GameCommandType.SetPaused, PlayerId: 2, Paused: true },
             "co-op pause request carries the desired authoritative state");
+
+        var coOpLibraryUi = new UIManager(null!);
+        Check.True(coOpSession.SetCoOpPaused(true, 1), "co-op library test enters authoritative pause");
+        Check.Equal(UiAction.TowerLibrary,
+            coOpLibraryUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { TabPressed = true }, coOpSession, _ => { }, 2),
+            "Tab opens a local tactical library only after shared pause is active");
+        Check.Equal(UiAction.TowerLibrary,
+            coOpLibraryUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { EscapePressed = true }, coOpSession, _ => { }, 2),
+            "closing the co-op library consumes Escape instead of resuming or touching the field");
+        GameCommand? resumeRequest = null;
+        Check.Equal(UiAction.None,
+            coOpLibraryUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { EscapePressed = true }, coOpSession,
+                command => resumeRequest = command, 2),
+            "a second Escape requests synchronized resume after the library has closed");
+        Check.True(resumeRequest is { Type: GameCommandType.SetPaused, Paused: false },
+            "co-op library never replaces the authoritative resume command");
     }
 
     private static void OpeningWaveBalance()

@@ -165,6 +165,7 @@ The clean separation supports preserving the current multipliers. On Hard, Surge
 
 ## Current work
 
+- Online co-op shared pause now exposes the complete Tactical Library locally by click or Tab. Network polling remains active, and the overlay consumes mouse/keyboard input so planning clicks cannot leak through to the battlefield; a second Escape cleanly requests authoritative resume.
 - Challenge automation now supports `--challenge all` and quiet aggregate runs. A 384-run Hard matrix measured Standard 47.9%, Close Quarters 49.0%, No Reserves 46.9%, and the intentionally severe Core Six 29.2%, supporting the current fixed opening compensation without another economy change.
 - Full campaign automation can now sweep `--difficulty all` across every authored arena. A two-seed, twelve-strategy, 384-run matrix measured Easy 80.2%, Normal 72.9%, Hard 47.9%, and Bastion 11.5% wins; Surge Divide remained the hardest aggregate arena, followed closely by Prism Circuit, while Crosswind Basin was the most forgiving.
 - The deterministic balance bench now reports swarm kills, controlled survivors, leaks, and aggregate health removed separately. Control towers no longer appear inactive simply because slowed enemies remain alive when the scenario clock ends.

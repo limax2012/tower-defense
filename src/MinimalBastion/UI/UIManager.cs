@@ -162,6 +162,7 @@ public sealed class UIManager
     private readonly Rectangle _resultRestartButton = new(518, 580, 206, 46);
     private readonly Rectangle _resultMenuButton = new(740, 580, 206, 46);
     private readonly Rectangle _fieldResultsButton = new(630, 9, 176, 38);
+    private readonly Rectangle _coOpPausedBanner = new(285, 86, 390, 44);
     private readonly Rectangle _windowModeButton = new(350, 220, 280, 54);
     private readonly Rectangle _resolutionButton = new(650, 220, 280, 54);
     private readonly Rectangle _vsyncButton = new(350, 292, 280, 54);
@@ -825,7 +826,20 @@ public sealed class UIManager
 
     public UiAction HandleGameplayInput(InputSnapshot input, MinimalBastion.GameSession session, Action<GameCommand>? commandSink = null, int playerId = 1)
     {
+        if (_towerLibraryOpen)
+        {
+            if (!session.IsCoOp || !session.IsCoOpPaused || HandleTowerLibraryInput(input))
+                _towerLibraryOpen = false;
+            return UiAction.TowerLibrary;
+        }
+
         var point = input.MousePosition.ToPoint();
+        if (session.IsCoOp && session.IsCoOpPaused &&
+            (input.TabPressed || input.LeftPressed && _coOpPausedBanner.Contains(point)))
+        {
+            _towerLibraryOpen = true;
+            return UiAction.TowerLibrary;
+        }
         _hoveredTowerCardId = _towerCards.FirstOrDefault(x => x.Value.Contains(point)).Key;
         _hoveredPowerNode = session.Map.Definition.PowerNodes.FirstOrDefault(node =>
             Vector2.DistanceSquared(node.Position.ToVector2(), input.MousePosition) <= node.Radius * node.Radius);
@@ -1420,7 +1434,11 @@ public sealed class UIManager
         if (session.PlacementTowerId is not null || session.TacticalPlacement != TacticalPlacementKind.None) DrawPlacementStatus(batch, p, session);
         if (state == GameState.Playing && session.IsCoOp) DrawRemoteCoOpCursor(batch, p, session);
         if (state == GameState.Playing) DrawAnnouncement(batch, p, session);
-        if (state == GameState.Playing && session.IsCoOpPaused) DrawCoOpPausedBanner(batch, p, session.CoOpPausePlayerId);
+        if (state == GameState.Playing && session.IsCoOpPaused)
+        {
+            DrawCoOpPausedBanner(batch, p, session.CoOpPausePlayerId);
+            if (_towerLibraryOpen) DrawTowerLibrary(batch, p, "co-op pause");
+        }
 
         if (state == GameState.Paused) DrawPauseOverlay(batch, p, session);
         else if (state == GameState.CoOpReconnect) DrawCoOpReconnectOverlay(batch, p);
@@ -1504,13 +1522,13 @@ public sealed class UIManager
 
     private void DrawCoOpPausedBanner(SpriteBatch batch, PrimitiveRenderer p, int pausedByPlayerId)
     {
-        var rect = new Rectangle(285, 86, 390, 44);
+        var rect = _coOpPausedBanner;
         p.FillRect(batch, rect, ColorPalette.Navy);
         p.FillRect(batch, new Rectangle(rect.X, rect.Y, 5, rect.Height), ColorPalette.Green);
         p.DrawRect(batch, rect, ColorPalette.Cyan, 2);
         var owner = pausedByPlayerId is 1 or 2 ? $"P{pausedByPlayerId}" : "PEER";
-        DrawText(batch, $"{owner} PAUSED  |  BUILD, PLAN, THEN RESUME", new Vector2(rect.Center.X, rect.Center.Y),
-            ColorPalette.Paper, 0.52f, true);
+        DrawFittedCenteredText(batch, $"{owner} PAUSED  |  CLICK OR TAB: TACTICAL LIBRARY",
+            new Vector2(rect.Center.X, rect.Center.Y), ColorPalette.Paper, 0.52f, rect.Width - 24);
     }
 
     private void DrawAnnouncement(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
