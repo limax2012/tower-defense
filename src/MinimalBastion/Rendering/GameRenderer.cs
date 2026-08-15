@@ -65,24 +65,7 @@ public sealed class GameRenderer
         switch (motif.ToLowerInvariant())
         {
             case "foundry_floor":
-                // Open floor seams and sparse rivets suggest an industrial
-                // surface without enclosing any area. Closed background shapes
-                // compete with the actual build-zone language regardless of
-                // whether those shapes are rectangular or circular.
-                foreach (var seam in new[]
-                {
-                    (new Vector2(34, 58), new Vector2(246, 58)),
-                    (new Vector2(706, 54), new Vector2(916, 54)),
-                    (new Vector2(80, 680), new Vector2(326, 680)),
-                    (new Vector2(604, 670), new Vector2(902, 670)),
-                    (new Vector2(330, 418), new Vector2(386, 382)),
-                    (new Vector2(660, 304), new Vector2(706, 334))
-                })
-                {
-                    p.Line(batch, seam.Item1, seam.Item2, Color.Lerp(baseColor, accent, 0.15f), 1);
-                    p.Circle(batch, seam.Item1, 2f, Color.Lerp(baseColor, accent, 0.30f));
-                    p.Circle(batch, seam.Item2, 2f, Color.Lerp(baseColor, accent, 0.30f));
-                }
+                DrawFoundryFloor(batch, p, baseColor, accent);
                 break;
 
             case "meadow":
@@ -135,6 +118,85 @@ public sealed class GameRenderer
                     p.Ring(batch, field.Item1, field.Item2, Color.Lerp(baseColor, field.Item3, 0.13f), 1);
                 }
                 break;
+        }
+    }
+
+    private static void DrawFoundryFloor(SpriteBatch batch, PrimitiveRenderer p, Color baseColor, Color accent)
+    {
+        var railShadow = Color.Lerp(baseColor, ColorPalette.Ink, 0.20f);
+        var railFace = Color.Lerp(baseColor, accent, 0.24f);
+        var seamColor = Color.Lerp(baseColor, accent, 0.19f);
+        var rivetColor = Color.Lerp(baseColor, accent, 0.40f);
+        var conduitColor = Color.Lerp(baseColor, accent, 0.33f);
+        var emberColor = Color.Lerp(baseColor, ColorPalette.Orange, 0.33f);
+
+        // Long structural rails touch the map boundary, so they read as part of
+        // the floor construction rather than enclosed tower-placement panels.
+        p.FillRect(batch, new Rectangle(0, 38, GameConstants.MapWidth, 14), railShadow);
+        p.FillRect(batch, new Rectangle(0, 41, GameConstants.MapWidth, 4), railFace);
+        p.FillRect(batch, new Rectangle(924, 0, 12, GameConstants.LogicalHeight), railShadow);
+        p.FillRect(batch, new Rectangle(927, 0, 3, GameConstants.LogicalHeight), railFace);
+        p.FillRect(batch, new Rectangle(0, 688, 650, 9), railShadow);
+        p.FillRect(batch, new Rectangle(0, 690, 650, 2), railFace);
+
+        // Open-ended floor seams and their tiny fastening points add scale
+        // without producing another closed rectangle language.
+        foreach (var seam in new[]
+        {
+            (new Vector2(24, 78), new Vector2(236, 78)),
+            (new Vector2(698, 72), new Vector2(906, 72)),
+            (new Vector2(82, 286), new Vector2(146, 286)),
+            (new Vector2(332, 420), new Vector2(390, 382)),
+            (new Vector2(664, 302), new Vector2(712, 334)),
+            (new Vector2(796, 356), new Vector2(916, 356)),
+            (new Vector2(612, 666), new Vector2(904, 666))
+        })
+        {
+            p.Line(batch, seam.Item1, seam.Item2, seamColor, 1);
+            p.Circle(batch, seam.Item1, 2f, rivetColor);
+            p.Circle(batch, seam.Item2, 2f, rivetColor);
+        }
+
+        // Narrow paired conduits remain far thinner and quieter than the molten
+        // route. Every run is deliberately open at both ends.
+        DrawFoundryConduit(batch, p,
+            new[] { new Vector2(-8, 404), new Vector2(92, 404), new Vector2(92, 448), new Vector2(146, 448) },
+            conduitColor);
+        DrawFoundryConduit(batch, p,
+            new[] { new Vector2(734, -8), new Vector2(734, 82), new Vector2(858, 82) },
+            conduitColor);
+        DrawFoundryConduit(batch, p,
+            new[] { new Vector2(836, 536), new Vector2(910, 536), new Vector2(910, 604), new Vector2(968, 604) },
+            conduitColor);
+
+        // Unboxed heat-vent ticks introduce a restrained ember accent. Their
+        // tiny repeated scale cannot be confused with build-zone boundaries.
+        DrawFoundryVentTicks(batch, p, new Vector2(112, 676), 8, emberColor);
+        DrawFoundryVentTicks(batch, p, new Vector2(474, 72), 6, emberColor);
+        DrawFoundryVentTicks(batch, p, new Vector2(850, 390), 5, emberColor);
+    }
+
+    private static void DrawFoundryConduit(SpriteBatch batch, PrimitiveRenderer p, IReadOnlyList<Vector2> points, Color color)
+    {
+        for (var index = 0; index < points.Count - 1; index++)
+        {
+            var delta = points[index + 1] - points[index];
+            var offset = delta.LengthSquared() > 0.01f
+                ? Vector2.Normalize(new Vector2(-delta.Y, delta.X)) * 4
+                : Vector2.Zero;
+            p.Line(batch, points[index], points[index + 1], color, 2);
+            p.Line(batch, points[index] + offset, points[index + 1] + offset, Color.Lerp(color, ColorPalette.Ink, 0.22f), 1);
+        }
+        p.Circle(batch, points[0], 2.5f, color);
+        p.Circle(batch, points[^1], 2.5f, color);
+    }
+
+    private static void DrawFoundryVentTicks(SpriteBatch batch, PrimitiveRenderer p, Vector2 start, int count, Color color)
+    {
+        for (var index = 0; index < count; index++)
+        {
+            var x = start.X + index * 13;
+            p.Line(batch, new Vector2(x, start.Y), new Vector2(x + 5, start.Y - 9), color, 2);
         }
     }
 

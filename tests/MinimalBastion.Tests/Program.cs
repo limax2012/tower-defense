@@ -701,6 +701,12 @@ internal static class Program
             "each arena has an independently authored wave roster");
         Check.True(content.Maps.Values.All(map => !map.Background.Motif.Equals("none", StringComparison.OrdinalIgnoreCase)),
             "every arena opts into a visual identity motif");
+        var foundry = content.Maps["foundry_loop"];
+        Check.Equal("foundry_floor", foundry.Background.Motif, "Foundry uses its distinct industrial floor motif");
+        Check.True(foundry.Description.Contains("smelter", StringComparison.OrdinalIgnoreCase) &&
+            foundry.Description.Contains("transfer channel", StringComparison.OrdinalIgnoreCase) &&
+            foundry.Description.Contains("workyards", StringComparison.OrdinalIgnoreCase),
+            "Foundry lore describes its visible smelter channel and open workyard setting");
         Check.Equal("foundry", content.Maps["foundry_loop"].PathVisual.Style, "Foundry uses a molten industrial channel");
         Check.Equal("prism", prism.PathVisual.Style, "Prism uses a continuous refracted light ribbon");
         Check.Equal("trail", crosswind.PathVisual.Style, "Crosswind uses a static earth trail");
