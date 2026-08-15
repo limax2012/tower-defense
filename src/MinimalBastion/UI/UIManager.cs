@@ -1623,7 +1623,7 @@ public sealed class UIManager
         var beaconHint = supportBuff.IsActive ? TowerInfo.SignalBeaconStatChange(tower.Level, supportBuff) : null;
         var overdriveHint = tower.IsOverdriven
             ? $"{tower.Protocol.DisplayName.ToUpperInvariant()}  {tower.OverdriveRemaining:0.0}s  {TowerInfo.ProtocolBonuses(tower.Protocol)}"
-            : autoArmed ? $"AUTO ARMED: {tower.Protocol.DisplayName.ToUpperInvariant()}  |  THREAT {tower.Protocol.AutoTriggerCount}+" : null;
+            : autoArmed ? $"AUTO ARMED: {tower.Protocol.DisplayName.ToUpperInvariant()}  |  {tower.Protocol.AutoTriggerCount}+ OR ELITE/BOSS" : null;
         var primaryHint = beaconHint ?? TowerInfo.Strength(tower.Definition);
         var secondaryHint = powerHint ?? overdriveHint ?? (beaconHint is not null ? TowerInfo.Strength(tower.Definition) : TowerInfo.Limitation(tower.Definition));
         DrawFittedText(batch, primaryHint, new Vector2(980, 594),
@@ -2675,7 +2675,7 @@ public sealed class UIManager
             : $"DEFAULT TARGET {definition.DefaultTargetMode.ToUpperInvariant()}";
         DrawText(batch, $"{TowerInfo.ShortRole(definition).ToUpperInvariant()}  |  BUILD {definition.PurchaseCost}  |  {operation}",
             new Vector2(panel.X + 72, panel.Y + 43), ColorPalette.Muted, 0.53f);
-        DrawFittedText(batch, TowerInfo.ProtocolSummary(definition), new Vector2(panel.X + 72, panel.Y + 64), ColorPalette.Coral, 0.43f, panel.Width - 90);
+        DrawFittedText(batch, TowerInfo.ProtocolLibrarySummary(definition), new Vector2(panel.X + 72, panel.Y + 64), ColorPalette.Coral, 0.43f, panel.Width - 90);
         DrawFittedText(batch, $"{TowerInfo.Strength(definition)}  |  {TowerInfo.Limitation(definition)}",
             new Vector2(panel.X + 18, panel.Y + 82), ColorPalette.ReadableAccent(definition.Visual.PrimaryColor, ColorPalette.Panel), 0.44f, panel.Width - 36);
         p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 99, panel.Width - 36, 2), definition.Visual.PrimaryColor);

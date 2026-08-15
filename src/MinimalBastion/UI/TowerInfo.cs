@@ -48,6 +48,9 @@ public static class TowerInfo
     public static string ProtocolSummary(TowerDefinition definition) =>
         $"PROTOCOL: {definition.Protocol.DisplayName.ToUpperInvariant()}  {definition.Protocol.DurationSeconds:0.#}s  |  {ProtocolBonuses(definition.Protocol)}";
 
+    public static string ProtocolLibrarySummary(TowerDefinition definition) =>
+        $"PROTOCOL: {definition.Protocol.DisplayName.ToUpperInvariant()}  ACTIVE {definition.Protocol.DurationSeconds:0.#}s  CD {definition.Protocol.CooldownSeconds:0.#}s  |  {ProtocolBonuses(definition.Protocol)}  |  AUTO {definition.Protocol.AutoTriggerCount}+ / ELITE";
+
     public static IReadOnlyList<string> LibraryStatLines(TowerDefinition definition, TowerLevelDefinition level)
     {
         var lines = new List<string>();
