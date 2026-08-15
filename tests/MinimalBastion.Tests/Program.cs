@@ -117,7 +117,7 @@ internal static class Program
         Check.Equal(10, content.Towers.Count, "tower count");
         Check.Equal(5, content.Enemies.Count, "enemy count");
         Check.Equal(20, content.Waves.Waves.Count, "wave count");
-        Check.Equal(2, content.Maps.Count, "map count");
+        Check.Equal(3, content.Maps.Count, "map count");
         Check.Equal(1090, content.Waves.Waves.SelectMany(x => x.Groups).Sum(x => x.Count), "enemy count in waves");
         Check.True(content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase)) >= 5, "elite encounter groups");
         Check.Equal(1, content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)), "final boss group");
@@ -253,6 +253,12 @@ internal static class Program
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
         var relay = content.Maps["relay_divide"];
+        var prism = content.Maps["prism_circuit"];
+        Check.Equal("conduit", prism.PathVisual.Style, "Prism uses a distinct conduit path");
+        Check.Equal(3, prism.PowerNodes.Count, "Prism has a restrained node roster");
+        Check.Equal("prism_waves", prism.WaveSet, "Prism has its own campaign");
+        Check.True(prism.ChallengeRating > content.Maps["foundry_loop"].ChallengeRating, "Prism challenge is above Foundry");
+        Check.True(relay.ChallengeRating > prism.ChallengeRating, "Surge remains the hardest authored arena");
         Check.Equal("surge_waves", relay.WaveSet, "surge map has its own campaign");
         Check.True(content.WaveSets[relay.WaveSet].Waves[1].Groups.Any(x => x.EnemyId == "t2_runner"),
             "surge campaign introduces runners earlier than Foundry");

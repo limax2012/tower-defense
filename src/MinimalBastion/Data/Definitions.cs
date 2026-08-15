@@ -213,8 +213,11 @@ public sealed class MapDefinition
     public int SchemaVersion { get; set; } = 1;
     public string Id { get; set; } = "";
     public string DisplayName { get; set; } = "";
+    public string Description { get; set; } = "A balanced tactical arena.";
+    public int ChallengeRating { get; set; } = 2;
     public LogicalSizeData LogicalSize { get; set; } = new();
     public BackgroundData Background { get; set; } = new();
+    public PathVisualData PathVisual { get; set; } = new();
     public PointData Spawn { get; set; } = new();
     public PointData Goal { get; set; } = new();
     public int PathWidth { get; set; } = 56;
@@ -225,6 +228,17 @@ public sealed class MapDefinition
     public string WaveSet { get; set; } = "";
     public int StartingLives { get; set; } = 20;
     public int StartingCredits { get; set; } = 300;
+}
+
+public sealed class PathVisualData
+{
+    public string Style { get; set; } = "road";
+    public string Base { get; set; } = "#384E65";
+    public string Accent { get; set; } = "#E8B637";
+    public string Secondary { get; set; } = "#2192AA";
+    public Color BaseColor => TowerVisualData.ParseColor(Base);
+    public Color AccentColor => TowerVisualData.ParseColor(Accent);
+    public Color SecondaryColor => TowerVisualData.ParseColor(Secondary);
 }
 
 public sealed class PowerNodeData

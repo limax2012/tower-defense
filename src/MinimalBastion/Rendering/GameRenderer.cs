@@ -72,17 +72,29 @@ public sealed class GameRenderer
     {
         var points = session.Map.Definition.Path.Select(x => x.ToVector2()).ToArray();
         var roadWidth = session.Map.Definition.PathWidth;
+        var visual = session.Map.Definition.PathVisual;
 
-        // One flat color across every segment and join makes the route read as a
-        // single continuous road. There are deliberately no shoulders or seams.
+        if (visual.Style.Equals("conduit", StringComparison.OrdinalIgnoreCase))
+        {
+            // A narrow colored sleeve and inset core read as one continuous tube.
+            // Matching square joins remove tile seams without introducing round caps.
+            DrawContinuousPath(batch, p, points, visual.AccentColor, roadWidth);
+            DrawContinuousPath(batch, p, points, visual.BaseColor, Math.Max(12, roadWidth - 8));
+            for (var i = 0; i < points.Length - 1; i++)
+                DrawDashedLine(batch, p, points[i], points[i + 1], visual.SecondaryColor, 3, 10, 13);
+            return;
+        }
+
+        DrawContinuousPath(batch, p, points, visual.BaseColor, roadWidth);
         for (var i = 0; i < points.Length - 1; i++)
-            p.Line(batch, points[i], points[i + 1], ColorPalette.Path, roadWidth);
+            DrawDashedLine(batch, p, points[i], points[i + 1], visual.AccentColor, 4, 18, 16);
+    }
 
+    private static void DrawContinuousPath(SpriteBatch batch, PrimitiveRenderer p, IReadOnlyList<Vector2> points, Color color, int width)
+    {
+        for (var i = 0; i < points.Count - 1; i++) p.Line(batch, points[i], points[i + 1], color, width);
         foreach (var point in points)
-            p.FillRect(batch, new Rectangle((int)(point.X - roadWidth / 2f), (int)(point.Y - roadWidth / 2f), roadWidth, roadWidth), ColorPalette.Path);
-
-        for (var i = 0; i < points.Length - 1; i++)
-            DrawDashedLine(batch, p, points[i], points[i + 1], ColorPalette.PathStripe, 4, 18, 16);
+            p.FillRect(batch, new Rectangle((int)(point.X - width / 2f), (int)(point.Y - width / 2f), width, width), color);
     }
 
     private static void DrawDashedLine(SpriteBatch batch, PrimitiveRenderer p, Vector2 start, Vector2 end, Color color, float thickness, float dashLength, float gapLength)

@@ -108,6 +108,10 @@ public static class DataValidator
         RequireUnique(towers.Select(x => x.Id), "tower");
         RequireUnique(enemies.Select(x => x.Id), "enemy");
         if (map.Path.Count < 2) throw new InvalidDataException("Map path needs at least two points.");
+        if (map.ChallengeRating is < 1 or > 5 ||
+            !map.PathVisual.Style.Equals("road", StringComparison.OrdinalIgnoreCase) &&
+            !map.PathVisual.Style.Equals("conduit", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException($"Invalid map presentation: {map.Id}");
         if (map.PowerNodes.Any(x => string.IsNullOrWhiteSpace(x.Id) || x.Radius <= 0 || x.AttackSpeedBonus < 0 || x.RangeBonus < 0 ||
             x.DamageBonus < 0 || x.ArmorPierceBonus < 0 ||
             x.AttackSpeedBonus + x.RangeBonus + x.DamageBonus + x.ArmorPierceBonus <= 0))

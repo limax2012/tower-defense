@@ -53,7 +53,7 @@ public sealed class UIManager
     private string? _hoveredTowerCardId;
     private string? _specializationHint;
     private PowerNodeData? _hoveredPowerNode;
-    private readonly List<(string Id, string Name, int PowerNodes)> _maps = new();
+    private readonly List<(string Id, string Name, int PowerNodes, int Challenge, string Description, string PathStyle)> _maps = new();
     private readonly List<DifficultyDefinition> _difficulties = new();
     private int _selectedMapIndex;
     private int _selectedDifficultyIndex;
@@ -209,7 +209,9 @@ public sealed class UIManager
     {
         _maps.Clear();
         _maps.AddRange(maps.OrderBy(x => x.Id.Equals("foundry_loop", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
-            .ThenBy(x => x.DisplayName).Select(x => (x.Id, x.DisplayName, x.PowerNodes.Count)));
+            .ThenBy(x => x.Id.Equals("relay_divide", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(x => x.DisplayName)
+            .Select(x => (x.Id, x.DisplayName, x.PowerNodes.Count, x.ChallengeRating, x.Description, x.PathVisual.Style)));
         _selectedMapIndex = Math.Clamp(_selectedMapIndex, 0, Math.Max(0, _maps.Count - 1));
     }
 
@@ -1073,8 +1075,11 @@ public sealed class UIManager
 
         DrawText(batch, "MINIMAL BASTION", new Vector2(640, 295), ColorPalette.Ink, 2.2f, true);
         DrawText(batch, "A colorful geometric tower-defense game", new Vector2(640, 345), ColorPalette.Muted, 0.9f, true);
-        var map = _maps.Count == 0 ? (Id: "foundry_loop", Name: "Foundry Loop", PowerNodes: 0) : _maps[_selectedMapIndex];
-        var mapSuffix = map.PowerNodes > 0 ? $"{map.PowerNodes} SURGE NODES" : "CLASSIC";
+        var map = _maps.Count == 0
+            ? (Id: "foundry_loop", Name: "Foundry Loop", PowerNodes: 0, Challenge: 2, Description: "A balanced tactical arena.", PathStyle: "road")
+            : _maps[_selectedMapIndex];
+        var feature = map.PowerNodes > 0 ? $"{map.PowerNodes} SURGE NODES" : map.PathStyle.ToUpperInvariant();
+        var mapSuffix = $"THREAT {map.Challenge}/5 | {feature}";
         var difficulty = _difficulties.Count == 0 ? null : _difficulties[_selectedDifficultyIndex];
         DrawButton(batch, p, _mapButton, $"{_selectedMapIndex + 1}/{Math.Max(1, _maps.Count)}  {map.Name.ToUpperInvariant()}", true, ColorPalette.Berry);
         DrawButton(batch, p, _difficultyButton, (difficulty?.DisplayName ?? "Normal").ToUpperInvariant(), true,
@@ -1085,8 +1090,10 @@ public sealed class UIManager
         DrawButton(batch, p, _coOpButton, "ONLINE CO-OP", true, ColorPalette.Green);
         DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
         var difficultySummary = difficulty?.Description ?? "A balanced defense.";
-        DrawFittedCenteredText(batch, $"{mapSuffix} | {difficultySummary}", new Vector2(640, 646), ColorPalette.Muted, 0.54f, 800);
-        DrawText(batch, "Left click places/selects   \u2022   Right click cancels   \u2022   Escape pauses", new Vector2(640, 670), ColorPalette.Navy, 0.61f, true);
+        DrawFittedCenteredText(batch, $"{mapSuffix} | {map.Description}", new Vector2(640, 638), ColorPalette.Muted, 0.52f, 900);
+        DrawFittedCenteredText(batch, $"{(difficulty?.DisplayName ?? "Normal").ToUpperInvariant()} | {difficultySummary}",
+            new Vector2(640, 660), difficulty?.AccentColor ?? ColorPalette.Cobalt, 0.48f, 860);
+        DrawText(batch, "Left click places/selects   \u2022   Right click cancels   \u2022   Escape pauses", new Vector2(640, 687), ColorPalette.Navy, 0.58f, true);
     }
 
     private void DrawSaveSlots(SpriteBatch batch, PrimitiveRenderer p)
