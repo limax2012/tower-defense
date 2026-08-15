@@ -416,6 +416,7 @@ public sealed class Game1 : Game
             if (_isNetworkHost)
             {
                 if (_session is null || _networkRunner is null) InitializeHostSession();
+                if (reconnecting) _authoritativeCommands?.BeginRequestSession(2);
                 _networkResyncing = false;
                 _ui.SetCoOpLobbyStatus(reconnecting ? "PLAYER 2 RECONNECTED" : "PLAYER 2 CONNECTED",
                     "Sending the host's authoritative match state...", _coOpHost?.JoinCode ?? "");

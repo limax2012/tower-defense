@@ -127,6 +127,20 @@ public sealed class AuthoritativeCommandHost
     public int ReceiptHistoryCount => _receipts.Count;
     public IReadOnlyList<GameCommand> AcceptedCommands => _acceptedCommands;
 
+    public void BeginRequestSession(int playerId)
+    {
+        if (playerId is < 1 or > 2) throw new ArgumentOutOfRangeException(nameof(playerId));
+        foreach (var key in _receipts.Keys.Where(key => key.PlayerId == playerId).ToArray())
+            _receipts.Remove(key);
+        if (_receiptOrder.Count > 0)
+        {
+            var retained = _receiptOrder.Where(key => key.PlayerId != playerId).ToArray();
+            _receiptOrder.Clear();
+            foreach (var key in retained) _receiptOrder.Enqueue(key);
+        }
+        _expiredRequestFloor[playerId] = 0;
+    }
+
     public CommandReceipt Submit(GameSession session, GameCommand request)
     {
         if (request.ClientRequestId <= 0)

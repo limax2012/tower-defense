@@ -62,6 +62,7 @@ Network code never implements a second copy of placement, affordability, upgrade
 - Wave-ready coordinator behavior.
 - Map/difficulty/challenge identity and latent future-entity state in checksums and session construction.
 - Active-combat snapshot round trip, future-command restoration, post-reconnect combat soak, repeated loopback reconnection, and graceful connection close detection.
+- Per-connection Player 2 request-session rotation, allowing a restarted client to begin request numbering again without resetting authoritative command sequence or pending simulation state.
 - Jittered 0-5 tick command delivery across shared placement, branching, targeting, Protocols, speed, and selling, plus explicit rejection once the six-tick authority buffer has been missed.
 - Real loopback coverage for bounded framing, malformed-envelope rejection, shared pause transport, restart requests, reconnect listener reuse, and post-snapshot checksum fencing.
 - Heartbeat tolerance, activity refresh, sustained-silence timeout, and resumed-frame clamping.

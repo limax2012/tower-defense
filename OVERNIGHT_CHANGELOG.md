@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Rotated Player 2's request-replay window when the host accepts a reconnect while preserving global authoritative sequence and scheduled commands. A friend who restarts their client can now resume at request ID 1 instead of having every control mistaken for an old duplicate.
 - Validated and size-checked captured checkpoints before touching the primary generation. An internally inconsistent or unexpectedly huge deep-run snapshot can no longer be reported as saved only to become unreadable on the next launch.
 - Separated graphics application from settings persistence. A read-only/full local-data directory no longer masquerades as an unsupported display mode or forces a successfully applied resolution back to 1280x720; the live choice remains active with a clear save warning.
 - Rejected empty or oversized settings generations before JSON allocation. Startup now falls through to the last-known-good display/audio configuration when a local settings file is implausibly large.

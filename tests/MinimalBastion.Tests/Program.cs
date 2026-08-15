@@ -1285,6 +1285,18 @@ internal static class Program
         var recentId = AuthoritativeCommandHost.ReceiptHistoryLimit + 300L;
         var recent = authority.Sequence(new GameCommand { PlayerId = 1, ClientRequestId = recentId, Type = GameCommandType.SetSpeed });
         Check.True(recent.Duplicate && recent.Accepted, "recent duplicate returns its original receipt");
+        Check.True(authority.Sequence(new GameCommand { PlayerId = 2, ClientRequestId = 1, Type = GameCommandType.SetSpeed }).Accepted,
+            "player two request is accepted before reconnect");
+        var sequenceBeforeReconnect = authority.LastSequence;
+        authority.BeginRequestSession(2);
+        var restartedClient = authority.Sequence(new GameCommand { PlayerId = 2, ClientRequestId = 1, Type = GameCommandType.SetSpeed });
+        Check.True(restartedClient.Accepted && !restartedClient.Duplicate && authority.LastSequence == sequenceBeforeReconnect + 1,
+            "reconnected player can restart request numbering without resetting authoritative sequence");
+        recent = authority.Sequence(new GameCommand { PlayerId = 1, ClientRequestId = recentId, Type = GameCommandType.SetSpeed });
+        Check.True(recent.Duplicate && recent.Accepted,
+            "rotating player two request history preserves host replay protection");
+        Check.Throws<ArgumentOutOfRangeException>(() => authority.BeginRequestSession(3),
+            "request-session rotation rejects an unknown player");
 
         var capacityRunner = new DeterministicSessionRunner(Session());
         for (var sequence = 1L; sequence <= DeterministicSessionRunner.MaximumPendingCommands; sequence++)
