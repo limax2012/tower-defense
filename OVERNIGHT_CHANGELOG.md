@@ -43,6 +43,7 @@ Date: 2026-08-15
 - Added compact procedural sound cues for placement, upgrades, sales, Protocols, kills, leaks, waves, Pulse Plates, and the Charge Forge. Audio initialization fails safely to silent play on systems without a usable device.
 - Completed the procedural audio event language with distinct boss-phase, victory, and defeat cues, plus Plate deployment and Forge sale feedback. Attack-by-attack sounds remain intentionally omitted to preserve clarity during dense late-game fire.
 - Added a deterministic two-player jitter regression that delivers authoritative shared-control commands 0-5 ticks late across placement, upgrades, targeting, Protocols, speed, and sales. Both peers must retain an identical checksum, while commands that miss the six-tick authority window are rejected for repair.
+- Added low-rate remote P1/P2 battlefield cursors for co-op coordination. Presence traffic is bounded to eight updates per second, excluded from deterministic simulation/checksums, rejects invalid/sidebar coordinates, and fades after 0.75 seconds without an update; middle-click pings remain the persistent callout.
 - Bounded deep-endless co-op bookkeeping: request receipts and applied-sequence replay protection now compact into rolling histories, pending/far-future commands are capped and validated during snapshots, and a stalled outbound queue pauses for reconnection instead of growing indefinitely.
 - Added structural validation for authoritative reconnect snapshots before they mutate a live client: missing collections, duplicate identities, nonfinite combat values, oversized state, malformed telemetry, and invalid pending commands now fail as bounded data errors instead of surfacing as null/dictionary crashes or repeated divergent repairs.
 - Compacted sold-tower telemetry after its last projectile/status expires. Aggregate lifetime contribution remains exact and lingering utility still survives co-op snapshots, while obsolete tower objects and instance-ID maps no longer grow under endless sell/rebuild churn; a 300-cycle regression guards it.
@@ -61,7 +62,7 @@ Date: 2026-08-15
 - Gave every tower protocol its own restrained geometric signature and audio pitch while active. Reduced-effects mode keeps only the essential native-color protocol ring.
 - Re-ran 180 deterministic campaign agents per key difficulty after the map, branch, protocol, Mortar, and support changes. Normal cleared 137/180 (76.1%), Hard 106/180 (58.9%), and Bastion 35/180 (19.4%); on Hard, Foundry cleared 41/60, Prism 38/60, and Surge 27/60, confirming the intended arena ordering.
 - Added source-aware utility telemetry: Signal Beacon damage-equivalent and recipient-seconds plus Slow, Stun, Exposed, and Armor Break enemy-seconds. End-run contribution bars now include Beacon-assisted output while keeping direct damage visibly separate.
-- Current verification: 62/62 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
+- Current verification: 63/63 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
 
 ## Range, branch, and menu harmony pass
 

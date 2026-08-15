@@ -23,12 +23,13 @@ public enum CoOpMessageType
     StateSnapshot,
     ResyncRequest,
     RestartRequest,
-    Disconnect
+    Disconnect,
+    Cursor
 }
 
 public sealed record CoOpEnvelope
 {
-    public const int CurrentProtocolVersion = 4;
+    public const int CurrentProtocolVersion = 5;
     public CoOpMessageType Type { get; init; }
     public int ProtocolVersion { get; init; } = CurrentProtocolVersion;
     public string JoinCode { get; init; } = "";

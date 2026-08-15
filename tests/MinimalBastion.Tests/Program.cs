@@ -81,6 +81,7 @@ internal static class Program
             ("co-op checksum coverage", CoOpChecksumCoverage),
             ("co-op reconnect combat soak", CoOpReconnectCombatSoak),
             ("co-op wave ready", CoOpWaveReady),
+            ("co-op cursor presence", CoOpCursorPresence),
             ("online co-op transport", CoOpLoopbackTransport),
             ("online co-op reconnect transport", CoOpReconnectTransport),
             ("co-op invalid code", CoOpInvalidCode),
@@ -1433,6 +1434,35 @@ internal static class Program
         CoOpLoopbackTransportAsync().GetAwaiter().GetResult();
     }
 
+    private static void CoOpCursorPresence()
+    {
+        var tracker = new CoOpCursorTracker();
+        Check.True(tracker.TryCaptureLocal(new Vector2(300, 220), true, out var first),
+            "first local battlefield cursor sample sends immediately");
+        Check.Equal(new Vector2(300, 220), first, "local cursor sample preserves logical coordinates");
+        Check.True(!tracker.TryCaptureLocal(new Vector2(302, 222), true, out _),
+            "cursor traffic is rate limited between samples");
+        tracker.Advance(CoOpCursorTracker.SendIntervalSeconds);
+        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, out _),
+            "cursor sampling resumes at its bounded presence cadence");
+        tracker.Advance(CoOpCursorTracker.SendIntervalSeconds);
+        Check.True(!tracker.TryCaptureLocal(new Vector2(302, 222), true, out _),
+            "stationary cursor waits for its slower heartbeat");
+        tracker.Advance(CoOpCursorTracker.IdleHeartbeatSeconds);
+        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, out _),
+            "stationary cursor heartbeat keeps remote presence alive");
+        Check.True(!tracker.TryCaptureLocal(new Vector2(GameConstants.MapWidth + 10, 220), true, out _),
+            "sidebar positions are excluded from battlefield presence traffic");
+
+        Check.True(tracker.Receive(new Vector2(400, 300), 2), "valid remote cursor is accepted");
+        Check.Equal(new Vector2(400, 300), tracker.RemotePosition!.Value, "remote cursor position is exposed for drawing");
+        Check.Equal(2, tracker.RemotePlayerId, "remote cursor retains player identity");
+        Check.True(!tracker.Receive(new Vector2(float.NaN, 300), 2), "nonfinite remote cursor is ignored");
+        tracker.Advance(CoOpCursorTracker.RemoteTimeoutSeconds + 0.01f);
+        Check.True(tracker.RemotePosition is null && tracker.RemotePlayerId == 0,
+            "stale remote presence disappears instead of freezing on the battlefield");
+    }
+
     private static async Task CoOpLoopbackTransportAsync()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -1450,6 +1480,11 @@ internal static class Program
         var receipt = await client.ReceiveAsync(timeout.Token);
         Check.True(receipt!.Receipt!.Value.Accepted, "client receives accepted receipt");
         Check.Equal(3L, receipt.Receipt.Value.Command.Sequence, "authoritative sequence survives transport");
+        await client.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.Cursor, PlayerId = 2, X = 321, Y = 222 }, timeout.Token);
+        var cursor = await server.ReceiveAsync(timeout.Token);
+        Check.Equal(CoOpMessageType.Cursor, cursor!.Type, "remote cursor update survives transport");
+        Check.Nearly(321, cursor.X, "remote cursor x survives transport");
+        Check.Nearly(222, cursor.Y, "remote cursor y survives transport");
         await client.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.RestartRequest, PlayerId = 2 }, timeout.Token);
         var restart = await server.ReceiveAsync(timeout.Token);
         Check.Equal(CoOpMessageType.RestartRequest, restart!.Type, "client restart request survives transport");

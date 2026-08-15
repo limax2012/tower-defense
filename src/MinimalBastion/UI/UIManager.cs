@@ -75,6 +75,8 @@ public sealed class UIManager
     private bool _coOpEarlyBonusQueued;
     private bool _coOpPeerConnected;
     private bool _coOpResyncing;
+    private Vector2? _remoteCoOpCursor;
+    private int _remoteCoOpCursorPlayerId;
     private bool _saveAvailable;
     private string _persistenceStatus = "Progress is stored in independent save slots between waves.";
     private IReadOnlyList<SaveSlotInfo> _saveSlots = Array.Empty<SaveSlotInfo>();
@@ -560,6 +562,12 @@ public sealed class UIManager
         _coOpResyncing = resyncing;
     }
 
+    public void SetRemoteCoOpCursor(Vector2? position, int playerId)
+    {
+        _remoteCoOpCursor = position;
+        _remoteCoOpCursorPlayerId = position is null ? 0 : playerId;
+    }
+
     public UiAction HandleGameplayInput(InputSnapshot input, MinimalBastion.GameSession session, Action<GameCommand>? commandSink = null, int playerId = 1)
     {
         var point = input.MousePosition.ToPoint();
@@ -949,6 +957,7 @@ public sealed class UIManager
         DrawSidebar(batch, p, session);
         DrawTacticalBar(batch, p, session);
         if (session.PlacementTowerId is not null || session.TacticalPlacement != TacticalPlacementKind.None) DrawPlacementStatus(batch, p, session);
+        if (state == GameState.Playing && session.IsCoOp) DrawRemoteCoOpCursor(batch, p);
         if (state == GameState.Playing) DrawAnnouncement(batch, p, session);
 
         if (state == GameState.Paused) DrawPauseOverlay(batch, p, session);
@@ -956,6 +965,19 @@ public sealed class UIManager
         else if (state == GameState.Victory) DrawResultOverlay(batch, p, session, true);
         else if (state == GameState.Defeat) DrawResultOverlay(batch, p, session, false);
         else if (state == GameState.DefeatField) DrawDefeatFieldControls(batch, p);
+    }
+
+    private void DrawRemoteCoOpCursor(SpriteBatch batch, PrimitiveRenderer p)
+    {
+        if (_remoteCoOpCursor is not { } position || _remoteCoOpCursorPlayerId is < 1 or > 2) return;
+        var color = _remoteCoOpCursorPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral;
+        p.Ring(batch, position, 8, color, 2);
+        p.Circle(batch, position, 2.5f, color);
+        p.Line(batch, position + new Vector2(-15, 0), position + new Vector2(-10, 0), color, 2);
+        p.Line(batch, position + new Vector2(10, 0), position + new Vector2(15, 0), color, 2);
+        p.Line(batch, position + new Vector2(0, -15), position + new Vector2(0, -10), color, 2);
+        p.Line(batch, position + new Vector2(0, 10), position + new Vector2(0, 15), color, 2);
+        DrawText(batch, $"P{_remoteCoOpCursorPlayerId}", position + new Vector2(13, -17), color, 0.36f);
     }
 
     private void DrawHud(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)

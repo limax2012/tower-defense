@@ -42,6 +42,7 @@ public sealed class Game1 : Game
     private readonly Dictionary<long, string> _remoteNetworkChecksums = new();
     private readonly HashSet<long> _repliedChecksumTicks = new();
     private readonly CoOpWaveReadyCoordinator _coOpWaveReady = new();
+    private readonly CoOpCursorTracker _coOpCursor = new();
     private AuthoritativeCommandHost? _authoritativeCommands;
     private DeterministicSessionRunner? _networkRunner;
     private bool _isNetworkHost;
@@ -134,7 +135,10 @@ public sealed class Game1 : Game
     {
         _viewportTransform.Update(GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
         var input = _input.Update();
-        _audio?.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
+        var elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        _audio?.Update(elapsedSeconds);
+        _coOpCursor.Advance(elapsedSeconds);
+        SyncRemoteCoOpCursor();
 
         if (_loadError is not null)
         {
@@ -221,6 +225,15 @@ public sealed class Game1 : Game
         if (_session is null || _state != GameState.Playing) return;
         if (_networkRunner is not null && input.PingPressed && input.MousePosition.X < GameConstants.MapWidth && input.MousePosition.Y >= GameConstants.TopBarHeight)
             SendCoOpPing(input.MousePosition);
+        if (_networkRunner is not null && _networkStarted &&
+            _coOpCursor.TryCaptureLocal(input.MousePosition, input.IsMouseOverLogicalCanvas, out var cursorPosition))
+            QueueSend(new CoOpEnvelope
+            {
+                Type = CoOpMessageType.Cursor,
+                PlayerId = _localPlayerId,
+                X = cursorPosition.X,
+                Y = cursorPosition.Y
+            });
         _debug.Update(input);
         Action<GameCommand>? commandSink = _networkRunner is null ? null : SubmitLocalNetworkCommand;
         var action = _ui.HandleGameplayInput(input, _session, commandSink, _localPlayerId);
@@ -520,6 +533,9 @@ public sealed class Game1 : Game
             case CoOpMessageType.Ping when envelope.PlayerId != _localPlayerId:
                 ShowCoOpPing(new Vector2(envelope.X, envelope.Y), envelope.PlayerId);
                 break;
+            case CoOpMessageType.Cursor when envelope.PlayerId != _localPlayerId:
+                if (_coOpCursor.Receive(new Vector2(envelope.X, envelope.Y), envelope.PlayerId)) SyncRemoteCoOpCursor();
+                break;
             case CoOpMessageType.CommandRequest when _isNetworkHost && _networkStarted && envelope.Command is not null:
                 QueueAuthoritativeCommand(envelope.Command with { PlayerId = 2 });
                 break;
@@ -625,6 +641,9 @@ public sealed class Game1 : Game
             position.Y < GameConstants.TopBarHeight || position.Y > GameConstants.LogicalHeight) return;
         _session.Effects.AddPing(position, playerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral);
     }
+
+    private void SyncRemoteCoOpCursor() =>
+        _ui?.SetRemoteCoOpCursor(_coOpCursor.RemotePosition, _coOpCursor.RemotePlayerId);
 
     private void QueueAuthoritativeCommand(GameCommand request)
     {
@@ -793,6 +812,8 @@ public sealed class Game1 : Game
         _coOpConnection = null;
         _receiveTask = null;
         _pendingNetworkSends.Clear();
+        _coOpCursor.Reset();
+        SyncRemoteCoOpCursor();
     }
 
     private void CleanupNetwork()
