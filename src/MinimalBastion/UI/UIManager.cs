@@ -77,6 +77,7 @@ public sealed class UIManager
     private bool _coOpResyncing;
     private Vector2? _remoteCoOpCursor;
     private int _remoteCoOpCursorPlayerId;
+    private int _remoteCoOpSelectedTowerId;
     private bool _saveAvailable;
     private string _persistenceStatus = "Progress is stored in independent save slots between waves.";
     private IReadOnlyList<SaveSlotInfo> _saveSlots = Array.Empty<SaveSlotInfo>();
@@ -562,10 +563,11 @@ public sealed class UIManager
         _coOpResyncing = resyncing;
     }
 
-    public void SetRemoteCoOpCursor(Vector2? position, int playerId)
+    public void SetRemoteCoOpCursor(Vector2? position, int playerId, int selectedTowerId = 0)
     {
         _remoteCoOpCursor = position;
         _remoteCoOpCursorPlayerId = position is null ? 0 : playerId;
+        _remoteCoOpSelectedTowerId = position is null ? 0 : Math.Max(0, selectedTowerId);
     }
 
     public UiAction HandleGameplayInput(InputSnapshot input, MinimalBastion.GameSession session, Action<GameCommand>? commandSink = null, int playerId = 1)
@@ -957,7 +959,7 @@ public sealed class UIManager
         DrawSidebar(batch, p, session);
         DrawTacticalBar(batch, p, session);
         if (session.PlacementTowerId is not null || session.TacticalPlacement != TacticalPlacementKind.None) DrawPlacementStatus(batch, p, session);
-        if (state == GameState.Playing && session.IsCoOp) DrawRemoteCoOpCursor(batch, p);
+        if (state == GameState.Playing && session.IsCoOp) DrawRemoteCoOpCursor(batch, p, session);
         if (state == GameState.Playing) DrawAnnouncement(batch, p, session);
 
         if (state == GameState.Paused) DrawPauseOverlay(batch, p, session);
@@ -967,10 +969,27 @@ public sealed class UIManager
         else if (state == GameState.DefeatField) DrawDefeatFieldControls(batch, p);
     }
 
-    private void DrawRemoteCoOpCursor(SpriteBatch batch, PrimitiveRenderer p)
+    private void DrawRemoteCoOpCursor(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
         if (_remoteCoOpCursor is not { } position || _remoteCoOpCursorPlayerId is < 1 or > 2) return;
         var color = _remoteCoOpCursorPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral;
+        if (_remoteCoOpSelectedTowerId > 0 && session.Towers.FirstOrDefault(tower => tower.Id == _remoteCoOpSelectedTowerId) is { } tower)
+        {
+            var radius = tower.Definition.Visual.Radius + 15;
+            const float mark = 7;
+            var left = tower.Position.X - radius;
+            var right = tower.Position.X + radius;
+            var top = tower.Position.Y - radius;
+            var bottom = tower.Position.Y + radius;
+            p.Line(batch, new Vector2(left, top), new Vector2(left + mark, top), color, 2);
+            p.Line(batch, new Vector2(left, top), new Vector2(left, top + mark), color, 2);
+            p.Line(batch, new Vector2(right, top), new Vector2(right - mark, top), color, 2);
+            p.Line(batch, new Vector2(right, top), new Vector2(right, top + mark), color, 2);
+            p.Line(batch, new Vector2(left, bottom), new Vector2(left + mark, bottom), color, 2);
+            p.Line(batch, new Vector2(left, bottom), new Vector2(left, bottom - mark), color, 2);
+            p.Line(batch, new Vector2(right, bottom), new Vector2(right - mark, bottom), color, 2);
+            p.Line(batch, new Vector2(right, bottom), new Vector2(right, bottom - mark), color, 2);
+        }
         p.Ring(batch, position, 8, color, 2);
         p.Circle(batch, position, 2.5f, color);
         p.Line(batch, position + new Vector2(-15, 0), position + new Vector2(-10, 0), color, 2);

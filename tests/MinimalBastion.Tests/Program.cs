@@ -1437,29 +1437,33 @@ internal static class Program
     private static void CoOpCursorPresence()
     {
         var tracker = new CoOpCursorTracker();
-        Check.True(tracker.TryCaptureLocal(new Vector2(300, 220), true, out var first),
+        Check.True(tracker.TryCaptureLocal(new Vector2(300, 220), true, 0, out var first),
             "first local battlefield cursor sample sends immediately");
         Check.Equal(new Vector2(300, 220), first, "local cursor sample preserves logical coordinates");
-        Check.True(!tracker.TryCaptureLocal(new Vector2(302, 222), true, out _),
+        Check.True(!tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, out _),
             "cursor traffic is rate limited between samples");
         tracker.Advance(CoOpCursorTracker.SendIntervalSeconds);
-        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, out _),
+        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, out _),
             "cursor sampling resumes at its bounded presence cadence");
         tracker.Advance(CoOpCursorTracker.SendIntervalSeconds);
-        Check.True(!tracker.TryCaptureLocal(new Vector2(302, 222), true, out _),
+        Check.True(!tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, out _),
             "stationary cursor waits for its slower heartbeat");
+        tracker.Advance(CoOpCursorTracker.SendIntervalSeconds);
+        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 42, out _),
+            "tower selection changes send without waiting for the idle heartbeat");
         tracker.Advance(CoOpCursorTracker.IdleHeartbeatSeconds);
-        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, out _),
+        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 42, out _),
             "stationary cursor heartbeat keeps remote presence alive");
-        Check.True(!tracker.TryCaptureLocal(new Vector2(GameConstants.MapWidth + 10, 220), true, out _),
+        Check.True(!tracker.TryCaptureLocal(new Vector2(GameConstants.MapWidth + 10, 220), true, 0, out _),
             "sidebar positions are excluded from battlefield presence traffic");
 
-        Check.True(tracker.Receive(new Vector2(400, 300), 2), "valid remote cursor is accepted");
+        Check.True(tracker.Receive(new Vector2(400, 300), 2, 17), "valid remote cursor is accepted");
         Check.Equal(new Vector2(400, 300), tracker.RemotePosition!.Value, "remote cursor position is exposed for drawing");
         Check.Equal(2, tracker.RemotePlayerId, "remote cursor retains player identity");
+        Check.Equal(17, tracker.RemoteEntityId, "remote cursor retains selected tower context");
         Check.True(!tracker.Receive(new Vector2(float.NaN, 300), 2), "nonfinite remote cursor is ignored");
         tracker.Advance(CoOpCursorTracker.RemoteTimeoutSeconds + 0.01f);
-        Check.True(tracker.RemotePosition is null && tracker.RemotePlayerId == 0,
+        Check.True(tracker.RemotePosition is null && tracker.RemotePlayerId == 0 && tracker.RemoteEntityId == 0,
             "stale remote presence disappears instead of freezing on the battlefield");
     }
 
@@ -1480,11 +1484,12 @@ internal static class Program
         var receipt = await client.ReceiveAsync(timeout.Token);
         Check.True(receipt!.Receipt!.Value.Accepted, "client receives accepted receipt");
         Check.Equal(3L, receipt.Receipt.Value.Command.Sequence, "authoritative sequence survives transport");
-        await client.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.Cursor, PlayerId = 2, X = 321, Y = 222 }, timeout.Token);
+        await client.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.Cursor, PlayerId = 2, X = 321, Y = 222, EntityId = 9 }, timeout.Token);
         var cursor = await server.ReceiveAsync(timeout.Token);
         Check.Equal(CoOpMessageType.Cursor, cursor!.Type, "remote cursor update survives transport");
         Check.Nearly(321, cursor.X, "remote cursor x survives transport");
         Check.Nearly(222, cursor.Y, "remote cursor y survives transport");
+        Check.Equal(9, cursor.EntityId, "remote tower selection survives presence transport");
         await client.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.RestartRequest, PlayerId = 2 }, timeout.Token);
         var restart = await server.ReceiveAsync(timeout.Token);
         Check.Equal(CoOpMessageType.RestartRequest, restart!.Type, "client restart request survives transport");

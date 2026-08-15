@@ -45,6 +45,7 @@ public sealed record CoOpEnvelope
     public bool EarlyBonus { get; init; }
     public float X { get; init; }
     public float Y { get; init; }
+    public int EntityId { get; init; }
     public CoOpStateSnapshot? State { get; init; }
 }
 

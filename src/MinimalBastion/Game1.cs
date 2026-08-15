@@ -226,13 +226,15 @@ public sealed class Game1 : Game
         if (_networkRunner is not null && input.PingPressed && input.MousePosition.X < GameConstants.MapWidth && input.MousePosition.Y >= GameConstants.TopBarHeight)
             SendCoOpPing(input.MousePosition);
         if (_networkRunner is not null && _networkStarted &&
-            _coOpCursor.TryCaptureLocal(input.MousePosition, input.IsMouseOverLogicalCanvas, out var cursorPosition))
+            _coOpCursor.TryCaptureLocal(input.MousePosition, input.IsMouseOverLogicalCanvas,
+                _session.SelectedTower?.Id ?? 0, out var cursorPosition))
             QueueSend(new CoOpEnvelope
             {
                 Type = CoOpMessageType.Cursor,
                 PlayerId = _localPlayerId,
                 X = cursorPosition.X,
-                Y = cursorPosition.Y
+                Y = cursorPosition.Y,
+                EntityId = _session.SelectedTower?.Id ?? 0
             });
         _debug.Update(input);
         Action<GameCommand>? commandSink = _networkRunner is null ? null : SubmitLocalNetworkCommand;
@@ -534,7 +536,8 @@ public sealed class Game1 : Game
                 ShowCoOpPing(new Vector2(envelope.X, envelope.Y), envelope.PlayerId);
                 break;
             case CoOpMessageType.Cursor when envelope.PlayerId != _localPlayerId:
-                if (_coOpCursor.Receive(new Vector2(envelope.X, envelope.Y), envelope.PlayerId)) SyncRemoteCoOpCursor();
+                if (_coOpCursor.Receive(new Vector2(envelope.X, envelope.Y), envelope.PlayerId, envelope.EntityId))
+                    SyncRemoteCoOpCursor();
                 break;
             case CoOpMessageType.CommandRequest when _isNetworkHost && _networkStarted && envelope.Command is not null:
                 QueueAuthoritativeCommand(envelope.Command with { PlayerId = 2 });
@@ -643,7 +646,7 @@ public sealed class Game1 : Game
     }
 
     private void SyncRemoteCoOpCursor() =>
-        _ui?.SetRemoteCoOpCursor(_coOpCursor.RemotePosition, _coOpCursor.RemotePlayerId);
+        _ui?.SetRemoteCoOpCursor(_coOpCursor.RemotePosition, _coOpCursor.RemotePlayerId, _coOpCursor.RemoteEntityId);
 
     private void QueueAuthoritativeCommand(GameCommand request)
     {
