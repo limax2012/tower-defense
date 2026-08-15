@@ -17,7 +17,7 @@ dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simul
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --difficulty hard --strategy LongRange "--force-build=siege_mortar:mortar_loader>quake_shell"
 ```
 
-CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, and `--output`. `--force-build` accepts `tower:doctrine>specialization` and is intended for controlled branch-viability diagnostics. A `--max-wave` above 20 explicitly enters deterministic endless mode; ordinary simulation remains the authored campaign. `--simulate-full` evaluates every map unless a map is supplied.
+CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, `--no-protocols`, and `--output`. `--force-build` accepts `tower:doctrine>specialization` and is intended for controlled branch-viability diagnostics; `--no-protocols` creates a matched active-ability control group. A `--max-wave` above 20 explicitly enters deterministic endless mode; ordinary simulation remains the authored campaign. `--simulate-full` evaluates every map unless a map is supplied.
 
 ## Architecture
 
@@ -120,6 +120,7 @@ Reports: `.build/balance/four-map-hard-close_quarters-3x.json`, `.build/balance/
 - The same attribution is now retained per deployed tower at runtime. Tower Intel can distinguish a specific Beacon's assisted damage and a specific control/expose/break source's enemy-seconds instead of showing only its direct damage and kills; saves and co-op checksums include these records.
 - Damage resolution now calculates actual marginal Expose and Armor Break damage without changing combat. In the full 240-run Hard matrix, Prism Beam adds 2,302,526 Expose assist and reaches 9.7 impact/credit; Breaker adds 3,511,181 Armor Break assist and reaches 29.0. Prism remains a lower credit-efficiency purchase because it buys long-range slot coverage, while the 16/20 Anti-Armor policy remains below the 19/20 leading mixed policies, so neither result justifies a blind stat adjustment.
 - Direct damage/credit still understates pure range coverage, but support and control roles now have reproducible campaign measurements alongside scenario outcomes.
+- A paired 240-run Hard control group disabled all Protocol activations while preserving the same maps, strategies, and seeds. Clears moved from 140/240 (58.3%) to 110/240 (45.8%), average wave from 17.4 to 15.4, and average lives from 10.1 to 6.9. LongRange and UpgradeFocused retained 18/20 and 17/20 clears without Protocols, while the disabled matrix still produced 110 wins across multiple policies. Protocols therefore provide a meaningful execution reward without being a universal gate; no Protocol stat change is warranted. Report: `.build/balance/protocol-control-hard-5x.json`.
 
 ## Reproducible cases
 
@@ -141,7 +142,7 @@ Hard cases are in `.build/balance/overnight-hard-5x.json`; the Bastion case is i
 - Do not add early-wave-only damage or alter tower damage to conceal economy, placement, or policy problems.
 - Permanent towers should dominate total damage; Pulse Plates should rescue mistakes or reward a forge investment.
 - Forge production must require active-wave risk; waiting is never income.
-- Active Protocols should matter without becoming mandatory; optional automation exists for players who prefer lower intervention.
+- Active Protocols should matter without becoming mandatory; the paired Hard control group remains 45.8% viable without them, and optional automation exists for players who prefer lower intervention.
 - A full strategy-matrix regression matters more than one favorable seed.
 
 ## All-tier economy pass (2026-08-14)

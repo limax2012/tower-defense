@@ -34,6 +34,7 @@ public sealed class SimulationOptions
     public string? ForcedTowerId { get; init; }
     public string? ForcedDoctrineId { get; init; }
     public string? ForcedSpecializationId { get; init; }
+    public bool UseProtocols { get; init; } = true;
 }
 
 public sealed class SimulationRunResult
@@ -68,6 +69,7 @@ public sealed class SimulationRunResult
     public int GeneratorUpgrades { get; init; }
     public int GeneratedCharges { get; init; }
     public int Overdrives { get; init; }
+    public bool ProtocolsEnabled { get; init; } = true;
     public bool Won => Result == "Victory";
 }
 

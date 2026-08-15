@@ -1282,6 +1282,18 @@ internal static class Program
         Check.Nearly(first.Towers.Values.Sum(x => x.ArmorBreakDamageEquivalent), second.Towers.Values.Sum(x => x.ArmorBreakDamageEquivalent), "deterministic armor-break attribution");
         Check.Nearly(first.Towers.Values.Sum(x => x.StatusEnemySeconds.Values.Sum()), second.Towers.Values.Sum(x => x.StatusEnemySeconds.Values.Sum()), "deterministic status uptime");
         Check.True(first.WaveReached >= 2, "headless bot reaches requested wave limit");
+        Check.True(first.Overdrives > 0 && first.ProtocolsEnabled, "default simulation exercises Protocol activations");
+
+        var noProtocols = MinimalBastion.Simulation.HeadlessSimulation.Run(content, new MinimalBastion.Simulation.SimulationOptions
+        {
+            Strategy = options.Strategy,
+            Seed = options.Seed,
+            MaximumWave = options.MaximumWave,
+            MaximumSimulatedSeconds = options.MaximumSimulatedSeconds,
+            UseProtocols = false
+        });
+        Check.Equal(0, noProtocols.Overdrives, "Protocol-disabled control group records no activations");
+        Check.True(!noProtocols.ProtocolsEnabled, "simulation report identifies Protocol-disabled control group");
     }
 
     private static void PlacementRules()

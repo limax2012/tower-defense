@@ -29,6 +29,7 @@ internal static class SimulationCli
         if (!content.Challenges.ContainsKey(challengeId))
             throw new ArgumentException($"Unknown challenge '{challengeId}'. Choose one of: {string.Join(", ", content.Challenges.Keys.OrderBy(x => x))}.");
         var forcedBuild = ParseForcedBuild(ReadValue(args, "--force-build"), content);
+        var useProtocols = !args.Any(arg => arg.Equals("--no-protocols", StringComparison.OrdinalIgnoreCase));
 
         var runs = new List<SimulationRunResult>();
         foreach (var mapId in maps)
@@ -48,7 +49,8 @@ internal static class SimulationCli
                         ContinueEndless = maximumWave > content.Waves.Waves.Count,
                         ForcedTowerId = forcedBuild?.TowerId,
                         ForcedDoctrineId = forcedBuild?.DoctrineId,
-                        ForcedSpecializationId = forcedBuild?.SpecializationId
+                        ForcedSpecializationId = forcedBuild?.SpecializationId,
+                        UseProtocols = useProtocols
                     });
                     runs.Add(result);
                     Console.WriteLine($"{mapId,-15} {difficultyId,-8} {challengeId,-14} {strategy,-16} seed {seed,7}  {result.Result,-7}  wave {result.WaveReached,2}  lives {result.LivesRemaining,2}  spent {result.CreditsSpent,5}  towers {result.Towers.Values.Sum(x => x.Purchases),2}  plates {result.EmergencyDeployments,2}");
@@ -60,6 +62,7 @@ internal static class SimulationCli
         Console.WriteLine($"Runs {runs.Count}, wins {batch.Wins}, win rate {batch.WinRate:P1}, average wave {batch.AverageWaveReached:0.0}, average lives {batch.AverageLivesRemaining:0.0}.");
         if (forcedBuild is not null)
             Console.WriteLine($"Forced completed path: {forcedBuild.TowerId}:{forcedBuild.DoctrineId}>{forcedBuild.SpecializationId}");
+        if (!useProtocols) Console.WriteLine("Protocol activations disabled for this control group.");
         PrintStrategySummary(runs);
         PrintMapSummary(runs);
         PrintTowerSummary(runs);
@@ -140,11 +143,12 @@ internal static class SimulationCli
                 ExposeSeconds = group.Sum(x => x.StatusEnemySeconds.GetValueOrDefault("Exposed")),
                 BreakSeconds = group.Sum(x => x.StatusEnemySeconds.GetValueOrDefault("ArmorBreak")),
                 SupportedSeconds = group.Sum(x => x.SupportedAttackSeconds),
+                Overdrives = group.Sum(x => x.Overdrives),
                 Spent = group.Sum(x => x.CreditsSpent)
             })
             .OrderByDescending(x => x.Damage + x.Assist);
         foreach (var row in towerRows)
-            Console.WriteLine($"{row.Id,-20} picks {row.Picks,3}  upgrades {row.Upgrades,3}  direct {row.Damage,10:0}  assist {row.Assist,8:0}  control {row.SlowSeconds + row.StunSeconds,7:0}s  expose {row.ExposeSeconds,7:0}s  break {row.BreakSeconds,7:0}s  supported {row.SupportedSeconds,8:0}s  impact/credit {(row.Spent == 0 ? 0 : (row.Damage + row.Assist) / row.Spent),6:0.0}");
+            Console.WriteLine($"{row.Id,-20} picks {row.Picks,3}  upgrades {row.Upgrades,3}  protocols {row.Overdrives,4}  direct {row.Damage,10:0}  assist {row.Assist,8:0}  control {row.SlowSeconds + row.StunSeconds,7:0}s  expose {row.ExposeSeconds,7:0}s  break {row.BreakSeconds,7:0}s  supported {row.SupportedSeconds,8:0}s  impact/credit {(row.Spent == 0 ? 0 : (row.Damage + row.Assist) / row.Spent),6:0.0}");
     }
 
     private static void PrintSpecializationSummary(IEnumerable<SimulationRunResult> runs)

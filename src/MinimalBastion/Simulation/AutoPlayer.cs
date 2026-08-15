@@ -13,6 +13,7 @@ public sealed class AutoPlayer
     private readonly string? _forcedTowerId;
     private readonly string? _forcedDoctrineId;
     private readonly string? _forcedSpecializationId;
+    private readonly bool _useProtocols;
     private int _lastRebalanceWave = -1;
     private int _directEmergencyPurchasesThisWave;
 
@@ -24,6 +25,7 @@ public sealed class AutoPlayer
         _forcedTowerId = options?.ForcedTowerId;
         _forcedDoctrineId = options?.ForcedDoctrineId;
         _forcedSpecializationId = options?.ForcedSpecializationId;
+        _useProtocols = options?.UseProtocols ?? true;
     }
 
     public void PrepareForWave(GameSession session)
@@ -38,7 +40,7 @@ public sealed class AutoPlayer
     public void ReactDuringWave(GameSession session)
     {
         var threat = ThreatProfile.From(session.Waves.ActiveWave, session.Content.Enemies);
-        TryUseOverdrive(session, threat);
+        if (_useProtocols) TryUseOverdrive(session, threat);
         TryUseEmergencyDefense(session);
         Spend(session, threat, duringWave: true, 2);
     }
