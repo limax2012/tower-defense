@@ -2047,9 +2047,9 @@ public sealed class UIManager
         var statusY = panel.Y + 449;
         DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 18, statusY, 162, 70), "SLOW", "DASHED CYAN", "Movement reduced", ColorPalette.Slow, "ring");
         DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 186, statusY, 162, 70), "EXPOSE", "VIOLET DIAMOND", "All damage rises", ColorPalette.Violet, "diamond");
-        DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 354, statusY, 162, 70), "BREAK", "GOLD CHEVRON", "Armor reduced", ColorPalette.Gold, "triangle");
-        DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 522, statusY, 162, 70), "BURN", "CORAL INNER RING", "Damage; armor -2", ColorPalette.Coral, "circle");
-        DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 690, statusY, 182, 70), "STUN", "GREEN SQUARE", "Movement halted", ColorPalette.Green, "square");
+        DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 354, statusY, 162, 70), "BREAK", "GOLD CHEVRONS", "Armor reduced", ColorPalette.Gold, "break");
+        DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 522, statusY, 162, 70), "BURN", "ORANGE INNER RING", "Damage; armor -2", ColorPalette.Orange, "circle");
+        DrawStatusLegendEntry(batch, p, new Rectangle(panel.X + 690, statusY, 182, 70), "STUN", "GREEN SQUARES", "Movement halted", ColorPalette.Green, "stun");
     }
 
     private void DrawEnemyInfoCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string title, Color accent,
@@ -2077,6 +2077,8 @@ public sealed class UIManager
         var center = new Vector2(rect.X + 18, rect.Y + 19);
         if (shape == "ring") p.DashedRing(batch, center, 9, accent, 10, 2);
         else if (shape == "circle") p.Ring(batch, center, 8, accent, 3);
+        else if (shape == "break") StatusGlyphRenderer.DrawArmorBreak(batch, p, center, 2);
+        else if (shape == "stun") StatusGlyphRenderer.DrawStun(batch, p, center, 2, 0.5f);
         else p.DrawShape(batch, center, 8, shape, accent, ColorPalette.Ink, 0, false);
         DrawText(batch, title, new Vector2(rect.X + 34, rect.Y + 7), ColorPalette.Navy, 0.49f);
         DrawFittedText(batch, symbol, new Vector2(rect.X + 9, rect.Y + 34), accent, 0.36f, rect.Width - 18);

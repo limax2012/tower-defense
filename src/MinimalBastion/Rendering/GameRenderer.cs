@@ -429,6 +429,11 @@ public sealed class GameRenderer
                 p.Ring(batch, enemy.Position, enemy.Radius + 13, ColorPalette.Violet, 2);
                 p.DrawPolygon(batch, enemy.Position - new Vector2(0, enemy.Radius + 13), 3.5f, 4, false, ColorPalette.Violet, MathHelper.PiOver4);
             }
+            if (enemy.StatusEffects.ArmorReduction > 0)
+                StatusGlyphRenderer.DrawArmorBreak(batch, p, enemy.Position, enemy.Radius);
+            if (enemy.StatusEffects.IsStunned)
+                StatusGlyphRenderer.DrawStun(batch, p, enemy.Position, enemy.Radius,
+                    (MathF.Sin(time * 11f + enemy.Id) + 1f) * 0.5f);
             if (enemy.Definition.RegenerationPerSecond > 0)
                 p.Ring(batch, enemy.Position, enemy.Radius + 11, ColorPalette.Lime, 2);
         }
