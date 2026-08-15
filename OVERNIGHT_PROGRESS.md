@@ -5,7 +5,7 @@ Updated: 2026-08-15
 ## Verified checkpoint
 
 - Release build: 0 warnings, 0 errors with the workspace-local .NET 10 SDK.
-- Deterministic regression suite: 65/65 passing.
+- Deterministic regression suite: 66/66 passing.
 - Self-contained Windows x64 publish: `.build/publish/MinimalBastion.exe`.
 - Content: 4 maps with independently authored campaigns, 10 towers with 20 tier-two doctrines and 20 final specializations, 10 distinct Protocols, 5 enemy bases plus elite/boss ranks, difficulty/directive profiles, tactical reserves, and endless continuation.
 - Canonical five-seed Hard matrix: 140/240 wins (58.3%). A fresh three-seed audit on the current executable produced 73/144 wins (50.7%), with every final Breaker role appearing in winning runs and Surge Divide remaining the hardest arena.

@@ -110,7 +110,7 @@ Date: 2026-08-15
 - Gave every tower protocol its own restrained geometric signature and audio pitch while active. Reduced-effects mode keeps only the essential native-color protocol ring.
 - Re-ran 180 deterministic campaign agents per key difficulty after the map, branch, protocol, Mortar, and support changes. Normal cleared 137/180 (76.1%), Hard 106/180 (58.9%), and Bastion 35/180 (19.4%); on Hard, Foundry cleared 41/60, Prism 38/60, and Surge 27/60, confirming the intended arena ordering.
 - Added source-aware utility telemetry: Signal Beacon damage-equivalent and recipient-seconds plus Slow, Stun, Exposed, and Armor Break enemy-seconds. End-run contribution bars now include Beacon-assisted output while keeping direct damage visibly separate.
-- Current verification: 65/65 deterministic tests, clean Release build with zero warnings, native high-DPI QA of title/settings/gameplay/pause layouts, real loopback transport coverage, and a 500-tick mid-combat reconnect soak.
+- Current verification: 66/66 deterministic tests, clean Release build with zero warnings, native high-DPI QA of title/settings/gameplay/pause layouts, real loopback transport coverage, and a 500-tick mid-combat reconnect soak.
 
 ## Range, branch, and menu harmony pass
 
@@ -215,7 +215,7 @@ Date: 2026-08-14
 
 ## Tests added
 
-- Expanded deterministic suite from the original baseline to 65 passing checks.
+- Expanded deterministic suite from the original baseline to 66 passing checks.
 - Added a one-command all-difficulty campaign sweep and per-difficulty summary so arena and difficulty tuning can be compared in one deterministic report.
 - Coverage includes four authored campaigns, difficulty persistence, node buffs/checksum, pathing, targeting, armor/DOT/status, elites/boss, economy, placement, endless continuation, early calls, mixed waves, tower behavior, contribution telemetry, shared co-op controls, mirrored commands, hidden-scale/stat checksum coverage, a 500-tick mid-combat reconnect soak, loopback transport, build mismatch rejection, wave ready, endpoint parsing, tower intel/roles/Protocols, Pulse Plate reliability, wave-only forge production, saves, high-resolution composition, palette constants, and headless determinism.
 - Release build and self-contained publish complete with 0 warnings and 0 errors.
