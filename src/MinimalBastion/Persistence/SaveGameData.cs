@@ -7,6 +7,7 @@ public sealed class SaveGameData
     public const int CurrentSchemaVersion = 1;
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public DateTime SavedAtUtc { get; set; } = DateTime.UtcNow;
+    public string RunId { get; set; } = "";
     public bool IsCoOp { get; set; }
     public string MapId { get; set; } = "";
     public string DifficultyId { get; set; } = "";

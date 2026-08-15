@@ -13,6 +13,7 @@ Date: 2026-08-15
 - Persisted historical tower-instance attribution so a lingering Slow, Expose, or Armor Break remains credited after its source tower is sold and the match is saved or resynchronized.
 - Expanded deterministic checksums to cover latent next-entity IDs and invested tower/forge credits, detecting mismatches before a future placement, spawn, or sale can turn them into gameplay divergence.
 - Added one-generation recovery backups for every overwritten save slot. Missing/corrupt primaries load and enumerate through the backup, while slot deletion removes both generations.
+- Added persistent paginated Run History inside Load Saves. Terminal solo/co-op summaries survive independently of checkpoints, endless continuation updates the original campaign entry through a shared run ID, and records support confirmed deletion plus one-generation recovery.
 - Rechecked the complete native title, Tower Library, battlefield, Tower Intel, and pause flow at high resolution; moved selected-tower strength/interaction/upgrade lines upward so the `NEXT` preview no longer crowds the Intel card border.
 - Added Easy, Normal, Hard, and Bastion profiles with persistent save/co-op identity and deterministic checksums. Hard preserves the previous authored economy and enemy values; Normal is the default onboarding experience.
 - Gave Foundry Loop, Prism Circuit, and Surge Divide separate 20-wave campaigns. Surge now carries the hardest roster and opening economy instead of granting nine nodes against the same opposition as Foundry.
@@ -29,7 +30,7 @@ Date: 2026-08-15
 - Gave every tower protocol its own restrained geometric signature and audio pitch while active. Reduced-effects mode keeps only the essential native-color protocol ring.
 - Re-ran 180 deterministic campaign agents per key difficulty after the map, branch, protocol, Mortar, and support changes. Normal cleared 137/180 (76.1%), Hard 106/180 (58.9%), and Bastion 35/180 (19.4%); on Hard, Foundry cleared 41/60, Prism 38/60, and Surge 27/60, confirming the intended arena ordering.
 - Added source-aware utility telemetry: Signal Beacon damage-equivalent and recipient-seconds plus Slow, Stun, Exposed, and Armor Break enemy-seconds. End-run contribution bars now include Beacon-assisted output while keeping direct damage visibly separate.
-- Current verification: 50/50 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
+- Current verification: 51/51 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
 
 ## Range, branch, and menu harmony pass
 

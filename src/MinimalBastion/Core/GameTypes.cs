@@ -33,6 +33,7 @@ public enum GameState
     TowerLibrary,
     Settings,
     SaveSlots,
+    RunHistory,
     CoOpMenu,
     CoOpLobby,
     CoOpReconnect,

@@ -86,6 +86,7 @@ internal static class Program
             ("checkpoint round trip", CheckpointRoundTrip),
             ("independent solo and co-op save slots", IndependentSaveSlots),
             ("save slot recovery backup", SaveSlotRecoveryBackup),
+            ("persistent run history", PersistentRunHistory),
             ("headless simulation deterministic", HeadlessSimulationDeterministic),
             ("simulation campaign default", SimulationCampaignDefault)
         };
@@ -1737,6 +1738,61 @@ internal static class Program
                 "backup-only interrupted slot remains discoverable");
             Check.True(repository.Delete(1), "deleting a recovered slot removes its remaining generation");
             Check.True(!File.Exists(repository.GetSlotBackupPath(1)), "slot recovery copy is deleted with the slot");
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot)) Directory.Delete(testRoot, true);
+        }
+    }
+
+    private static void PersistentRunHistory()
+    {
+        var testRoot = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var repository = new RunHistoryRepository(testRoot);
+            var first = new RunHistoryEntry
+            {
+                RunId = "run-a",
+                CompletedAtUtc = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc),
+                Victory = true,
+                MapId = "foundry_loop",
+                MapName = "Foundry Loop",
+                DifficultyId = "normal",
+                DifficultyName = "Normal",
+                CurrentWave = 20,
+                TotalWaves = 20,
+                Lives = 8,
+                StartingLives = 20,
+                Kills = 1090,
+                TopTowerName = "Needle Turret"
+            };
+            repository.Upsert(first);
+            repository.Upsert(first with
+            {
+                CompletedAtUtc = first.CompletedAtUtc.AddHours(1),
+                Victory = false,
+                IsEndless = true,
+                CurrentWave = 31,
+                Lives = 0,
+                Kills = 2500
+            });
+            var updated = repository.GetEntries().Single();
+            Check.Equal(31, updated.CurrentWave, "endless continuation updates the original run record");
+            Check.True(!updated.Victory && updated.IsEndless, "run conclusion changes from campaign clear to endless defeat");
+            Check.True(File.Exists(repository.BackupPath), "run history retains a recovery generation");
+
+            repository.Upsert(first with { RunId = "run-b", CompletedAtUtc = first.CompletedAtUtc.AddHours(2) });
+            Check.Equal("run-b", repository.GetEntries()[0].RunId, "run history is newest first");
+            Check.True(repository.Delete("run-a"), "individual history entries can be deleted");
+            Check.Equal(1, repository.GetEntries().Count, "deleting history leaves unrelated records intact");
+
+            var session = Session();
+            var runId = session.RunId;
+            var restoredSave = GameSession.RestoreSaveGame(session.Content, session.CaptureSaveGame());
+            Check.Equal(runId, restoredSave.RunId, "checkpoint restore preserves run identity");
+            var restoredNetwork = GameSession.RestoreCoOpState(session.Content, session.CaptureCoOpState(4, 0, false), 2);
+            Check.Equal(runId, restoredNetwork.RunId, "co-op resync preserves run identity");
         }
         finally
         {

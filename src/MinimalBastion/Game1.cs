@@ -57,6 +57,7 @@ public sealed class Game1 : Game
     private GameState _saveSlotReturnState = GameState.MainMenu;
     private bool _saveSlotWriteMode;
     private GameState _settingsReturnState = GameState.MainMenu;
+    private string _lastRecordedResultKey = "";
 
     public Game1()
     {
@@ -154,6 +155,9 @@ public sealed class Game1 : Game
             case GameState.SaveSlots:
                 HandleSaveSlotAction(_ui.HandleSaveSlots(input));
                 break;
+            case GameState.RunHistory:
+                HandleRunHistoryAction(_ui.HandleRunHistory(input));
+                break;
             case GameState.CoOpMenu:
                 HandleCoOpMenuAction(_ui.HandleCoOpMenu(input));
                 break;
@@ -185,6 +189,8 @@ public sealed class Game1 : Game
                 UpdateDefeatField(input, gameTime);
                 break;
         }
+
+        RecordTerminalRun();
 
         base.Update(gameTime);
     }
@@ -915,6 +921,11 @@ public sealed class Game1 : Game
 
     private void HandleSaveSlotAction(UiAction action)
     {
+        if (action == UiAction.RunHistory)
+        {
+            OpenRunHistory();
+            return;
+        }
         if (action == UiAction.CloseSaveSlots)
         {
             _state = _saveSlotReturnState;
@@ -935,6 +946,60 @@ public sealed class Game1 : Game
         }
         else
             LoadSaveSlot(slot);
+    }
+
+    private void OpenRunHistory(string? preferredRunId = null)
+    {
+        try
+        {
+            _ui.ConfigureRunHistory(RunHistoryStore.GetEntries(), preferredRunId);
+            _ui.SetRunHistoryStatus("Completed defenses are retained locally and updated by endless continuation.");
+        }
+        catch (Exception exception)
+        {
+            _ui.ConfigureRunHistory(Array.Empty<RunHistoryEntry>());
+            _ui.SetRunHistoryStatus($"History unavailable: {exception.GetBaseException().Message}");
+        }
+        _state = GameState.RunHistory;
+    }
+
+    private void HandleRunHistoryAction(UiAction action)
+    {
+        if (action == UiAction.CloseRunHistory)
+        {
+            OpenSaveSlots(_saveSlotWriteMode, _saveSlotReturnState);
+            return;
+        }
+        if (action != UiAction.DeleteRunHistory || _ui.SelectedRunHistoryId is not { } runId) return;
+        try
+        {
+            if (RunHistoryStore.Delete(runId))
+            {
+                var entries = RunHistoryStore.GetEntries();
+                _ui.ConfigureRunHistory(entries);
+                _ui.SetRunHistoryStatus("Deleted the selected run record. Save checkpoints were not affected.");
+            }
+        }
+        catch (Exception exception)
+        {
+            _ui.SetRunHistoryStatus($"History delete failed: {exception.GetBaseException().Message}");
+        }
+    }
+
+    private void RecordTerminalRun()
+    {
+        if (_session is null || (!_session.IsVictory && !_session.IsDefeat)) return;
+        var resultKey = $"{_session.RunId}:{_session.IsVictory}:{_session.IsDefeat}:{_session.CurrentWave}:{_session.Economy.TotalKills}:{_session.Economy.Lives}";
+        if (resultKey == _lastRecordedResultKey) return;
+        try
+        {
+            RunHistoryStore.Upsert(RunHistoryEntry.FromSession(_session));
+            _lastRecordedResultKey = resultKey;
+        }
+        catch
+        {
+            // A history write must never interrupt or obscure the result screen.
+        }
     }
 
     private void DeleteSaveSlot(int slot)
@@ -1100,6 +1165,7 @@ public sealed class Game1 : Game
     private void AssignSession(GameSession? session)
     {
         _session = session;
+        _lastRecordedResultKey = "";
         if (session is not null) _audio?.Attach(session);
     }
 

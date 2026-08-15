@@ -30,6 +30,9 @@ public enum UiAction
     ConfirmSaveSlot,
     DeleteSaveSlot,
     CloseSaveSlots,
+    RunHistory,
+    DeleteRunHistory,
+    CloseRunHistory,
     Restart,
     ContinueEndless,
     ViewField,
@@ -77,6 +80,11 @@ public sealed class UIManager
     private int _selectedSaveSlot = 1;
     private int _saveSlotPage;
     private bool _saveSlotDeleteArmed;
+    private IReadOnlyList<RunHistoryEntry> _runHistory = Array.Empty<RunHistoryEntry>();
+    private string? _selectedRunHistoryId;
+    private int _runHistoryPage;
+    private bool _runHistoryDeleteArmed;
+    private string _runHistoryStatus = "Completed defenses are retained locally and updated by endless continuation.";
     private bool _readOnlyInspection;
     private bool _towerLibraryOpen;
     private UserSettings _settings = new();
@@ -104,6 +112,8 @@ public sealed class UIManager
     private readonly Rectangle _saveSlotPreviousButton = new(330, 582, 160, 44);
     private readonly Rectangle _saveSlotBackButton = new(500, 582, 280, 44);
     private readonly Rectangle _saveSlotNextButton = new(790, 582, 160, 44);
+    private readonly Rectangle _saveSlotHistoryButton = new(990, 62, 190, 38);
+    private readonly Rectangle _runHistoryDeleteButton = new(535, 520, 210, 46);
     private readonly Rectangle _joinHostField = new(500, 264, 280, 46);
     private readonly Rectangle _joinCodeField = new(500, 330, 280, 46);
     private readonly Rectangle _hostCoOpButton = new(500, 396, 280, 46);
@@ -138,6 +148,7 @@ public sealed class UIManager
     public string SelectedDifficultyId => _difficulties.Count == 0 ? DifficultyCatalog.DefaultId : _difficulties[_selectedDifficultyIndex].Id;
     public string SelectedDifficultyName => _difficulties.Count == 0 ? "Normal" : _difficulties[_selectedDifficultyIndex].DisplayName;
     public int SelectedSaveSlot => _selectedSaveSlot;
+    public string? SelectedRunHistoryId => _selectedRunHistoryId;
 
     public void ConfigureSettings(UserSettings settings) => _settings = settings;
     public void SetSettingsStatus(string status) => _settingsStatus = status;
@@ -220,6 +231,22 @@ public sealed class UIManager
         _selectedSaveSlot = preferred.Value;
         var selectedIndex = Math.Max(0, _saveSlots.ToList().FindIndex(slot => slot.Slot == _selectedSaveSlot));
         _saveSlotPage = selectedIndex / _saveSlotRows.Length;
+    }
+
+    public void ConfigureRunHistory(IReadOnlyList<RunHistoryEntry> entries, string? preferredRunId = null)
+    {
+        _runHistory = entries.OrderByDescending(entry => entry.CompletedAtUtc).ToArray();
+        _runHistoryDeleteArmed = false;
+        _selectedRunHistoryId = preferredRunId is not null && _runHistory.Any(entry => entry.RunId == preferredRunId)
+            ? preferredRunId
+            : _runHistory.FirstOrDefault()?.RunId;
+        var selectedIndex = Math.Max(0, _runHistory.ToList().FindIndex(entry => entry.RunId == _selectedRunHistoryId));
+        _runHistoryPage = selectedIndex / _saveSlotRows.Length;
+    }
+
+    public void SetRunHistoryStatus(string status)
+    {
+        if (!string.IsNullOrWhiteSpace(status)) _runHistoryStatus = status;
     }
 
     public void ConfigureMaps(IEnumerable<MapDefinition> maps, IReadOnlyDictionary<string, WaveSetDefinition>? waveSets = null,
@@ -317,6 +344,7 @@ public sealed class UIManager
         }
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
+        if (_saveSlotHistoryButton.Contains(point)) return UiAction.RunHistory;
         var pageCount = Math.Max(1, (_saveSlots.Count + _saveSlotRows.Length - 1) / _saveSlotRows.Length);
         var pageSlots = _saveSlots.Skip(_saveSlotPage * _saveSlotRows.Length).Take(_saveSlotRows.Length).ToArray();
         for (var index = 0; index < _saveSlotRows.Length; index++)
@@ -356,6 +384,57 @@ public sealed class UIManager
             return UiAction.None;
         }
         if (_saveSlotBackButton.Contains(point)) return UiAction.CloseSaveSlots;
+        return UiAction.None;
+    }
+
+    public UiAction HandleRunHistory(InputSnapshot input)
+    {
+        if (input.EscapePressed)
+        {
+            if (_runHistoryDeleteArmed)
+            {
+                _runHistoryDeleteArmed = false;
+                return UiAction.None;
+            }
+            return UiAction.CloseRunHistory;
+        }
+        if (!input.LeftPressed) return UiAction.None;
+        var point = input.MousePosition.ToPoint();
+        var pageCount = Math.Max(1, (_runHistory.Count + _saveSlotRows.Length - 1) / _saveSlotRows.Length);
+        var pageEntries = _runHistory.Skip(_runHistoryPage * _saveSlotRows.Length).Take(_saveSlotRows.Length).ToArray();
+        for (var index = 0; index < _saveSlotRows.Length; index++)
+        {
+            if (!_saveSlotRows[index].Contains(point) || index >= pageEntries.Length) continue;
+            _selectedRunHistoryId = pageEntries[index].RunId;
+            _runHistoryDeleteArmed = false;
+            return UiAction.None;
+        }
+
+        if (_saveSlotPreviousButton.Contains(point) && _runHistoryPage > 0)
+        {
+            _runHistoryPage--;
+            _selectedRunHistoryId = _runHistory[_runHistoryPage * _saveSlotRows.Length].RunId;
+            _runHistoryDeleteArmed = false;
+            return UiAction.None;
+        }
+        if (_saveSlotNextButton.Contains(point) && _runHistoryPage + 1 < pageCount)
+        {
+            _runHistoryPage++;
+            _selectedRunHistoryId = _runHistory[_runHistoryPage * _saveSlotRows.Length].RunId;
+            _runHistoryDeleteArmed = false;
+            return UiAction.None;
+        }
+        if (_runHistoryDeleteButton.Contains(point) && _selectedRunHistoryId is not null)
+        {
+            if (_runHistoryDeleteArmed)
+            {
+                _runHistoryDeleteArmed = false;
+                return UiAction.DeleteRunHistory;
+            }
+            _runHistoryDeleteArmed = true;
+            return UiAction.None;
+        }
+        if (_saveSlotBackButton.Contains(point)) return UiAction.CloseRunHistory;
         return UiAction.None;
     }
 
@@ -681,6 +760,11 @@ public sealed class UIManager
         if (state == GameState.SaveSlots)
         {
             DrawSaveSlots(batch, p);
+            return;
+        }
+        if (state == GameState.RunHistory)
+        {
+            DrawRunHistory(batch, p);
             return;
         }
         if (state == GameState.CoOpMenu)
@@ -1222,6 +1306,7 @@ public sealed class UIManager
                 ? "Choose a slot. Overwriting occurs only after pressing the confirmation button."
                 : "Solo saves resume immediately. Co-op saves reopen as a hosted game for your friend.",
             new Vector2(640, 102), ColorPalette.Muted, 0.58f, true);
+        DrawButton(batch, p, _saveSlotHistoryButton, "RUN HISTORY", true, ColorPalette.Cyan);
 
         var pageCount = Math.Max(1, (_saveSlots.Count + _saveSlotRows.Length - 1) / _saveSlotRows.Length);
         var pageSlots = _saveSlots.Skip(_saveSlotPage * _saveSlotRows.Length).Take(_saveSlotRows.Length).ToArray();
@@ -1278,6 +1363,54 @@ public sealed class UIManager
         DrawButton(batch, p, _saveSlotBackButton, "BACK", true, ColorPalette.Violet);
         DrawButton(batch, p, _saveSlotNextButton, "NEXT", _saveSlotPage + 1 < pageCount, ColorPalette.Cyan);
         DrawText(batch, _persistenceStatus, new Vector2(640, 654), ColorPalette.Muted, 0.52f, true);
+    }
+
+    private void DrawRunHistory(SpriteBatch batch, PrimitiveRenderer p)
+    {
+        DrawMenuFrame(batch, p);
+        DrawText(batch, "RUN HISTORY", new Vector2(640, 62), ColorPalette.Ink, 1.75f, true);
+        DrawText(batch, "Campaign conclusions and endless records share one entry per defense.",
+            new Vector2(640, 102), ColorPalette.Muted, 0.58f, true);
+
+        var pageCount = Math.Max(1, (_runHistory.Count + _saveSlotRows.Length - 1) / _saveSlotRows.Length);
+        var pageEntries = _runHistory.Skip(_runHistoryPage * _saveSlotRows.Length).Take(_saveSlotRows.Length).ToArray();
+        if (pageEntries.Length == 0)
+        {
+            p.FillRect(batch, new Rectangle(330, 206, 620, 142), ColorPalette.PanelAlt);
+            p.DrawRect(batch, new Rectangle(330, 206, 620, 142), ColorPalette.CardOutline, 1);
+            DrawText(batch, "NO COMPLETED RUNS YET", new Vector2(640, 260), ColorPalette.Navy, 0.82f, true);
+            DrawText(batch, "Victory and defeat summaries will appear here.", new Vector2(640, 304), ColorPalette.Muted, 0.54f, true);
+        }
+        for (var index = 0; index < pageEntries.Length; index++)
+        {
+            var rect = _saveSlotRows[index];
+            var entry = pageEntries[index];
+            var selected = entry.RunId == _selectedRunHistoryId;
+            var accent = entry.Victory ? ColorPalette.Green : ColorPalette.Coral;
+            p.FillRect(batch, rect, selected ? ColorPalette.Panel : ColorPalette.PanelAlt);
+            p.DrawRect(batch, rect, selected ? ColorPalette.Cobalt : ColorPalette.CardOutline, selected ? 3 : 1);
+            p.FillRect(batch, new Rectangle(rect.X, rect.Y, 8, rect.Height), accent);
+            DrawText(batch, entry.Victory ? "SECURED" : "BREACHED", new Vector2(rect.X + 22, rect.Y + 13), accent, 0.62f);
+
+            var progress = entry.IsEndless ? $"ENDLESS {entry.CurrentWave}" : $"WAVE {entry.CurrentWave}/{entry.TotalWaves}";
+            DrawText(batch, $"{entry.MapName.ToUpperInvariant()}  |  {entry.DifficultyName.ToUpperInvariant()}  |  {progress}",
+                new Vector2(rect.X + 150, rect.Y + 12), ColorPalette.Ink, 0.56f);
+            var localTime = entry.CompletedAtUtc.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(entry.CompletedAtUtc, DateTimeKind.Utc).ToLocalTime()
+                : entry.CompletedAtUtc.ToLocalTime();
+            DrawText(batch,
+                $"{localTime:g}  |  {(entry.IsCoOp ? "CO-OP" : "SOLO")}  |  LIVES {entry.Lives}/{entry.StartingLives}  |  KILLS {entry.Kills}  |  TOP {entry.TopTowerName.ToUpperInvariant()}",
+                new Vector2(rect.X + 150, rect.Y + 39), ColorPalette.Muted, 0.44f);
+        }
+
+        DrawButton(batch, p, _runHistoryDeleteButton,
+            _runHistoryDeleteArmed ? "CONFIRM DELETE" : "DELETE RUN",
+            _selectedRunHistoryId is not null, _runHistoryDeleteArmed ? ColorPalette.Coral : ColorPalette.Orange);
+        DrawText(batch, $"PAGE {_runHistoryPage + 1}/{pageCount}", new Vector2(640, 574), ColorPalette.Muted, 0.48f, true);
+        DrawButton(batch, p, _saveSlotPreviousButton, "PREVIOUS", _runHistoryPage > 0, ColorPalette.Cyan);
+        DrawButton(batch, p, _saveSlotBackButton, "BACK TO SAVES", true, ColorPalette.Violet);
+        DrawButton(batch, p, _saveSlotNextButton, "NEXT", _runHistoryPage + 1 < pageCount, ColorPalette.Cyan);
+        DrawText(batch, _runHistoryStatus, new Vector2(640, 654), ColorPalette.Muted, 0.52f, true);
     }
 
     private void DrawCoOpMenu(SpriteBatch batch, PrimitiveRenderer p)

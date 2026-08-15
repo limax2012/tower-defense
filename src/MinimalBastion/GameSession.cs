@@ -29,6 +29,7 @@ public sealed class GameSession
     private int _nextTowerId = 1;
     private int _nextEmergencyDefenseId = 1;
 
+    public string RunId { get; private set; } = Guid.NewGuid().ToString("N");
     public GameContent Content => _content;
     public DifficultyDefinition Difficulty { get; }
     public string DifficultyId => Difficulty.Id;
@@ -783,6 +784,7 @@ public sealed class GameSession
             throw new InvalidOperationException("Games can only be saved between waves.");
         return new SaveGameData
         {
+            RunId = RunId,
             IsCoOp = IsCoOp,
             MapId = Map.Definition.Id,
             DifficultyId = DifficultyId,
@@ -805,6 +807,7 @@ public sealed class GameSession
 
     public CoOpStateSnapshot CaptureCoOpState(long tick, int readyMask, bool waveStartQueued, bool waveEarlyBonusQueued = false) => new()
     {
+        RunId = RunId,
         MapId = Map.Definition.Id,
         DifficultyId = DifficultyId,
         Tick = Math.Max(0, tick),
@@ -844,6 +847,7 @@ public sealed class GameSession
         if (!knownMap) throw new InvalidDataException($"Network map '{data.MapId}' is not available.");
 
         var session = new GameSession(content, data.MapId, data.DifficultyId);
+        session.RunId = NormalizeRunId(data.RunId, session.RunId);
         session.ConfigureCoOp(localPlayerId);
         session.Economy.RestoreSaveData(data.Economy);
         session.Waves.RestoreCoOpState(data.Waves);
@@ -900,6 +904,7 @@ public sealed class GameSession
         if (!knownMap) throw new InvalidDataException($"Saved map '{data.MapId}' is not available.");
 
         var session = new GameSession(content, data.MapId, data.DifficultyId);
+        session.RunId = NormalizeRunId(data.RunId, session.RunId);
         if (data.IsCoOp) session.ConfigureCoOp(1);
         session.Economy.RestoreSaveData(data.Economy);
         session.Waves.RestoreSaveData(data.Waves);
@@ -941,4 +946,9 @@ public sealed class GameSession
         session.AnnouncementPositive = true;
         return session;
     }
+
+    private static string NormalizeRunId(string? runId, string fallback) =>
+        !string.IsNullOrWhiteSpace(runId) && runId.Length <= 64
+            ? runId
+            : fallback;
 }
