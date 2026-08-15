@@ -355,11 +355,12 @@ internal static class Program
 
     private static void PersistentUserSettings()
     {
-        var settings = new UserSettings { WindowWidth = 10, WindowHeight = 9000, SfxVolume = -2 };
+        var settings = new UserSettings { WindowWidth = 10, WindowHeight = 9000, SfxVolume = -2, MusicVolume = 4 };
         settings.Normalize();
         Check.Equal(960, settings.WindowWidth, "minimum output width");
         Check.Equal(2160, settings.WindowHeight, "maximum output height");
         Check.Nearly(0, settings.SfxVolume, "sound volume clamp");
+        Check.Nearly(1, settings.MusicVolume, "music volume clamp");
 
         settings.CycleResolution();
         Check.Equal(1280, settings.WindowWidth, "unknown resolution enters first preset");
@@ -386,6 +387,13 @@ internal static class Program
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EnterPressed = true }),
             "settings Enter activates the focused control");
         Check.Equal(1600, settings.WindowWidth, "settings Enter advances the focused resolution");
+        for (var index = 0; index < 4; index++)
+            ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
+        Check.Equal(5, ui.SelectedSettingsIndex, "settings navigation reaches independent music control");
+        Check.Equal(UiAction.ApplySettings,
+            ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+            "music control applies immediately");
+        Check.Nearly(0, settings.MusicVolume, "full music volume wraps to mute");
         Check.Equal(UiAction.CloseSettings,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),
             "escape closes settings safely");
@@ -394,16 +402,18 @@ internal static class Program
         try
         {
             var repository = new UserSettingsRepository(directory);
-            repository.Save(new UserSettings { WindowWidth = 1600, WindowHeight = 900, SfxVolume = 0.25f });
-            repository.Save(new UserSettings { WindowWidth = 1920, WindowHeight = 1080, SfxVolume = 0.75f });
+            repository.Save(new UserSettings { WindowWidth = 1600, WindowHeight = 900, SfxVolume = 0.25f, MusicVolume = 0.10f });
+            repository.Save(new UserSettings { WindowWidth = 1920, WindowHeight = 1080, SfxVolume = 0.75f, MusicVolume = 0.35f });
             Check.Equal(1920, repository.Load().WindowWidth, "settings repository loads its current generation");
             File.WriteAllText(repository.SettingsPath, "{ interrupted");
             var recovered = repository.Load();
             Check.Equal(1600, recovered.WindowWidth, "corrupt settings recover from the previous valid generation");
             Check.Nearly(0.25f, recovered.SfxVolume, "settings recovery preserves audio choices");
+            Check.Nearly(0.10f, recovered.MusicVolume, "settings recovery preserves music choices");
 
-            repository.Save(new UserSettings { WindowWidth = 2560, WindowHeight = 1440, SfxVolume = float.NaN });
+            repository.Save(new UserSettings { WindowWidth = 2560, WindowHeight = 1440, SfxVolume = float.NaN, MusicVolume = float.NaN });
             Check.Nearly(0.65f, repository.Load().SfxVolume, "nonfinite runtime volume normalizes before persistence");
+            Check.Nearly(0.20f, repository.Load().MusicVolume, "nonfinite music volume normalizes before persistence");
             File.WriteAllText(repository.SettingsPath, "not json");
             Check.Equal(1600, repository.Load().WindowWidth,
                 "saving after corruption does not overwrite the last known-good settings backup");

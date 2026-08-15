@@ -7,11 +7,26 @@ public sealed class AudioManager : IDisposable
 {
     private const int SampleRate = 44100;
     private readonly Dictionary<Cue, SoundEffect> _sounds = new();
+    private SoundEffect? _musicSound;
+    private SoundEffectInstance? _musicInstance;
     private float _killCooldown;
+    private float _sfxVolume = 0.65f;
+    private float _musicVolume = 0.20f;
+    private float _musicPitch;
     private bool _disposed;
     private GameSession? _attachedSession;
 
-    public float Volume { get; set; } = 0.65f;
+    public float SfxVolume
+    {
+        get => _sfxVolume;
+        set => _sfxVolume = Math.Clamp(float.IsFinite(value) ? value : 0.65f, 0, 1);
+    }
+
+    public float MusicVolume
+    {
+        get => _musicVolume;
+        set => _musicVolume = Math.Clamp(float.IsFinite(value) ? value : 0.20f, 0, 1);
+    }
 
     public AudioManager()
     {
@@ -30,6 +45,7 @@ public sealed class AudioManager : IDisposable
             _sounds[Cue.BossPhase] = CreateTone(230, 105, 0.34f, WaveShape.Saw);
             _sounds[Cue.Victory] = CreateTriad(392, 523, 659, 0.48f);
             _sounds[Cue.Defeat] = CreateTone(190, 58, 0.48f, WaveShape.Saw);
+            TryStartMusic();
         }
         catch
         {
@@ -45,12 +61,30 @@ public sealed class AudioManager : IDisposable
         catch { return null; }
     }
 
-    public void Update(float deltaSeconds) => _killCooldown = MathF.Max(0, _killCooldown - MathF.Max(0, deltaSeconds));
+    public void Update(float deltaSeconds)
+    {
+        _killCooldown = MathF.Max(0, _killCooldown - MathF.Max(0, deltaSeconds));
+        if (_musicInstance is null) return;
+        try
+        {
+            var activity = _attachedSession?.Waves.IsActive == true ? 1f : 0.68f;
+            _musicInstance.Volume = Math.Clamp(_musicVolume * activity, 0, 1);
+            _musicInstance.Pitch = _musicPitch;
+            if (_musicInstance.State == SoundState.Stopped) _musicInstance.Play();
+        }
+        catch
+        {
+            // Keep event cues available if a looping instance alone becomes
+            // unavailable after an audio-device transition.
+            DisposeMusic();
+        }
+    }
 
     public void Attach(GameSession session)
     {
         if (ReferenceEquals(_attachedSession, session)) return;
         _attachedSession = session;
+        _musicPitch = MusicPitch(session.Map.Definition.Id);
         session.TowerPlaced += _ => Play(Cue.Place, 0.72f);
         session.TowerUpgraded += (_, _) => Play(Cue.Upgrade, 0.78f);
         session.TowerSold += (_, _) => Play(Cue.Sell, 0.62f);
@@ -78,15 +112,39 @@ public sealed class AudioManager : IDisposable
 
     private void Play(Cue cue, float cueVolume, float pitch = 0)
     {
-        if (_disposed || Volume <= 0 || !_sounds.TryGetValue(cue, out var sound)) return;
-        try { sound.Play(Math.Clamp(Volume * cueVolume, 0, 1), Math.Clamp(pitch, -1, 1), 0); }
+        if (_disposed || _sfxVolume <= 0 || !_sounds.TryGetValue(cue, out var sound)) return;
+        try { sound.Play(Math.Clamp(_sfxVolume * cueVolume, 0, 1), Math.Clamp(pitch, -1, 1), 0); }
         catch
         {
             // Audio is presentational only. A device disappearing mid-match must
             // never interrupt the deterministic game session.
-            Volume = 0;
+            _sfxVolume = 0;
         }
     }
+
+    private void TryStartMusic()
+    {
+        try
+        {
+            _musicSound = CreateAmbientLoop();
+            _musicInstance = _musicSound.CreateInstance();
+            _musicInstance.IsLooped = true;
+            _musicInstance.Volume = 0;
+            _musicInstance.Play();
+        }
+        catch
+        {
+            DisposeMusic();
+        }
+    }
+
+    private static float MusicPitch(string mapId) => mapId.ToLowerInvariant() switch
+    {
+        "crosswind_basin" => 0.035f,
+        "prism_circuit" => 0.065f,
+        "relay_divide" => -0.045f,
+        _ => 0
+    };
 
     private static float ProtocolPitch(string towerId) => towerId.ToLowerInvariant() switch
     {
@@ -173,6 +231,29 @@ public sealed class AudioManager : IDisposable
         return CreateSoundEffect(samples);
     }
 
+    private static SoundEffect CreateAmbientLoop()
+    {
+        const float seconds = 16f;
+        var count = (int)(SampleRate * seconds);
+        var samples = new short[count];
+        float[] upperNotes = [220f, 247.5f, 330f, 247.5f, 196f, 247.5f, 293.333f, 247.5f];
+        for (var index = 0; index < count; index++)
+        {
+            var time = index / (float)SampleRate;
+            var step = Math.Min(upperNotes.Length - 1, (int)(time / 2f));
+            var stepPhase = time % 2f;
+            var pulseEnvelope = MathHelper.SmoothStep(0, 1, Math.Clamp(stepPhase / 0.18f, 0, 1)) *
+                                MathHelper.SmoothStep(0, 1, Math.Clamp((1.72f - stepPhase) / 0.55f, 0, 1));
+            var lowPulse = 0.5f + 0.5f * MathF.Sin(MathHelper.TwoPi * 0.25f * time - MathHelper.PiOver2);
+            var drone = MathF.Sin(MathHelper.TwoPi * 55f * time) * 0.48f +
+                        MathF.Sin(MathHelper.TwoPi * 82.5f * time) * 0.25f;
+            var upper = MathF.Sin(MathHelper.TwoPi * upperNotes[step] * time) * pulseEnvelope * 0.22f;
+            var clock = MathF.Sin(MathHelper.TwoPi * 440f * time) * MathF.Pow(lowPulse, 10) * 0.05f;
+            samples[index] = ToSample((drone * (0.55f + lowPulse * 0.18f) + upper + clock) * 0.16f);
+        }
+        return CreateSoundEffect(samples);
+    }
+
     private static float Envelope(float t)
     {
         var attack = MathHelper.Clamp(t / 0.08f, 0, 1);
@@ -216,8 +297,18 @@ public sealed class AudioManager : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        DisposeMusic();
         foreach (var sound in _sounds.Values) sound.Dispose();
         _sounds.Clear();
+    }
+
+    private void DisposeMusic()
+    {
+        try { _musicInstance?.Stop(); } catch { }
+        _musicInstance?.Dispose();
+        _musicSound?.Dispose();
+        _musicInstance = null;
+        _musicSound = null;
     }
 
     private enum Cue { Place, Upgrade, Sell, Protocol, Kill, Leak, WaveStart, WaveClear, Plate, Forge, BossPhase, Victory, Defeat }

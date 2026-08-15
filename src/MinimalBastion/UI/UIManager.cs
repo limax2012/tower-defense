@@ -163,7 +163,8 @@ public sealed class UIManager
     private readonly Rectangle _vsyncButton = new(350, 292, 280, 54);
     private readonly Rectangle _effectsButton = new(650, 292, 280, 54);
     private readonly Rectangle _volumeButton = new(350, 364, 580, 54);
-    private readonly Rectangle _settingsBackButton = new(500, 446, 280, 48);
+    private readonly Rectangle _musicVolumeButton = new(350, 428, 580, 54);
+    private readonly Rectangle _settingsBackButton = new(500, 500, 280, 48);
 
     public string JoinHostInput => _joinHostInput;
     public string JoinCodeInput => _joinCodeInput;
@@ -442,20 +443,20 @@ public sealed class UIManager
         if (input.NavigateUpPressed || input.NavigateDownPressed)
         {
             var delta = input.NavigateUpPressed ? -1 : 1;
-            _settingsSelection = (_settingsSelection + delta + 6) % 6;
+            _settingsSelection = (_settingsSelection + delta + 7) % 7;
             return UiAction.None;
         }
         if (input.NavigateLeftPressed || input.NavigateRightPressed)
             return ApplySelectedSetting(input.NavigateLeftPressed ? -1 : 1);
         if (input.EnterPressed)
-            return _settingsSelection == 5 ? UiAction.CloseSettings : ApplySelectedSetting(1);
+            return _settingsSelection == 6 ? UiAction.CloseSettings : ApplySelectedSetting(1);
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
-        for (var index = 0; index < 6; index++)
+        for (var index = 0; index < 7; index++)
         {
             if (!SettingsOptionRectangle(index).Contains(point)) continue;
             _settingsSelection = index;
-            return index == 5 ? UiAction.CloseSettings : ApplySelectedSetting(1);
+            return index == 6 ? UiAction.CloseSettings : ApplySelectedSetting(1);
         }
         return UiAction.None;
     }
@@ -477,14 +478,27 @@ public sealed class UIManager
                 _settings.ReducedEffects = !_settings.ReducedEffects;
                 break;
             case 4:
-                _settings.SfxVolume += direction < 0 ? -0.25f : 0.25f;
-                if (_settings.SfxVolume > 1.001f) _settings.SfxVolume = 0;
-                else if (_settings.SfxVolume < -0.001f) _settings.SfxVolume = 1;
+                _settings.SfxVolume = AdjustVolume(_settings.SfxVolume, direction);
+                break;
+            case 5:
+                _settings.MusicVolume = AdjustVolume(_settings.MusicVolume, direction);
                 break;
             default:
                 return UiAction.None;
         }
         return UiAction.ApplySettings;
+    }
+
+    private static float AdjustVolume(float current, int direction)
+    {
+        const float step = 0.25f;
+        if (direction < 0)
+        {
+            if (current <= 0.001f) return 1;
+            return MathF.Floor((current - 0.001f) / step) * step;
+        }
+        if (current >= 0.999f) return 0;
+        return MathF.Ceiling((current + 0.001f) / step) * step;
     }
 
     private Rectangle SettingsOptionRectangle(int index) => index switch
@@ -494,7 +508,8 @@ public sealed class UIManager
         2 => _vsyncButton,
         3 => _effectsButton,
         4 => _volumeButton,
-        5 => _settingsBackButton,
+        5 => _musicVolumeButton,
+        6 => _settingsBackButton,
         _ => Rectangle.Empty
     };
 
@@ -1933,16 +1948,18 @@ public sealed class UIManager
             true, ColorPalette.Cyan);
         DrawButton(batch, p, _volumeButton, $"SOUND EFFECTS  {MathF.Round(_settings.SfxVolume * 100):0}%  |  CLICK TO CHANGE",
             true, ColorPalette.Gold, ColorPalette.Ink);
+        DrawButton(batch, p, _musicVolumeButton, $"TACTICAL MUSIC  {MathF.Round(_settings.MusicVolume * 100):0}%  |  CLICK TO CHANGE",
+            true, ColorPalette.Violet);
         DrawButton(batch, p, _settingsBackButton, "BACK", true, ColorPalette.Coral);
-        var focus = SettingsOptionRectangle(Math.Clamp(_settingsSelection, 0, 5));
+        var focus = SettingsOptionRectangle(Math.Clamp(_settingsSelection, 0, 6));
         focus.Inflate(4, 4);
         p.DrawRect(batch, focus, ColorPalette.Ink, 2);
 
         DrawText(batch, "UP/DOWN SELECT   |   LEFT/RIGHT ADJUST   |   ENTER ACTIVATE",
-            new Vector2(640, 504), ColorPalette.Navy, 0.50f, true);
+            new Vector2(640, 574), ColorPalette.Navy, 0.50f, true);
         DrawText(batch, "Rendering remains crisp at every output size through the fixed high-resolution scene target.",
-            new Vector2(640, 540), ColorPalette.Muted, 0.54f, true);
-        DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 574), ColorPalette.Cobalt, 0.50f, 820);
+            new Vector2(640, 608), ColorPalette.Muted, 0.54f, true);
+        DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 642), ColorPalette.Cobalt, 0.50f, 820);
     }
 
     private void DrawSaveSlots(SpriteBatch batch, PrimitiveRenderer p)

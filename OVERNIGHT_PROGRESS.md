@@ -58,6 +58,7 @@ Updated: 2026-08-15
 - Renamed player-facing relay terminology to Surge Node and added placement/hover/selected-tower intel with exact radius, active bonus, and resulting stat deltas.
 - Moved Pulse Plate, Charge Forge, and Overdrive controls from the battlefield into the sidebar, preserving the full 960-pixel play area.
 - Added auto-fitting button labels, colorful tower/enemy silhouettes, rank treatment, recoil/pulse/ring/impact feedback, polished menus, pause, and post-run analysis.
+- Added a seamless procedural tactical music bed with mild arena-specific tuning and an independent persisted volume control; it remains optional presentation state and requires no external audio assets.
 - Fixed the original main-menu logo/title overlap and added intentional whitespace.
 - Preserved the 1280x720 logical layout while moving scene rendering to a fixed 2560x1440 target with double-density fonts and primitive masks, followed by linear downsampling.
 - Composited the scene only inside the calculated 16:9 destination rectangle, eliminating road/effect bleed into fullscreen letterbox bars.

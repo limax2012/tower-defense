@@ -120,7 +120,11 @@ public sealed class Game1 : Game
             _debug = new DebugOverlay(font);
             _gameRenderer.ReducedEffects = _settings.ReducedEffects;
             _audio = AudioManager.TryCreate();
-            if (_audio is not null) _audio.Volume = _settings.SfxVolume;
+            if (_audio is not null)
+            {
+                _audio.SfxVolume = _settings.SfxVolume;
+                _audio.MusicVolume = _settings.MusicVolume;
+            }
         }
         catch (Exception exception)
         {
@@ -1284,7 +1288,11 @@ public sealed class Game1 : Game
         _graphics.IsFullScreen = _settings.Fullscreen;
         _graphics.ApplyChanges();
         _gameRenderer.ReducedEffects = _settings.ReducedEffects;
-        if (_audio is not null) _audio.Volume = _settings.SfxVolume;
+        if (_audio is not null)
+        {
+            _audio.SfxVolume = _settings.SfxVolume;
+            _audio.MusicVolume = _settings.MusicVolume;
+        }
     }
 
     private void AssignSession(GameSession? session)

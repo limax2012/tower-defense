@@ -18,6 +18,7 @@ public sealed class UserSettings
     public bool Fullscreen { get; set; }
     public bool VSync { get; set; } = true;
     public float SfxVolume { get; set; } = 0.65f;
+    public float MusicVolume { get; set; } = 0.20f;
     public bool ReducedEffects { get; set; }
 
     public void Normalize()
@@ -25,6 +26,7 @@ public sealed class UserSettings
         WindowWidth = Math.Clamp(WindowWidth, 960, 3840);
         WindowHeight = Math.Clamp(WindowHeight, 540, 2160);
         SfxVolume = float.IsFinite(SfxVolume) ? Math.Clamp(SfxVolume, 0, 1) : 0.65f;
+        MusicVolume = float.IsFinite(MusicVolume) ? Math.Clamp(MusicVolume, 0, 1) : 0.20f;
     }
 
     public void CycleResolution(int direction = 1)
