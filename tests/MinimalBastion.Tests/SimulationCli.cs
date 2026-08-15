@@ -103,11 +103,17 @@ internal static class SimulationCli
                 Picks = group.Sum(x => x.Purchases),
                 Upgrades = group.Sum(x => x.Upgrades),
                 Damage = group.Sum(x => x.Damage),
+                Assist = group.Sum(x => x.SupportDamageEquivalent),
+                SlowSeconds = group.Sum(x => x.StatusEnemySeconds.GetValueOrDefault("Slow")),
+                StunSeconds = group.Sum(x => x.StatusEnemySeconds.GetValueOrDefault("Stun")),
+                ExposeSeconds = group.Sum(x => x.StatusEnemySeconds.GetValueOrDefault("Exposed")),
+                BreakSeconds = group.Sum(x => x.StatusEnemySeconds.GetValueOrDefault("ArmorBreak")),
+                SupportedSeconds = group.Sum(x => x.SupportedAttackSeconds),
                 Spent = group.Sum(x => x.CreditsSpent)
             })
-            .OrderByDescending(x => x.Damage);
+            .OrderByDescending(x => x.Damage + x.Assist);
         foreach (var row in towerRows)
-            Console.WriteLine($"{row.Id,-20} picks {row.Picks,3}  upgrades {row.Upgrades,3}  damage {row.Damage,10:0}  damage/credit {(row.Spent == 0 ? 0 : row.Damage / row.Spent),6:0.0}");
+            Console.WriteLine($"{row.Id,-20} picks {row.Picks,3}  upgrades {row.Upgrades,3}  direct {row.Damage,10:0}  assist {row.Assist,8:0}  control {row.SlowSeconds + row.StunSeconds,7:0}s  expose {row.ExposeSeconds,7:0}s  break {row.BreakSeconds,7:0}s  supported {row.SupportedSeconds,8:0}s  impact/credit {(row.Spent == 0 ? 0 : (row.Damage + row.Assist) / row.Spent),6:0.0}");
     }
 
     private static void PrintSpecializationSummary(IEnumerable<SimulationRunResult> runs)

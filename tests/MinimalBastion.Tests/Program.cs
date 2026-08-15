@@ -518,13 +518,31 @@ internal static class Program
     private static void RunStatistics()
     {
         var session = Session();
+        session.Content.Towers["beacon"] = new TowerDefinition
+        {
+            Id = "beacon",
+            DisplayName = "Test Beacon",
+            Behavior = "aura",
+            PurchaseCost = 0,
+            Levels = new List<TowerLevelDefinition>
+            {
+                new() { AuraRange = 200, AuraAttackSpeedBonus = 0.5f, AuraRangeBonus = 0.1f }
+            }
+        };
         Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "stats tower placement");
         var tower = session.Towers[0];
         Check.True(session.TryPlaceTower("tower", new Vector2(50, 90)), "second stats tower placement");
         var idleTower = session.Towers[1];
+        Check.True(session.TryPlaceTower("beacon", new Vector2(110, 200)), "stats beacon placement");
+        var beacon = session.Towers[2];
+        session.Update(0.01f);
+        var buff = session.GetSupportBuff(tower);
+        Check.Equal(beacon.Id, buff.AttackSpeedSourceTowerId, "support buff identifies its attack-rate source");
+        Check.Equal(beacon.Id, buff.RangeSourceTowerId, "support buff identifies its range source");
         var target = new EnemyInstance(1, session.Content.Enemies["enemy"], session.Map.Path, 1, 1);
         session.DamageResolver.Apply(target, new DamagePayload { Damage = 120, SourceTowerId = tower.Id });
-        var towerStats = session.Statistics.Towers.Single();
+        var towerStats = session.Statistics.Towers.Single(metrics => metrics.TowerId == "tower");
+        var beaconStats = session.Statistics.Towers.Single(metrics => metrics.TowerId == "beacon");
         Check.Equal(2, towerStats.Purchases, "stats purchases");
         Check.Equal(1, towerStats.Kills, "stats attributed kills");
         Check.Nearly(100, towerStats.Damage, "stats effective damage");
@@ -532,13 +550,18 @@ internal static class Program
         Check.Equal(1, tower.LifetimeKills, "source tower tracks its own kill");
         Check.Nearly(0, idleTower.LifetimeDamage, "other instances do not inherit aggregate damage");
         Check.Equal(0, idleTower.LifetimeKills, "other instances do not inherit aggregate kills");
+        Check.Nearly(100f / 3f, beaconStats.SupportDamageEquivalent, "beacon receives marginal attack-rate contribution credit");
+        Check.Nearly(100f / 3f, beaconStats.ContributionDamage, "support contribution participates in run impact");
+        var restoredStatistics = GameSession.RestoreSaveGame(session.Content, session.CaptureSaveGame()).Statistics;
+        Check.Nearly(100f / 3f, restoredStatistics.Towers.Single(metrics => metrics.TowerId == "beacon").SupportDamageEquivalent,
+            "support contribution survives save restoration");
 
         var escaped = new EnemyInstance(2, session.Content.Enemies["armored"], session.Map.Path, 1, 1);
         session.OnEnemyEscaped(escaped);
         Check.Equal("armored", session.Statistics.GreatestLeakThreat!.EnemyId, "stats leak threat");
         Check.Equal(1, session.Statistics.GreatestLeakThreat.LivesLost, "stats lives lost");
         session.Update(0.05f);
-        Check.Nearly(0.05f, session.Statistics.SimulatedSeconds, "stats defense time");
+        Check.Nearly(0.06f, session.Statistics.SimulatedSeconds, "stats defense time");
     }
 
     private static void DefeatFieldInspection()
@@ -917,6 +940,8 @@ internal static class Program
         Check.Equal(first.LivesRemaining, second.LivesRemaining, "deterministic lives");
         Check.Equal(first.CreditsSpent, second.CreditsSpent, "deterministic spend");
         Check.Equal(first.Towers.Values.Sum(x => x.Purchases), second.Towers.Values.Sum(x => x.Purchases), "deterministic purchases");
+        Check.Nearly(first.Towers.Values.Sum(x => x.SupportDamageEquivalent), second.Towers.Values.Sum(x => x.SupportDamageEquivalent), "deterministic support attribution");
+        Check.Nearly(first.Towers.Values.Sum(x => x.StatusEnemySeconds.Values.Sum()), second.Towers.Values.Sum(x => x.StatusEnemySeconds.Values.Sum()), "deterministic status uptime");
         Check.True(first.WaveReached >= 2, "headless bot reaches requested wave limit");
     }
 

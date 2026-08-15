@@ -34,6 +34,7 @@ public static class HeadlessSimulation
                 break;
 
             wasWaveActive = session.Waves.IsActive;
+            telemetry.SampleUtility(session, step * session.Speed);
             session.Update(step);
             elapsed += step;
             reactionTimer += step;
@@ -56,6 +57,7 @@ public static class HeadlessSimulation
     {
         private readonly Dictionary<string, TowerRunMetrics> _towers = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<int, string> _towerIdToDefinition = new();
+        private readonly Dictionary<int, TowerInstance> _towerInstances = new();
         private readonly Dictionary<int, int> _towerLevels = new();
         private readonly Dictionary<string, int> _enemyKills = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, int> _enemyLeaks = new(StringComparer.OrdinalIgnoreCase);
@@ -166,9 +168,34 @@ public static class HeadlessSimulation
             };
         }
 
+        public void SampleUtility(GameSession session, float deltaSeconds)
+        {
+            if (deltaSeconds <= 0) return;
+
+            foreach (var enemy in session.Enemies)
+            foreach (var status in enemy.StatusEffects.Active)
+            {
+                if (status.Type == MinimalBastion.Effects.StatusType.Burn || !_towerIdToDefinition.TryGetValue(status.SourceId, out var towerId)) continue;
+                var metrics = GetTower(towerId);
+                var statusId = status.Type.ToString();
+                metrics.StatusEnemySeconds[statusId] = metrics.StatusEnemySeconds.GetValueOrDefault(statusId) + deltaSeconds;
+                metrics.StatusMagnitudeSeconds[statusId] = metrics.StatusMagnitudeSeconds.GetValueOrDefault(statusId) + status.Magnitude * deltaSeconds;
+            }
+
+            foreach (var recipient in session.Towers.Where(tower => !tower.IsSupport))
+            {
+                var buff = session.GetSupportBuff(recipient);
+                if (buff.AttackSpeedBonus > 0 && _towerIdToDefinition.TryGetValue(buff.AttackSpeedSourceTowerId, out var attackSource))
+                    GetTower(attackSource).SupportedAttackSeconds += deltaSeconds;
+                if (buff.RangeBonus > 0 && _towerIdToDefinition.TryGetValue(buff.RangeSourceTowerId, out var rangeSource))
+                    GetTower(rangeSource).SupportedRangeSeconds += deltaSeconds;
+            }
+        }
+
         private void OnTowerPlaced(TowerInstance tower)
         {
             _towerIdToDefinition[tower.Id] = tower.Definition.Id;
+            _towerInstances[tower.Id] = tower;
             _towerLevels[tower.Id] = tower.LevelIndex + 1;
             var metrics = GetTower(tower.Definition.Id);
             metrics.Purchases++;
@@ -213,6 +240,15 @@ public static class HeadlessSimulation
             metrics.Overkill += report.Overkill;
             var level = _towerLevels.GetValueOrDefault(report.SourceTowerId, 1);
             metrics.DamageByLevel[level] = metrics.DamageByLevel.GetValueOrDefault(level) + report.HealthDamage + report.ShieldDamage;
+
+            if (!_towerInstances.TryGetValue(report.SourceTowerId, out var sourceTower)) return;
+            var support = session.GetSupportBuff(sourceTower);
+            if (support.AttackSpeedBonus <= 0 || !_towerIdToDefinition.TryGetValue(support.AttackSpeedSourceTowerId, out var supportTowerId)) return;
+            var power = session.Map.GetPowerBuff(sourceTower.Position);
+            var protocol = sourceTower.IsOverdriven ? sourceTower.Protocol.AttackSpeedBonus : 0f;
+            var totalRateMultiplier = 1f + support.AttackSpeedBonus + power.AttackSpeedBonus + protocol;
+            GetTower(supportTowerId).SupportDamageEquivalent +=
+                (report.HealthDamage + report.ShieldDamage) * support.AttackSpeedBonus / MathF.Max(1f, totalRateMultiplier);
         }
 
         private TowerRunMetrics GetTower(string id)

@@ -9,6 +9,7 @@ namespace MinimalBastion.Analytics;
 
 public sealed class RunStatistics
 {
+    private readonly GameSession _session;
     private readonly Dictionary<int, RunTowerStatistics> _towerByInstance = new();
     private readonly Dictionary<int, TowerInstance> _towerInstances = new();
     private readonly Dictionary<string, RunTowerStatistics> _towers = new(StringComparer.OrdinalIgnoreCase);
@@ -27,8 +28,8 @@ public sealed class RunStatistics
     public IReadOnlyCollection<RunTowerStatistics> Towers => _towers.Values;
     public IReadOnlyCollection<RunEnemyStatistics> Enemies => _enemies.Values;
     public IEnumerable<RunTowerStatistics> TowerLeaders => _towers.Values
-        .Where(x => x.Damage > 0)
-        .OrderByDescending(x => x.Damage)
+        .Where(x => x.ContributionDamage > 0)
+        .OrderByDescending(x => x.ContributionDamage)
         .ThenBy(x => x.DisplayName);
     public RunEnemyStatistics? GreatestLeakThreat => _enemies.Values
         .Where(x => x.Escapes > 0)
@@ -38,6 +39,7 @@ public sealed class RunStatistics
 
     public RunStatistics(GameSession session)
     {
+        _session = session;
         session.TowerPlaced += OnTowerPlaced;
         session.TowerUpgraded += OnTowerUpgraded;
         session.TowerOverdriven += tower => GetTower(tower.Definition.Id, tower.Definition.DisplayName).Overdrives++;
@@ -87,6 +89,7 @@ public sealed class RunStatistics
             Kills = x.Kills,
             Overdrives = x.Overdrives,
             Damage = x.Damage,
+            SupportDamageEquivalent = x.SupportDamageEquivalent,
             ArmorAbsorbed = x.ArmorAbsorbed,
             Overkill = x.Overkill,
             Specializations = new Dictionary<string, int>(x.Specializations, StringComparer.OrdinalIgnoreCase)
@@ -131,6 +134,7 @@ public sealed class RunStatistics
                 Kills = Math.Max(0, saved.Kills),
                 Overdrives = Math.Max(0, saved.Overdrives),
                 Damage = MathF.Max(0, saved.Damage),
+                SupportDamageEquivalent = MathF.Max(0, saved.SupportDamageEquivalent),
                 ArmorAbsorbed = MathF.Max(0, saved.ArmorAbsorbed),
                 Overkill = MathF.Max(0, saved.Overkill)
             };
@@ -209,7 +213,17 @@ public sealed class RunStatistics
         metrics.Overkill += report.Overkill;
         if (report.Killed) metrics.Kills++;
         if (_towerInstances.TryGetValue(report.SourceTowerId, out var tower))
+        {
             tower.RecordCombat(appliedDamage, report.Killed);
+            var support = _session.GetSupportBuff(tower);
+            if (support.AttackSpeedBonus > 0 && _towerByInstance.TryGetValue(support.AttackSpeedSourceTowerId, out var supportMetrics))
+            {
+                var power = _session.Map.GetPowerBuff(tower.Position);
+                var protocol = tower.IsOverdriven ? tower.Protocol.AttackSpeedBonus : 0f;
+                var totalRateMultiplier = 1f + support.AttackSpeedBonus + power.AttackSpeedBonus + protocol;
+                supportMetrics.SupportDamageEquivalent += appliedDamage * support.AttackSpeedBonus / MathF.Max(1f, totalRateMultiplier);
+            }
+        }
     }
 
     private RunTowerStatistics GetTower(string id, string displayName)
@@ -241,10 +255,12 @@ public sealed class RunTowerStatistics
     public int Kills { get; internal set; }
     public int Overdrives { get; internal set; }
     public float Damage { get; internal set; }
+    public float SupportDamageEquivalent { get; internal set; }
     public float ArmorAbsorbed { get; internal set; }
     public float Overkill { get; internal set; }
     public Dictionary<string, int> Specializations { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public float DamagePerCredit => CreditsSpent <= 0 ? 0 : Damage / CreditsSpent;
+    public float ContributionDamage => Damage + SupportDamageEquivalent;
+    public float DamagePerCredit => CreditsSpent <= 0 ? 0 : ContributionDamage / CreditsSpent;
 
     public RunTowerStatistics(string towerId, string displayName)
     {

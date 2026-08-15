@@ -1382,7 +1382,7 @@ public sealed class UIManager
             return;
         }
 
-        var maximum = MathF.Max(1, leaders[0].Damage);
+        var maximum = MathF.Max(1, leaders[0].ContributionDamage);
         for (var index = 0; index < leaders.Length; index++)
         {
             var tower = leaders[index];
@@ -1395,14 +1395,17 @@ public sealed class UIManager
                 _ => ColorPalette.Orange
             };
             DrawText(batch, tower.DisplayName.ToUpperInvariant(), new Vector2(rect.X + 14, y), ColorPalette.Ink, 0.58f);
-            DrawTextRight(batch, $"{tower.Damage:0} DAMAGE   {tower.Kills} KILLS", new Vector2(rect.Right - 14, y), ColorPalette.Muted, 0.50f);
+            var contribution = tower.SupportDamageEquivalent > 0
+                ? $"{tower.Damage:0} DAMAGE +{tower.SupportDamageEquivalent:0} SUPPORT"
+                : $"{tower.Damage:0} DAMAGE   {tower.Kills} KILLS";
+            DrawTextRight(batch, contribution, new Vector2(rect.Right - 14, y), ColorPalette.Muted, 0.46f);
             var bar = new Rectangle(rect.X + 14, y + 24, rect.Width - 28, 9);
             p.FillRect(batch, bar, ColorPalette.Disabled);
-            p.FillRect(batch, new Rectangle(bar.X, bar.Y, Math.Max(2, (int)(bar.Width * tower.Damage / maximum)), bar.Height), color);
+            p.FillRect(batch, new Rectangle(bar.X, bar.Y, Math.Max(2, (int)(bar.Width * tower.ContributionDamage / maximum)), bar.Height), color);
         }
 
         var strongest = leaders[0];
-        DrawText(batch, $"TOP UNIT  {strongest.DisplayName}   |   {strongest.DamagePerCredit:0.0} DAMAGE / CREDIT", new Vector2(rect.X + 14, rect.Bottom - 30), ColorPalette.Violet, 0.52f);
+        DrawText(batch, $"TOP UNIT  {strongest.DisplayName}   |   {strongest.DamagePerCredit:0.0} IMPACT / CREDIT", new Vector2(rect.X + 14, rect.Bottom - 30), ColorPalette.Violet, 0.52f);
     }
 
     private void DrawRunSummary(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session, Rectangle rect)

@@ -98,7 +98,8 @@ Reports: `.build/balance/overnight-normal-5x.json`, `.build/balance/overnight-ha
 - Mortar's deterministic shell caps reduce Hard aggregate damage/credit to 14.2 and keep it below Watchtower, Breaker, Needle, Shard, Frost, and Ember rather than allowing unlimited crowded-wave scaling.
 - Every final specialization appears in winning Hard runs. Rare choices such as Quake Shell are successful in the scenarios that select them; selection frequency alone is not treated as branch failure.
 - The Beacon benchmark now measures indirect output. Tempo contributes 18.4 assisted DPS to a compact three-Needle cluster, while Horizon contributes 12.0 versus Tempo's 8.0 in a spread three-Watchtower formation by reaching two extra recipients.
-- Direct damage/credit understates Frost control, Beacon throughput, Prism Exposed, armor break, and range coverage; those roles are assessed with scenario and campaign outcomes rather than raw damage alone.
+- Campaign telemetry now records source-attributed Slow, Stun, Exposed, and Armor Break enemy-seconds plus Beacon recipient-seconds and marginal attack-rate damage-equivalent. A one-seed, 36-run Hard sweep measured 1,539,911 Beacon assist damage, 131,592 supported tower-seconds, 130,230 control enemy-seconds, 45,313 expose enemy-seconds, and 83,348 armor-break enemy-seconds without changing gameplay outcomes.
+- Direct damage/credit still understates pure range coverage, but support and control roles now have reproducible campaign measurements alongside scenario outcomes.
 
 ## Reproducible cases
 
@@ -147,8 +148,7 @@ Final report: `.build/balance/all-tier-economy-final2-5x-20260814.json`.
 
 ## Next experiments
 
-1. Add explicit status uptime and source-attributed support damage to improve Frost/Beacon campaign valuation.
-2. Human-playtest branch legibility, late-wave pacing, and direct-internet latency beyond loopback integration tests.
-3. Collect human Normal/Hard/Bastion outcomes before moving any global profile multiplier.
-4. Test a fourth arena only if its placement constraint creates a new strategy rather than duplicating existing route geometry.
-5. Evaluate hosted relay/NAT traversal separately from combat balance; do not couple networking services to deterministic simulation.
+1. Human-playtest branch legibility, late-wave pacing, and direct-internet latency beyond loopback integration tests.
+2. Collect human Normal/Hard/Bastion outcomes before moving any global profile multiplier.
+3. Test a fourth arena only if its placement constraint creates a new strategy rather than duplicating existing route geometry.
+4. Evaluate hosted relay/NAT traversal separately from combat balance; do not couple networking services to deterministic simulation.

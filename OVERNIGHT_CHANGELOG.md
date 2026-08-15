@@ -18,6 +18,7 @@ Date: 2026-08-15
 - Added compact-versus-spread Signal Beacon economy benchmarks. Tempo leads compact three-tower throughput while Horizon's added recipients win the spread formation, confirming distinct support roles.
 - Gave every tower protocol its own restrained geometric signature and audio pitch while active. Reduced-effects mode keeps only the essential native-color protocol ring.
 - Re-ran 180 deterministic campaign agents per key difficulty after the map, branch, protocol, Mortar, and support changes. Normal cleared 137/180 (76.1%), Hard 106/180 (58.9%), and Bastion 35/180 (19.4%); on Hard, Foundry cleared 41/60, Prism 38/60, and Surge 27/60, confirming the intended arena ordering.
+- Added source-aware utility telemetry: Signal Beacon damage-equivalent and recipient-seconds plus Slow, Stun, Exposed, and Armor Break enemy-seconds. End-run contribution bars now include Beacon-assisted output while keeping direct damage visibly separate.
 - Current verification: 46/46 deterministic tests, clean Release build with zero warnings, and native visual QA of title, settings, gameplay, and pause layouts.
 
 ## Range, branch, and menu harmony pass

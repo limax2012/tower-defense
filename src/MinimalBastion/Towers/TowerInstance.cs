@@ -5,7 +5,11 @@ using Microsoft.Xna.Framework;
 
 namespace MinimalBastion.Towers;
 
-public readonly record struct TowerBuff(float AttackSpeedBonus, float RangeBonus)
+public readonly record struct TowerBuff(
+    float AttackSpeedBonus,
+    float RangeBonus,
+    int AttackSpeedSourceTowerId = 0,
+    int RangeSourceTowerId = 0)
 {
     public bool IsActive => AttackSpeedBonus > 0 || RangeBonus > 0;
 }

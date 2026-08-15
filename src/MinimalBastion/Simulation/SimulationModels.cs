@@ -80,6 +80,11 @@ public sealed class TowerRunMetrics
     public float ShieldDamage { get; set; }
     public float ArmorAbsorbed { get; set; }
     public float Overkill { get; set; }
+    public float SupportDamageEquivalent { get; set; }
+    public float SupportedAttackSeconds { get; set; }
+    public float SupportedRangeSeconds { get; set; }
+    public Dictionary<string, float> StatusEnemySeconds { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, float> StatusMagnitudeSeconds { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<int, float> DamageByLevel { get; init; } = new();
     public Dictionary<string, int> Specializations { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public float DamagePerCredit => CreditsSpent <= 0 ? 0 : Damage / CreditsSpent;

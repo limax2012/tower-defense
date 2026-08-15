@@ -115,6 +115,7 @@ public sealed class RunTowerStatisticsSaveData
     public int Kills { get; set; }
     public int Overdrives { get; set; }
     public float Damage { get; set; }
+    public float SupportDamageEquivalent { get; set; }
     public float ArmorAbsorbed { get; set; }
     public float Overkill { get; set; }
     public Dictionary<string, int> Specializations { get; set; } = new(StringComparer.OrdinalIgnoreCase);

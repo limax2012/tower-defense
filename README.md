@@ -49,7 +49,7 @@ dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simul
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --map relay_divide --runs 10
 ```
 
-Reports are written under `.build\balance`. Supported filters include `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--max-wave`, and `--output`.
+Reports are written under `.build\balance`. Supported filters include `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--max-wave`, and `--output`. Tower reports distinguish direct damage from Signal Beacon damage-equivalent, recipient-seconds, and source-attributed Slow, Stun, Exposed, and Armor Break enemy-seconds so support/control value is not hidden behind raw kill totals.
 
 Create a self-contained Windows build with:
 
@@ -86,6 +86,7 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 - Hover a Surge Node for its exact radius and bonus. A tower's center must be inside the field; overlapping nodes use only the strongest bonus for each stat rather than stacking.
 - While positioning a tower over a node, Tower Intel shows that node's name, bonus, and the exact base-to-boosted stat change. Selecting a deployed tower keeps the same node information alongside its active tower stats.
 - Towers receiving a Signal Beacon aura keep their native ring color and carry a compact pulsing gold status pip inside the upper-right of their silhouette. Their Tower Intel identifies the Beacon and shows its exact base-to-boosted attack-rate and range changes separately from the combined active stats.
+- End-run contribution bars credit Signal Beacons with the marginal damage-equivalent created by their attack-rate aura; this support value is labeled separately from direct damage and remains stable across save/load.
 - Signal Beacon placement and selection previews show the full support-aura radius. Selecting any deployed tower also shows that individual tower's lifetime damage and kills in Tower Intel.
 - The Charge Forge produces only while a wave is active. Its sidebar timer explicitly shows running, paused, or full storage.
 - Pulse Plates snap anywhere across the visible road, push their triggering enemy backward, and briefly stun and slow every enemy in the blast. Their fixed 38 damage, two charges, and group control are identical in every wave, but the field is capped at 16 active plates. The tactical button always shows `FIELD x/16` separately from Forge `STORED x/capacity`. A 0.75-second per-enemy knockback grace prevents plate carpets from creating a domino lock; elites receive 60% push and bosses 25%. Direct buying is active-wave-only and rises by 15 credits after each additional purchase in the same wave, then resets to 60 at the next wave; stored Forge charges remain free to deploy.
