@@ -69,7 +69,7 @@
       "rangeBonus": 0.09, "color": "#2192AA"
     }
   ],
-  "waveSet": "foundry_waves",
+  "waveSet": "surge_waves",
   "startingLives": 20,
   "startingCredits": 360
 }

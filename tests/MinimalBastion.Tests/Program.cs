@@ -253,6 +253,11 @@ internal static class Program
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
         var relay = content.Maps["relay_divide"];
+        Check.Equal("surge_waves", relay.WaveSet, "surge map has its own campaign");
+        Check.True(content.WaveSets[relay.WaveSet].Waves[1].Groups.Any(x => x.EnemyId == "t2_runner"),
+            "surge campaign introduces runners earlier than Foundry");
+        Check.True(JsonSerializer.Serialize(content.WaveSets[relay.WaveSet].Waves) != JsonSerializer.Serialize(content.Waves.Waves),
+            "map campaigns are authored independently");
         Check.Equal(9, relay.PowerNodes.Count, "surge node count");
         Check.True(relay.PowerNodes.All(x => x.Radius <= 42), "surge nodes stay compact");
         Check.True(relay.PowerNodes.Any(x => x.DamageBonus > 0), "damage node exists");
