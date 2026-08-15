@@ -1636,6 +1636,8 @@ internal static class Program
     {
         Check.True(LanCoOpConnection.MaximumQueuedSends > 0 && LanCoOpConnection.MaximumQueuedSends <= 64,
             "connection-level outbound queue retains a small explicit bound");
+        Check.Equal(10, LanCoOpHost.HandshakeTimeoutSeconds,
+            "friend handshake has a bounded but practical recovery window");
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await using var host = new LanCoOpHost(0, "BOUNDS");
         host.Start();

@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Bounded host and client connection handshakes to ten seconds. A half-open TCP peer can no longer occupy the private host listener indefinitely; failure returns to the existing retry/accept flow with a clear timeout message.
 - Centralized structural validation for live and snapshotted co-op commands. Null IDs, nonfinite coordinates, invalid enums/entities, and unsupported speed values are rejected before sequencing or gameplay lookup; malformed authority traffic requests a clean resync.
 - Added a strict 64-frame connection-level outbound budget before serialization/allocation. A stalled socket now faults into the existing preserved-session reconnect path instead of retaining an unbounded internal write queue.
 - Hardened procedural-audio startup cleanup: generated WAV streams are disposed immediately, and a mid-construction device failure releases every sound already created before falling back to silent play.

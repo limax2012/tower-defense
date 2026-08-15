@@ -164,6 +164,7 @@ public sealed class LanCoOpConnection : IAsyncDisposable
 
 public sealed class LanCoOpHost : IAsyncDisposable
 {
+    public const int HandshakeTimeoutSeconds = 10;
     private readonly TcpListener _listener;
     private readonly string _buildFingerprint;
     public string JoinCode { get; }
@@ -183,24 +184,31 @@ public sealed class LanCoOpHost : IAsyncDisposable
     {
         var client = await _listener.AcceptTcpClientAsync(cancellationToken);
         var connection = new LanCoOpConnection(client);
+        using var handshake = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        handshake.CancelAfter(TimeSpan.FromSeconds(HandshakeTimeoutSeconds));
         try
         {
-            var hello = await connection.ReceiveAsync(cancellationToken);
+            var hello = await connection.ReceiveAsync(handshake.Token);
             if (hello is not { Type: CoOpMessageType.Hello } ||
                 !string.Equals(hello.JoinCode, JoinCode, StringComparison.OrdinalIgnoreCase))
             {
-                await connection.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.Rejected, Message = "Invalid local join code." }, cancellationToken);
+                await connection.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.Rejected, Message = "Invalid local join code." }, handshake.Token);
                 throw new InvalidDataException("A client supplied an invalid local join code.");
             }
             if (!string.IsNullOrEmpty(_buildFingerprint) &&
                 !string.Equals(hello.BuildFingerprint, _buildFingerprint, StringComparison.Ordinal))
             {
-                await connection.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.Rejected, Message = "The host and client builds or content files do not match." }, cancellationToken);
+                await connection.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.Rejected, Message = "The host and client builds or content files do not match." }, handshake.Token);
                 throw new InvalidDataException("A client supplied an incompatible build fingerprint.");
             }
 
-            await connection.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.Welcome, PlayerId = 2, Message = "Connected to Minimal Bastion host." }, cancellationToken);
+            await connection.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.Welcome, PlayerId = 2, Message = "Connected to Minimal Bastion host." }, handshake.Token);
             return connection;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            await connection.DisposeAsync();
+            throw new TimeoutException("The incoming co-op handshake did not finish in time.");
         }
         catch
         {
@@ -237,20 +245,28 @@ public static class LanCoOpClient
         if (port is < 1 or > 65535) throw new ArgumentOutOfRangeException(nameof(port), "Port must be between 1 and 65535.");
         var client = new TcpClient { NoDelay = true };
         LanCoOpConnection? connection = null;
+        using var handshake = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        handshake.CancelAfter(TimeSpan.FromSeconds(LanCoOpHost.HandshakeTimeoutSeconds));
         try
         {
-            await client.ConnectAsync(host.Trim(), port, cancellationToken);
+            await client.ConnectAsync(host.Trim(), port, handshake.Token);
             connection = new LanCoOpConnection(client);
             await connection.SendAsync(new CoOpEnvelope
             {
                 Type = CoOpMessageType.Hello,
                 JoinCode = joinCode.Trim().ToUpperInvariant(),
                 BuildFingerprint = buildFingerprint
-            }, cancellationToken);
-            var welcome = await connection.ReceiveAsync(cancellationToken);
+            }, handshake.Token);
+            var welcome = await connection.ReceiveAsync(handshake.Token);
             if (welcome is not { Type: CoOpMessageType.Welcome, PlayerId: 2 })
                 throw new InvalidDataException(welcome?.Message ?? "Host closed the co-op handshake.");
             return connection;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            if (connection is not null) await connection.DisposeAsync();
+            else client.Dispose();
+            throw new TimeoutException("The co-op host did not complete the connection handshake in time.");
         }
         catch
         {
