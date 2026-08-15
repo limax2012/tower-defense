@@ -398,6 +398,10 @@ internal static class Program
         normalSave.DifficultyId = "";
         Check.Equal("hard", GameSession.RestoreSaveGame(content, normalSave).DifficultyId, "legacy saves retain original hard rules");
         Check.True(SessionChecksum.Compute(hard, 0) != SessionChecksum.Compute(easy, 0), "difficulty identity contributes to checksum");
+        var nextIntel = WaveIntel.Analyze(normal.Waves.NextWave!, content.Enemies);
+        Check.Equal("HP x0.90 | SPD x0.98",
+            nextIntel.ScalingSummary(normal.Difficulty.EnemyHealthMultiplier, normal.Difficulty.EnemySpeedMultiplier),
+            "live threat intel exposes effective wave and difficulty scaling");
 
         var ui = new UIManager(null!);
         ui.ConfigureDifficulties(content.Difficulties.Values);

@@ -73,6 +73,7 @@ Updated: 2026-08-15
 - Extended that truthful area language to Pulse Plates and radius-based Protocols, while temporal/self buffs keep the compact activation flash.
 - Replaced generic kill flashes with brief six-segment geometric shatters; they are budgeted as low-priority feedback so dense waves retain tactical area cues.
 - Tightened the Plate control to action-first wording while retaining the permanent field cap, and changed its gold surface to dark text for clean high-resolution contrast.
+- Added effective HP/speed scaling to the active/next-threat HUD, including the selected difficulty multiplier, so endless escalation is observable rather than hidden.
 - Added a seamless procedural tactical music bed with mild arena-specific tuning and an independent persisted volume control; it remains optional presentation state and requires no external audio assets.
 - Added compact synthesized confirm, back, and delete cues to the complete menu/pause/save/library flow. They share the persisted SFX control and never enter gameplay state, snapshots, or checksums.
 - Presentation-only settings now apply without resetting the graphics device, avoiding fullscreen flicker when changing effect density or audio volume.

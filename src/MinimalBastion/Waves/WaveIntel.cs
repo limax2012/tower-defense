@@ -7,9 +7,14 @@ public sealed record WaveIntelInfo(
     int ApproximateCount,
     string Archetype,
     string Briefing,
-    IReadOnlyList<string> Threats)
+    IReadOnlyList<string> Threats,
+    float HealthMultiplier,
+    float SpeedMultiplier)
 {
     public string CompactThreats => Threats.Count == 0 ? "STANDARD" : string.Join("/", Threats.Take(3));
+
+    public string ScalingSummary(float difficultyHealthMultiplier = 1f, float difficultySpeedMultiplier = 1f) =>
+        $"HP x{HealthMultiplier * difficultyHealthMultiplier:0.00} | SPD x{SpeedMultiplier * difficultySpeedMultiplier:0.00}";
 }
 
 public sealed record CampaignIntelInfo(
@@ -72,7 +77,8 @@ public static class WaveIntel
             .ThenBy(x => x.Key)
             .Select(x => x.Key)
             .ToArray();
-        return new WaveIntelInfo(wave.Number, RoundApproximate(count), wave.Archetype, wave.Briefing, threats);
+        return new WaveIntelInfo(wave.Number, RoundApproximate(count), wave.Archetype, wave.Briefing, threats,
+            wave.HealthMultiplier, wave.SpeedMultiplier);
 
         void Add(string key, int amount) => threatCounts[key] = threatCounts.GetValueOrDefault(key) + amount;
     }

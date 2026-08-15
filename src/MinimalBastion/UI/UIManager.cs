@@ -1496,7 +1496,10 @@ public sealed class UIManager
         if (previewWave is not null)
         {
             var intel = WaveIntel.Analyze(previewWave, session.Content.Enemies);
-            DrawText(batch, session.Waves.IsActive ? "ACTIVE THREAT" : "NEXT THREAT", new Vector2(820, 8), ColorPalette.Gold, 0.62f);
+            var threatState = session.Waves.IsActive ? "ACTIVE" : "NEXT";
+            DrawFittedText(batch,
+                $"{threatState} | {intel.ScalingSummary(session.Difficulty.EnemyHealthMultiplier, session.Difficulty.EnemySpeedMultiplier)}",
+                new Vector2(820, 8), ColorPalette.Gold, 0.56f, 132);
             DrawText(batch, $"{intel.ApproximateCount}  {intel.CompactThreats}", new Vector2(820, 27), ColorPalette.Paper, 0.68f);
         }
 
