@@ -829,24 +829,31 @@ public sealed class Game1 : Game
 
     private void DisposePeerConnection()
     {
-        try { _coOpConnection?.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { }
-        _coOpConnection = null;
+        var receive = _receiveTask;
         _receiveTask = null;
+        var sends = _pendingNetworkSends.ToArray();
         _pendingNetworkSends.Clear();
+        var connection = _coOpConnection;
+        _coOpConnection = null;
+        try { connection?.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { }
+        if (receive is not null) _ = ObserveNetworkTaskAsync(receive);
+        foreach (var send in sends) _ = ObserveNetworkTaskAsync(send);
         _coOpCursor.Reset();
         SyncRemoteCoOpCursor();
     }
 
     private void CleanupNetwork()
     {
+        var pendingConnection = _connectionTask;
+        _connectionTask = null;
         try { _networkCancellation?.Cancel(); } catch { }
         DisposePeerConnection();
         try { _coOpHost?.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { }
+        if (pendingConnection is not null) _ = DisposePendingConnectionAsync(pendingConnection);
         _networkCancellation?.Dispose();
         _networkCancellation = null;
         _coOpConnection = null;
         _coOpHost = null;
-        _connectionTask = null;
         _receiveTask = null;
         _pendingNetworkSends.Clear();
         _networkChecksums.Clear();
@@ -869,6 +876,25 @@ public sealed class Game1 : Game
         _reconnectRetryRemaining = 0;
         AssignSession(null);
         _activeSaveSlot = null;
+    }
+
+    private static async Task DisposePendingConnectionAsync(Task<LanCoOpConnection> pendingConnection)
+    {
+        try
+        {
+            var connection = await pendingConnection.ConfigureAwait(false);
+            await connection.DisposeAsync();
+        }
+        catch
+        {
+            // Cancellation and failed handshakes are expected during menu exits.
+        }
+    }
+
+    private static async Task ObserveNetworkTaskAsync(Task task)
+    {
+        try { await task.ConfigureAwait(false); }
+        catch { }
     }
 
     private void HandlePauseAction(UiAction action)
