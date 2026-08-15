@@ -73,15 +73,15 @@ The current five-seed matrices cover 12 strategies across Foundry Loop, Crosswin
 | Difficulty | Wins | Win rate | Average wave | Average lives |
 | --- | ---: | ---: | ---: | ---: |
 | Easy | 200/240 | 83.3% | 19.4 | 24.8 |
-| Normal | 185/240 | 77.1% | 19.0 | 17.9 |
-| Hard | 144/240 | 60.0% | 17.9 | 10.1 |
+| Normal | 185/240 | 77.1% | 18.9 | 17.8 |
+| Hard | 144/240 | 60.0% | 18.0 | 10.1 |
 | Bastion | 47/240 | 19.6% | 13.0 | 2.3 |
 
 Hard is the authored uncompromised baseline. Its map results are Foundry 41/60, Crosswind 38/60, Prism 38/60, and Surge 27/60. Surge is therefore materially harder despite its nine nodes; on Bastion it falls to 6/60 versus 15/60 Foundry, 12/60 Crosswind, and 14/60 Prism. Normal preserves recovery room without making undirected Economy or level-1 Spam policies successful.
 
 Hard strategy wins are Conservative 19/20, Economy 0/20, Aggressive 2/20, UpgradeFocused 11/20, Spam 0/20, AntiSwarm 19/20, AntiArmor 16/20, LongRange 15/20, Control 18/20, Tactical 19/20, Adaptive 16/20, and Randomized 9/20. Long range remains useful but is no longer the leading or seed-proof policy.
 
-Reports: `.build/balance/overnight-*-5x.json` for the original three-map matrices and `.build/balance/crosswind-*-5x.json` for the fourth-map additions.
+Canonical reports: `.build/balance/four-map-easy-5x.json`, `.build/balance/four-map-normal-5x.json`, `.build/balance/four-map-hard-5x.json`, and `.build/balance/four-map-bastion-5x.json`.
 
 ## Endless validation
 
@@ -98,7 +98,7 @@ Reports: `.build/balance/overnight-*-5x.json` for the original three-map matrice
 - Economy reaches wave 15.5 on average on Hard without winning; its delayed Forge investment remains meaningful but risky. Spam also remains intentionally nonviable.
 - Tactical wins 19/20 while deploying 1,312 plates across the matrix. The 16-field cap, active-wave escalating direct cost, knockback grace, and boss resistance prevent the former endless plate lock despite making the system useful.
 - Mortar's deterministic shell caps reduce Hard aggregate damage/credit to 14.2 and keep it below Watchtower, Breaker, Needle, Shard, Frost, and Ember rather than allowing unlimited crowded-wave scaling.
-- Every final specialization appears in winning Hard runs. Rare choices such as Quake Shell are successful in the scenarios that select them; selection frequency alone is not treated as branch failure.
+- Every final specialization appears in winning Hard runs. Rare choices such as Quake Shell are successful in all 37 Hard selections, while lower-volume Spectrum Split and Lance Fan still appear 73 and 107 times in winning runs; selection frequency alone is not treated as branch failure.
 - The Beacon benchmark now measures indirect output. Tempo contributes 18.4 assisted DPS to a compact three-Needle cluster, while Horizon contributes 12.0 versus Tempo's 8.0 in a spread three-Watchtower formation by reaching two extra recipients.
 - Campaign telemetry now records source-attributed Slow, Stun, Exposed, and Armor Break enemy-seconds plus Beacon recipient-seconds and marginal attack-rate damage-equivalent. A one-seed, 36-run Hard sweep measured 1,539,911 Beacon assist damage, 131,592 supported tower-seconds, 130,230 control enemy-seconds, 45,313 expose enemy-seconds, and 83,348 armor-break enemy-seconds without changing gameplay outcomes.
 - The same attribution is now retained per deployed tower at runtime. Tower Intel can distinguish a specific Beacon's assisted damage and a specific control/expose/break source's enemy-seconds instead of showing only its direct damage and kills; saves and co-op checksums include these records.
