@@ -3111,6 +3111,39 @@ internal static class Program
             Check.Equal(6, updated.ForgedCharges, "run history retains forged charge output");
             Check.True(File.Exists(repository.BackupPath), "run history retains a recovery generation");
 
+            var legacyRepository = new RunHistoryRepository(Path.Combine(testRoot, "legacy"));
+            Directory.CreateDirectory(legacyRepository.HistoryDirectory);
+            File.WriteAllText(legacyRepository.HistoryPath,
+                """
+                [{
+                  "runId": "legacy-run",
+                  "completedAtUtc": "2026-01-01T10:00:00Z",
+                  "victory": true,
+                  "mapId": "foundry_loop",
+                  "mapName": "Foundry Loop",
+                  "difficultyId": "hard",
+                  "difficultyName": "Hard",
+                  "currentWave": 20,
+                  "totalWaves": 20,
+                  "lives": 4,
+                  "startingLives": 20,
+                  "kills": 1090,
+                  "leaks": 0,
+                  "creditsEarned": 22000,
+                  "creditsSpent": 21000,
+                  "defenseSeconds": 1200,
+                  "topTowerName": "Siege Mortar",
+                  "topTowerContribution": 120000
+                }]
+                """);
+            var legacy = legacyRepository.GetEntries().Single();
+            Check.Equal("standard", legacy.ChallengeId, "legacy history defaults to the standard directive");
+            Check.Equal(0, legacy.EarlyCallCredits, "legacy history defaults missing early-call telemetry");
+            Check.Equal(0, legacy.ProtocolActivations, "legacy history defaults missing protocol telemetry");
+            Check.Equal(0, legacy.PlateDeployments, "legacy history defaults missing plate telemetry");
+            Check.Nearly(0, legacy.PlateDamage, "legacy history defaults missing plate damage");
+            Check.Equal(0, legacy.ForgedCharges, "legacy history defaults missing forge telemetry");
+
             repository.Upsert(first with { RunId = "run-b", CompletedAtUtc = first.CompletedAtUtc.AddHours(2) });
             Check.Equal("run-b", repository.GetEntries()[0].RunId, "run history is newest first");
             var historyUi = new UIManager(null!);
