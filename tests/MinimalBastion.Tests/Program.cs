@@ -369,6 +369,29 @@ internal static class Program
         Check.Equal(UiAction.CloseSettings,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),
             "escape closes settings safely");
+
+        var directory = Path.Combine(Path.GetTempPath(), $"MinimalBastionSettings-{Guid.NewGuid():N}");
+        try
+        {
+            var repository = new UserSettingsRepository(directory);
+            repository.Save(new UserSettings { WindowWidth = 1600, WindowHeight = 900, SfxVolume = 0.25f });
+            repository.Save(new UserSettings { WindowWidth = 1920, WindowHeight = 1080, SfxVolume = 0.75f });
+            Check.Equal(1920, repository.Load().WindowWidth, "settings repository loads its current generation");
+            File.WriteAllText(repository.SettingsPath, "{ interrupted");
+            var recovered = repository.Load();
+            Check.Equal(1600, recovered.WindowWidth, "corrupt settings recover from the previous valid generation");
+            Check.Nearly(0.25f, recovered.SfxVolume, "settings recovery preserves audio choices");
+
+            repository.Save(new UserSettings { WindowWidth = 2560, WindowHeight = 1440, SfxVolume = float.NaN });
+            Check.Nearly(0.65f, repository.Load().SfxVolume, "nonfinite runtime volume normalizes before persistence");
+            File.WriteAllText(repository.SettingsPath, "not json");
+            Check.Equal(1600, repository.Load().WindowWidth,
+                "saving after corruption does not overwrite the last known-good settings backup");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
     }
 
     private static void TacticalColorPalette()

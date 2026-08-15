@@ -24,7 +24,7 @@ public sealed class UserSettings
     {
         WindowWidth = Math.Clamp(WindowWidth, 960, 3840);
         WindowHeight = Math.Clamp(WindowHeight, 540, 2160);
-        SfxVolume = Math.Clamp(SfxVolume, 0, 1);
+        SfxVolume = float.IsFinite(SfxVolume) ? Math.Clamp(SfxVolume, 0, 1) : 0.65f;
     }
 
     public void CycleResolution()
@@ -36,34 +36,72 @@ public sealed class UserSettings
     }
 }
 
-public static class UserSettingsStore
+public sealed class UserSettingsRepository
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-    public static string SettingsPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "MinimalBastion",
-        "settings.json");
 
-    public static UserSettings Load()
+    public UserSettingsRepository(string rootDirectory)
     {
+        if (string.IsNullOrWhiteSpace(rootDirectory))
+            throw new ArgumentException("A settings root directory is required.", nameof(rootDirectory));
+        RootDirectory = Path.GetFullPath(rootDirectory);
+    }
+
+    public string RootDirectory { get; }
+    public string SettingsPath => Path.Combine(RootDirectory, "settings.json");
+    public string BackupPath => SettingsPath + ".bak";
+
+    public UserSettings Load()
+    {
+        if (TryRead(SettingsPath, out var settings)) return settings;
+        if (TryRead(BackupPath, out settings)) return settings;
+        return new UserSettings();
+    }
+
+    public void Save(UserSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        settings.Normalize();
+        Directory.CreateDirectory(RootDirectory);
+        var temporaryPath = SettingsPath + ".tmp";
         try
         {
-            if (!File.Exists(SettingsPath)) return new UserSettings();
-            var settings = JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(SettingsPath), JsonOptions) ?? new UserSettings();
-            if (settings.SchemaVersion != UserSettings.CurrentSchemaVersion) return new UserSettings();
-            settings.Normalize();
-            return settings;
+            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(settings, JsonOptions));
+            if (TryRead(SettingsPath, out _)) File.Copy(SettingsPath, BackupPath, true);
+            File.Move(temporaryPath, SettingsPath, true);
         }
-        catch
+        finally
         {
-            return new UserSettings();
+            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
         }
     }
 
-    public static void Save(UserSettings settings)
+    private static bool TryRead(string path, out UserSettings settings)
     {
-        settings.Normalize();
-        Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-        File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, JsonOptions));
+        settings = new UserSettings();
+        if (!File.Exists(path)) return false;
+        try
+        {
+            var restored = JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(path), JsonOptions);
+            if (restored is null || restored.SchemaVersion != UserSettings.CurrentSchemaVersion) return false;
+            restored.Normalize();
+            settings = restored;
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return false;
+        }
     }
+}
+
+public static class UserSettingsStore
+{
+    private static UserSettingsRepository DefaultRepository => new(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "MinimalBastion"));
+
+    public static string SettingsPath => DefaultRepository.SettingsPath;
+    public static UserSettings Load() => DefaultRepository.Load();
+    public static void Save(UserSettings settings) => DefaultRepository.Save(settings);
 }
