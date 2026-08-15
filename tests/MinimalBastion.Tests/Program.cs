@@ -1148,6 +1148,8 @@ internal static class Program
         Check.Nearly(92, nearby.Health, "frost damages nearby enemy");
         Check.Nearly(100, distant.Health, "frost area is bounded");
         Check.Nearly(0.4f, nearby.StatusEffects.SlowFactor, "frost applies area slow");
+        var impact = session.Effects.Effects.Single(effect => effect.Kind == EffectKind.Flash);
+        Check.Nearly(level.SplashRadius, impact.Radius, "splash effect communicates the actual impact radius");
     }
 
     private static void MortarPredictiveAim()

@@ -64,9 +64,7 @@ internal static class BalanceSimulation
             Console.WriteLine($"{tower.DisplayName,-20}  {fast.DamagePerSecond,8:0.0}  {swarm.Kills,5}/{swarm.Leaks,-10}  {WastePercent(swarm),7:0.0}  {dense.DamagePerSecond,19:0.0}  {boss.DamagePerSecond,8:0.0}");
         }
 
-        var support = SupportContribution(content);
-        Console.WriteLine();
-        Console.WriteLine($"Signal Beacon assisted damage estimate: {support.AssistedDamage:0.0} over 20s ({support.AssistedDps:0.0} DPS) for two Needle Turrets.");
+        PrintSupportEconomy(content);
         Console.WriteLine("Metrics include projectile travel, path movement, armor, shields, DOT persistence, overkill, kills, leaks, and damage reports.");
     }
 
@@ -116,6 +114,21 @@ internal static class BalanceSimulation
         }
 
         return rows;
+    }
+
+    private static void PrintSupportEconomy(GameContent content)
+    {
+        var beacon = content.Towers["signal_beacon"];
+        Console.WriteLine();
+        Console.WriteLine("SIGNAL BEACON ECONOMY (20-second assisted DPS; compact tests throughput, spread tests coverage)");
+        Console.WriteLine("Tier        Cost  Compact  Compact/cost  Spread  Spread/cost");
+        Console.WriteLine("----------  ----  -------  ------------  ------  -----------");
+        foreach (var row in TierRows(beacon))
+        {
+            var compact = SupportContribution(content, row, compact: true);
+            var spread = SupportContribution(content, row, compact: false);
+            Console.WriteLine($"{row.Label,-10}  {row.CumulativeCost,4}  {compact.AssistedDps,7:0.0}  {compact.AssistedDps / row.CumulativeCost,12:0.000}  {spread.AssistedDps,6:0.0}  {spread.AssistedDps / row.CumulativeCost,11:0.000}");
+        }
     }
 
     private static float RawDps(TowerLevelDefinition level) => level.Damage * level.AttacksPerSecond;
@@ -179,22 +192,35 @@ internal static class BalanceSimulation
         return metrics.ToResult(22, targets);
     }
 
-    private static SupportResult SupportContribution(GameContent content)
+    private static SupportResult SupportContribution(GameContent content, TierRow beaconTier, bool compact)
     {
         var enemy = EnemyLike(content.Enemies.Values.First(), "benchmark_support", 100_000, 0.01f, 0, 0, 0);
-        var needles = content.Towers["needle_turret"];
         var beacon = content.Towers["signal_beacon"];
-        var without = RunTeam(content, new[] { needles, needles }, enemy, includeBeacon: false);
-        var with = RunTeam(content, new[] { needles, needles, beacon }, enemy, includeBeacon: true);
+        var offense = content.Towers[compact ? "needle_turret" : "watchtower"];
+        var positions = compact
+            ? new[] { new Vector2(330, 280), new Vector2(400, 280), new Vector2(470, 280) }
+            : new[] { new Vector2(300, 200), new Vector2(400, 260), new Vector2(500, 200) };
+        var beaconPosition = new Vector2(400, 390);
+        var without = RunSupportTeam(content, offense, beacon, enemy, positions, beaconPosition, null);
+        var with = RunSupportTeam(content, offense, beacon, enemy, positions, beaconPosition, beaconTier);
         return new SupportResult(with.Damage - without.Damage, (with.Damage - without.Damage) / 20f);
     }
 
-    private static SimulationResult RunTeam(GameContent content, IReadOnlyList<TowerDefinition> towers, EnemyDefinition enemy, bool includeBeacon)
+    private static SimulationResult RunSupportTeam(
+        GameContent content,
+        TowerDefinition offense,
+        TowerDefinition beacon,
+        EnemyDefinition enemy,
+        IReadOnlyList<Vector2> offensePositions,
+        Vector2 beaconPosition,
+        TierRow? beaconTier)
     {
+        var towers = beaconTier is null ? new[] { offense } : new[] { offense, beacon };
         var session = CreateSession(content, towers, new[] { enemy }, StationaryMap());
-        AddTower(session, towers[0], new Vector2(350, 300), 0);
-        AddTower(session, towers[1], new Vector2(450, 300), 0);
-        if (includeBeacon) AddTower(session, towers[2], new Vector2(400, 400), 0);
+        foreach (var position in offensePositions)
+            AddTower(session, offense, position, 0);
+        if (beaconTier is { } tier)
+            AddTower(session, beacon, beaconPosition, tier.LevelIndex, tier.SpecializationId);
         var target = AddEnemy(session, enemy);
         var metrics = new Metrics();
         session.DamageResolver.DamageApplied += metrics.Record;

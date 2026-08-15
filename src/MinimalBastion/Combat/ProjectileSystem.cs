@@ -36,10 +36,12 @@ public sealed class ProjectileSystem
             if (projectile.Kind == ProjectileKind.ImpactPoint)
             {
                 ApplySplash(session, projectile);
+                AddSplashEffect(session, projectile);
             }
             else if (projectile.Kind == ProjectileKind.Homing && projectile.SplashRadius > 0)
             {
                 ApplySplash(session, projectile);
+                AddSplashEffect(session, projectile);
             }
             else if (projectile.Target is { IsDead: false, HasEscaped: false } target)
             {
@@ -48,6 +50,15 @@ public sealed class ProjectileSystem
             projectile.Expire();
         }
         _projectiles.RemoveAll(x => x.IsExpired);
+    }
+
+    private static void AddSplashEffect(MinimalBastion.GameSession session, ProjectileInstance projectile)
+    {
+        session.Effects.AddFlash(
+            projectile.Position,
+            projectile.Color,
+            0.22f,
+            MathF.Max(10, projectile.SplashRadius));
     }
 
     private static void ApplySplash(MinimalBastion.GameSession session, ProjectileInstance projectile)

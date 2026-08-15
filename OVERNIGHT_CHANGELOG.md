@@ -11,9 +11,10 @@ Date: 2026-08-15
 - Replaced the generic flat Overdrive with ten named tower-specific Protocols, including burst damage/status, range, pierce, aura, and tempo effects. Added one optional auto-armed tower with deterministic enemy-aware activation, save/co-op/checksum support, and clear in-world/UI state.
 - Added a persistent Settings screen to both title and pause menus: windowed/fullscreen, four output presets, VSync, SFX volume, and full/reduced effects. The 2560x1440 scene target and centralized palette remain independent of output scaling.
 - Added compact procedural sound cues for placement, upgrades, sales, Protocols, kills, leaks, waves, Pulse Plates, and the Charge Forge. Audio initialization fails safely to silent play on systems without a usable device.
-- Refined large attack flashes with crisp geometric impact spokes while the reduced-effects option retains only essential combat feedback.
+- Refined large attack flashes with crisp geometric impact spokes and added true-radius impact rings to Frost, Ember, Breaker, and Mortar splash hits. Reduced-effects mode retains only the essential outer ring.
 - Bounded Mortar's extreme-crowd scaling with deterministic, UI-visible shell caps: 6/7 through the base levels, 7 for rapid Salvo shells, and 10 for Quake's wider control impact. Radius and low fire rate still define its area role.
 - Made balance-agent Beacon branch scoring placement-aware. Horizon now wins when its larger field reaches additional towers, while Tempo remains preferable for compact clusters; branch telemetry is printed in every full simulation report.
+- Added compact-versus-spread Signal Beacon economy benchmarks. Tempo leads compact three-tower throughput while Horizon's added recipients win the spread formation, confirming distinct support roles.
 - Gave every tower protocol its own restrained geometric signature and audio pitch while active. Reduced-effects mode keeps only the essential native-color protocol ring.
 - Current verification: 46/46 deterministic tests, clean Release build with zero warnings, and native visual QA of title, settings, gameplay, and pause layouts.
 
@@ -152,12 +153,12 @@ Date: 2026-08-14
 - Direct internet host requires manual router forwarding or VPN connectivity.
 - No hosted relay, matchmaking, automatic NAT traversal, or encryption.
 - No persistent run-history browser beyond individual save metadata and end-of-run analysis.
-- LongRange remains the strongest automated policy and should be challenged by future map design before a stat nerf.
+- Automated strategy results are healthy but are not a substitute for human branch timing, protocol use, and late endless reorganization.
 - Human remote-latency and late-wave playtesting remain necessary despite deterministic/loopback coverage.
 
 ## Highest-value next steps
 
 1. Field-test direct online play and reconnect on two remote PCs and different consumer routers.
 2. Evaluate an optional authorized hosted rendezvous/relay if port forwarding remains too burdensome.
-3. Add audio/settings and persistent preferences.
-4. Add a third strategy-changing map and measured difficulty/challenge modes.
+3. Collect human results for all four difficulty profiles and adjust only statistically persistent outliers.
+4. Consider a fourth arena only if it introduces a genuinely different placement constraint rather than another route variant.
