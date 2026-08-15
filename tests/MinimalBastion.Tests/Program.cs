@@ -658,6 +658,18 @@ internal static class Program
         economy.LoseLives(3);
         Check.Equal(17, economy.Lives, "lives");
         Check.Equal(1, economy.EscapedEnemies, "escape count");
+
+        var saturated = new EconomyService(1, 20);
+        saturated.AddCredits(int.MaxValue);
+        saturated.AwardKill(int.MaxValue);
+        saturated.AwardWave(int.MaxValue);
+        saturated.RecoverSale(int.MaxValue);
+        Check.Equal(int.MaxValue, saturated.Credits, "deep-run credits saturate instead of wrapping negative");
+        Check.Equal(int.MaxValue, saturated.TotalCreditsEarned, "deep-run earned total saturates");
+        Check.Equal(int.MaxValue, saturated.KillCreditsEarned, "deep-run kill income saturates");
+        Check.Equal(int.MaxValue, saturated.WaveCreditsEarned, "deep-run wave income saturates");
+        Check.Equal(int.MaxValue, saturated.SaleCreditsRecovered, "deep-run sale recovery saturates");
+        Check.Equal(int.MaxValue, EconomyService.CalculateWaveReward(int.MaxValue), "extreme wave reward remains nonnegative");
     }
 
     private static void EconomyTelemetry()
@@ -1569,6 +1581,19 @@ internal static class Program
         Check.True(wave21.Groups.All(group => group.Rank != "Boss"), "ordinary endless waves do not spam bosses");
         Check.True(Enumerable.Range(96, 5).Select(number => EndlessWaveGenerator.Create(number, 20, anchor))
             .Max(wave => wave.Groups.Sum(group => group.Count)) < 250, "endless roster growth remains performance bounded across every theme");
+        var extreme = EndlessWaveGenerator.Create(int.MaxValue, 20, anchor);
+        Check.True(float.IsFinite(extreme.HealthMultiplier) && float.IsFinite(extreme.SpeedMultiplier) &&
+            extreme.Groups.Sum(group => group.Count) < 250,
+            "extreme endless generation remains finite and density bounded");
+        var terminalManager = new WaveManager(content.Waves.Waves);
+        terminalManager.RestoreSaveData(new WaveSaveData
+        {
+            CurrentWaveNumber = int.MaxValue,
+            IsFinalWaveCleared = true,
+            EndlessModeEnabled = true
+        });
+        Check.True(!terminalManager.CanStartNextWave && terminalManager.NextWave is null,
+            "maximum representable wave stops cleanly instead of overflowing negative");
         Check.Equal(JsonSerializer.Serialize(wave25), JsonSerializer.Serialize(EndlessWaveGenerator.Create(25, 20, anchor)),
             "endless generation is deterministic");
 

@@ -16,14 +16,15 @@ public sealed class WaveManager
 
     public int CurrentWaveNumber { get; private set; }
     public bool IsActive => _activeDefinition is not null;
-    public bool CanStartNextWave => !IsActive && (CurrentWaveNumber < _waves.Count || EndlessModeEnabled);
+    public bool CanStartNextWave => !IsActive && CurrentWaveNumber < int.MaxValue &&
+        (CurrentWaveNumber < _waves.Count || EndlessModeEnabled);
     public float IntermissionRemaining { get; private set; }
     public bool IsFinalWaveCleared { get; private set; }
     public bool EndlessModeEnabled { get; private set; }
     public int TotalWaves => _waves.Count;
     public int QueuedEnemies { get; private set; }
     public WaveDefinition? ActiveWave => _activeDefinition;
-    public WaveDefinition? NextWave => ResolveWave(CurrentWaveNumber + 1);
+    public WaveDefinition? NextWave => CurrentWaveNumber == int.MaxValue ? null : ResolveWave(CurrentWaveNumber + 1);
 
     public WaveManager(IReadOnlyList<WaveDefinition> waves)
     {

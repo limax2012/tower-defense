@@ -16,7 +16,8 @@ public sealed class Economy
     public int WaveCreditsEarned { get; private set; }
     public int EarlyStartCreditsEarned { get; private set; }
     public int SaleCreditsRecovered { get; private set; }
-    public int TotalCreditsEarned => KillCreditsEarned + WaveCreditsEarned + EarlyStartCreditsEarned;
+    public int TotalCreditsEarned => (int)Math.Min(int.MaxValue,
+        (long)KillCreditsEarned + WaveCreditsEarned + EarlyStartCreditsEarned);
 
     public Economy(int startingCredits, int startingLives)
     {
@@ -31,36 +32,39 @@ public sealed class Economy
     {
         if (!CanAfford(amount)) return false;
         Credits -= amount;
-        TotalCreditsSpent += amount;
+        TotalCreditsSpent = SaturatingAdd(TotalCreditsSpent, amount);
         return true;
     }
 
-    public void AddCredits(int amount) => Credits += Math.Max(0, amount);
+    public void AddCredits(int amount) => Credits = SaturatingAdd(Credits, amount);
     public void AwardKill(int reward)
     {
-        TotalKills++;
+        TotalKills = SaturatingAdd(TotalKills, 1);
         var amount = Math.Max(0, reward);
-        KillCreditsEarned += amount;
+        KillCreditsEarned = SaturatingAdd(KillCreditsEarned, amount);
         AddCredits(amount);
     }
 
     public void AwardWave(int waveNumber)
     {
-        var amount = 40 + 10 * waveNumber;
-        WaveCreditsEarned += amount;
+        var amount = CalculateWaveReward(waveNumber);
+        WaveCreditsEarned = SaturatingAdd(WaveCreditsEarned, amount);
         AddCredits(amount);
     }
 
+    public static int CalculateWaveReward(int waveNumber) =>
+        (int)Math.Min(int.MaxValue, 40L + 10L * Math.Max(0, waveNumber));
+
     public void AwardEarlyStart()
     {
-        EarlyStartCreditsEarned += GameConstants.EarlyStartBonus;
+        EarlyStartCreditsEarned = SaturatingAdd(EarlyStartCreditsEarned, GameConstants.EarlyStartBonus);
         AddCredits(GameConstants.EarlyStartBonus);
     }
 
     public void RecoverSale(int amount)
     {
         amount = Math.Max(0, amount);
-        SaleCreditsRecovered += amount;
+        SaleCreditsRecovered = SaturatingAdd(SaleCreditsRecovered, amount);
         AddCredits(amount);
     }
 
@@ -68,7 +72,7 @@ public sealed class Economy
     {
         if (amount <= 0) return;
         Lives = Math.Max(0, Lives - amount);
-        EscapedEnemies++;
+        EscapedEnemies = SaturatingAdd(EscapedEnemies, 1);
     }
 
     public EconomySaveData CaptureSaveData() => new()
@@ -96,4 +100,7 @@ public sealed class Economy
         EarlyStartCreditsEarned = Math.Max(0, data.EarlyStartCreditsEarned);
         SaleCreditsRecovered = Math.Max(0, data.SaleCreditsRecovered);
     }
+
+    private static int SaturatingAdd(int current, int amount) =>
+        (int)Math.Min(int.MaxValue, (long)Math.Max(0, current) + Math.Max(0, amount));
 }

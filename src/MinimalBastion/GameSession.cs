@@ -776,7 +776,7 @@ public sealed class GameSession
     public void OnWaveCompleted(int waveNumber)
     {
         AnnouncementTitle = $"WAVE {waveNumber} CLEARED";
-        AnnouncementSubtitle = $"+{40 + 10 * waveNumber} completion credits";
+        AnnouncementSubtitle = $"+{EconomyService.CalculateWaveReward(waveNumber)} completion credits";
         AnnouncementPositive = true;
         AnnouncementRemaining = 2.2f;
         WaveCompleted?.Invoke(waveNumber);
