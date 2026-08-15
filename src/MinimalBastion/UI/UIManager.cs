@@ -1750,7 +1750,8 @@ public sealed class UIManager
             return;
         }
 
-        var intelCard = new Rectangle(972, 474, 296, 174);
+        var hasBranchChoice = tower.RequiresDoctrine || tower.RequiresSpecialization;
+        var intelCard = new Rectangle(972, 474, 296, hasBranchChoice ? 172 : 194);
         p.FillRect(batch, intelCard, ColorPalette.PanelAlt);
         p.DrawRect(batch, intelCard, tower.Definition.Visual.PrimaryColor, 1);
         p.DrawShape(batch, TowerIntelIconCenter, IntelIconRadius(tower.Definition.Visual.Radius), tower.Definition.Visual.Shape,
@@ -1768,56 +1769,45 @@ public sealed class UIManager
         var effectiveDps = effectiveDamage * effectiveRate * Math.Max(1, tower.Level.PelletCount);
         DrawFittedText(batch, tower.IsSupport
             ? TowerInfo.ActiveAuraSummary(tower)
-            : $"ACTIVE  DAMAGE {effectiveDamage:0.#}   DPS {effectiveDps:0.#}   RANGE {session.GetEffectiveRange(tower):0}",
+            : $"DAMAGE {effectiveDamage:0.#}   DPS {effectiveDps:0.#}   RATE {effectiveRate:0.##}/s   RANGE {session.GetEffectiveRange(tower):0}",
             new Vector2(980, 534), ColorPalette.Ink, 0.56f, 280);
         DrawFittedText(batch, tower.IsSupport
             ? "Strongest Beacon applies; auras never stack."
-            : TowerInfo.Special(tower.Definition, tower.Level), new Vector2(980, 552), ColorPalette.Ink, 0.56f, 280);
-        DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, 570), ColorPalette.Cobalt, 0.48f, 280);
+            : TowerInfo.Special(tower.Definition, tower.Level), new Vector2(980, 555), ColorPalette.Ink, 0.53f, 280);
+        DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, 576), ColorPalette.Cobalt, 0.48f, 280);
         var power = session.Map.GetPowerBuff(tower.Position);
         var powerNodes = session.Map.GetPowerNodes(tower.Position);
-        var powerHint = powerNodes.Count > 0
-            ? $"{PowerNodeNames(powerNodes)}  {string.Join("  ", powerNodes.Select(TowerInfo.PowerNodeBonus))}  |  {TowerInfo.PowerNodeStatChange(tower.Definition, tower.Level, power)}"
-            : null;
         var supportBuff = session.GetSupportBuff(tower);
-        var beaconHint = supportBuff.IsActive ? TowerInfo.SignalBeaconStatChange(tower.Level, supportBuff) : null;
-        var overdriveHint = tower.IsOverdriven
-            ? $"{tower.Protocol.DisplayName.ToUpperInvariant()}  {tower.OverdriveRemaining:0.0}s  {TowerInfo.ProtocolBonuses(tower.Protocol)}"
-            : autoArmed ? $"AUTO ARMED: {tower.Protocol.DisplayName.ToUpperInvariant()}  |  {tower.Protocol.AutoTriggerCount}+ OR ELITE/BOSS" : null;
-        var primaryHint = beaconHint ?? TowerInfo.Strength(tower.Definition);
-        var secondaryHint = powerHint ?? overdriveHint ?? (beaconHint is not null ? TowerInfo.Strength(tower.Definition) : TowerInfo.Limitation(tower.Definition));
-        DrawFittedText(batch, primaryHint, new Vector2(980, 588),
-            beaconHint is not null ? ColorPalette.Gold : ColorPalette.Muted,
-            beaconHint is not null ? 0.48f : 0.53f, 280);
-        DrawFittedText(batch, secondaryHint, new Vector2(980, 606),
-            powerHint is not null ? powerNodes[0].NodeColor : overdriveHint is not null ? ColorPalette.Coral : ColorPalette.Muted,
-            powerHint is not null ? 0.44f : 0.50f, 280);
-        var upgradeLine = _specializationHint ?? (tower.RequiresDoctrine
-            ? "CHOOSE A TIER 2 DOCTRINE"
-            : tower.RequiresSpecialization
-            ? "CHOOSE A FINAL SPECIALIZATION"
-            : tower.CanUpgrade
-                ? $"NEXT {tower.UpgradeCost}: {TowerInfo.UpgradeSummary(tower.Definition, tower.LevelIndex, supportBuff, power)}"
-                : "MAXIMUM LEVEL");
-        var upgradeColor = _specializationHint is not null
-            ? ColorPalette.Cobalt
-            : tower.RequiresDoctrine || tower.RequiresSpecialization || tower.CanUpgrade
-                ? ColorPalette.Violet
-                : ColorPalette.Muted;
+        var protocolColor = tower.IsOverdriven ? ColorPalette.Coral : autoArmed ? ColorPalette.Cobalt :
+            session.OverdriveCooldownRemaining > 0 ? ColorPalette.Muted : ColorPalette.Green;
+        DrawFittedText(batch, TowerProtocolState(session, tower, autoArmed), new Vector2(980, 596), protocolColor, 0.47f, 280);
         if (_specializationHint is not null)
-            DrawBranchPreview(batch, _specializationHint, upgradeColor);
-        else if (tower.RequiresDoctrine || tower.RequiresSpecialization)
-            DrawFittedText(batch, upgradeLine, new Vector2(980, 630), upgradeColor, 0.45f, 280);
+            DrawBranchPreview(batch, _specializationHint, ColorPalette.Cobalt);
         else
-            DrawWrappedText(batch, upgradeLine, new Rectangle(980, 630, 280, 30), upgradeColor, 0.45f, 2);
+        {
+            DrawFittedText(batch, TowerInfo.ProtocolLiveSummary(tower.Protocol), new Vector2(980, 615), ColorPalette.Coral, 0.44f, 280);
+            var appliedModifiers = AppliedTowerModifiers(powerNodes, supportBuff);
+            if (!string.IsNullOrWhiteSpace(appliedModifiers))
+                DrawFittedText(batch, appliedModifiers, new Vector2(980, 633),
+                    supportBuff.IsActive ? ColorPalette.Gold : powerNodes[0].NodeColor, 0.43f, 280);
+        }
 
-        _targetButton = new Rectangle(980, 670, 88, 30);
-        _upgradeButton = new Rectangle(1074, 670, 92, 30);
-        _sellButton = new Rectangle(1172, 670, 94, 30);
+        if (!hasBranchChoice)
+        {
+            var upgradeLine = tower.CanUpgrade
+                ? $"NEXT {tower.UpgradeCost}  |  {TowerInfo.UpgradeSummary(tower.Definition, tower.LevelIndex, supportBuff, power)}"
+                : "MAXIMUM LEVEL";
+            DrawFittedText(batch, upgradeLine, new Vector2(980, 651),
+                tower.CanUpgrade ? ColorPalette.Violet : ColorPalette.Muted, 0.44f, 280);
+        }
+
+        _targetButton = new Rectangle(980, 678, 88, 30);
+        _upgradeButton = new Rectangle(1074, 678, 92, 30);
+        _sellButton = new Rectangle(1172, 678, 94, 30);
         _specializationAButton = Rectangle.Empty;
         _specializationBButton = Rectangle.Empty;
         var canManage = !_readOnlyInspection;
-        if (tower.RequiresDoctrine || tower.RequiresSpecialization)
+        if (hasBranchChoice)
         {
             _upgradeButton = Rectangle.Empty;
             // Keep the first branch in the normal upgrade position and place the
@@ -1846,7 +1836,7 @@ public sealed class UIManager
         var separator = preview.IndexOf(':');
         if (separator <= 0 || separator >= preview.Length - 1)
         {
-            DrawFittedText(batch, preview, new Vector2(980, 630), color, 0.44f, 280);
+            DrawFittedText(batch, preview, new Vector2(980, 624), color, 0.44f, 280);
             return;
         }
 
@@ -1855,8 +1845,39 @@ public sealed class UIManager
         // shrinking into illegibility or running into the branch buttons.
         var purpose = preview[..separator].Trim();
         var changes = preview[(separator + 1)..].Trim();
-        DrawFittedText(batch, purpose, new Vector2(980, 619), color, 0.44f, 280);
-        DrawFittedText(batch, changes, new Vector2(980, 634), color, 0.42f, 280);
+        DrawFittedText(batch, purpose, new Vector2(980, 614), color, 0.44f, 280);
+        DrawFittedText(batch, changes, new Vector2(980, 631), color, 0.42f, 280);
+    }
+
+    private static string TowerProtocolState(MinimalBastion.GameSession session, TowerInstance tower, bool autoArmed)
+    {
+        var name = tower.Protocol.DisplayName.ToUpperInvariant();
+        if (tower.IsOverdriven) return $"PROTOCOL ACTIVE  {name}  {tower.OverdriveRemaining:0.0}s";
+        if (autoArmed)
+        {
+            var readiness = session.OverdriveCooldownRemaining > 0
+                ? $"{session.OverdriveCooldownRemaining:0.0}s CD"
+                : "READY";
+            return $"PROTOCOL AUTO  {name}  |  {readiness}  |  {tower.Protocol.AutoTriggerCount}+ / ELITE/BOSS";
+        }
+        return session.OverdriveCooldownRemaining > 0
+            ? $"PROTOCOL  {name}  |  READY IN {session.OverdriveCooldownRemaining:0.0}s"
+            : $"PROTOCOL READY  {name}";
+    }
+
+    private static string? AppliedTowerModifiers(IReadOnlyList<PowerNodeData> powerNodes, TowerBuff supportBuff)
+    {
+        var modifiers = new List<string>();
+        if (supportBuff.IsActive)
+        {
+            var beacon = new List<string>();
+            if (supportBuff.AttackSpeedBonus > 0) beacon.Add($"RATE +{supportBuff.AttackSpeedBonus:P0}");
+            if (supportBuff.RangeBonus > 0) beacon.Add($"RANGE +{supportBuff.RangeBonus:P0}");
+            modifiers.Add($"BEACON {string.Join(" ", beacon)}");
+        }
+        if (powerNodes.Count > 0)
+            modifiers.Add($"{PowerNodeNames(powerNodes)} {string.Join(" ", powerNodes.Select(TowerInfo.PowerNodeBonus))}");
+        return modifiers.Count == 0 ? null : string.Join("  |  ", modifiers);
     }
 
     private static string TowerLifetimeSummary(TowerInstance tower)
@@ -1881,36 +1902,36 @@ public sealed class UIManager
     private void DrawDefinitionIntel(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session, TowerDefinition definition, bool placing)
     {
         var level = definition.Levels[0];
-        p.FillRect(batch, new Rectangle(972, 474, 296, 202), ColorPalette.PanelAlt);
-        p.DrawRect(batch, new Rectangle(972, 474, 296, 202), definition.Visual.PrimaryColor, 1);
+        var powerNodes = placing ? session.Map.GetPowerNodes(session.PlacementPosition) : Array.Empty<PowerNodeData>();
+        var hasPlacementModifier = powerNodes.Count > 0;
+        var intelCard = new Rectangle(972, 474, 296, hasPlacementModifier ? 228 : 190);
+        p.FillRect(batch, intelCard, ColorPalette.PanelAlt);
+        p.DrawRect(batch, intelCard, definition.Visual.PrimaryColor, 1);
         p.DrawShape(batch, TowerIntelIconCenter, IntelIconRadius(definition.Visual.Radius), definition.Visual.Shape,
             definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
         DrawFittedText(batch, definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f, 228);
-        DrawFittedText(batch, $"{definition.PurchaseCost} CREDITS   {TowerInfo.ShortRole(definition)}",
+        DrawFittedText(batch, $"{definition.PurchaseCost} CREDITS   LEVEL 1   {TowerInfo.ShortRole(definition)}",
             new Vector2(1036, 508), ColorPalette.Muted, 0.60f, 228);
         DrawFittedText(batch, definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase)
             ? $"AURA {level.AuraRange:0}   RATE +{level.AuraAttackSpeedBonus:P0}   RANGE +{level.AuraRangeBonus:P0}"
             : $"DAMAGE {level.Damage:0.#}   DPS {TowerInfo.RawDps(level):0.#}   RATE {level.AttacksPerSecond:0.##}/s   RANGE {level.Range:0}",
-            new Vector2(980, 542), ColorPalette.Ink, 0.57f, 280);
-        DrawFittedText(batch, TowerInfo.Special(definition, level), new Vector2(980, 565), ColorPalette.Ink, 0.57f, 280);
-        var powerNodes = placing ? session.Map.GetPowerNodes(session.PlacementPosition) : Array.Empty<PowerNodeData>();
-        if (powerNodes.Count > 0)
+            new Vector2(980, 538), ColorPalette.Ink, 0.55f, 280);
+        DrawFittedText(batch, TowerInfo.Special(definition, level), new Vector2(980, 560), ColorPalette.Ink, 0.52f, 280);
+        DrawFittedText(batch,
+            $"PROTOCOL  {definition.Protocol.DisplayName.ToUpperInvariant()}  |  {definition.Protocol.DurationSeconds:0.#}s  |  CD {definition.Protocol.CooldownSeconds:0.#}s  |  AUTO {definition.Protocol.AutoTriggerCount}+ / ELITE/BOSS",
+            new Vector2(980, 583), ColorPalette.Coral, 0.45f, 280);
+        DrawWrappedText(batch, TowerInfo.ProtocolBonuses(definition.Protocol, int.MaxValue),
+            new Rectangle(980, 601, 280, 34), ColorPalette.Coral, 0.42f, 2);
+        if (hasPlacementModifier)
         {
             var power = session.Map.GetPowerBuff(session.PlacementPosition);
             DrawFittedText(batch, $"ON {PowerNodeNames(powerNodes)}  {string.Join("  ", powerNodes.Select(TowerInfo.PowerNodeBonus))}",
-                new Vector2(980, 590), powerNodes[0].NodeColor, 0.49f, 280);
+                new Vector2(980, 638), powerNodes[0].NodeColor, 0.47f, 280);
             DrawFittedText(batch, TowerInfo.PowerNodeStatChange(definition, level, power),
-                new Vector2(980, 612), ColorPalette.Cobalt, 0.52f, 280);
+                new Vector2(980, 657), ColorPalette.Cobalt, 0.48f, 280);
         }
-        else
-        {
-            DrawFittedText(batch, TowerInfo.Strength(definition), new Vector2(980, 590), ColorPalette.Muted, 0.54f, 280);
-            DrawWrappedText(batch, TowerInfo.ProtocolSummary(definition), new Rectangle(980, 604, 280, 30), ColorPalette.Coral, 0.43f, 2);
-        }
-        DrawFittedText(batch, $"L2 {level.UpgradeCost}: {TowerInfo.UpgradeSummary(definition, 0)}",
-            new Vector2(980, 638), ColorPalette.Violet, 0.51f, 280);
         DrawFittedText(batch, placing ? "CLICK MAP TO DEPLOY   |   ESC TO CANCEL" : "CLICK CARD TO PREPARE PLACEMENT",
-            new Vector2(980, 658), placing ? ColorPalette.Green : ColorPalette.Cobalt, 0.50f, 280);
+            new Vector2(980, hasPlacementModifier ? 680 : 642), placing ? ColorPalette.Green : ColorPalette.Cobalt, 0.48f, 280);
     }
 
     private static string PowerNodeNames(IReadOnlyList<PowerNodeData> nodes) => nodes.Count == 1
@@ -1983,27 +2004,32 @@ public sealed class UIManager
         var generatorOwner = active is not null && session.IsCoOp ? $"   PLACED P{active.OwnerPlayerId}" : "";
         DrawFittedText(batch, active is null ? $"{definition.PurchaseCost} CREDITS   GENERATOR" : $"LEVEL {active.LevelIndex + 1}   GENERATOR{generatorOwner}",
             new Vector2(1028, 508), ColorPalette.Muted, 0.60f, 236);
-        DrawText(batch, $"Produces 1 plate every {level.ProductionSeconds:0}s", new Vector2(980, 548), ColorPalette.Ink, 0.59f);
+        var productionState = active is null
+            ? $"PRODUCTION  1 PLATE / {level.ProductionSeconds:0}s OF ACTIVE WAVES"
+            : session.Waves.IsActive
+                ? $"PRODUCTION  +1 IN {active.ProductionRemaining:0}s"
+                : $"PRODUCTION PAUSED  |  {active.ProductionRemaining:0}s REMAINING";
+        DrawFittedText(batch, productionState, new Vector2(980, 548), ColorPalette.Ink, 0.56f, 280);
         DrawFittedText(batch, $"Storage {session.EmergencyInventory}/{level.Capacity}   Plate DAMAGE +{level.DefenseDamageBonus:P0}",
             new Vector2(980, 571), ColorPalette.Ink, 0.57f, 280);
-        DrawText(batch, "Strength: renewable emergency reserves", new Vector2(980, 594), ColorPalette.Muted, 0.54f);
+        DrawFittedText(batch, "WAVE-POWERED  |  NO PROGRESS DURING INTERMISSIONS",
+            new Vector2(980, 594), ColorPalette.Muted, 0.48f, 280);
 
         if (active is null)
         {
             _upgradeButton = Rectangle.Empty;
             _sellButton = Rectangle.Empty;
-            DrawText(batch, "Limit: high cost; produces no direct damage", new Vector2(980, 616), ColorPalette.Muted, 0.52f);
             var next = definition.Levels[1];
             DrawFittedText(batch, $"L2 {level.UpgradeCost}: {next.ProductionSeconds:0}s   CAP {next.Capacity}   DAMAGE +{next.DefenseDamageBonus:P0}",
-                new Vector2(980, 638), ColorPalette.Violet, 0.52f, 280);
+                new Vector2(980, 624), ColorPalette.Violet, 0.52f, 280);
             DrawFittedText(batch, session.TacticalPlacement == TacticalPlacementKind.ChargeForge ? "CLICK A BUILD ZONE   |   ESC TO CANCEL" : "G OR CLICK ABOVE TO PREPARE",
-                new Vector2(980, 658), ColorPalette.Cobalt, 0.49f, 280);
+                new Vector2(980, 650), ColorPalette.Cobalt, 0.49f, 280);
             return;
         }
 
         DrawFittedText(batch, active.CanUpgrade
             ? $"NEXT {active.UpgradeCost}: {definition.Levels[active.LevelIndex + 1].ProductionSeconds:0}s   CAP {definition.Levels[active.LevelIndex + 1].Capacity}   DAMAGE +{definition.Levels[active.LevelIndex + 1].DefenseDamageBonus:P0}"
-            : "MAXIMUM LEVEL", new Vector2(980, 615), active.CanUpgrade ? ColorPalette.Violet : ColorPalette.Muted, 0.49f, 280);
+            : "MAXIMUM LEVEL", new Vector2(980, 616), active.CanUpgrade ? ColorPalette.Violet : ColorPalette.Muted, 0.49f, 280);
         _upgradeButton = new Rectangle(1074, 646, 92, 30);
         _sellButton = new Rectangle(1172, 646, 94, 30);
         var canManage = !_readOnlyInspection;

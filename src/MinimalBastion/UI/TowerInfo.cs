@@ -40,9 +40,28 @@ public static class TowerInfo
         if (protocol.ArmorPierceBonus > 0) bonuses.Add($"PIERCE +{protocol.ArmorPierceBonus:0.#}");
         if (protocol.AuraAttackSpeedBonus > 0) bonuses.Add($"AURA RATE +{protocol.AuraAttackSpeedBonus:P0}");
         if (protocol.AuraRangeBonus > 0) bonuses.Add($"AURA/TOWER RANGE +{protocol.AuraRangeBonus:P0}");
+        if (protocol.BurstRadius > 0 && (protocol.BurstDamage > 0 || !string.IsNullOrWhiteSpace(protocol.BurstStatus)))
+            bonuses.Add($"AREA {protocol.BurstRadius:0}");
         if (protocol.BurstDamage > 0) bonuses.Add($"PULSE {protocol.BurstDamage:0.#}");
         if (!string.IsNullOrWhiteSpace(protocol.BurstStatus)) bonuses.Add(ProtocolStatusBonus(protocol));
         return string.Join("  ", bonuses.Take(Math.Max(0, maximumBonuses)));
+    }
+
+    public static string ProtocolLiveSummary(TowerProtocolDefinition protocol)
+    {
+        if (protocol.BurstRadius <= 0) return ProtocolBonuses(protocol);
+
+        var effects = new List<string>();
+        effects.Add(protocol.BurstDamage > 0
+            ? $"PULSE {protocol.BurstDamage:0.#} / AREA {protocol.BurstRadius:0}"
+            : $"AREA {protocol.BurstRadius:0}");
+        if (!string.IsNullOrWhiteSpace(protocol.BurstStatus)) effects.Add(ProtocolStatusBonus(protocol));
+        if (protocol.AttackSpeedBonus > 0) effects.Add($"RATE +{protocol.AttackSpeedBonus:P0}");
+        else if (protocol.AuraAttackSpeedBonus > 0) effects.Add($"AURA RATE +{protocol.AuraAttackSpeedBonus:P0}");
+        if (effects.Count < 3 && protocol.DamageBonus > 0) effects.Add($"DAMAGE +{protocol.DamageBonus:P0}");
+        if (effects.Count < 3 && protocol.RangeBonus > 0) effects.Add($"RANGE +{protocol.RangeBonus:P0}");
+        if (effects.Count < 3 && protocol.ArmorPierceBonus > 0) effects.Add($"PIERCE +{protocol.ArmorPierceBonus:0.#}");
+        return string.Join("  ", effects.Take(3));
     }
 
     public static string ProtocolSummary(TowerDefinition definition) =>
@@ -126,28 +145,36 @@ public static class TowerInfo
     {
         return definition.Behavior.ToLowerInvariant() switch
         {
-            "pellet_burst" => level.ArmorPierce > 0
-                ? $"{level.PelletCount} projectiles per burst; pierce {level.ArmorPierce:0}"
-                : $"{level.PelletCount} projectiles per burst",
-            "slow_projectile" => $"AoE {level.SplashRadius:0}; slow {level.SlowPercent:P0} for {level.SlowDuration:0.#}s",
+            "single_projectile" => DirectProjectileSummary(level),
+            "pellet_burst" => $"{level.PelletCount} projectiles; spread {level.PelletSpreadDegrees:0.#} deg; pierce {level.ArmorPierce:0.#}",
+            "slow_projectile" => $"Impact area {level.SplashRadius:0}; slow {level.SlowPercent:P0} for {level.SlowDuration:0.#}s",
             "burn_projectile" => level.SplashRadius > 0
-                ? $"Burn {level.BurnDamagePerSecond:0.#}/s; AoE {level.SplashRadius:0}; scorched armor -2"
-                : $"Burn {level.BurnDamagePerSecond:0.#}/s; scorched armor -2",
+                ? $"Burn {level.BurnDamagePerSecond:0.#}/s for {level.BurnDuration:0.#}s; area {level.SplashRadius:0}; armor -2"
+                : $"Burn {level.BurnDamagePerSecond:0.#}/s for {level.BurnDuration:0.#}s; armor -2",
             "armor_projectile" => level.PriorityDamageMultiplier > 1f
                 ? level.SplashTargetLimit > 1
                     ? $"Heavy x{level.PriorityDamageMultiplier:0.##}; {level.SplashTargetLimit} targets max; pierce {level.ArmorPierce:0}"
                     : $"Heavy targets x{level.PriorityDamageMultiplier:0.##}; pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0}"
                 : level.ArmorReduction > 0
-                    ? $"Pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0}"
+                    ? $"Pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0} for {level.ArmorReductionDuration:0.#}s"
                     : $"Armor pierce {level.ArmorPierce:0}",
-            "chain" => $"Chain {level.ChainCount}; +35% damage to slowed",
+            "chain" => $"{level.ChainCount} arcs at {level.ChainDamage:0.#}; reach {level.ChainRange:0}; slowed +35%",
             "splash_projectile" => level.SplashTargetLimit > 0
-                ? $"Splash radius {level.SplashRadius:0}; up to {level.SplashTargetLimit} targets"
-                : $"Splash radius {level.SplashRadius:0}",
-            "beam" => $"Expose: +{level.ExposePercent:P0} all incoming damage for {level.ExposeDuration:0.#}s",
-            "aura" => $"Aura +{level.AuraAttackSpeedBonus:P0} rate, +{level.AuraRangeBonus:P0} range",
-            _ => "Reliable direct projectile"
+                ? $"Predictive impact; area {level.SplashRadius:0}; {level.SplashTargetLimit} targets max"
+                : $"Predictive impact; area {level.SplashRadius:0}",
+            "beam" => $"Expose +{level.ExposePercent:P0} incoming damage for {level.ExposeDuration:0.#}s; pierce {level.ArmorPierce:0.#}",
+            "aura" => $"Aura {level.AuraRange:0}; rate +{level.AuraAttackSpeedBonus:P0}; range +{level.AuraRangeBonus:P0}",
+            _ => "Direct attack"
         };
+    }
+
+    private static string DirectProjectileSummary(TowerLevelDefinition level)
+    {
+        var details = new List<string> { $"Projectile speed {level.ProjectileSpeed:0}" };
+        if (level.ArmorPierce > 0) details.Add($"pierce {level.ArmorPierce:0.#}");
+        if (level.PriorityDamageMultiplier > 1f) details.Add($"heavy x{level.PriorityDamageMultiplier:0.##}");
+        if (level.SplashTargetLimit > 1) details.Add($"{level.SplashTargetLimit} targets max");
+        return string.Join("; ", details);
     }
 
     public static string Strength(TowerDefinition definition) => definition.Behavior.ToLowerInvariant() switch

@@ -3287,7 +3287,23 @@ internal static class Program
         var breachLevel = content.Towers["breaker_cannon"].Specializations.Single(x => x.Id == "breach_round").Level;
         Check.True(TowerInfo.Special(content.Towers["breaker_cannon"], breachLevel).Contains("2 targets max", StringComparison.Ordinal),
             "compact Breach intel exposes its strict punch-through limit");
-
+        Check.True(content.Towers.Values.All(definition =>
+                !TowerInfo.Special(definition, definition.Levels[0]).Contains("Strength:", StringComparison.OrdinalIgnoreCase) &&
+                !TowerInfo.Special(definition, definition.Levels[0]).Contains("Limit:", StringComparison.OrdinalIgnoreCase) &&
+                !TowerInfo.Special(definition, definition.Levels[0]).Contains("Reliable", StringComparison.OrdinalIgnoreCase)),
+            "live Tower Intel descriptions stay mechanical instead of offering strategic advice");
+        Check.True(TowerInfo.Special(content.Towers["needle_turret"], content.Towers["needle_turret"].Levels[0])
+                .Contains("Projectile speed 500", StringComparison.Ordinal),
+            "Needle Intel identifies its concrete projectile behavior");
+        Check.True(TowerInfo.Special(content.Towers["ember_coil"], content.Towers["ember_coil"].Levels[0])
+                .Contains("for 2.5s", StringComparison.Ordinal),
+            "Ember Intel includes burn duration rather than a qualitative recommendation");
+        Check.True(TowerInfo.Special(content.Towers["arc_relay"], content.Towers["arc_relay"].Levels[0])
+                .Contains("2 arcs at 14", StringComparison.Ordinal),
+            "Arc Intel exposes arc count and secondary damage");
+        Check.True(TowerInfo.Special(content.Towers["siege_mortar"], content.Towers["siege_mortar"].Levels[0])
+                .Contains("Predictive impact", StringComparison.Ordinal),
+            "Mortar Intel explains predictive targeting and impact behavior");
         var pelletLevel = content.Towers["shard_fan"].Levels[0];
         Check.Nearly(pelletLevel.Damage * pelletLevel.AttacksPerSecond * pelletLevel.PelletCount,
             TowerInfo.RawDps(pelletLevel), "pellet DPS includes every projectile");
@@ -3347,8 +3363,13 @@ internal static class Program
             "tower library exposes exact protocol timing and automatic trigger rules");
         var breakerProtocol = TowerInfo.ProtocolLibrarySummary(content.Towers["breaker_cannon"]);
         Check.True(breakerProtocol.Contains("PULSE 20", StringComparison.Ordinal) &&
-            breakerProtocol.Contains("BREAK 4/5s", StringComparison.Ordinal),
+            breakerProtocol.Contains("BREAK 4/5s", StringComparison.Ordinal) &&
+            breakerProtocol.Contains("AREA 185", StringComparison.Ordinal),
             "tower library preserves instant Protocol damage and status payload beyond compact live labels");
+        var breakerLiveProtocol = TowerInfo.ProtocolLiveSummary(content.Towers["breaker_cannon"].Protocol);
+        Check.True(breakerLiveProtocol.Contains("PULSE 20 / AREA 185", StringComparison.Ordinal) &&
+            breakerLiveProtocol.Contains("BREAK 4/5s", StringComparison.Ordinal),
+            "live Protocol Intel prioritizes the immediate area payload and status");
     }
 
     private static void TowerLibraryReference()
