@@ -242,8 +242,10 @@ public static class TowerInfo
         if (next.AuraRangeBonus != current.AuraRangeBonus) changes.Add($"AURA RANGE +{next.AuraRangeBonus:P0}");
         if (next.AuraRange != current.AuraRange && next.AuraRange > 0) changes.Add($"FIELD {next.AuraRange:0}");
         if (MathF.Abs(next.BurnDamagePerSecond - current.BurnDamagePerSecond) > 0.001f) changes.Add($"BURN {next.BurnDamagePerSecond:0.#}/s");
-        if (next.SplashRadius > 0) changes.Add($"SPLASH {next.SplashRadius:0}");
-        if (next.SplashTargetLimit > 0) changes.Add($"CAP {next.SplashTargetLimit}");
+        if (next.SplashRadius > 0)
+            changes.Add(next.SplashTargetLimit > 0
+                ? $"SPLASH {next.SplashRadius:0} / {next.SplashTargetLimit} MAX"
+                : $"SPLASH {next.SplashRadius:0}");
         if (next.PriorityDamageMultiplier > current.PriorityDamageMultiplier)
             changes.Add($"HEAVY x{next.PriorityDamageMultiplier:0.##}");
         if (next.SlowPercent > current.SlowPercent) changes.Add($"SLOW {next.SlowPercent:P0}");

@@ -70,9 +70,10 @@ public sealed class SingleProjectileBehavior : ITowerBehavior
     public void Attack(TowerInstanceContext context)
     {
         var level = context.Tower.Level;
-        BehaviorHelpers.Projectile(context, context.Target, ProjectileKind.Homing, context.Target.Position, 0,
+        BehaviorHelpers.Projectile(context, context.Target, ProjectileKind.Homing, context.Target.Position, level.SplashRadius,
             BehaviorHelpers.Payload(context, level, level.Damage, null, level.IgnoreShield, level.ArmorPierce),
-            level.ProjectileSpeed, context.Tower.Definition.Visual.PrimaryColor);
+            level.ProjectileSpeed, context.Tower.Definition.Visual.PrimaryColor,
+            splashTargetLimit: level.SplashTargetLimit);
     }
 }
 

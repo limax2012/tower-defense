@@ -4,7 +4,7 @@
     "visual": { "shape": "square", "primary": "#2C7AE7", "accent": "#173F68", "radius": 18, "marks": 1, "ring": true },
     "protocol": { "displayName": "Rapid Cycle", "summary": "Doubles fire rate for six seconds", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 1.0, "autoTriggerCount": 4 },
     "tier2Doctrines": [
-      { "id": "needle_cycler", "displayName": "Cycler Feed", "shortLabel": "CYCLER", "summary": "Faster cadence with lighter needles", "upgradeCost": 45, "damageMultiplier": 0.90, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 0.96, "utilityMultiplier": 1.0 },
+      { "id": "needle_cycler", "displayName": "Cycler Feed", "shortLabel": "CYCLER", "summary": "Faster cadence with lighter needles", "upgradeCost": 45, "damageMultiplier": 0.92, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.0, "utilityMultiplier": 1.0 },
       { "id": "needle_calibrator", "displayName": "Calibrated Feed", "shortLabel": "CALIB", "summary": "Heavier accurate needles at longer reach", "upgradeCost": 45, "damageMultiplier": 1.10, "attackSpeedMultiplier": 0.91, "rangeMultiplier": 1.06, "utilityMultiplier": 1.03 }
     ],
     "levels": [
@@ -14,8 +14,8 @@
     ],
     "specializations": [
       {
-        "id": "rapid_array", "displayName": "Rapid Array", "shortLabel": "RAPID", "summary": "High-rate swarm suppression", "upgradeCost": 80,
-        "level": { "range": 145, "damage": 11, "attacksPerSecond": 3.1, "projectileSpeed": 620, "upgradeCost": null }
+        "id": "rapid_array", "displayName": "Rapid Array", "shortLabel": "RAPID", "summary": "High-rate two-target swarm bursts", "upgradeCost": 80,
+        "level": { "range": 145, "damage": 10, "attacksPerSecond": 3.1, "projectileSpeed": 620, "splashRadius": 16, "splashTargetLimit": 2, "upgradeCost": null }
       },
       {
         "id": "rail_pin", "displayName": "Rail Pin", "shortLabel": "RAIL", "summary": "Heavy armor-piercing shots", "upgradeCost": 90,

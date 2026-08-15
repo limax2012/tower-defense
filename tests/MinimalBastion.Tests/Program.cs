@@ -66,6 +66,7 @@ internal static class Program
             ("mixed wave composition", MixedWaveComposition),
             ("arc relay chain", ArcRelayChain),
             ("frost area control", FrostAreaControl),
+            ("needle rapid micro burst", NeedleRapidMicroBurst),
             ("mortar predictive aim", MortarPredictiveAim),
             ("economy telemetry", EconomyTelemetry),
             ("run statistics", RunStatistics),
@@ -2619,6 +2620,53 @@ internal static class Program
             "Shatter-style armor projectiles obey their crowd cap");
     }
 
+    private static void NeedleRapidMicroBurst()
+    {
+        var session = Session();
+        var level = new TowerLevelDefinition
+        {
+            Range = 200,
+            Damage = 11,
+            AttacksPerSecond = 3.1f,
+            ProjectileSpeed = 10_000,
+            SplashRadius = 16,
+            SplashTargetLimit = 2
+        };
+        var definition = new TowerDefinition
+        {
+            Id = "rapid_needle",
+            DisplayName = "Rapid Needle",
+            Behavior = "single_projectile",
+            PurchaseCost = 1,
+            Levels = new List<TowerLevelDefinition> { level }
+        };
+        var tower = new TowerInstance(9, definition, new Vector2(100, 100));
+        var crowd = Enumerable.Range(0, 3)
+            .Select(index => new EnemyInstance(30 + index, session.Content.Enemies["enemy"], session.Map.Path, 1, 1))
+            .ToArray();
+        crowd[0].UpdateMovement(10, session.Map.Path);
+        crowd[1].UpdateMovement(10.7f, session.Map.Path);
+        crowd[2].UpdateMovement(11.4f, session.Map.Path);
+        session.Enemies.AddRange(crowd);
+
+        TowerBehaviorRegistry.Create("single_projectile").Attack(new TowerInstanceContext
+        {
+            Tower = tower,
+            Target = crowd[0],
+            Session = session
+        });
+        session.Projectiles.Update(1, session);
+
+        Check.Equal(2, crowd.Count(enemy => enemy.Health < enemy.MaxHealth),
+            "Rapid-style single projectiles stop at the authored two-target cap");
+        Check.True(crowd.Take(2).All(enemy => enemy.Health < enemy.MaxHealth) && crowd[2].Health == crowd[2].MaxHealth,
+            "Rapid micro-burst resolves nearest enemies deterministically");
+        var rapid = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load()
+            .Towers["needle_turret"].Specializations.Single(specialization => specialization.Id == "rapid_array");
+        Check.Equal(2, rapid.Level.SplashTargetLimit, "Rapid Array content preserves its strict two-target identity");
+        Check.True(rapid.Level.SplashRadius <= 16, "Rapid Array remains a compact burst rather than general splash artillery");
+    }
+
     private static void TowerInformation()
     {
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
@@ -2662,11 +2710,13 @@ internal static class Program
         var doctrineSummary = TowerInfo.DoctrineSummary(needle, cycler, signalBuff);
         Check.True(doctrineSummary.Contains("RATE 2.56>3.15", StringComparison.Ordinal),
             "tier-two doctrine preview includes beacon-adjusted rate");
-        Check.True(doctrineSummary.Contains("RANGE 147>153", StringComparison.Ordinal),
+        Check.True(doctrineSummary.Contains("RANGE 147>159", StringComparison.Ordinal),
             "tier-two doctrine preview includes beacon-adjusted range");
         var doctrineLevel = needle.Levels[1].WithDoctrine(cycler);
         var specializationSummary = TowerInfo.SpecializationSummary(doctrineLevel,
             needle.Specializations.Single(x => x.Id == "rapid_array"), cycler, signalBuff);
+        Check.True(specializationSummary.Contains("SPLASH 16 / 2 MAX", StringComparison.Ordinal),
+            "tier-three branch preview explains Rapid Array's bounded micro-burst");
         Check.True(specializationSummary.Contains("RATE 3.15>4.44", StringComparison.Ordinal),
             "tier-three branch preview includes beacon-adjusted rate");
         var beaconUpgrade = TowerInfo.UpgradeSummary(beacon, 0);

@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Gave Needle Turret's Rapid Array a strict two-target micro-burst so its swarm-suppression role is an actual mechanic rather than a weaker single-target stat package. Rebalanced its per-shot damage and Cycler Feed interaction through matched forced-path and ordinary campaign audits; Hard remains at a measured 52.1% win rate.
 - Added a deterministic-safe co-op link indicator based on valid inbound-traffic age. Both players now see LIVE, DELAY, STALLED, or RESYNC in the sidebar before the existing 15-second reconnect threshold, with no gameplay state or extra protocol traffic.
 - Added a native-verified Systems page to the title/pause Tactical Library. Six clean reference cards explain progression, targeting, status precedence, manual/automatic Protocols, Beacon/Surge stacking, and data-driven Pulse Plate/Forge values without crowding live Tower Intel.
 - Carried every route's dash pattern continuously through corners instead of restarting it on each straight. Gold road markings no longer imply separate tiles at bends, and Surge Divide's moving power packets now flow around the complete rail without visible jumps.
