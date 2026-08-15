@@ -288,6 +288,7 @@ public sealed class BackgroundData
 {
     public string Base { get; set; } = "#152D36";
     public string Accent { get; set; } = "#254A57";
+    public string Motif { get; set; } = "none";
     public Color BaseColor => TowerVisualData.ParseColor(Base);
     public Color AccentColor => TowerVisualData.ParseColor(Accent);
 }

@@ -31,6 +31,7 @@ public sealed class GameRenderer
         var baseColor = session.Map.Definition.Background.BaseColor;
         var accentColor = session.Map.Definition.Background.AccentColor;
         p.FillRect(batch, mapRect, baseColor);
+        DrawMapMotif(batch, p, session.Map.Definition.Background.Motif, accentColor);
 
         foreach (var region in session.Map.BuildableRegions)
         {
@@ -53,6 +54,44 @@ public sealed class GameRenderer
         }
 
         p.DrawRect(batch, mapRect, ColorPalette.MapBoundary, 1);
+    }
+
+    private static void DrawMapMotif(SpriteBatch batch, PrimitiveRenderer p, string motif, Color accent)
+    {
+        var color = ColorPalette.WithAlpha(accent, 46);
+        switch (motif.ToLowerInvariant())
+        {
+            case "braces":
+                for (var y = 150; y < GameConstants.LogicalHeight; y += 170)
+                for (var x = 70; x < GameConstants.MapWidth; x += 190)
+                {
+                    var center = new Vector2(x, y);
+                    p.Line(batch, center - new Vector2(18, 10), center, color, 2);
+                    p.Line(batch, center, center + new Vector2(18, -10), color, 2);
+                }
+                break;
+
+            case "facets":
+                for (var y = 150; y < GameConstants.LogicalHeight; y += 175)
+                for (var x = 80; x < GameConstants.MapWidth; x += 180)
+                {
+                    var center = new Vector2(x + ((y / 175) % 2) * 44, y);
+                    p.DrawPolygon(batch, center, 14, 4, false, color, MathHelper.PiOver4);
+                    p.Line(batch, center + new Vector2(14, 0), center + new Vector2(34, 0), color, 1);
+                }
+                break;
+
+            case "traces":
+                for (var y = 145; y < GameConstants.LogicalHeight; y += 165)
+                for (var x = 72; x < GameConstants.MapWidth; x += 185)
+                {
+                    var start = new Vector2(x, y);
+                    p.Line(batch, start, start + new Vector2(24, 0), color, 2);
+                    p.Line(batch, start + new Vector2(24, 0), start + new Vector2(24, 14), color, 2);
+                    p.DrawPolygon(batch, start + new Vector2(28, 18), 3, 4, false, color, MathHelper.PiOver4);
+                }
+                break;
+        }
     }
 
     private static void DrawBuildZoneCorners(SpriteBatch batch, PrimitiveRenderer p, Rectangle region, Color color, int thickness)

@@ -16,7 +16,7 @@ dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simul
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --map relay_divide --runs 10 --output .build\balance\relay-10x.json
 ```
 
-CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--max-wave`, and `--output`. A `--max-wave` above 20 explicitly enters deterministic endless mode; ordinary simulation remains the authored campaign. `--simulate-full` evaluates every map unless a map is supplied.
+CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--max-wave`, and `--output`. A `--max-wave` above 20 explicitly enters deterministic endless mode; ordinary simulation remains the authored campaign. `--simulate-full` evaluates every map unless a map is supplied.
 
 ## Architecture
 
@@ -61,23 +61,26 @@ Batch summaries derive win rate, average wave/lives, map/strategy outcomes, and 
 
 ## Test hierarchy
 
-- Fast: 40 deterministic mechanics, content, transport, command, and simulation regressions.
+- Fast: 46 deterministic mechanics, content, transport, command, and simulation regressions.
 - Medium: isolated `--balance` benchmark plus focused strategy/map batches.
-- Deep: `--simulate-full` across 12 strategies, both maps, and multiple seeds.
+- Deep: `--simulate-full` across 12 strategies, all three maps, four difficulties, and multiple seeds.
 - Player-facing: self-contained native build inspection of menus, online setup, battlefield, workshop, tactical states, Surge Zone hover, level badges, Overdrive, forge timing, and result screens.
 
 ## Current baseline
 
-Final report: `.build/balance/final-range-branch-pass-5x.json`.
+The current five-seed matrices cover 12 strategies across Foundry Loop, Prism Circuit, and Surge Divide: 180 deterministic runs per difficulty.
 
-- 120 runs: 46 victories, 38.3% win rate, average wave 16.2, average remaining lives 6.1.
-- Foundry Loop: 20/60 wins, average wave 15.7, average lives 5.4.
-- Surge Divide (`relay_divide` internal ID): 26/60 wins, average wave 16.7, average lives 6.9.
-- Strategy wins: Conservative 7/10, Economy 0/10, Aggressive 0/10, UpgradeFocused 2/10, Spam 0/10, AntiSwarm 6/10, AntiArmor 3/10, LongRange 8/10, Control 9/10, Tactical 3/10, Adaptive 6/10, Randomized 2/10.
-- The matrix used 4,403 Overdrives and earned 36,460 early-call credits.
-- 627 plates produced 1,217 reliable triggers, 825 kills, and 85,060 damage; 16 runs purchased a Charge Forge.
+| Difficulty | Wins | Win rate | Average wave | Average lives |
+| --- | ---: | ---: | ---: | ---: |
+| Normal | 137/180 | 76.1% | 18.9 | 17.6 |
+| Hard | 106/180 | 58.9% | 17.9 | 9.8 |
+| Bastion | 35/180 | 19.4% | 12.9 | 2.3 |
 
-The preceding Overdrive matrix was 49/120 (40.8%). Removing the Pulse Plate's hidden 0.8-second lockout and introducing explicit crossing state raised the result to 53/120 without changing tower damage. A later usability pass changed this into a visible pushback/re-cross interaction. The anti-carpet pass now limits push to 28, gives elites/bosses rank resistance, adds a 0.75-second per-enemy knockback grace, caps the field at 16 plates, and makes direct active-wave purchases escalate from 60 by 15 credits. The current 120-run campaign report is `.build/balance/plate-anti-chain-campaign20-5x-20260814.json`: 48/120 wins (40.0%), versus 46/120 (38.3%) immediately before the pass, so opening and campaign viability were preserved.
+Hard is the authored uncompromised baseline. Its map results are Foundry 41/60, Prism 38/60, and Surge 27/60. Surge is therefore materially harder despite its nine nodes; on Bastion it falls to 6/60 versus 15/60 Foundry and 14/60 Prism. Normal preserves recovery room without making undirected Economy or level-1 Spam policies successful.
+
+Hard strategy wins are Conservative 15/15, Economy 0/15, Aggressive 2/15, UpgradeFocused 7/15, Spam 0/15, AntiSwarm 14/15, AntiArmor 11/15, LongRange 12/15, Control 13/15, Tactical 14/15, Adaptive 13/15, and Randomized 5/15. Long range remains useful but is no longer the leading or seed-proof policy.
+
+Reports: `.build/balance/overnight-normal-5x.json`, `.build/balance/overnight-hard-5x.json`, and `.build/balance/overnight-bastion-5x.json`.
 
 ## Endless validation
 
@@ -88,32 +91,27 @@ The preceding Overdrive matrix was 49/120 (40.8%). Removing the Pulse Plate's hi
 
 ## Current observations
 
-- Four level-1 Needle Turrets remain the opening-wave zero-leak reference on both maps. Foundry leaves 40 credits; Surge spends all 360.
-- LongRange fell from a perfect 10/10 with 19.5 average lives to 8/10 with 13.0 after Watchtower's slot efficiency was reduced. It remains useful without being the automatic answer.
-- Short/medium-range alternatives now finish reliably: Control is 9/10 and AntiSwarm is 6/10. Foundry's lower-left build region was extended toward the road so it is no longer reserved for Watchtower/Mortar coverage.
-- Adaptive is strong but not perfect at 6/10. Conservative remains viable at 7/10.
-- Economy reaches wave 16.5 on average without winning; its delayed investment is meaningful but risky.
-- Control and AntiSwarm clear both maps in multiple seeds but are not universal answers.
-- Spam, Randomized, and most Tactical runs fail around waves 11-13. Weak/awkward policies remain meaningfully punished.
-- Tactical won 1/10 after plate reliability improved. Its 10-run focused report is `.build/balance/tactical-wave-powered-forge-5x.json`.
-- Wave-only forge production did not collapse economy play: Economy still averages wave 16.5 in `.build/balance/economy-wave-powered-forge-5x.json`.
-- Tower aggregate direct damage/credit is now led by Needle 23.9, Watchtower and Breaker 22.8, Ember 21.1, Frost 17.3, Mortar 16.1, Shard 13.6, and Arc 10.3. Frost, Beacon, Prism Exposed, armor-break, slow, and support values are understated by direct ratios.
-- Frost branch use is 268 Hail Lancer versus 179 Permafrost choices, replacing the previous 481-to-0 Permafrost monopoly. Hail owns direct area damage; Permafrost owns maximum slow and duration.
-- Ember branch use is 127 Wildfire versus 13 Searing choices. Searing is intentionally narrower, but appeared in six runs and five of those won; it now owns long-range, armor-piercing boss pressure while Wildfire owns crowded routes.
-- Needle and Breaker retained both of their already-used branches rather than receiving unnecessary redesigns.
+- Short/medium-range alternatives remain healthy on Hard: Control wins 13/15 and AntiSwarm 14/15, compared with LongRange at 12/15.
+- Conservative is the most stable policy at 15/15, while Adaptive is strong but imperfect at 13/15. The game rewards broad coverage without requiring one exact roster.
+- Economy reaches wave 15.5 on average on Hard without winning; its delayed Forge investment remains meaningful but risky. Spam also remains intentionally nonviable.
+- Tactical wins 14/15 while deploying 1,139 plates across the matrix. The 16-field cap, active-wave escalating direct cost, knockback grace, and boss resistance prevent the former endless plate lock despite making the system useful.
+- Mortar's deterministic shell caps reduce Hard aggregate damage/credit to 14.2 and keep it below Watchtower, Breaker, Needle, Shard, Frost, and Ember rather than allowing unlimited crowded-wave scaling.
+- Every final specialization appears in winning Hard runs. Rare choices such as Quake Shell are successful in the scenarios that select them; selection frequency alone is not treated as branch failure.
+- The Beacon benchmark now measures indirect output. Tempo contributes 18.4 assisted DPS to a compact three-Needle cluster, while Horizon contributes 12.0 versus Tempo's 8.0 in a spread three-Watchtower formation by reaching two extra recipients.
+- Direct damage/credit understates Frost control, Beacon throughput, Prism Exposed, armor break, and range coverage; those roles are assessed with scenario and campaign outcomes rather than raw damage alone.
 
 ## Reproducible cases
 
 | Strategy | Map | Seed | Result | Observation |
 | --- | --- | ---: | --- | --- |
-| Control | Foundry | 25094 | Victory, 20 lives | Short/medium-range control can perfect-clear the map after the geometry pass. |
-| AntiSwarm | Surge Divide | 17175 | Victory, 20 lives | Shard/Frost area pressure has a clean specialist success case. |
-| AntiArmor | Foundry | 17175 | Victory, 20 lives | Breaker-focused armor counterplay can finish without old Watchtower damage. |
-| LongRange | Foundry | 17175 | Defeat, wave 14 | Long range is no longer seed-proof or an automatic perfect clear. |
-| LongRange | Surge Divide | 17175 | Victory, 14 lives | The archetype remains viable on favorable geometry. |
-| Adaptive | Relay Divide | 25094 | Victory, 20 lives | Mixed counter-purchasing remains a viable route. |
+| Control | Foundry, Hard | 25094 | Victory, 20 lives | Short/medium-range control can perfect-clear the authored baseline. |
+| AntiSwarm | Surge, Hard | 17175 | Victory, 14 lives | Shard/Frost area pressure has a specialist success case on the hardest map. |
+| AntiArmor | Surge, Hard | 25094 | Victory, 20 lives | Breaker-focused armor counterplay can perfect-clear favorable node placement. |
+| LongRange | Surge, Hard | 1337 | Defeat, wave 20 | Long range reaches the finale but is not seed-proof. |
+| Tactical | Prism, Hard | 25094 | Victory, 1 life | Plates can rescue a marginal defense without guaranteeing a comfortable clear. |
+| Adaptive | Surge, Bastion | 9256 | Victory, 12 lives | A mixed policy can clear the hardest map/difficulty combination. |
 
-All cases are in `.build/balance/final-range-branch-pass-5x.json`.
+Hard cases are in `.build/balance/overnight-hard-5x.json`; the Bastion case is in `.build/balance/overnight-bastion-5x.json`.
 
 ## Balance assumptions
 
@@ -149,8 +147,8 @@ Final report: `.build/balance/all-tier-economy-final2-5x-20260814.json`.
 
 ## Next experiments
 
-1. Add explicit status uptime/support-attributed damage to improve Frost/Beacon valuation.
+1. Add explicit status uptime and source-attributed support damage to improve Frost/Beacon campaign valuation.
 2. Human-playtest branch legibility, late-wave pacing, and direct-internet latency beyond loopback integration tests.
-3. Watch AntiArmor on Surge Divide; the strategy is deliberately narrow but currently less reliable there than on Foundry.
-4. Add difficulty/challenge modifiers only after preserving this authored-campaign baseline.
+3. Collect human Normal/Hard/Bastion outcomes before moving any global profile multiplier.
+4. Test a fourth arena only if its placement constraint creates a new strategy rather than duplicating existing route geometry.
 5. Evaluate hosted relay/NAT traversal separately from combat balance; do not couple networking services to deterministic simulation.

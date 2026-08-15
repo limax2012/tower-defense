@@ -304,6 +304,10 @@ internal static class Program
         var content = new ContentLoader(root).Load();
         var relay = content.Maps["relay_divide"];
         var prism = content.Maps["prism_circuit"];
+        Check.Equal(3, content.Maps.Values.Select(map => map.Background.Motif).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+            "each arena has a distinct background motif");
+        Check.True(content.Maps.Values.All(map => !map.Background.Motif.Equals("none", StringComparison.OrdinalIgnoreCase)),
+            "every arena opts into a visual identity motif");
         Check.Equal("conduit", prism.PathVisual.Style, "Prism uses a distinct conduit path");
         Check.Equal(3, prism.PowerNodes.Count, "Prism has a restrained node roster");
         Check.Equal("prism_waves", prism.WaveSet, "Prism has its own campaign");

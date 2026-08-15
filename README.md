@@ -49,7 +49,7 @@ dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simul
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --map relay_divide --runs 10
 ```
 
-Reports are written under `.build\balance`. Supported filters include `--strategy`, `--seed`, `--runs`, `--map`, and `--output`.
+Reports are written under `.build\balance`. Supported filters include `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--max-wave`, and `--output`.
 
 Create a self-contained Windows build with:
 
@@ -80,6 +80,7 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 ## Gameplay notes
 
 - Foundry Loop, Prism Circuit, and Surge Divide each use a separately authored 20-wave roster matched to their route geometry. Their base starting credits are 400, 380, and 360 before the selected difficulty modifier.
+- Each arena also declares its own restrained battlefield motif: structural braces for Foundry, facets for Prism, and circuit traces for Surge. These marks sit below routes, nodes, ranges, and targeting geometry so map identity does not reduce tactical readability.
 - Easy, Normal, Hard, and Bastion alter starting room and enemy health/speed through explicit profiles; tower mechanics and stats never change by wave number, elapsed time, map, or difficulty.
 - Surge Divide is intentionally the hardest arena: its stronger campaign and tighter opening economy pay for nine compact Surge Nodes with focused attack-speed, range, damage, or armor-piercing bonuses. Prism Circuit provides three restrained nodes and a distinct conduit path.
 - Hover a Surge Node for its exact radius and bonus. A tower's center must be inside the field; overlapping nodes use only the strongest bonus for each stat rather than stacking.

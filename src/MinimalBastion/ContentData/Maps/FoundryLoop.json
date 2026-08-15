@@ -5,7 +5,7 @@
   "description": "Broad build fields and a readable classic route.",
   "challengeRating": 2,
   "logicalSize": { "width": 960, "height": 720 },
-  "background": { "base": "#152D36", "accent": "#254A57" },
+  "background": { "base": "#152D36", "accent": "#254A57", "motif": "braces" },
   "pathVisual": { "style": "road", "base": "#384E65", "accent": "#E8B637", "secondary": "#2192AA" },
   "spawn": { "x": -32, "y": 104 },
   "goal": { "x": 952, "y": 642 },

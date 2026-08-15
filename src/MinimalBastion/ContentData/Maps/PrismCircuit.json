@@ -5,7 +5,7 @@
   "description": "A long conduit, isolated build pockets, and three modest relay nodes.",
   "challengeRating": 3,
   "logicalSize": { "width": 960, "height": 720 },
-  "background": { "base": "#152D36", "accent": "#30465B" },
+  "background": { "base": "#152D36", "accent": "#30465B", "motif": "facets" },
   "pathVisual": { "style": "conduit", "base": "#344B63", "accent": "#6F4BC2", "secondary": "#27A5BD" },
   "spawn": { "x": -32, "y": 350 },
   "goal": { "x": 952, "y": 480 },
