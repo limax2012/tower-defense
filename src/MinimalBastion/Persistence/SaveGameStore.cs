@@ -203,7 +203,7 @@ public sealed class SaveSlotRepository
         try
         {
             File.WriteAllText(temporaryPath, JsonSerializer.Serialize(data, JsonOptions));
-            if (File.Exists(path)) File.Copy(path, backupPath, true);
+            if (File.Exists(path) && IsReadableSave(path)) File.Copy(path, backupPath, true);
             File.Move(temporaryPath, path, true);
         }
         finally
@@ -219,6 +219,19 @@ public sealed class SaveSlotRepository
         if (data.SchemaVersion != SaveGameData.CurrentSchemaVersion)
             throw new InvalidDataException($"Save schema {data.SchemaVersion} is not supported.");
         return data;
+    }
+
+    private static bool IsReadableSave(string path)
+    {
+        try
+        {
+            _ = ReadSaveData(path);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or JsonException or InvalidDataException)
+        {
+            return false;
+        }
     }
 
     private static void ValidateSlot(int slot)

@@ -128,7 +128,7 @@ public sealed class RunHistoryRepository
         try
         {
             File.WriteAllText(temporaryPath, JsonSerializer.Serialize(entries, JsonOptions));
-            if (File.Exists(HistoryPath)) File.Copy(HistoryPath, BackupPath, true);
+            if (File.Exists(HistoryPath) && IsReadableHistory(HistoryPath)) File.Copy(HistoryPath, BackupPath, true);
             File.Move(temporaryPath, HistoryPath, true);
         }
         finally
@@ -145,6 +145,19 @@ public sealed class RunHistoryRepository
             .Where(entry => !string.IsNullOrWhiteSpace(entry.RunId))
             .OrderByDescending(entry => entry.CompletedAtUtc)
             .ToArray();
+    }
+
+    private static bool IsReadableHistory(string path)
+    {
+        try
+        {
+            _ = Read(path);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or JsonException or InvalidDataException)
+        {
+            return false;
+        }
     }
 }
 

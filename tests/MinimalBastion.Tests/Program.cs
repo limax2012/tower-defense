@@ -1946,6 +1946,15 @@ internal static class Program
             Check.True(repository.GetSlots().Single(slot => slot.Slot == 1).Error is null,
                 "backup recovery keeps slot metadata usable");
 
+            var recoveryGeneration = File.ReadAllText(repository.GetSlotBackupPath(1));
+            session.Economy.AddCredits(25);
+            repository.Save(session, 1);
+            Check.Equal(recoveryGeneration, File.ReadAllText(repository.GetSlotBackupPath(1)),
+                "saving after primary corruption preserves the known-good recovery generation");
+            File.WriteAllText(repository.GetSlotPath(1), "{ corrupt again");
+            Check.Equal(originalCredits, repository.LoadData(1).Economy.Credits,
+                "preserved recovery remains usable after another interrupted primary");
+
             File.Delete(repository.GetSlotPath(1));
             Check.True(repository.GetSlots().Single(slot => slot.Slot == 1).IsOccupied,
                 "backup-only interrupted slot remains discoverable");
@@ -1999,6 +2008,15 @@ internal static class Program
             Check.Equal("run-b", repository.GetEntries()[0].RunId, "run history is newest first");
             Check.True(repository.Delete("run-a"), "individual history entries can be deleted");
             Check.Equal(1, repository.GetEntries().Count, "deleting history leaves unrelated records intact");
+
+            var recoveryRepository = new RunHistoryRepository(Path.Combine(testRoot, "recovery"));
+            recoveryRepository.Upsert(first);
+            recoveryRepository.Upsert(first with { RunId = "run-b", CompletedAtUtc = first.CompletedAtUtc.AddHours(1) });
+            File.WriteAllText(recoveryRepository.HistoryPath, "{ invalid history");
+            recoveryRepository.Upsert(first with { RunId = "run-c", CompletedAtUtc = first.CompletedAtUtc.AddHours(2) });
+            File.Delete(recoveryRepository.HistoryPath);
+            Check.Equal("run-a", recoveryRepository.GetEntries().Single().RunId,
+                "history update after primary corruption preserves its known-good recovery generation");
 
             var session = Session();
             var runId = session.RunId;
