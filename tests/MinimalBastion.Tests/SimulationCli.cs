@@ -65,6 +65,7 @@ internal static class SimulationCli
         PrintStrategySummary(runs);
         PrintDifficultySummary(runs);
         PrintMapSummary(runs);
+        PrintArenaDifficultyMatrix(runs, content);
         PrintTowerSummary(runs);
         PrintDoctrineSummary(runs);
         PrintSpecializationSummary(runs);
@@ -92,7 +93,7 @@ internal static class SimulationCli
     internal static IReadOnlyList<string> ResolveDifficulties(string? selectedDifficulty, GameContent content)
     {
         if (selectedDifficulty?.Equals("all", StringComparison.OrdinalIgnoreCase) == true)
-            return content.Difficulties.Keys.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray();
+            return content.Difficulties.Values.Select(x => x.Id).ToArray();
 
         var difficultyId = selectedDifficulty ?? DifficultyCatalog.LegacyId;
         if (!content.Difficulties.ContainsKey(difficultyId))
@@ -141,6 +142,32 @@ internal static class SimulationCli
         Console.WriteLine("DIFFICULTY SUMMARY");
         foreach (var group in runs.GroupBy(x => x.DifficultyId).OrderBy(x => x.Key))
             Console.WriteLine($"{group.Key,-18} {group.Count(x => x.Won),2}/{group.Count(),-2} wins  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
+    }
+
+    private static void PrintArenaDifficultyMatrix(IEnumerable<SimulationRunResult> runs, GameContent content)
+    {
+        var materialized = runs.ToArray();
+        var difficultyIds = content.Difficulties.Values.Select(x => x.Id)
+            .Where(id => materialized.Any(run => run.DifficultyId.Equals(id, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+        if (difficultyIds.Length < 2) return;
+
+        Console.WriteLine();
+        Console.WriteLine("ARENA x DIFFICULTY (win rate / average wave)");
+        Console.Write($"{"Arena",-18}");
+        foreach (var difficultyId in difficultyIds) Console.Write($"  {difficultyId,-15}");
+        Console.WriteLine();
+        foreach (var mapGroup in materialized.GroupBy(x => x.MapId).OrderBy(x => x.Key))
+        {
+            Console.Write($"{mapGroup.Key,-18}");
+            foreach (var difficultyId in difficultyIds)
+            {
+                var cell = mapGroup.Where(run => run.DifficultyId.Equals(difficultyId, StringComparison.OrdinalIgnoreCase)).ToArray();
+                var value = cell.Length == 0 ? "-" : $"{cell.Count(run => run.Won) / (float)cell.Length:P0} / {cell.Average(run => run.WaveReached):0.0}";
+                Console.Write($"  {value,-15}");
+            }
+            Console.WriteLine();
+        }
     }
 
     private static void PrintTowerSummary(IEnumerable<SimulationRunResult> runs)

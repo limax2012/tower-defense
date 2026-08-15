@@ -139,6 +139,8 @@ internal static class Program
         Check.Equal(content.Difficulties.Count, allDifficulties.Count, "simulation can sweep every difficulty");
         Check.True(allDifficulties.Distinct(StringComparer.OrdinalIgnoreCase).Count() == content.Difficulties.Count,
             "difficulty sweep contains each profile once");
+        Check.True(allDifficulties.SequenceEqual(content.Difficulties.Values.Select(x => x.Id), StringComparer.OrdinalIgnoreCase),
+            "difficulty sweep follows the authored menu order");
         var path = SimulationCli.ParseForcedBuild("siege_mortar:mortar_loader>quake_shell", content);
         Check.Equal("siege_mortar", path!.TowerId, "forced build parser tower");
         Check.Equal("mortar_loader", path.DoctrineId, "forced build parser doctrine");
