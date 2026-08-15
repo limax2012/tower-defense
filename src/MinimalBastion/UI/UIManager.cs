@@ -315,6 +315,22 @@ public sealed class UIManager
         _runHistoryPage = selectedIndex / _saveSlotRows.Length;
     }
 
+    public static string BestRunLabel(IEnumerable<RunHistoryEntry> entries, string mapId, string difficultyId, string challengeId)
+    {
+        var best = entries
+            .Where(entry => entry.MapId.Equals(mapId, StringComparison.OrdinalIgnoreCase) &&
+                            entry.DifficultyId.Equals(difficultyId, StringComparison.OrdinalIgnoreCase) &&
+                            entry.ChallengeId.Equals(challengeId, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(entry => entry.CurrentWave)
+            .ThenByDescending(entry => entry.IsEndless)
+            .ThenByDescending(entry => entry.Victory)
+            .ThenByDescending(entry => entry.Lives)
+            .FirstOrDefault();
+        if (best is null) return "";
+        if (best.IsEndless) return $"BEST ENDLESS {best.CurrentWave}";
+        return best.Victory ? "BEST CAMPAIGN CLEAR" : $"BEST WAVE {best.CurrentWave}";
+    }
+
     public void SetRunHistoryStatus(string status)
     {
         if (!string.IsNullOrWhiteSpace(status)) _runHistoryStatus = status;
@@ -1980,6 +1996,8 @@ public sealed class UIManager
         var mapSuffix = $"THREAT {map.Challenge}/5 | {feature}";
         var difficulty = _difficulties.Count == 0 ? null : _difficulties[_selectedDifficultyIndex];
         var challenge = _challenges.Count == 0 ? null : _challenges[_selectedChallengeIndex];
+        var bestRun = BestRunLabel(_runHistory, map.Id, difficulty?.Id ?? DifficultyCatalog.DefaultId,
+            challenge?.Id ?? ChallengeCatalog.DefaultId);
         DrawButton(batch, p, _mapButton, $"{_selectedMapIndex + 1}/{Math.Max(1, _maps.Count)}  {map.Name.ToUpperInvariant()}", true, ColorPalette.Berry);
         DrawButton(batch, p, _difficultyButton, (difficulty?.DisplayName ?? "Normal").ToUpperInvariant(), true,
             difficulty?.AccentColor ?? ColorPalette.Cobalt);
@@ -1994,7 +2012,10 @@ public sealed class UIManager
         var focus = MainMenuOptionRectangle(Math.Clamp(_mainMenuSelection, 0, 8));
         focus.Inflate(3, 3);
         p.DrawRect(batch, focus, ColorPalette.Ink, 2);
-        DrawFittedCenteredText(batch, $"{mapSuffix} | {map.Description}", new Vector2(640, 632), ColorPalette.Muted, 0.50f, 920);
+        var mapSummary = string.IsNullOrEmpty(bestRun)
+            ? $"{mapSuffix} | {map.Description}"
+            : $"{mapSuffix} | {bestRun} | {map.Description}";
+        DrawFittedCenteredText(batch, mapSummary, new Vector2(640, 632), ColorPalette.Muted, 0.50f, 920);
         DrawFittedCenteredText(batch, map.Campaign.CompactSummary, new Vector2(640, 650), ColorPalette.Cyan, 0.44f, 940);
         DrawFittedCenteredText(batch, $"{(difficulty?.DisplayName ?? "Normal").ToUpperInvariant()} | {difficulty?.ModifierSummary ?? "BALANCED PROFILE"}",
             new Vector2(640, 669), difficulty?.AccentColor ?? ColorPalette.Cobalt, 0.44f, 920);

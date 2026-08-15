@@ -3387,6 +3387,11 @@ internal static class Program
             Check.Equal("run-b", repository.GetEntries()[0].RunId, "run history is newest first");
             var historyUi = new UIManager(null!);
             historyUi.ConfigureRunHistory(repository.GetEntries());
+            Check.Equal("BEST ENDLESS 31",
+                UIManager.BestRunLabel(repository.GetEntries(), "foundry_loop", "normal", "standard"),
+                "title record chooses the deepest matching endless result");
+            Check.Equal("", UIManager.BestRunLabel(repository.GetEntries(), "foundry_loop", "hard", "standard"),
+                "title record does not mix difficulty profiles");
             historyUi.HandleRunHistory(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
             Check.Equal("run-a", historyUi.SelectedRunHistoryId!, "run history Down selects the next record");
             historyUi.HandleRunHistory(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });

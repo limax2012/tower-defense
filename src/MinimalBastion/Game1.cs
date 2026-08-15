@@ -117,6 +117,7 @@ public sealed class Game1 : Game
             _ui.ConfigureTowerLibrary(_content.Towers.Values, _content.Enemies.Values, _content.Tactics);
             _ui.ConfigureSettings(_settings);
             _ui.SetSaveState(SaveSlotsExistSafely());
+            RefreshRunHistoryCache();
             _debug = new DebugOverlay(font);
             _gameRenderer.ReducedEffects = _settings.ReducedEffects;
             _audio = AudioManager.TryCreate();
@@ -1113,11 +1114,18 @@ public sealed class Game1 : Game
         {
             RunHistoryStore.Upsert(RunHistoryEntry.FromSession(_session));
             _lastRecordedResultKey = resultKey;
+            RefreshRunHistoryCache();
         }
         catch
         {
             // A history write must never interrupt or obscure the result screen.
         }
+    }
+
+    private void RefreshRunHistoryCache()
+    {
+        try { _ui.ConfigureRunHistory(RunHistoryStore.GetEntries()); }
+        catch { _ui.ConfigureRunHistory(Array.Empty<RunHistoryEntry>()); }
     }
 
     private void DeleteSaveSlot(int slot)
