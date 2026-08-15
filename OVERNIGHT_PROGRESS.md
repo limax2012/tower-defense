@@ -180,6 +180,7 @@ The clean separation supports preserving the current multipliers. On Hard, Surge
 
 ## Current work
 
+- The real loopback reconnect test now carries a 1,500-projectile authoritative session through compression and TCP, then validates, reconstructs, and compares the complete client checksum instead of stopping after payload receipt.
 - Reconnect snapshots now preserve the exact telemetry attribution-maintenance phase. A regression snapshots mid-cycle, sells the same tower on both restored peers, advances through cleanup, and verifies both source tables and complete checksums remain identical.
 - Completed waves now clear all private spawn-group progress before entering intermission. A reconnect captured between waves restores to the same checksum instead of immediately diverging because only the client had canonicalized inactive wave fields.
 - Checkpoint and reconnect reconstruction now rejects defense layouts that are impossible on the selected map and authored values that would otherwise be silently normalized on one peer. Current saves are strict while legacy difficulty-less saves preserve their established migration behavior.

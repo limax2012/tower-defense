@@ -2348,24 +2348,29 @@ internal static class Program
         var secondAccept = host.AcceptPlayerAsync(timeout.Token);
         await using var secondClient = await LanCoOpClient.ConnectAsync("localhost", host.Port, "return", timeout.Token);
         await using var secondServer = await secondAccept;
-        var snapshot = SessionWithWave().CaptureCoOpState(7, 0b01, false);
-        snapshot.Projectiles = Enumerable.Range(0, 1500).Select(index => new ProjectileRuntimeState
+        var authoritative = SessionWithWave();
+        for (var index = 0; index < 1500; index++)
         {
-            X = 100 + index % 400,
-            Y = 120 + index % 300,
-            AimX = 700,
-            AimY = 500,
-            Speed = 240,
-            Kind = (int)ProjectileKind.ImpactPoint,
-            Damage = 12,
-            Radius = 5,
-            PackedColor = 0xFF00FFFF
-        }).ToList();
+            authoritative.Projectiles.Add(new ProjectileInstance(
+                new Vector2(100 + index % 400, 120 + index % 300),
+                new Vector2(700, 500),
+                null,
+                240,
+                ProjectileKind.ImpactPoint,
+                0,
+                new DamagePayload { Damage = 12 },
+                Color.Cyan,
+                5));
+        }
+        var snapshot = authoritative.CaptureCoOpState(7, 0b01, false);
         await secondServer.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.StateSnapshot, PlayerId = 1, Tick = 7, State = snapshot }, timeout.Token);
         var received = await secondClient.ReceiveAsync(timeout.Token);
         Check.Equal(CoOpMessageType.StateSnapshot, received!.Type, "same listener accepts returning player");
         Check.Equal(7L, received.State!.Tick, "authoritative reconnect state survives transport");
         Check.Equal(1500, received.State.Projectiles.Count, "dense compressed projectile state survives reconnect transport");
+        var restored = GameSession.RestoreCoOpState(authoritative.Content, received.State, 2);
+        Check.Equal(SessionChecksum.Compute(authoritative, 7), SessionChecksum.Compute(restored, 7),
+            "dense authoritative state remains identical after framing, compression, transport, validation, and reconstruction");
     }
 
     private static void CoOpWaveReady()
