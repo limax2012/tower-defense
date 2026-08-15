@@ -234,6 +234,10 @@ internal static class Program
         Check.Equal(24, normal.Economy.StartingLives, "normal starting lives");
         Check.Equal(500, easy.Economy.Credits, "easy starting credit allowance");
         Check.Equal(30, easy.Economy.StartingLives, "easy starting lives");
+        Check.True(content.Difficulties["normal"].ModifierSummary.Contains("ENEMY HP 90%") &&
+            content.Difficulties["normal"].ModifierSummary.Contains("START CREDITS 112.5%") &&
+            content.Difficulties["normal"].ModifierSummary.EndsWith("24 LIVES"),
+            "difficulty selector exposes exact mechanical modifiers");
 
         hard.SpawnEnemy("t1_crawler", 1, 1);
         normal.SpawnEnemy("t1_crawler", 1, 1);

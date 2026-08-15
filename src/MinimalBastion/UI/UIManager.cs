@@ -1417,10 +1417,9 @@ public sealed class UIManager
         DrawButton(batch, p, _coOpButton, "ONLINE CO-OP", true, ColorPalette.Green);
         DrawButton(batch, p, _mainMenuSettingsButton, "SETTINGS", true, ColorPalette.Orange, ColorPalette.Ink);
         DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
-        var difficultySummary = difficulty?.Description ?? "A balanced defense.";
         DrawFittedCenteredText(batch, $"{mapSuffix} | {map.Description}", new Vector2(640, 632), ColorPalette.Muted, 0.50f, 920);
         DrawFittedCenteredText(batch, map.Campaign.CompactSummary, new Vector2(640, 650), ColorPalette.Cyan, 0.44f, 940);
-        DrawFittedCenteredText(batch, $"{(difficulty?.DisplayName ?? "Normal").ToUpperInvariant()} | {difficultySummary}",
+        DrawFittedCenteredText(batch, $"{(difficulty?.DisplayName ?? "Normal").ToUpperInvariant()} | {difficulty?.ModifierSummary ?? "BALANCED PROFILE"}",
             new Vector2(640, 669), difficulty?.AccentColor ?? ColorPalette.Cobalt, 0.44f, 920);
         DrawFittedCenteredText(batch, $"{(challenge?.DisplayName ?? "Standard").ToUpperInvariant()} | {challenge?.Description ?? "All systems available."}",
             new Vector2(640, 691), challenge?.AccentColor ?? ColorPalette.Cyan, 0.43f, 940);

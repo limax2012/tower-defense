@@ -28,6 +28,9 @@ public sealed class DifficultyDefinition
     public int StartingLives { get; set; } = 20;
     public string Accent { get; set; } = "#EC5062";
     public Color AccentColor => TowerVisualData.ParseColor(Accent);
+    public string ModifierSummary =>
+        $"ENEMY HP {EnemyHealthMultiplier * 100:0.#}% | SPEED {EnemySpeedMultiplier * 100:0.#}% | " +
+        $"START CREDITS {StartingCreditsMultiplier * 100:0.#}% | {StartingLives} LIVES";
 }
 
 public static class DifficultyCatalog
