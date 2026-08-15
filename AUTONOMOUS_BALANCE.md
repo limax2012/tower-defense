@@ -16,7 +16,7 @@ dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simul
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --map relay_divide --runs 10 --output .build\balance\relay-10x.json
 ```
 
-CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--max-wave`, and `--output`. A `--max-wave` above 20 explicitly enters deterministic endless mode; ordinary simulation remains the authored campaign. `--simulate-full` evaluates every map unless a map is supplied.
+CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, and `--output`. A `--max-wave` above 20 explicitly enters deterministic endless mode; ordinary simulation remains the authored campaign. `--simulate-full` evaluates every map unless a map is supplied.
 
 ## Architecture
 
@@ -61,7 +61,7 @@ Batch summaries derive win rate, average wave/lives, map/strategy outcomes, and 
 
 ## Test hierarchy
 
-- Fast: 51 deterministic mechanics, content, transport, command, persistence, history, and simulation regressions.
+- Fast: 52 deterministic mechanics, content, transport, command, persistence, history, directive, and simulation regressions.
 - Medium: isolated `--balance` benchmark plus focused strategy/map batches.
 - Deep: `--simulate-full` across 12 strategies, all four maps, four difficulties, and multiple seeds.
 - Player-facing: self-contained native build inspection of menus, online setup, battlefield, workshop, tactical states, Surge Node hover, level marks, Protocols, forge timing, and result screens.
@@ -83,7 +83,21 @@ Hard strategy wins are Conservative 19/20, Economy 0/20, Aggressive 2/20, Upgrad
 
 Canonical reports: `.build/balance/four-map-easy-5x.json`, `.build/balance/four-map-normal-5x.json`, `.build/balance/four-map-hard-5x.json`, and `.build/balance/four-map-bastion-5x.json`.
 
+## Challenge directive baseline
+
+Hard, three seeds per strategy across all four arenas (144 runs per directive):
+
+| Directive | Wins | Win rate | Average wave | Purpose |
+| --- | ---: | ---: | ---: | --- |
+| Close Quarters | 77/144 | 53.5% | 16.3 | Removes Watchtower/Mortar and rewards route-adjacent coverage. |
+| Core Six | 50/144 | 34.7% | 15.6 | Advanced compact-roster planning puzzle. |
+| No Reserves | 88/144 | 61.1% | 17.9 | Tower-only defense; fixed +10% opening funds replace tactical spending. |
+
+Reports: `.build/balance/four-map-hard-close_quarters-3x.json`, `.build/balance/four-map-hard-core_six-3x.json`, and `.build/balance/four-map-hard-no_reserves-3x.json`. Surge Divide remained the hardest arena in every directive. No tower, enemy, or wave stat changes with directive progress; restrictions and opening compensation are fixed at session construction.
+
 ## Endless validation
+
+- A 144-run Hard matrix continued all 12 strategies across all four arenas toward wave 40. No defense reached the cap: average failure was wave 22.2, Control lasted longest at 30.8 on average and peaked at 38, and Tactical failed at 26.8 on average despite individual runs deploying up to 96 Plates. Report: `.build/balance/four-map-hard-endless40-3x.json`.
 
 - Five Foundry Adaptive seeds targeted wave 30. One failed the authored campaign at wave 14; the four campaign-clearing runs reached waves 23, 24, 24, and 28 rather than encountering an artificial wave-21 wall.
 - A 12-strategy Surge Divide pass produced three wave-30 survivors: AntiSwarm and Control with 10 lives, and Tactical with 12. Adaptive reached 28 and LongRange reached 25.

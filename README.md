@@ -1,6 +1,6 @@
 # Minimal Bastion
 
-Minimal Bastion is a colorful, data-driven 2D tower-defense game built with C#, .NET 10, and MonoGame DesktopGL. It includes four strategic maps with authored campaigns, four difficulty profiles, 20 mixed waves per map, 10 towers with 20 final specializations and distinct tactical Protocols, elites and phased bosses, Pulse Plates and a Charge Forge, dynamically expanding independent saves, procedural audio, persistent display settings, post-run analysis, deterministic balance agents, and direct two-player online co-op.
+Minimal Bastion is a colorful, data-driven 2D tower-defense game built with C#, .NET 10, and MonoGame DesktopGL. It includes four strategic maps with authored campaigns, four difficulty profiles, four decision-changing challenge directives, 20 mixed waves per map, 10 towers with 20 final specializations and distinct tactical Protocols, elites and phased bosses, Pulse Plates and a Charge Forge, dynamically expanding independent saves, procedural audio, persistent display settings, post-run analysis, deterministic balance agents, and direct two-player online co-op.
 
 ## Play the verified build
 
@@ -78,6 +78,8 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 - `F4`: toggle the debug overlay in Debug builds.
 
 ## Gameplay notes
+
+- The title selector separates arena, difficulty, and directive. **Standard** enables every system; **Close Quarters** removes Watchtower/Mortar; **Core Six** limits the roster to Needle/Frost/Shard/Ember/Breaker/Beacon; and **No Reserves** disables Pulse Plates/Forge. Fixed opening-credit compensation belongs to the directive and never changes tower stats by wave or elapsed time. Directive identity persists through saves, co-op, results, and run history.
 
 - Foundry Loop, Crosswind Basin, Prism Circuit, and Surge Divide each use a separately authored 20-wave roster matched to their route geometry. Their base starting credits are 400, 390, 380, and 360 before the selected difficulty modifier. Crosswind is runner-led and folds a continuous channel around three compact crossfire islands.
 - The title-screen arena selector derives a compact campaign forecast directly from that map's wave JSON: opening threat mix, total contacts, peak wave density, final health multiplier, and first boss wave. Balance edits therefore update planning intel without a second hand-maintained description.

@@ -76,7 +76,9 @@ public enum PlacementFailure
     OverlapsDefense,
     GeneratorAlreadyBuilt,
     NoDefenseAvailable,
-    DefenseCapacityReached
+    DefenseCapacityReached,
+    TowerUnavailable,
+    TacticalSystemsDisabled
 }
 
 public enum TacticalPlacementKind

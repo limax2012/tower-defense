@@ -50,7 +50,7 @@ Minimal Bastion application:
 
 - Keep authored mixed waves as the campaign's learnable backbone.
 - Use deterministic seeds and strategy profiles for testing.
-- Candidate post-version-1 modes include a daily seeded ruleset, restricted tower rosters, altered starting resources, or changed wave order. These should reuse current systems and telemetry.
+- Implemented directives now provide a full sandbox, two restricted tower rosters, and a tower-only/no-reserves mode with fixed opening compensation. A daily seeded ruleset remains a candidate; it should reuse the same authoritative restriction and telemetry seams.
 
 ### 5. Multiplayer requires shared rules before networking
 
@@ -60,7 +60,7 @@ Minimal Bastion application:
 
 - Keep authoritative simulation state separate from presentation and input.
 - Sequence all player intent through the same validated deterministic command seam used by solo play.
-- The implemented direct-internet MVP uses shared resources, owner-only tower mutation, joint wave ready, checksums, and pings; hosted relay/NAT traversal remains infrastructure work rather than gameplay logic.
+- The implemented direct-internet MVP uses shared resources and unrestricted shared tower management, while retaining original placer attribution, joint wave ready, checksums, repair snapshots, reconnect, and pings; hosted relay/NAT traversal remains infrastructure work rather than gameplay logic.
 
 ## Explicit non-goals
 
@@ -72,6 +72,6 @@ Minimal Bastion application:
 
 1. Preserve the reproducible two-map, twelve-strategy balance baseline.
 2. Human-playtest the implemented branches, active intervention, Surge Zones, and end-run analysis.
-3. Add new map/difficulty constraints that change decisions rather than multiplying statistics.
+3. Human-playtest the implemented map/difficulty/directive combinations and preserve statistically persistent outliers.
 4. Measure support/status contribution more directly before changing low-damage utility towers.
 5. Field-test direct internet co-op, then add fingerprinting/reconnect before considering hosted relay infrastructure.

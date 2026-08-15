@@ -86,7 +86,7 @@ public sealed class AutoPlayer
             AutoPlayerStrategy.AntiArmor => new[] { "needle_turret", "needle_turret", "needle_turret" },
             AutoPlayerStrategy.LongRange => new[] { "needle_turret", "needle_turret", "watchtower" },
             AutoPlayerStrategy.Control => new[] { "needle_turret", "needle_turret", "needle_turret", "frost_spire" },
-            AutoPlayerStrategy.Randomized => session.Content.Towers.Values.Where(x => !x.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) && x.PurchaseCost <= 250).OrderBy(_ => _random.Next()).Select(x => x.Id).ToArray(),
+            AutoPlayerStrategy.Randomized => session.Content.Towers.Values.Where(x => session.IsTowerAvailable(x.Id) && !x.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) && x.PurchaseCost <= 250).OrderBy(_ => _random.Next()).Select(x => x.Id).ToArray(),
             _ => new[] { "needle_turret", "shard_fan" }
         };
 
@@ -169,7 +169,7 @@ public sealed class AutoPlayer
 
         if (ids is not null)
         {
-            ids = StrategicPoolForWave(ids, wave);
+            ids = StrategicPoolForWave(ids, wave).Where(session.IsTowerAvailable).ToArray();
             if (ids.Length > 0)
             {
                 var missingIdentity = ids.Where(id => session.Towers.All(x => !x.Definition.Id.Equals(id, StringComparison.OrdinalIgnoreCase))).ToArray();
@@ -205,7 +205,7 @@ public sealed class AutoPlayer
 
     private static bool MustSaveForPool(GameSession session, IReadOnlyList<string> ids)
     {
-        var costs = ids.Where(session.Content.Towers.ContainsKey).Select(id => session.Content.Towers[id].PurchaseCost).ToArray();
+        var costs = ids.Where(id => session.IsTowerAvailable(id) && session.Content.Towers.ContainsKey(id)).Select(id => session.Content.Towers[id].PurchaseCost).ToArray();
         return costs.Length > 0 && session.Economy.Credits < costs.Min();
     }
 
@@ -213,7 +213,7 @@ public sealed class AutoPlayer
     {
         foreach (var id in ids)
         {
-            if (!session.Content.Towers.TryGetValue(id, out var definition) || definition.PurchaseCost > spendable) continue;
+            if (!session.IsTowerAvailable(id) || !session.Content.Towers.TryGetValue(id, out var definition) || definition.PurchaseCost > spendable) continue;
             var position = FindBestPosition(session, definition, threat);
             if (position is null) continue;
             if (!session.TryPlaceTower(definition.Id, position.Value)) continue;
@@ -235,7 +235,7 @@ public sealed class AutoPlayer
         PurchaseOption? best = null;
         foreach (var definition in session.Content.Towers.Values)
         {
-            if (!IsAllowedPurchase(definition.Id)) continue;
+            if (!session.IsTowerAvailable(definition.Id) || !IsAllowedPurchase(definition.Id)) continue;
             if (definition.PurchaseCost > spendable) continue;
             if (definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) && session.Towers.Count(x => !x.IsSupport) < 4) continue;
             var existingCopies = session.Towers.Count(x => x.Definition.Id == definition.Id);
@@ -531,6 +531,7 @@ public sealed class AutoPlayer
             AutoPlayerStrategy.Economy => 140 + session.CurrentWave * 12,
             AutoPlayerStrategy.Conservative => 55 + session.CurrentWave * 4,
             AutoPlayerStrategy.UpgradeFocused => 45,
+            AutoPlayerStrategy.Tactical when !session.TacticalSystemsEnabled => 25,
             AutoPlayerStrategy.Tactical => session.Generator is null && session.CurrentWave >= 4
                 ? session.Content.Tactics.Generator.PurchaseCost
                 : 70,
@@ -557,6 +558,7 @@ public sealed class AutoPlayer
 
     private void ManageGenerator(GameSession session)
     {
+        if (!session.TacticalSystemsEnabled) return;
         var nextWave = session.CurrentWave + 1;
         if (session.Generator is null)
         {
@@ -587,6 +589,7 @@ public sealed class AutoPlayer
 
     private void TryUseEmergencyDefense(GameSession session)
     {
+        if (!session.TacticalSystemsEnabled) return;
         if (session.Enemies.Count == 0) return;
         var lead = session.Enemies.Where(x => !x.IsDead && !x.HasEscaped).OrderByDescending(x => x.PathProgress).FirstOrDefault();
         if (lead is null) return;

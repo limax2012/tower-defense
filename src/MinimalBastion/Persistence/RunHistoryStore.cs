@@ -13,6 +13,8 @@ public sealed record RunHistoryEntry
     public string MapName { get; init; } = "";
     public string DifficultyId { get; init; } = "";
     public string DifficultyName { get; init; } = "";
+    public string ChallengeId { get; init; } = "standard";
+    public string ChallengeName { get; init; } = "Standard";
     public int CurrentWave { get; init; }
     public int TotalWaves { get; init; }
     public int Lives { get; init; }
@@ -39,6 +41,8 @@ public sealed record RunHistoryEntry
             MapName = session.Map.Definition.DisplayName,
             DifficultyId = session.DifficultyId,
             DifficultyName = session.Difficulty.DisplayName,
+            ChallengeId = session.ChallengeId,
+            ChallengeName = session.Challenge.DisplayName,
             CurrentWave = session.CurrentWave,
             TotalWaves = session.TotalWaves,
             Lives = session.Economy.Lives,

@@ -62,8 +62,10 @@ public sealed class UIManager
     private PowerNodeData? _hoveredPowerNode;
     private readonly List<(string Id, string Name, int PowerNodes, int Challenge, string Description, string PathStyle, CampaignIntelInfo Campaign)> _maps = new();
     private readonly List<DifficultyDefinition> _difficulties = new();
+    private readonly List<ChallengeDefinition> _challenges = new();
     private int _selectedMapIndex;
     private int _selectedDifficultyIndex;
+    private int _selectedChallengeIndex;
     private TacticalPlacementKind _hoveredTacticalPlacement;
     private string _joinHostInput = "";
     private string _joinCodeInput = "";
@@ -91,8 +93,9 @@ public sealed class UIManager
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
     private int _towerLibraryIndex;
     private IReadOnlyList<TowerDefinition> _libraryTowers = Array.Empty<TowerDefinition>();
-    private readonly Rectangle _mapButton = new(500, 370, 190, 40);
-    private readonly Rectangle _difficultyButton = new(700, 370, 80, 40);
+    private readonly Rectangle _mapButton = new(440, 370, 190, 40);
+    private readonly Rectangle _difficultyButton = new(640, 370, 90, 40);
+    private readonly Rectangle _challengeButton = new(740, 370, 100, 40);
     private readonly Rectangle _continueButton = new(500, 420, 135, 44);
     private readonly Rectangle _mainMenuLibraryButton = new(645, 420, 135, 44);
     private readonly Rectangle _playButton = new(500, 474, 280, 44);
@@ -147,6 +150,8 @@ public sealed class UIManager
     public string SelectedMapName => _maps.Count == 0 ? "Foundry Loop" : _maps[_selectedMapIndex].Name;
     public string SelectedDifficultyId => _difficulties.Count == 0 ? DifficultyCatalog.DefaultId : _difficulties[_selectedDifficultyIndex].Id;
     public string SelectedDifficultyName => _difficulties.Count == 0 ? "Normal" : _difficulties[_selectedDifficultyIndex].DisplayName;
+    public string SelectedChallengeId => _challenges.Count == 0 ? ChallengeCatalog.DefaultId : _challenges[_selectedChallengeIndex].Id;
+    public string SelectedChallengeName => _challenges.Count == 0 ? "Standard" : _challenges[_selectedChallengeIndex].DisplayName;
     public int SelectedSaveSlot => _selectedSaveSlot;
     public string? SelectedRunHistoryId => _selectedRunHistoryId;
 
@@ -274,6 +279,15 @@ public sealed class UIManager
         _selectedDifficultyIndex = defaultIndex >= 0 ? defaultIndex : 0;
     }
 
+    public void ConfigureChallenges(IEnumerable<ChallengeDefinition> challenges)
+    {
+        _challenges.Clear();
+        _challenges.AddRange(challenges.OrderBy(challenge => challenge.Id.Equals(ChallengeCatalog.DefaultId, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(challenge => challenge.DisplayName));
+        var defaultIndex = _challenges.FindIndex(challenge => challenge.Id.Equals(ChallengeCatalog.DefaultId, StringComparison.OrdinalIgnoreCase));
+        _selectedChallengeIndex = defaultIndex >= 0 ? defaultIndex : 0;
+    }
+
     public void ConfigureTowerLibrary(IEnumerable<TowerDefinition> towers)
     {
         _libraryTowers = towers.OrderBy(x => x.PurchaseCost).ThenBy(x => x.Id).ToArray();
@@ -292,6 +306,11 @@ public sealed class UIManager
         if (_difficultyButton.Contains(point) && _difficulties.Count > 1)
         {
             _selectedDifficultyIndex = (_selectedDifficultyIndex + 1) % _difficulties.Count;
+            return UiAction.None;
+        }
+        if (_challengeButton.Contains(point) && _challenges.Count > 1)
+        {
+            _selectedChallengeIndex = (_selectedChallengeIndex + 1) % _challenges.Count;
             return UiAction.None;
         }
         if (_continueButton.Contains(point) && _saveAvailable) return UiAction.LoadGame;
@@ -855,13 +874,13 @@ public sealed class UIManager
         _autoProtocolButton = new Rectangle(1196, 166, 72, 28);
         var defense = session.Content.Tactics.EmergencyDefense;
         var plateFieldFull = session.EmergencyDefenses.Count >= defense.MaximumActive;
-        var emergencyReady = !plateFieldFull && (session.EmergencyInventory > 0 || session.CanDirectPurchaseEmergencyDefense);
-        var emergencyLabel = PulsePlateButtonLabel(session);
+        var emergencyReady = session.TacticalSystemsEnabled && !plateFieldFull && (session.EmergencyInventory > 0 || session.CanDirectPurchaseEmergencyDefense);
+        var emergencyLabel = session.TacticalSystemsEnabled ? PulsePlateButtonLabel(session) : "[Q] PLATES | DIRECTIVE OFF";
         DrawButton(batch, p, _emergencyButton, emergencyLabel, emergencyReady, ColorPalette.Gold);
 
         var generator = session.Content.Tactics.Generator;
-        var generatorReady = session.Generator is not null || session.Economy.CanAfford(generator.PurchaseCost);
-        var generatorLabel = session.Generator is { } active
+        var generatorReady = session.TacticalSystemsEnabled && (session.Generator is not null || session.Economy.CanAfford(generator.PurchaseCost));
+        var generatorLabel = !session.TacticalSystemsEnabled ? "[G] FORGE | DIRECTIVE OFF" : session.Generator is { } active
             ? session.EmergencyInventory >= active.Level.Capacity
                 ? $"[G] FORGE L{active.LevelIndex + 1} | FULL"
                 : session.Waves.IsActive
@@ -912,16 +931,18 @@ public sealed class UIManager
             var row = index / 2;
             var rect = new Rectangle(972 + column * 148, 228 + row * 44, 140, 39);
             _towerCards[definition.Id] = rect;
-            var affordable = session.Economy.CanAfford(definition.PurchaseCost);
+            var available = session.IsTowerAvailable(definition.Id);
+            var affordable = available && session.Economy.CanAfford(definition.PurchaseCost);
             var selected = session.PlacementTowerId == definition.Id;
-            var cardFill = selected ? ColorPalette.Tint(definition.Visual.PrimaryColor, 0.42f) : ColorPalette.PanelAlt;
-            var cardOutline = selected ? definition.Visual.PrimaryColor : affordable ? ColorPalette.CardOutline : ColorPalette.Coral;
+            var cardFill = !available ? ColorPalette.Disabled : selected ? ColorPalette.Tint(definition.Visual.PrimaryColor, 0.42f) : ColorPalette.PanelAlt;
+            var cardOutline = !available ? ColorPalette.Muted : selected ? definition.Visual.PrimaryColor : affordable ? ColorPalette.CardOutline : ColorPalette.Coral;
             p.FillRect(batch, rect, cardFill);
             p.DrawRect(batch, rect, cardOutline, selected ? 2 : 1);
             p.DrawShape(batch, new Vector2(rect.X + 17, rect.Center.Y), 10, definition.Visual.Shape, definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
             DrawText(batch, index == 9 ? "0" : (index + 1).ToString(), new Vector2(rect.Right - 14, rect.Y + 7), selected ? definition.Visual.AccentColor : ColorPalette.Muted, 0.39f, true);
             DrawFittedText(batch, definition.DisplayName, new Vector2(rect.X + 38, rect.Y + 5), ColorPalette.Ink, 0.53f, 80);
-            DrawText(batch, $"{definition.PurchaseCost}  {TowerInfo.ShortRole(definition)}", new Vector2(rect.X + 38, rect.Y + 21), affordable ? ColorPalette.Muted : ColorPalette.Coral, 0.44f);
+            DrawText(batch, available ? $"{definition.PurchaseCost}  {TowerInfo.ShortRole(definition)}" : "DIRECTIVE OFF",
+                new Vector2(rect.X + 38, rect.Y + 21), available ? affordable ? ColorPalette.Muted : ColorPalette.Coral : ColorPalette.Muted, 0.44f);
         }
 
         p.FillRect(batch, new Rectangle(972, 452, 296, 3), ColorPalette.Violet);
@@ -1227,6 +1248,8 @@ public sealed class UIManager
         PlacementFailure.OverlapsDefense => "NO OPEN PLATE POSITION NEARBY",
         PlacementFailure.DefenseCapacityReached => $"PLATE FIELD FULL - {session.Content.Tactics.EmergencyDefense.MaximumActive} ACTIVE MAX",
         PlacementFailure.GeneratorAlreadyBuilt => "ONLY ONE CHARGE FORGE IS ALLOWED",
+        PlacementFailure.TowerUnavailable => $"{session.Challenge.DisplayName.ToUpperInvariant()} - TOWER OFFLINE",
+        PlacementFailure.TacticalSystemsDisabled => $"{session.Challenge.DisplayName.ToUpperInvariant()} - RESERVES OFFLINE",
         PlacementFailure.NoDefenseAvailable => !session.Waves.IsActive && session.EmergencyInventory <= 0
             ? "NO STORED PLATE - DIRECT BUYING ACTIVATES IN WAVES"
             : $"NO STORED PLATE - NEED {session.CurrentEmergencyDirectPurchaseCost} CREDITS",
@@ -1256,9 +1279,12 @@ public sealed class UIManager
         var feature = map.PowerNodes > 0 ? $"{map.PowerNodes} SURGE NODES" : map.PathStyle.ToUpperInvariant();
         var mapSuffix = $"THREAT {map.Challenge}/5 | {feature}";
         var difficulty = _difficulties.Count == 0 ? null : _difficulties[_selectedDifficultyIndex];
+        var challenge = _challenges.Count == 0 ? null : _challenges[_selectedChallengeIndex];
         DrawButton(batch, p, _mapButton, $"{_selectedMapIndex + 1}/{Math.Max(1, _maps.Count)}  {map.Name.ToUpperInvariant()}", true, ColorPalette.Berry);
         DrawButton(batch, p, _difficultyButton, (difficulty?.DisplayName ?? "Normal").ToUpperInvariant(), true,
             difficulty?.AccentColor ?? ColorPalette.Cobalt);
+        DrawButton(batch, p, _challengeButton, (challenge?.MenuLabel ?? "Standard").ToUpperInvariant(), true,
+            challenge?.AccentColor ?? ColorPalette.Cyan);
         DrawButton(batch, p, _continueButton, "LOAD SAVES", _saveAvailable, ColorPalette.Violet);
         DrawButton(batch, p, _mainMenuLibraryButton, "TOWER LIBRARY", true, ColorPalette.Cyan);
         DrawButton(batch, p, _playButton, "NEW GAME", true, ColorPalette.Cobalt);
@@ -1269,8 +1295,9 @@ public sealed class UIManager
         DrawFittedCenteredText(batch, $"{mapSuffix} | {map.Description}", new Vector2(640, 632), ColorPalette.Muted, 0.50f, 920);
         DrawFittedCenteredText(batch, map.Campaign.CompactSummary, new Vector2(640, 650), ColorPalette.Cyan, 0.44f, 940);
         DrawFittedCenteredText(batch, $"{(difficulty?.DisplayName ?? "Normal").ToUpperInvariant()} | {difficultySummary}",
-            new Vector2(640, 669), difficulty?.AccentColor ?? ColorPalette.Cobalt, 0.46f, 880);
-        DrawText(batch, "Left click places/selects   \u2022   Right click cancels   \u2022   Escape pauses", new Vector2(640, 691), ColorPalette.Navy, 0.54f, true);
+            new Vector2(640, 669), difficulty?.AccentColor ?? ColorPalette.Cobalt, 0.44f, 920);
+        DrawFittedCenteredText(batch, $"{(challenge?.DisplayName ?? "Standard").ToUpperInvariant()} | {challenge?.Description ?? "All systems available."}",
+            new Vector2(640, 691), challenge?.AccentColor ?? ColorPalette.Cyan, 0.43f, 940);
     }
 
     private void DrawSettings(SpriteBatch batch, PrimitiveRenderer p)
@@ -1338,8 +1365,10 @@ public sealed class UIManager
             var progress = slot.IsEndless ? $"ENDLESS {slot.CurrentWave}" : $"WAVE {slot.CurrentWave}/20";
             var difficultyName = _difficulties.FirstOrDefault(x => x.Id.Equals(slot.DifficultyId, StringComparison.OrdinalIgnoreCase))?.DisplayName
                 ?? (string.IsNullOrWhiteSpace(slot.DifficultyId) ? "Hard" : slot.DifficultyId);
-            DrawText(batch, $"{(slot.IsCoOp ? "CO-OP" : "SOLO")}  |  {mapName.ToUpperInvariant()}  |  {difficultyName.ToUpperInvariant()}  |  {progress}",
-                new Vector2(rect.X + 150, rect.Y + 12), ColorPalette.Ink, 0.58f);
+            var challengeName = _challenges.FirstOrDefault(x => x.Id.Equals(slot.ChallengeId, StringComparison.OrdinalIgnoreCase))?.DisplayName
+                ?? (string.IsNullOrWhiteSpace(slot.ChallengeId) ? "Standard" : slot.ChallengeId.Replace('_', ' '));
+            DrawFittedText(batch, $"{(slot.IsCoOp ? "CO-OP" : "SOLO")}  |  {mapName.ToUpperInvariant()}  |  {difficultyName.ToUpperInvariant()}  |  {challengeName.ToUpperInvariant()}  |  {progress}",
+                new Vector2(rect.X + 150, rect.Y + 12), ColorPalette.Ink, 0.58f, rect.Width - 164);
             var localTime = slot.SavedAtUtc.Kind == DateTimeKind.Unspecified
                 ? DateTime.SpecifyKind(slot.SavedAtUtc, DateTimeKind.Utc).ToLocalTime()
                 : slot.SavedAtUtc.ToLocalTime();
@@ -1393,8 +1422,8 @@ public sealed class UIManager
             DrawText(batch, entry.Victory ? "SECURED" : "BREACHED", new Vector2(rect.X + 22, rect.Y + 13), accent, 0.62f);
 
             var progress = entry.IsEndless ? $"ENDLESS {entry.CurrentWave}" : $"WAVE {entry.CurrentWave}/{entry.TotalWaves}";
-            DrawText(batch, $"{entry.MapName.ToUpperInvariant()}  |  {entry.DifficultyName.ToUpperInvariant()}  |  {progress}",
-                new Vector2(rect.X + 150, rect.Y + 12), ColorPalette.Ink, 0.56f);
+            DrawFittedText(batch, $"{entry.MapName.ToUpperInvariant()}  |  {entry.DifficultyName.ToUpperInvariant()}  |  {entry.ChallengeName.ToUpperInvariant()}  |  {progress}",
+                new Vector2(rect.X + 150, rect.Y + 12), ColorPalette.Ink, 0.56f, rect.Width - 164);
             var localTime = entry.CompletedAtUtc.Kind == DateTimeKind.Unspecified
                 ? DateTime.SpecifyKind(entry.CompletedAtUtc, DateTimeKind.Utc).ToLocalTime()
                 : entry.CompletedAtUtc.ToLocalTime();
@@ -1418,7 +1447,8 @@ public sealed class UIManager
         DrawMenuFrame(batch, p);
         DrawText(batch, "ONLINE CO-OP", new Vector2(640, 120), ColorPalette.Ink, 1.9f, true);
         DrawText(batch, "Direct internet play. The host forwards TCP 28741; the friend enters the address and code.", new Vector2(640, 164), ColorPalette.Muted, 0.60f, true);
-        DrawText(batch, $"HOST MAP  {SelectedMapName.ToUpperInvariant()}  |  {SelectedDifficultyName.ToUpperInvariant()}", new Vector2(640, 194), ColorPalette.Violet, 0.58f, true);
+        DrawFittedCenteredText(batch, $"HOST  {SelectedMapName.ToUpperInvariant()}  |  {SelectedDifficultyName.ToUpperInvariant()}  |  {SelectedChallengeName.ToUpperInvariant()}",
+            new Vector2(640, 194), ColorPalette.Violet, 0.58f, 760);
 
         DrawText(batch, "HOST ADDRESS  (PUBLIC IP OR DNS)", new Vector2(500, 242), _editingJoinCode ? ColorPalette.Muted : ColorPalette.Cobalt, 0.54f);
         p.FillRect(batch, _joinHostField, ColorPalette.PanelAlt);
@@ -1488,6 +1518,9 @@ public sealed class UIManager
 
         DrawText(batch, victory ? "BASTION SECURED" : "BASTION BREACHED", new Vector2(640, 105), ColorPalette.Ink, 1.55f, true);
         DrawText(batch, victory ? "Campaign secured. Continue into escalating endless defense." : $"Defense collapsed during wave {session.CurrentWave}.", new Vector2(640, 142), ColorPalette.Muted, 0.72f, true);
+        DrawFittedCenteredText(batch,
+            $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
+            new Vector2(640, 160), session.Challenge.AccentColor, 0.40f, 650);
 
         DrawResultStatCard(batch, p, new Rectangle(296, 172, 158, 58), "WAVE", session.IsEndlessMode ? $"{session.CurrentWave}+" : $"{session.CurrentWave}/{session.TotalWaves}", ColorPalette.Cyan);
         DrawResultStatCard(batch, p, new Rectangle(472, 172, 158, 58), "LIVES", $"{session.Economy.Lives}/{session.Economy.StartingLives}", ColorPalette.Coral);
@@ -1630,7 +1663,9 @@ public sealed class UIManager
         DrawButton(batch, p, _loadButton, "LOAD SAVES", _saveAvailable, ColorPalette.Violet);
         DrawButton(batch, p, _restartButton, "RESTART", true, ColorPalette.Orange);
         DrawButton(batch, p, _mainMenuButton, "MAIN MENU", true, ColorPalette.Coral);
-        DrawText(batch, "Review exact costs, levels, and final branches before committing credits.", new Vector2(640, 580), ColorPalette.Muted, 0.50f, true);
+        DrawFittedCenteredText(batch,
+            $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
+            new Vector2(640, 580), session.Challenge.AccentColor, 0.50f, 500);
     }
 
     private void DrawTowerLibrary(SpriteBatch batch, PrimitiveRenderer p, string returnDestination)

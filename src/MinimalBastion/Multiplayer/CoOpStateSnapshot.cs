@@ -11,6 +11,7 @@ public sealed class CoOpStateSnapshot
     public string RunId { get; set; } = "";
     public string MapId { get; set; } = "";
     public string DifficultyId { get; set; } = "";
+    public string ChallengeId { get; set; } = "standard";
     public long Tick { get; set; }
     public int ReadyMask { get; set; }
     public bool WaveStartQueued { get; set; }

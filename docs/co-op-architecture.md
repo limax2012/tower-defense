@@ -69,15 +69,14 @@ The native menu, address/code fields, map selection label, and lobby presentatio
 - No matchmaking, lobby directory, hosted relay, automatic NAT traversal, or UPnP/NAT-PMP mapping.
 - Host must be reachable through manual port forwarding or a VPN.
 - Transport is not encrypted; do not send secrets through the protocol. Current messages contain gameplay commands and state hashes only.
-- No reconnect token, recovery snapshot, host migration, spectator, or more-than-two-player support.
-- Both peers are expected to run identical executable/content versions; checksum failures detect divergence but there is no friendly build fingerprint screen yet.
+- Reconnect is supported through the existing join code and a host-authoritative recovery snapshot, but host migration, spectators, and more-than-two-player support are not.
+- Both peers must run identical executable/content versions; build/content fingerprints reject incompatible peers before play.
 - Six-tick buffering is suitable for ordinary direct connections but has not been field-tested across high-latency remote routes.
 - Windows firewall/router behavior cannot be configured by the game.
 
 ## Highest-value networking follow-up
 
-1. Add build/content fingerprint exchange before session start.
-2. Add reconnect token plus host state snapshot at confirmed ticks.
-3. Field-test two remote PCs under latency/loss and tune the command buffer.
-4. Evaluate automatic port mapping as an optional convenience.
-5. If infrastructure is authorized, add a small encrypted rendezvous/relay service so players do not need router configuration.
+1. Field-test two remote PCs under latency/loss and tune the command buffer.
+2. Evaluate automatic port mapping as an optional convenience.
+3. If infrastructure is authorized, add a small encrypted rendezvous/relay service so players do not need router configuration.
+4. Add host migration only if private two-player testing demonstrates that it justifies the added state-transfer complexity.

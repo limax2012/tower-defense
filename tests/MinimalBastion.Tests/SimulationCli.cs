@@ -25,6 +25,9 @@ internal static class SimulationCli
         var difficultyId = ReadValue(args, "--difficulty") ?? DifficultyCatalog.LegacyId;
         if (!content.Difficulties.ContainsKey(difficultyId))
             throw new ArgumentException($"Unknown difficulty '{difficultyId}'. Choose one of: {string.Join(", ", content.Difficulties.Keys.OrderBy(x => x))}.");
+        var challengeId = ReadValue(args, "--challenge") ?? ChallengeCatalog.DefaultId;
+        if (!content.Challenges.ContainsKey(challengeId))
+            throw new ArgumentException($"Unknown challenge '{challengeId}'. Choose one of: {string.Join(", ", content.Challenges.Keys.OrderBy(x => x))}.");
 
         var runs = new List<SimulationRunResult>();
         foreach (var mapId in maps)
@@ -39,11 +42,12 @@ internal static class SimulationCli
                         Seed = seed,
                         MapId = mapId,
                         DifficultyId = difficultyId,
+                        ChallengeId = challengeId,
                         MaximumWave = maximumWave,
                         ContinueEndless = maximumWave > content.Waves.Waves.Count
                     });
                     runs.Add(result);
-                    Console.WriteLine($"{mapId,-15} {difficultyId,-8} {strategy,-16} seed {seed,7}  {result.Result,-7}  wave {result.WaveReached,2}  lives {result.LivesRemaining,2}  spent {result.CreditsSpent,5}  towers {result.Towers.Values.Sum(x => x.Purchases),2}  plates {result.EmergencyDeployments,2}");
+                    Console.WriteLine($"{mapId,-15} {difficultyId,-8} {challengeId,-14} {strategy,-16} seed {seed,7}  {result.Result,-7}  wave {result.WaveReached,2}  lives {result.LivesRemaining,2}  spent {result.CreditsSpent,5}  towers {result.Towers.Values.Sum(x => x.Purchases),2}  plates {result.EmergencyDeployments,2}");
                 }
             }
 

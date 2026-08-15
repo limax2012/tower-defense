@@ -13,6 +13,7 @@ public sealed class GameContent
     public Dictionary<string, MapDefinition> Maps { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, WaveSetDefinition> WaveSets { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, DifficultyDefinition> Difficulties { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, ChallengeDefinition> Challenges { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public TacticsDefinition Tactics { get; init; } = new();
 }
 
@@ -48,6 +49,39 @@ public static class DifficultyCatalog
     {
         var baseCredits = map.StartingCredits > 0 ? map.StartingCredits : Core.GameConstants.StartingCredits;
         return Math.Max(0, (int)MathF.Round(baseCredits * difficulty.StartingCreditsMultiplier / 5f) * 5);
+    }
+}
+
+public sealed class ChallengeDefinition
+{
+    public string Id { get; set; } = "standard";
+    public string DisplayName { get; set; } = "Standard";
+    public string MenuLabel { get; set; } = "Standard";
+    public string Description { get; set; } = "All towers and tactical reserves are available.";
+    public float StartingCreditsMultiplier { get; set; } = 1f;
+    public bool TacticalSystemsEnabled { get; set; } = true;
+    public List<string> ExcludedTowerIds { get; set; } = new();
+    public string Accent { get; set; } = "#2192AA";
+    public Color AccentColor => TowerVisualData.ParseColor(Accent);
+}
+
+public static class ChallengeCatalog
+{
+    public const string DefaultId = "standard";
+    private static readonly ChallengeDefinition Standard = new();
+
+    public static ChallengeDefinition Resolve(GameContent content, string? challengeId)
+    {
+        var requested = string.IsNullOrWhiteSpace(challengeId) ? DefaultId : challengeId;
+        if (content.Challenges.TryGetValue(requested, out var challenge)) return challenge;
+        if (content.Challenges.Count > 0) throw new ArgumentException($"Unknown challenge directive '{requested}'.", nameof(challengeId));
+        return Standard;
+    }
+
+    public static int StartingCredits(MapDefinition map, DifficultyDefinition difficulty, ChallengeDefinition challenge)
+    {
+        var baseCredits = DifficultyCatalog.StartingCredits(map, difficulty);
+        return Math.Max(0, (int)MathF.Round(baseCredits * challenge.StartingCreditsMultiplier / 5f) * 5);
     }
 }
 

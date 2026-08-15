@@ -44,6 +44,7 @@ internal static class Program
             ("tactical color palette", TacticalColorPalette),
             ("map roster and power nodes", MapRosterAndPowerNodes),
             ("difficulty profiles and persistence", DifficultyProfilesAndPersistence),
+            ("challenge directives and persistence", ChallengeDirectivesAndPersistence),
             ("power node tower intel", PowerNodeTowerIntel),
             ("pause UI glyph coverage", PauseUiGlyphCoverage),
             ("opening wave balance", OpeningWaveBalance),
@@ -124,6 +125,7 @@ internal static class Program
         Check.Equal(5, content.Enemies.Count, "enemy count");
         Check.Equal(20, content.Waves.Waves.Count, "wave count");
         Check.Equal(4, content.Maps.Count, "map count");
+        Check.Equal(4, content.Challenges.Count, "challenge directive count");
         Check.Equal(1090, content.Waves.Waves.SelectMany(x => x.Groups).Sum(x => x.Count), "enemy count in waves");
         Check.True(content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase)) >= 5, "elite encounter groups");
         Check.Equal(1, content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)), "final boss group");
@@ -230,8 +232,47 @@ internal static class Program
         var ui = new UIManager(null!);
         ui.ConfigureDifficulties(content.Difficulties.Values);
         Check.Equal("normal", ui.SelectedDifficultyId, "new game UI defaults to normal");
-        ui.HandleMainMenu(WorldInput(new Vector2(740, 390)) with { LeftPressed = true });
+        ui.HandleMainMenu(WorldInput(new Vector2(685, 390)) with { LeftPressed = true });
         Check.Equal("hard", ui.SelectedDifficultyId, "difficulty selector cycles profiles");
+    }
+
+    private static void ChallengeDirectivesAndPersistence()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        var standard = new GameSession(content, "foundry_loop", "hard", "standard");
+        var close = new GameSession(content, "foundry_loop", "hard", "close_quarters");
+        var core = new GameSession(content, "foundry_loop", "hard", "core_six");
+        var noReserves = new GameSession(content, "foundry_loop", "hard", "no_reserves");
+
+        Check.Equal(400, standard.Economy.Credits, "standard directive preserves starting economy");
+        Check.Equal(440, close.Economy.Credits, "close-quarters compensation is fixed at session start");
+        Check.True(!close.IsTowerAvailable("watchtower") && !close.IsTowerAvailable("siege_mortar"),
+            "close quarters removes the two remote artillery towers");
+        Check.Equal(PlacementFailure.TowerUnavailable, close.ValidatePlacement("watchtower", new Vector2(50, 200)),
+            "restricted towers report an explicit directive failure");
+        Check.True(core.IsTowerAvailable("ember_coil") && !core.IsTowerAvailable("prism_beam"),
+            "core-six roster retains its authored compact arsenal");
+        Check.True(!noReserves.TacticalSystemsEnabled && noReserves.EmergencyInventory == 0,
+            "no-reserves disables tactical inventory");
+        Check.Equal(PlacementFailure.TacticalSystemsDisabled,
+            noReserves.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(200, 30)),
+            "no-reserves rejects pulse placement explicitly");
+
+        var saved = close.CaptureSaveGame();
+        Check.Equal("close_quarters", saved.ChallengeId, "save captures challenge directive");
+        Check.Equal("close_quarters", GameSession.RestoreSaveGame(content, saved).ChallengeId, "save restores challenge directive");
+        var snapshot = core.CaptureCoOpState(8, 0, false);
+        Check.Equal("core_six", GameSession.RestoreCoOpState(content, snapshot, 2).ChallengeId,
+            "co-op snapshot restores challenge directive");
+        Check.True(SessionChecksum.Compute(standard, 0) != SessionChecksum.Compute(close, 0),
+            "challenge identity contributes to deterministic checksum");
+
+        var ui = new UIManager(null!);
+        ui.ConfigureChallenges(content.Challenges.Values);
+        Check.Equal("standard", ui.SelectedChallengeId, "challenge UI defaults to standard");
+        ui.HandleMainMenu(WorldInput(new Vector2(790, 390)) with { LeftPressed = true });
+        Check.Equal("close_quarters", ui.SelectedChallengeId, "challenge selector advances to close quarters");
     }
 
     private static void HighResolutionViewport()

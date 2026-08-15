@@ -33,6 +33,9 @@ public sealed class GameSession
     public GameContent Content => _content;
     public DifficultyDefinition Difficulty { get; }
     public string DifficultyId => Difficulty.Id;
+    public ChallengeDefinition Challenge { get; }
+    public string ChallengeId => Challenge.Id;
+    public bool TacticalSystemsEnabled => Challenge.TacticalSystemsEnabled;
     public MapRuntime Map { get; }
     public EconomyService Economy { get; }
     public WaveManager Waves { get; }
@@ -56,7 +59,7 @@ public sealed class GameSession
             return (int)Math.Min(int.MaxValue, cost);
         }
     }
-    public bool CanDirectPurchaseEmergencyDefense => Waves.IsActive && Economy.CanAfford(CurrentEmergencyDirectPurchaseCost);
+    public bool CanDirectPurchaseEmergencyDefense => TacticalSystemsEnabled && Waves.IsActive && Economy.CanAfford(CurrentEmergencyDirectPurchaseCost);
     public TowerInstance? SelectedTower { get; private set; }
     public TowerInstance? HoveredTower { get; private set; }
     public ChargeForgeInstance? SelectedGenerator { get; private set; }
@@ -105,20 +108,28 @@ public sealed class GameSession
     public event Action<WaveDefinition>? WaveStarted;
     public event Action<int>? WaveCompleted;
 
-    public GameSession(GameContent content, string? mapId = null, string? difficultyId = null)
+    public GameSession(GameContent content, string? mapId = null, string? difficultyId = null, string? challengeId = null)
     {
         _content = content;
         var mapDefinition = mapId is not null && content.Maps.TryGetValue(mapId, out var selectedMap) ? selectedMap : content.Map;
         var waveSet = content.WaveSets.TryGetValue(mapDefinition.WaveSet, out var selectedWaves) ? selectedWaves : content.Waves;
         Difficulty = DifficultyCatalog.Resolve(content, difficultyId);
+        Challenge = ChallengeCatalog.Resolve(content, challengeId);
         Map = new MapRuntime(mapDefinition);
-        Economy = new EconomyService(DifficultyCatalog.StartingCredits(mapDefinition, Difficulty), Difficulty.StartingLives);
+        Economy = new EconomyService(ChallengeCatalog.StartingCredits(mapDefinition, Difficulty, Challenge), Difficulty.StartingLives);
         Waves = new WaveManager(waveSet.Waves);
         DamageResolver = new DamageResolver(this);
         Statistics = new RunStatistics(this);
         _towerSystem = new TowerSystem(TargetSelector);
-        EmergencyInventory = Math.Max(0, content.Tactics.EmergencyDefense.StartingInventory);
-        if (mapDefinition.PowerNodes.Count > 0)
+        EmergencyInventory = TacticalSystemsEnabled ? Math.Max(0, content.Tactics.EmergencyDefense.StartingInventory) : 0;
+        if (!Challenge.Id.Equals(ChallengeCatalog.DefaultId, StringComparison.OrdinalIgnoreCase))
+        {
+            AnnouncementTitle = Challenge.DisplayName.ToUpperInvariant();
+            AnnouncementSubtitle = Challenge.Description;
+            AnnouncementRemaining = 3.6f;
+            AnnouncementPositive = true;
+        }
+        else if (mapDefinition.PowerNodes.Count > 0)
         {
             AnnouncementTitle = mapDefinition.DisplayName.ToUpperInvariant();
             AnnouncementSubtitle = "Hover a Surge Node; compact fields grant one focused tower bonus.";
@@ -280,7 +291,7 @@ public sealed class GameSession
 
     public void BeginPlacement(string towerId)
     {
-        if (!_content.Towers.ContainsKey(towerId)) return;
+        if (!_content.Towers.ContainsKey(towerId) || !IsTowerAvailable(towerId)) return;
         PlacementTowerId = towerId;
         TacticalPlacement = TacticalPlacementKind.None;
         PlacementFailure = PlacementFailure.None;
@@ -290,6 +301,7 @@ public sealed class GameSession
 
     public void BeginEmergencyPlacement()
     {
+        if (!TacticalSystemsEnabled) return;
         PlacementTowerId = null;
         TacticalPlacement = TacticalPlacementKind.PulsePlate;
         PlacementFailure = PlacementFailure.None;
@@ -300,6 +312,7 @@ public sealed class GameSession
 
     public void BeginGeneratorPlacement()
     {
+        if (!TacticalSystemsEnabled) return;
         if (Generator is not null)
         {
             SelectedGenerator = Generator;
@@ -346,6 +359,7 @@ public sealed class GameSession
     public PlacementFailure ValidatePlacement(string towerId, Vector2 position)
     {
         if (!_content.Towers.TryGetValue(towerId, out var definition)) return PlacementFailure.UnknownTower;
+        if (!IsTowerAvailable(towerId)) return PlacementFailure.TowerUnavailable;
         if (!Economy.CanAfford(definition.PurchaseCost)) return PlacementFailure.InsufficientCredits;
         if (position.X < GameConstants.TowerRadius || position.X > GameConstants.MapWidth - GameConstants.TowerRadius ||
             position.Y < GameConstants.TopBarHeight + GameConstants.TowerRadius || position.Y > GameConstants.LogicalHeight - GameConstants.TowerRadius)
@@ -361,6 +375,7 @@ public sealed class GameSession
 
     public PlacementFailure ValidateTacticalPlacement(TacticalPlacementKind kind, Vector2 position)
     {
+        if (!TacticalSystemsEnabled) return PlacementFailure.TacticalSystemsDisabled;
         if (kind == TacticalPlacementKind.PulsePlate)
         {
             var definition = _content.Tactics.EmergencyDefense;
@@ -403,6 +418,7 @@ public sealed class GameSession
         var definition = _content.Tactics.EmergencyDefense;
         var projection = Map.Path.Project(cursorPosition);
         placementPosition = projection.Position;
+        if (!TacticalSystemsEnabled) return false;
         var roadSnapDistance = Map.Definition.PathWidth * 0.5f + definition.PlacementRoadTolerance;
         if (projection.DistanceToPath > roadSnapDistance) return false;
 
@@ -485,6 +501,9 @@ public sealed class GameSession
         GeneratorPlaced?.Invoke(Generator);
         return true;
     }
+
+    public bool IsTowerAvailable(string towerId) =>
+        !Challenge.ExcludedTowerIds.Contains(towerId, StringComparer.OrdinalIgnoreCase);
 
     public bool TryUpgradeSelectedTower()
     {
@@ -788,6 +807,7 @@ public sealed class GameSession
             IsCoOp = IsCoOp,
             MapId = Map.Definition.Id,
             DifficultyId = DifficultyId,
+            ChallengeId = ChallengeId,
             Speed = Speed,
             OverdriveCooldownRemaining = OverdriveCooldownRemaining,
             AutoOverdriveTowerId = AutoOverdriveTowerId,
@@ -810,6 +830,7 @@ public sealed class GameSession
         RunId = RunId,
         MapId = Map.Definition.Id,
         DifficultyId = DifficultyId,
+        ChallengeId = ChallengeId,
         Tick = Math.Max(0, tick),
         ReadyMask = readyMask,
         WaveStartQueued = waveStartQueued,
@@ -846,7 +867,7 @@ public sealed class GameSession
         var knownMap = content.Maps.ContainsKey(data.MapId) || content.Map.Id.Equals(data.MapId, StringComparison.OrdinalIgnoreCase);
         if (!knownMap) throw new InvalidDataException($"Network map '{data.MapId}' is not available.");
 
-        var session = new GameSession(content, data.MapId, data.DifficultyId);
+        var session = new GameSession(content, data.MapId, data.DifficultyId, data.ChallengeId);
         session.RunId = NormalizeRunId(data.RunId, session.RunId);
         session.ConfigureCoOp(localPlayerId);
         session.Economy.RestoreSaveData(data.Economy);
@@ -903,7 +924,7 @@ public sealed class GameSession
         var knownMap = content.Maps.ContainsKey(data.MapId) || content.Map.Id.Equals(data.MapId, StringComparison.OrdinalIgnoreCase);
         if (!knownMap) throw new InvalidDataException($"Saved map '{data.MapId}' is not available.");
 
-        var session = new GameSession(content, data.MapId, data.DifficultyId);
+        var session = new GameSession(content, data.MapId, data.DifficultyId, data.ChallengeId);
         session.RunId = NormalizeRunId(data.RunId, session.RunId);
         if (data.IsCoOp) session.ConfigureCoOp(1);
         session.Economy.RestoreSaveData(data.Economy);

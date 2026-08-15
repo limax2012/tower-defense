@@ -110,6 +110,7 @@ public sealed class Game1 : Game
             _ui = new UIManager(font);
             _ui.ConfigureMaps(_content.Maps.Values, _content.WaveSets, _content.Enemies);
             _ui.ConfigureDifficulties(_content.Difficulties.Values);
+            _ui.ConfigureChallenges(_content.Challenges.Values);
             _ui.ConfigureTowerLibrary(_content.Towers.Values);
             _ui.ConfigureSettings(_settings);
             _ui.SetSaveState(SaveGameStore.Exists);
@@ -245,7 +246,7 @@ public sealed class Game1 : Game
     {
         if (action == UiAction.Play)
         {
-            AssignSession(new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId));
+            AssignSession(new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId, _ui.SelectedChallengeId));
             _lastAutosavedWave = -1;
             _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
             _state = GameState.Playing;
@@ -418,7 +419,7 @@ public sealed class Game1 : Game
         var session = _session;
         if (session is null)
         {
-            session = new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId);
+            session = new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId, _ui.SelectedChallengeId);
             AssignSession(session);
             session.ConfigureCoOp(1);
         }
@@ -865,7 +866,8 @@ public sealed class Game1 : Game
         }
         var mapId = _session?.Map.Definition.Id ?? _ui.SelectedMapId;
         var difficultyId = _session?.DifficultyId ?? _ui.SelectedDifficultyId;
-        AssignSession(new GameSession(_content, mapId, difficultyId));
+        var challengeId = _session?.ChallengeId ?? _ui.SelectedChallengeId;
+        AssignSession(new GameSession(_content, mapId, difficultyId, challengeId));
         _lastAutosavedWave = -1;
         _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
         _state = GameState.Playing;
@@ -893,7 +895,8 @@ public sealed class Game1 : Game
         if (!_isNetworkHost || _session is null || _coOpConnection is null) return;
         var mapId = _session.Map.Definition.Id;
         var difficultyId = _session.DifficultyId;
-        AssignSession(new GameSession(_content, mapId, difficultyId));
+        var challengeId = _session.ChallengeId;
+        AssignSession(new GameSession(_content, mapId, difficultyId, challengeId));
         _session.ConfigureCoOp(1);
         _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
         _lastAutosavedWave = -1;

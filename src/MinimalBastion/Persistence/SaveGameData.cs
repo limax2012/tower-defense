@@ -11,6 +11,7 @@ public sealed class SaveGameData
     public bool IsCoOp { get; set; }
     public string MapId { get; set; } = "";
     public string DifficultyId { get; set; } = "";
+    public string ChallengeId { get; set; } = "standard";
     public float Speed { get; set; } = 1f;
     public float OverdriveCooldownRemaining { get; set; }
     public int AutoOverdriveTowerId { get; set; }

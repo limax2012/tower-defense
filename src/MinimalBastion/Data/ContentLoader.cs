@@ -19,6 +19,7 @@ public sealed class ContentLoader
         var enemies = Read<List<EnemyDefinition>>("Enemies.json");
         var tactics = Read<TacticsDefinition>("Tactics.json");
         var difficulties = Read<List<DifficultyDefinition>>("Difficulties.json");
+        var challenges = Read<List<ChallengeDefinition>>("Challenges.json");
         var maps = LoadMaps();
         var waveSets = LoadWaveSets();
         if (!maps.TryGetValue("foundry_loop", out var map)) throw new InvalidDataException("No foundry_loop map was found.");
@@ -30,6 +31,7 @@ public sealed class ContentLoader
             DataValidator.Validate(towers, enemies, candidateMap, candidateWaves, tactics);
         }
         DataValidator.ValidateDifficulties(difficulties);
+        DataValidator.ValidateChallenges(challenges, towers);
 
         return new GameContent
         {
@@ -40,6 +42,7 @@ public sealed class ContentLoader
             Maps = maps,
             WaveSets = waveSets,
             Difficulties = difficulties.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase),
+            Challenges = challenges.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase),
             Tactics = tactics
         };
     }
@@ -85,6 +88,21 @@ public sealed class ContentLoader
 
 public static class DataValidator
 {
+    public static void ValidateChallenges(IReadOnlyList<ChallengeDefinition> challenges, IReadOnlyList<TowerDefinition> towers)
+    {
+        if (challenges.Count < 2) throw new InvalidDataException("At least two challenge directives are required.");
+        RequireUnique(challenges.Select(x => x.Id), "challenge");
+        if (!challenges.Any(x => x.Id.Equals(ChallengeCatalog.DefaultId, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidDataException("Challenge directives must include standard.");
+        var towerIds = towers.Select(tower => tower.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (challenges.Any(challenge => string.IsNullOrWhiteSpace(challenge.DisplayName) ||
+            string.IsNullOrWhiteSpace(challenge.MenuLabel) || challenge.StartingCreditsMultiplier <= 0 ||
+            challenge.ExcludedTowerIds.Distinct(StringComparer.OrdinalIgnoreCase).Count() != challenge.ExcludedTowerIds.Count ||
+            challenge.ExcludedTowerIds.Any(id => !towerIds.Contains(id)) ||
+            challenge.ExcludedTowerIds.Count >= towers.Count))
+            throw new InvalidDataException("Invalid challenge directive.");
+    }
+
     public static void ValidateDifficulties(IReadOnlyList<DifficultyDefinition> difficulties)
     {
         if (difficulties.Count < 3) throw new InvalidDataException("At least three difficulty profiles are required.");
