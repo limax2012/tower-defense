@@ -1609,10 +1609,12 @@ public sealed class UIManager
         var effectiveRate = session.GetEffectiveAttacksPerSecond(tower);
         var effectiveDps = effectiveDamage * effectiveRate * Math.Max(1, tower.Level.PelletCount);
         DrawFittedText(batch, tower.IsSupport
-            ? $"AURA {tower.Level.AuraRange:0}   RATE +{tower.Level.AuraAttackSpeedBonus:P0}"
+            ? TowerInfo.ActiveAuraSummary(tower)
             : $"ACTIVE  DAMAGE {effectiveDamage:0.#}   DPS {effectiveDps:0.#}   RANGE {session.GetEffectiveRange(tower):0}",
             new Vector2(980, 540), ColorPalette.Ink, 0.56f, 280);
-        DrawText(batch, TowerInfo.Special(tower.Definition, tower.Level), new Vector2(980, 559), ColorPalette.Ink, 0.56f);
+        DrawText(batch, tower.IsSupport
+            ? "Strongest Beacon applies; auras never stack."
+            : TowerInfo.Special(tower.Definition, tower.Level), new Vector2(980, 559), ColorPalette.Ink, 0.56f);
         DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, 578), ColorPalette.Cobalt, 0.48f, 280);
         var power = session.Map.GetPowerBuff(tower.Position);
         var powerNodes = session.Map.GetPowerNodes(tower.Position);

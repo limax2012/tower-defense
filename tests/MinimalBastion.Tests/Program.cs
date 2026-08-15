@@ -2523,6 +2523,11 @@ internal static class Program
             "beacon protocol summary leads with its actual aura effects");
         Check.True(TowerInfo.ProtocolBonuses(beacon.Protocol).Contains("AURA/TOWER RANGE +20%", StringComparison.Ordinal),
             "beacon protocol explains that its range surge affects coverage and recipients");
+        Check.Equal("AURA 145   RATE +15%   RANGE +10%", TowerInfo.ActiveAuraSummary(source),
+            "beacon live summary reports its exact resting aura");
+        source.ActivateOverdrive();
+        Check.Equal("AURA 174   RATE +37%   RANGE +30%", TowerInfo.ActiveAuraSummary(source),
+            "beacon live summary includes every active Network Surge effect");
         var protocolReference = TowerInfo.ProtocolLibrarySummary(needle);
         Check.True(protocolReference.Contains("6s / CD 18s", StringComparison.Ordinal) &&
             protocolReference.Contains("AUTO 4+ / ELITE/BOSS", StringComparison.Ordinal),

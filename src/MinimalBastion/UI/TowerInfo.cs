@@ -315,4 +315,13 @@ public static class TowerInfo
             changes.Add($"RANGE {level.Range:0}>{level.Range * (1 + buff.RangeBonus):0} (+{buff.RangeBonus:P0})");
         return changes.Count == 0 ? "NO COMPATIBLE COMBAT STAT CHANGE" : $"SIGNAL BEACON  {string.Join("  ", changes)}";
     }
+
+    public static string ActiveAuraSummary(TowerInstance tower)
+    {
+        var protocol = tower.IsOverdriven ? tower.Protocol : null;
+        var auraRange = tower.Level.AuraRange * (1f + (protocol?.AuraRangeBonus ?? 0));
+        var attackSpeedBonus = tower.Level.AuraAttackSpeedBonus + (protocol?.AuraAttackSpeedBonus ?? 0);
+        var towerRangeBonus = tower.Level.AuraRangeBonus + (protocol?.AuraRangeBonus ?? 0);
+        return $"AURA {auraRange:0}   RATE +{attackSpeedBonus:P0}   RANGE +{towerRangeBonus:P0}";
+    }
 }
