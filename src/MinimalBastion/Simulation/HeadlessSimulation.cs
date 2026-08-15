@@ -10,7 +10,7 @@ public static class HeadlessSimulation
     public static SimulationRunResult Run(Data.GameContent content, SimulationOptions options)
     {
         var session = new GameSession(content, options.MapId, options.DifficultyId, options.ChallengeId);
-        var player = new AutoPlayer(session, options.Strategy, options.Seed);
+        var player = new AutoPlayer(session, options.Strategy, options.Seed, options);
         var telemetry = new RunTelemetry(session);
         var step = Math.Clamp(options.StepSeconds, 0.01f, 0.1f);
         var elapsed = 0f;
@@ -209,10 +209,7 @@ public static class HeadlessSimulation
             var metrics = GetTower(tower.Definition.Id);
             metrics.Upgrades++;
             metrics.CreditsSpent += cost;
-            if (tower.SpecializationId is { } specializationId)
-                metrics.Specializations[specializationId] = metrics.Specializations.GetValueOrDefault(specializationId) + 1;
-            else if (tower.DoctrineId is { } doctrineId)
-                metrics.Doctrines[doctrineId] = metrics.Doctrines.GetValueOrDefault(doctrineId) + 1;
+            metrics.RecordBranchUpgrade(tower);
         }
 
         private void OnTowerSold(TowerInstance tower, int value)

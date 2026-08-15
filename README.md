@@ -47,9 +47,10 @@ dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --balan
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate --strategy Adaptive --seed 1337
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --runs 5
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --map relay_divide --runs 10
+dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --difficulty hard --strategy LongRange "--force-build=siege_mortar:mortar_loader>quake_shell"
 ```
 
-Reports are written under `.build\balance`. Supported filters include `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--max-wave`, and `--output`. Tower reports list tier-two doctrine and final-role usage, and distinguish direct damage from Signal Beacon damage-equivalent, recipient-seconds, and source-attributed Slow, Stun, Exposed, and Armor Break enemy-seconds so support/control value is not hidden behind raw kill totals.
+Reports are written under `.build\balance`. Supported filters include `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, and `--output`. A forced build uses `tower:doctrine>specialization` and constrains that tower without changing other planning decisions. Tower reports list doctrine, final-role, and completed-build-path usage, and distinguish direct damage from Signal Beacon damage-equivalent, recipient-seconds, and source-attributed Slow, Stun, Exposed, and Armor Break enemy-seconds so support/control value is not hidden behind raw kill totals.
 
 Create a self-contained Windows build with:
 

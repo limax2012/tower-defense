@@ -1,5 +1,6 @@
 using MinimalBastion.Core;
 using MinimalBastion.Data;
+using MinimalBastion.Towers;
 
 namespace MinimalBastion.Simulation;
 
@@ -30,6 +31,9 @@ public sealed class SimulationOptions
     public float MaximumSimulatedSeconds { get; init; } = 3_600f;
     public int MaximumWave { get; init; } = int.MaxValue;
     public bool ContinueEndless { get; init; }
+    public string? ForcedTowerId { get; init; }
+    public string? ForcedDoctrineId { get; init; }
+    public string? ForcedSpecializationId { get; init; }
 }
 
 public sealed class SimulationRunResult
@@ -92,8 +96,24 @@ public sealed class TowerRunMetrics
     public Dictionary<int, float> DamageByLevel { get; init; } = new();
     public Dictionary<string, int> Doctrines { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, int> Specializations { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, int> BuildPaths { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public float ContributionDamage => Damage + SupportDamageEquivalent + ExposeDamageEquivalent + ArmorBreakDamageEquivalent;
     public float DamagePerCredit => CreditsSpent <= 0 ? 0 : ContributionDamage / CreditsSpent;
+
+    public void RecordBranchUpgrade(TowerInstance tower)
+    {
+        if (tower.SpecializationId is { } specializationId)
+        {
+            Specializations[specializationId] = Specializations.GetValueOrDefault(specializationId) + 1;
+            if (tower.DoctrineId is { } doctrineId)
+            {
+                var path = $"{doctrineId}>{specializationId}";
+                BuildPaths[path] = BuildPaths.GetValueOrDefault(path) + 1;
+            }
+        }
+        else if (tower.DoctrineId is { } doctrineId)
+            Doctrines[doctrineId] = Doctrines.GetValueOrDefault(doctrineId) + 1;
+    }
 }
 
 public sealed class WaveRunMetrics

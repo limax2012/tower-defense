@@ -14,9 +14,10 @@ dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simul
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate --strategy Adaptive --max-wave 30
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --runs 5
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --map relay_divide --runs 10 --output .build\balance\relay-10x.json
+dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --difficulty hard --strategy LongRange "--force-build=siege_mortar:mortar_loader>quake_shell"
 ```
 
-CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, and `--output`. A `--max-wave` above 20 explicitly enters deterministic endless mode; ordinary simulation remains the authored campaign. `--simulate-full` evaluates every map unless a map is supplied.
+CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, and `--output`. `--force-build` accepts `tower:doctrine>specialization` and is intended for controlled branch-viability diagnostics. A `--max-wave` above 20 explicitly enters deterministic endless mode; ordinary simulation remains the authored campaign. `--simulate-full` evaluates every map unless a map is supplied.
 
 ## Architecture
 
@@ -113,6 +114,7 @@ Reports: `.build/balance/four-map-hard-close_quarters-3x.json`, `.build/balance/
 - Tactical wins 13/20 while deploying 544 plates across the Hard matrix. The 16-field cap, active-wave escalating direct cost, knockback grace, and boss resistance prevent the former endless plate lock while preserving a viable hands-on strategy.
 - Mortar's deterministic shell caps reduce Hard aggregate damage/credit to 14.2 and keep it below Watchtower, Breaker, Needle, Shard, Frost, and Ember rather than allowing unlimited crowded-wave scaling.
 - Every tier-two doctrine and every final specialization still appears in winning Hard runs after the Watchtower pass. The least-used doctrine and final role each have 15 winning placements, so each branch retains a demonstrated success scenario.
+- Completed-path telemetry covers the actual doctrine/final pairing rather than treating the two choices independently. Natural Hard planning produced 39 of 40 possible paths; its sole omission was Mortar Quick Loader into Quake Shell because the planner preferred Quake's radius doctrine. Forcing that path across the five-seed, four-map LongRange matrix won 19/20 runs and recorded 189 completed Loader/Quake mortars in wins. The branch is viable and needs no compensating stat buff; the report is `.build/balance/loader-quake-longrange-hard-5x.json`.
 - The Beacon benchmark now measures indirect output. Tempo contributes 18.4 assisted DPS to a compact three-Needle cluster, while Horizon contributes 12.0 versus Tempo's 8.0 in a spread three-Watchtower formation by reaching two extra recipients.
 - Campaign telemetry now records source-attributed Slow, Stun, Exposed, and Armor Break enemy-seconds plus Beacon recipient-seconds and marginal attack-rate damage-equivalent. A one-seed, 36-run Hard sweep measured 1,539,911 Beacon assist damage, 131,592 supported tower-seconds, 130,230 control enemy-seconds, 45,313 expose enemy-seconds, and 83,348 armor-break enemy-seconds without changing gameplay outcomes.
 - The same attribution is now retained per deployed tower at runtime. Tower Intel can distinguish a specific Beacon's assisted damage and a specific control/expose/break source's enemy-seconds instead of showing only its direct damage and kills; saves and co-op checksums include these records.

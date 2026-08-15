@@ -28,6 +28,7 @@ internal static class SimulationCli
         var challengeId = ReadValue(args, "--challenge") ?? ChallengeCatalog.DefaultId;
         if (!content.Challenges.ContainsKey(challengeId))
             throw new ArgumentException($"Unknown challenge '{challengeId}'. Choose one of: {string.Join(", ", content.Challenges.Keys.OrderBy(x => x))}.");
+        var forcedBuild = ParseForcedBuild(ReadValue(args, "--force-build"), content);
 
         var runs = new List<SimulationRunResult>();
         foreach (var mapId in maps)
@@ -44,7 +45,10 @@ internal static class SimulationCli
                         DifficultyId = difficultyId,
                         ChallengeId = challengeId,
                         MaximumWave = maximumWave,
-                        ContinueEndless = maximumWave > content.Waves.Waves.Count
+                        ContinueEndless = maximumWave > content.Waves.Waves.Count,
+                        ForcedTowerId = forcedBuild?.TowerId,
+                        ForcedDoctrineId = forcedBuild?.DoctrineId,
+                        ForcedSpecializationId = forcedBuild?.SpecializationId
                     });
                     runs.Add(result);
                     Console.WriteLine($"{mapId,-15} {difficultyId,-8} {challengeId,-14} {strategy,-16} seed {seed,7}  {result.Result,-7}  wave {result.WaveReached,2}  lives {result.LivesRemaining,2}  spent {result.CreditsSpent,5}  towers {result.Towers.Values.Sum(x => x.Purchases),2}  plates {result.EmergencyDeployments,2}");
@@ -54,11 +58,14 @@ internal static class SimulationCli
         var batch = new SimulationBatchResult { Runs = runs };
         Console.WriteLine();
         Console.WriteLine($"Runs {runs.Count}, wins {batch.Wins}, win rate {batch.WinRate:P1}, average wave {batch.AverageWaveReached:0.0}, average lives {batch.AverageLivesRemaining:0.0}.");
+        if (forcedBuild is not null)
+            Console.WriteLine($"Forced completed path: {forcedBuild.TowerId}:{forcedBuild.DoctrineId}>{forcedBuild.SpecializationId}");
         PrintStrategySummary(runs);
         PrintMapSummary(runs);
         PrintTowerSummary(runs);
         PrintDoctrineSummary(runs);
         PrintSpecializationSummary(runs);
+        PrintBuildPathSummary(runs);
         Console.WriteLine($"Early calls earned {runs.Sum(x => x.EarlyStartCreditsEarned)} credits; overdrives {runs.Sum(x => x.Overdrives)}. Emergency defenses: {runs.Sum(x => x.EmergencyDeployments)} deployed, {runs.Sum(x => x.EmergencyTriggers)} triggers, {runs.Sum(x => x.EmergencyKills)} kills, {runs.Sum(x => x.EmergencyDamage):0} damage; generators {runs.Sum(x => x.GeneratorPurchases)}.");
 
         var root = FindProjectRoot();
@@ -78,6 +85,25 @@ internal static class SimulationCli
             ? Math.Max(1, parsedMaximumWave)
             : Math.Max(1, campaignWaveCount);
     }
+
+    internal static ForcedBuildPath? ParseForcedBuild(string? value, GameContent content)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var colon = value.IndexOf(':');
+        var arrow = value.IndexOf('>');
+        if (colon <= 0 || arrow <= colon + 1 || arrow >= value.Length - 1)
+            throw new ArgumentException("Forced build must use tower:doctrine>specialization.");
+        var towerId = value[..colon];
+        var doctrineId = value[(colon + 1)..arrow];
+        var specializationId = value[(arrow + 1)..];
+        if (!content.Towers.TryGetValue(towerId, out var tower) ||
+            !tower.Tier2Doctrines.Any(doctrine => doctrine.Id.Equals(doctrineId, StringComparison.OrdinalIgnoreCase)) ||
+            !tower.Specializations.Any(specialization => specialization.Id.Equals(specializationId, StringComparison.OrdinalIgnoreCase)))
+            throw new ArgumentException($"Unknown forced build '{value}'.");
+        return new ForcedBuildPath(tower.Id, doctrineId, specializationId);
+    }
+
+    internal sealed record ForcedBuildPath(string TowerId, string DoctrineId, string SpecializationId);
 
     private static void PrintMapSummary(IEnumerable<SimulationRunResult> runs)
     {
@@ -171,6 +197,32 @@ internal static class SimulationCli
             .ThenBy(row => row.Choice);
         foreach (var row in rows)
             Console.WriteLine($"{row.Tower,-18} {row.Choice,-20} picks {row.Picks,4}  in winning runs {row.WinningPicks,4}");
+    }
+
+    private static void PrintBuildPathSummary(IEnumerable<SimulationRunResult> runs)
+    {
+        Console.WriteLine();
+        Console.WriteLine("COMPLETED BUILD PATHS");
+        var rows = runs
+            .SelectMany(run => run.Towers.Values.SelectMany(tower => tower.BuildPaths.Select(choice => new
+            {
+                Tower = tower.TowerId,
+                Path = choice.Key,
+                Picks = choice.Value,
+                WinningPicks = run.Won ? choice.Value : 0
+            })))
+            .GroupBy(row => (row.Tower, row.Path))
+            .Select(group => new
+            {
+                group.Key.Tower,
+                group.Key.Path,
+                Picks = group.Sum(row => row.Picks),
+                WinningPicks = group.Sum(row => row.WinningPicks)
+            })
+            .OrderBy(row => row.Tower)
+            .ThenBy(row => row.Path);
+        foreach (var row in rows)
+            Console.WriteLine($"{row.Tower,-18} {row.Path,-42} picks {row.Picks,4}  in winning runs {row.WinningPicks,4}");
     }
 
     private static string? ReadValue(string[] args, string name)

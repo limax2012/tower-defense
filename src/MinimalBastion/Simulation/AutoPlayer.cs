@@ -10,14 +10,20 @@ public sealed class AutoPlayer
     private readonly AutoPlayerStrategy _strategy;
     private readonly Random _random;
     private readonly List<Vector2> _placementCandidates;
+    private readonly string? _forcedTowerId;
+    private readonly string? _forcedDoctrineId;
+    private readonly string? _forcedSpecializationId;
     private int _lastRebalanceWave = -1;
     private int _directEmergencyPurchasesThisWave;
 
-    public AutoPlayer(GameSession session, AutoPlayerStrategy strategy, int seed)
+    public AutoPlayer(GameSession session, AutoPlayerStrategy strategy, int seed, SimulationOptions? options = null)
     {
         _strategy = strategy;
         _random = new Random(seed);
         _placementCandidates = BuildPlacementCandidates(session);
+        _forcedTowerId = options?.ForcedTowerId;
+        _forcedDoctrineId = options?.ForcedDoctrineId;
+        _forcedSpecializationId = options?.ForcedSpecializationId;
     }
 
     public void PrepareForWave(GameSession session)
@@ -302,7 +308,10 @@ public sealed class AutoPlayer
                 TowerDoctrineDefinition? selectedDoctrine = null;
                 var selectedFit = float.MinValue;
                 var upgradePace = 0f;
-                foreach (var doctrine in tower.Definition.Tier2Doctrines.Where(x => x.UpgradeCost <= spendable))
+                var doctrineCandidates = tower.Definition.Tier2Doctrines.Where(x => x.UpgradeCost <= spendable);
+                if (IsForcedTower(tower) && _forcedDoctrineId is not null)
+                    doctrineCandidates = doctrineCandidates.Where(doctrine => doctrine.Id.Equals(_forcedDoctrineId, StringComparison.OrdinalIgnoreCase));
+                foreach (var doctrine in doctrineCandidates)
                 {
                     var next = tower.Definition.Levels[1].WithDoctrine(doctrine);
                     var immediateGain = MathF.Max(0.01f, UpgradeValue(session, tower, next, threat) - current);
@@ -339,7 +348,10 @@ public sealed class AutoPlayer
             }
             if (tower.RequiresSpecialization)
             {
-                foreach (var specialization in tower.Definition.Specializations.Where(x => x.UpgradeCost <= spendable))
+                var specializationCandidates = tower.Definition.Specializations.Where(x => x.UpgradeCost <= spendable);
+                if (IsForcedTower(tower) && _forcedSpecializationId is not null)
+                    specializationCandidates = specializationCandidates.Where(specialization => specialization.Id.Equals(_forcedSpecializationId, StringComparison.OrdinalIgnoreCase));
+                foreach (var specialization in specializationCandidates)
                 {
                     var next = UpgradeValue(session, tower, specialization.Level.WithDoctrine(tower.Doctrine), threat);
                     Consider(new UpgradeOption(tower, null, specialization.Id,
@@ -363,6 +375,9 @@ public sealed class AutoPlayer
             if (best is null || score > best.Value.Score) best = option;
         }
     }
+
+    private bool IsForcedTower(TowerInstance tower) => _forcedTowerId is not null &&
+        tower.Definition.Id.Equals(_forcedTowerId, StringComparison.OrdinalIgnoreCase);
 
     private float UpgradeValue(GameSession session, TowerInstance tower, TowerLevelDefinition level, ThreatProfile threat)
     {

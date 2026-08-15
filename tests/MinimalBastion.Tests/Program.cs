@@ -9,6 +9,7 @@ using MinimalBastion.Maps;
 using MinimalBastion.Multiplayer;
 using MinimalBastion.Persistence;
 using MinimalBastion.Rendering;
+using MinimalBastion.Simulation;
 using MinimalBastion.Towers;
 using MinimalBastion.Tactics;
 using MinimalBastion.UI;
@@ -117,6 +118,12 @@ internal static class Program
         Check.Equal(20, SimulationCli.ResolveMaximumWave(["--simulate-full"], 20), "default simulation wave cap");
         Check.Equal(30, SimulationCli.ResolveMaximumWave(["--simulate-full", "--max-wave", "30"], 20), "explicit endless wave cap");
         Check.Equal(1, SimulationCli.ResolveMaximumWave(["--simulate", "--max-wave=0"], 20), "minimum explicit wave cap");
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        var path = SimulationCli.ParseForcedBuild("siege_mortar:mortar_loader>quake_shell", content);
+        Check.Equal("siege_mortar", path!.TowerId, "forced build parser tower");
+        Check.Equal("mortar_loader", path.DoctrineId, "forced build parser doctrine");
+        Check.Equal("quake_shell", path.SpecializationId, "forced build parser final role");
     }
 
     private static void BalanceBenchmarkDoctrineCoverage()
@@ -1950,6 +1957,16 @@ internal static class Program
             DoctrineId = "focus"
         }).Accepted, "co-op doctrine command accepted");
         Check.Equal("focus", commandSession.Towers[0].DoctrineId!, "co-op doctrine command applied");
+
+        var branchMetrics = new TowerRunMetrics { TowerId = definition.Id };
+        var branchTower = new TowerInstance(9, definition, Vector2.Zero);
+        Check.True(branchTower.TryChooseDoctrine("tempo"), "telemetry tower chooses doctrine");
+        branchMetrics.RecordBranchUpgrade(branchTower);
+        Check.True(branchTower.TrySpecialize("alpha"), "telemetry tower chooses final role");
+        branchMetrics.RecordBranchUpgrade(branchTower);
+        Check.Equal(1, branchMetrics.Doctrines["tempo"], "simulation telemetry records doctrine choice");
+        Check.Equal(1, branchMetrics.Specializations["alpha"], "simulation telemetry records final choice");
+        Check.Equal(1, branchMetrics.BuildPaths["tempo>alpha"], "simulation telemetry records completed cross-tree path");
     }
 
     private static void TowerOverdrive()
