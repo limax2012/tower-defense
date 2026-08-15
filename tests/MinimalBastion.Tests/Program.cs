@@ -40,6 +40,7 @@ internal static class Program
         {
             ("content counts", ContentCounts),
             ("high-resolution viewport", HighResolutionViewport),
+            ("persistent display and audio settings", PersistentUserSettings),
             ("tactical color palette", TacticalColorPalette),
             ("map roster and power nodes", MapRosterAndPowerNodes),
             ("difficulty profiles and persistence", DifficultyProfilesAndPersistence),
@@ -234,6 +235,34 @@ internal static class Program
         Check.Equal(new Rectangle(24, 0, 2000, 1125), transform.DestinationRectangle, "centered fullscreen letterbox");
         Check.Nearly(0, transform.ScreenToLogical(new Point(24, 0)).X, "left canvas edge maps to logical zero");
         Check.Nearly(GameConstants.LogicalWidth, transform.ScreenToLogical(new Point(2024, 1125)).X, "right canvas edge maps to logical width");
+    }
+
+    private static void PersistentUserSettings()
+    {
+        var settings = new UserSettings { WindowWidth = 10, WindowHeight = 9000, SfxVolume = -2 };
+        settings.Normalize();
+        Check.Equal(960, settings.WindowWidth, "minimum output width");
+        Check.Equal(2160, settings.WindowHeight, "maximum output height");
+        Check.Nearly(0, settings.SfxVolume, "sound volume clamp");
+
+        settings.CycleResolution();
+        Check.Equal(1280, settings.WindowWidth, "unknown resolution enters first preset");
+        Check.Equal(720, settings.WindowHeight, "first preset aspect ratio");
+        settings.CycleResolution();
+        Check.Equal(1600, settings.WindowWidth, "resolution preset cycles");
+
+        var ui = new UIManager(null!);
+        ui.ConfigureSettings(settings);
+        Check.Equal(UiAction.Settings,
+            ui.HandleMainMenu(WorldInput(new Vector2(730, 550)) with { LeftPressed = true }),
+            "main menu settings button");
+        Check.Equal(UiAction.ApplySettings,
+            ui.HandleSettingsInput(WorldInput(new Vector2(500, 245)) with { LeftPressed = true }),
+            "display mode changes apply immediately");
+        Check.True(settings.Fullscreen, "settings UI toggles fullscreen");
+        Check.Equal(UiAction.CloseSettings,
+            ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),
+            "escape closes settings safely");
     }
 
     private static void TacticalColorPalette()

@@ -1,6 +1,6 @@
 # Minimal Bastion
 
-Minimal Bastion is a colorful, data-driven 2D tower-defense game built with C#, .NET 10, and MonoGame DesktopGL. It includes two strategic maps, 20 mixed waves, 10 towers, branching specializations, elites and a phased final boss, active Overdrive, tactical Pulse Plates and a Charge Forge, dynamically expanding independent saves, post-run analysis, deterministic balance agents, and direct two-player online co-op.
+Minimal Bastion is a colorful, data-driven 2D tower-defense game built with C#, .NET 10, and MonoGame DesktopGL. It includes three strategic maps with authored campaigns, four difficulty profiles, 20 mixed waves per map, 10 towers with 20 final specializations and distinct tactical Protocols, elites and phased bosses, Pulse Plates and a Charge Forge, dynamically expanding independent saves, procedural audio, persistent display settings, post-run analysis, deterministic balance agents, and direct two-player online co-op.
 
 ## Play the verified build
 
@@ -66,7 +66,7 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 - `1`-`0`: prepare the corresponding tower.
 - `Q`: prepare a stored Pulse Plate. During an active wave, buy a replacement starting at 60 credits; each additional direct purchase in that same wave costs 15 more, and the price resets to 60 when the next wave starts.
 - `G`: prepare or select the Charge Forge.
-- `E`: Overdrive the selected combat tower.
+- `E`: activate the selected tower's unique Protocol.
 - `U`: upgrade the selected tower or Charge Forge.
 - `Delete`: sell the selected tower or Charge Forge.
 - `T`: cycle the selected tower's targeting mode.
@@ -79,7 +79,9 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 
 ## Gameplay notes
 
-- Foundry Loop starts with 400 credits. Surge Divide starts with 360 and contains nine compact Surge Nodes with focused attack-speed, range, damage, or armor-piercing bonuses.
+- Foundry Loop, Prism Circuit, and Surge Divide each use a separately authored 20-wave roster matched to their route geometry. Their base starting credits are 400, 380, and 360 before the selected difficulty modifier.
+- Easy, Normal, Hard, and Bastion alter starting room and enemy health/speed through explicit profiles; tower mechanics and stats never change by wave number, elapsed time, map, or difficulty.
+- Surge Divide is intentionally the hardest arena: its stronger campaign and tighter opening economy pay for nine compact Surge Nodes with focused attack-speed, range, damage, or armor-piercing bonuses. Prism Circuit provides three restrained nodes and a distinct conduit path.
 - Hover a Surge Node for its exact radius and bonus. A tower's center must be inside the field; overlapping nodes use only the strongest bonus for each stat rather than stacking.
 - While positioning a tower over a node, Tower Intel shows that node's name, bonus, and the exact base-to-boosted stat change. Selecting a deployed tower keeps the same node information alongside its active tower stats.
 - Towers receiving a Signal Beacon aura keep their native ring color and carry a compact pulsing gold status pip inside the upper-right of their silhouette. Their Tower Intel identifies the Beacon and shows its exact base-to-boosted attack-rate and range changes separately from the combined active stats.
@@ -87,6 +89,7 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 - The Charge Forge produces only while a wave is active. Its sidebar timer explicitly shows running, paused, or full storage.
 - Pulse Plates snap anywhere across the visible road, push their triggering enemy backward, and briefly stun and slow every enemy in the blast. Their fixed 38 damage, two charges, and group control are identical in every wave, but the field is capped at 16 active plates. The tactical button always shows `FIELD x/16` separately from Forge `STORED x/capacity`. A 0.75-second per-enemy knockback grace prevents plate carpets from creating a domino lock; elites receive 60% push and bosses 25%. Direct buying is active-wave-only and rises by 15 credits after each additional purchase in the same wave, then resets to 60 at the next wave; stored Forge charges remain free to deploy.
 - Tower level is built into every silhouette: level 1 has one inward spoke from the top, level 2 adds a spoke at 120 degrees, and level 3 adds one at 240 degrees. No hover, selection, or separate badge is required. At tier 3, the centered upward or downward triangle identifies the chosen first or second specialization option.
+- Every tower has two tier-3 roles and a named, thematic Protocol. One tower may be armed for deterministic automatic activation when its trigger conditions are met; manual activation remains available for tactical timing.
 - Frost Spire shots damage and slow every enemy in their impact radius. A dashed cyan enemy ring means **Slow**; a solid violet ring with a diamond means **Exposed**, which increases damage received from every source for the shown duration.
 - Siege Mortars predict enemy travel along the route before firing. Their reduced firepower keeps them useful against dense groups without overwhelming other late-game towers.
 - Waves 15-20 apply a stronger health ramp so a successful opening build still needs additional late-game investment and coverage.
@@ -100,6 +103,8 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 
 Each slot preserves the map, solo/co-op mode, economy and statistics, cleared-wave progress, endless status, towers and their owners/upgrades/targeting/cooldowns, Overdrive state, Pulse Plates, and Charge Forge. Numbered save files are stored under `%LocalAppData%\MinimalBastion\Saves` and are limited in practice only by the filesystem and positive slot-number range. The host alone writes co-op intermission saves; loading one immediately hosts the restored authoritative state and waits for player 2 to join. An existing legacy `savegame.json` is copied safely into slot 1 when no new slots exist, while the original file remains untouched.
 
-Runtime visuals are generated from crisp geometric primitives. The 1280x720 logical layout is rendered to a 2560x1440 scene with double-density fonts and shape masks, then linearly downsampled into a clipped 16:9 viewport. This keeps geometry and text smooth at fullscreen resolutions while preventing roads or effects from bleeding into letterbox bars. The centralized tactical theme uses a muted teal/slate foundation, soft off-white and blue-gray UI surfaces, and controlled semantic accents; backbuffer MSAA remains disabled so resolution changes cannot gamma-shift those authored colors. JSON under `src\MinimalBastion\ContentData` defines towers, enemies, maps, waves, and tactical systems; only the interface font is compiled through MonoGame content.
+Runtime visuals are generated from crisp geometric primitives. The 1280x720 logical layout is rendered to a 2560x1440 scene with double-density fonts and shape masks, then linearly downsampled into a clipped 16:9 viewport. This keeps geometry and text smooth at fullscreen resolutions while preventing roads or effects from bleeding into letterbox bars. The centralized tactical theme uses a muted teal/slate foundation, soft off-white and blue-gray UI surfaces, and controlled semantic accents; backbuffer MSAA remains disabled so resolution changes cannot gamma-shift those authored colors.
+
+**Settings** is available from both the title and pause menus. It persists windowed/fullscreen mode, 1280x720 through 2560x1440 output presets, VSync, sound-effects volume, and full/reduced geometric effects under `%LocalAppData%\MinimalBastion\settings.json`. Output settings never alter the fixed tactical canvas or theme constants. Short UI/combat sounds are synthesized at runtime, so no external audio assets are required and a missing audio device degrades safely to silent play. JSON under `src\MinimalBastion\ContentData` defines towers, enemies, maps, waves, difficulty profiles, and tactical systems; only the interface font is compiled through MonoGame content.
 
 See [GAME_DESIGN.md](GAME_DESIGN.md), [AUTONOMOUS_BALANCE.md](AUTONOMOUS_BALANCE.md), and [OVERNIGHT_CHANGELOG.md](OVERNIGHT_CHANGELOG.md) for the design and measured implementation state.

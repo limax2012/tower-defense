@@ -17,6 +17,9 @@ public enum UiAction
     None,
     Play,
     TowerLibrary,
+    Settings,
+    ApplySettings,
+    CloseSettings,
     CoOp,
     HostCoOp,
     JoinCoOp,
@@ -76,6 +79,7 @@ public sealed class UIManager
     private bool _saveSlotDeleteArmed;
     private bool _readOnlyInspection;
     private bool _towerLibraryOpen;
+    private UserSettings _settings = new();
     private int _towerLibraryIndex;
     private IReadOnlyList<TowerDefinition> _libraryTowers = Array.Empty<TowerDefinition>();
     private readonly Rectangle _mapButton = new(500, 370, 190, 40);
@@ -83,7 +87,8 @@ public sealed class UIManager
     private readonly Rectangle _continueButton = new(500, 420, 135, 44);
     private readonly Rectangle _mainMenuLibraryButton = new(645, 420, 135, 44);
     private readonly Rectangle _playButton = new(500, 474, 280, 44);
-    private readonly Rectangle _coOpButton = new(500, 528, 280, 44);
+    private readonly Rectangle _coOpButton = new(500, 528, 176, 44);
+    private readonly Rectangle _mainMenuSettingsButton = new(686, 528, 94, 44);
     private readonly Rectangle _quitButton = new(500, 582, 280, 40);
     private readonly Rectangle[] _saveSlotRows =
     {
@@ -104,7 +109,8 @@ public sealed class UIManager
     private readonly Rectangle _joinCoOpButton = new(500, 452, 280, 46);
     private readonly Rectangle _backButton = new(500, 518, 280, 44);
     private readonly Rectangle _resumeButton = new(500, 236, 280, 46);
-    private readonly Rectangle _towerLibraryButton = new(500, 288, 280, 46);
+    private readonly Rectangle _towerLibraryButton = new(500, 288, 135, 46);
+    private readonly Rectangle _pauseSettingsButton = new(645, 288, 135, 46);
     private readonly Rectangle _saveButton = new(500, 340, 280, 46);
     private readonly Rectangle _loadButton = new(500, 392, 280, 46);
     private readonly Rectangle _restartButton = new(500, 444, 280, 46);
@@ -114,6 +120,12 @@ public sealed class UIManager
     private readonly Rectangle _resultRestartButton = new(518, 580, 206, 46);
     private readonly Rectangle _resultMenuButton = new(740, 580, 206, 46);
     private readonly Rectangle _fieldResultsButton = new(630, 9, 176, 38);
+    private readonly Rectangle _windowModeButton = new(350, 220, 280, 54);
+    private readonly Rectangle _resolutionButton = new(650, 220, 280, 54);
+    private readonly Rectangle _vsyncButton = new(350, 292, 280, 54);
+    private readonly Rectangle _effectsButton = new(650, 292, 280, 54);
+    private readonly Rectangle _volumeButton = new(350, 364, 580, 54);
+    private readonly Rectangle _settingsBackButton = new(500, 446, 280, 48);
 
     public string JoinHostInput => _joinHostInput;
     public string JoinCodeInput => _joinCodeInput;
@@ -125,6 +137,8 @@ public sealed class UIManager
     public string SelectedDifficultyId => _difficulties.Count == 0 ? DifficultyCatalog.DefaultId : _difficulties[_selectedDifficultyIndex].Id;
     public string SelectedDifficultyName => _difficulties.Count == 0 ? "Normal" : _difficulties[_selectedDifficultyIndex].DisplayName;
     public int SelectedSaveSlot => _selectedSaveSlot;
+
+    public void ConfigureSettings(UserSettings settings) => _settings = settings;
 
     public static string PauseCheckpointStatus(bool canSave) => canSave
         ? "Between waves - save slots are available."
@@ -248,8 +262,28 @@ public sealed class UIManager
         if (_mainMenuLibraryButton.Contains(point)) return UiAction.TowerLibrary;
         if (_playButton.Contains(point)) return UiAction.Play;
         if (_coOpButton.Contains(point)) return UiAction.CoOp;
+        if (_mainMenuSettingsButton.Contains(point)) return UiAction.Settings;
         if (_quitButton.Contains(point)) return UiAction.Exit;
         return UiAction.None;
+    }
+
+    public UiAction HandleSettingsInput(InputSnapshot input)
+    {
+        if (input.EscapePressed || input.PausePressed || input.RightPressed) return UiAction.CloseSettings;
+        if (!input.LeftPressed) return UiAction.None;
+        var point = input.MousePosition.ToPoint();
+        if (_settingsBackButton.Contains(point)) return UiAction.CloseSettings;
+        if (_windowModeButton.Contains(point)) _settings.Fullscreen = !_settings.Fullscreen;
+        else if (_resolutionButton.Contains(point)) _settings.CycleResolution();
+        else if (_vsyncButton.Contains(point)) _settings.VSync = !_settings.VSync;
+        else if (_effectsButton.Contains(point)) _settings.ReducedEffects = !_settings.ReducedEffects;
+        else if (_volumeButton.Contains(point))
+        {
+            _settings.SfxVolume += 0.25f;
+            if (_settings.SfxVolume > 1.001f) _settings.SfxVolume = 0;
+        }
+        else return UiAction.None;
+        return UiAction.ApplySettings;
     }
 
     private static int DifficultyOrder(string id) => id.ToLowerInvariant() switch
@@ -570,6 +604,7 @@ public sealed class UIManager
             _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, Math.Max(0, _libraryTowers.Count - 1));
             return UiAction.None;
         }
+        if (_pauseSettingsButton.Contains(point)) return UiAction.Settings;
         if (_saveButton.Contains(point) && session.CanSaveCheckpoint) return UiAction.SaveGame;
         if (_loadButton.Contains(point) && _saveAvailable) return UiAction.LoadGame;
         if (_restartButton.Contains(point)) return UiAction.Restart;
@@ -627,6 +662,11 @@ public sealed class UIManager
         if (state == GameState.TowerLibrary)
         {
             DrawTowerLibrary(batch, p, "title screen");
+            return;
+        }
+        if (state == GameState.Settings)
+        {
+            DrawSettings(batch, p);
             return;
         }
         if (state == GameState.SaveSlots)
@@ -1112,12 +1152,36 @@ public sealed class UIManager
         DrawButton(batch, p, _mainMenuLibraryButton, "TOWER LIBRARY", true, ColorPalette.Cyan);
         DrawButton(batch, p, _playButton, "NEW GAME", true, ColorPalette.Cobalt);
         DrawButton(batch, p, _coOpButton, "ONLINE CO-OP", true, ColorPalette.Green);
+        DrawButton(batch, p, _mainMenuSettingsButton, "SETTINGS", true, ColorPalette.Orange, ColorPalette.Ink);
         DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
         var difficultySummary = difficulty?.Description ?? "A balanced defense.";
         DrawFittedCenteredText(batch, $"{mapSuffix} | {map.Description}", new Vector2(640, 638), ColorPalette.Muted, 0.52f, 900);
         DrawFittedCenteredText(batch, $"{(difficulty?.DisplayName ?? "Normal").ToUpperInvariant()} | {difficultySummary}",
             new Vector2(640, 660), difficulty?.AccentColor ?? ColorPalette.Cobalt, 0.48f, 860);
         DrawText(batch, "Left click places/selects   \u2022   Right click cancels   \u2022   Escape pauses", new Vector2(640, 687), ColorPalette.Navy, 0.58f, true);
+    }
+
+    private void DrawSettings(SpriteBatch batch, PrimitiveRenderer p)
+    {
+        DrawMenuFrame(batch, p);
+        DrawText(batch, "SETTINGS", new Vector2(640, 112), ColorPalette.Ink, 1.9f, true);
+        DrawText(batch, "Display choices change output scaling only; the tactical canvas and palette stay authored.",
+            new Vector2(640, 162), ColorPalette.Muted, 0.58f, true);
+
+        DrawButton(batch, p, _windowModeButton, _settings.Fullscreen ? "DISPLAY  FULLSCREEN" : "DISPLAY  WINDOWED",
+            true, ColorPalette.Cobalt);
+        DrawButton(batch, p, _resolutionButton, $"OUTPUT  {_settings.WindowWidth} x {_settings.WindowHeight}",
+            true, ColorPalette.Violet);
+        DrawButton(batch, p, _vsyncButton, _settings.VSync ? "VSYNC  ON" : "VSYNC  OFF",
+            true, ColorPalette.Green);
+        DrawButton(batch, p, _effectsButton, _settings.ReducedEffects ? "EFFECTS  REDUCED" : "EFFECTS  FULL",
+            true, ColorPalette.Cyan);
+        DrawButton(batch, p, _volumeButton, $"SOUND EFFECTS  {MathF.Round(_settings.SfxVolume * 100):0}%  |  CLICK TO CHANGE",
+            true, ColorPalette.Gold, ColorPalette.Ink);
+        DrawButton(batch, p, _settingsBackButton, "BACK", true, ColorPalette.Coral);
+
+        DrawText(batch, "Rendering remains crisp at every output size through the fixed high-resolution scene target.",
+            new Vector2(640, 540), ColorPalette.Muted, 0.54f, true);
     }
 
     private void DrawSaveSlots(SpriteBatch batch, PrimitiveRenderer p)
@@ -1396,6 +1460,7 @@ public sealed class UIManager
         DrawFittedCenteredText(batch, _persistenceStatus, new Vector2(640, 211), ColorPalette.Muted, 0.50f, 510);
         DrawButton(batch, p, _resumeButton, "RESUME", true, ColorPalette.Cobalt);
         DrawButton(batch, p, _towerLibraryButton, "TOWER LIBRARY", true, ColorPalette.Cyan);
+        DrawButton(batch, p, _pauseSettingsButton, "SETTINGS", true, ColorPalette.Orange, ColorPalette.Ink);
         DrawButton(batch, p, _saveButton, session.CanSaveCheckpoint ? "SAVE TO SLOT" : "SAVE BETWEEN WAVES", session.CanSaveCheckpoint, ColorPalette.Green);
         DrawButton(batch, p, _loadButton, "LOAD SAVES", _saveAvailable, ColorPalette.Violet);
         DrawButton(batch, p, _restartButton, "RESTART", true, ColorPalette.Orange);
@@ -1526,7 +1591,7 @@ public sealed class UIManager
 
     private static Rectangle TowerLibraryRow(int index) => new(66, 148 + index * 49, 244, 44);
 
-    private void DrawButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string text, bool enabled, Color fillColor)
+    private void DrawButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string text, bool enabled, Color fillColor, Color? textColor = null)
     {
         if (string.IsNullOrEmpty(text)) return;
         var background = enabled ? fillColor : ColorPalette.Disabled;
@@ -1535,7 +1600,7 @@ public sealed class UIManager
         var scale = 0.65f;
         var measured = _font.MeasureString(text).X * scale * GameConstants.FontDrawScale;
         if (measured > rect.Width - 12) scale *= (rect.Width - 12) / measured;
-        DrawText(batch, text, new Vector2(rect.Center.X, rect.Center.Y), enabled ? ColorPalette.Paper : ColorPalette.Muted, MathF.Max(0.38f, scale), true);
+        DrawText(batch, text, new Vector2(rect.Center.X, rect.Center.Y), enabled ? textColor ?? ColorPalette.Paper : ColorPalette.Muted, MathF.Max(0.38f, scale), true);
     }
 
     private string DescribeSpecial(TowerInstance tower)

@@ -9,6 +9,8 @@ namespace MinimalBastion.Rendering;
 
 public sealed class GameRenderer
 {
+    public bool ReducedEffects { get; set; }
+
     public void Draw(SpriteBatch batch, PrimitiveRenderer primitives, MinimalBastion.GameSession session)
     {
         primitives.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight), session.Map.Definition.Background.BaseColor);
@@ -307,7 +309,7 @@ public sealed class GameRenderer
         }
     }
 
-    private static void DrawEffects(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    private void DrawEffects(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
         foreach (var effect in session.Effects.Effects)
         {
@@ -316,7 +318,8 @@ public sealed class GameRenderer
             var effectColor = ColorPalette.WithAlpha(effect.Color, alpha);
             if (effect.Kind == EffectKind.Beam)
             {
-                p.Line(batch, effect.Start, effect.End, ColorPalette.WithAlpha(ColorPalette.Ink, alpha), effect.Radius + 4);
+                if (!ReducedEffects)
+                    p.Line(batch, effect.Start, effect.End, ColorPalette.WithAlpha(ColorPalette.Ink, alpha), effect.Radius + 4);
                 p.Line(batch, effect.Start, effect.End, effectColor, Math.Max(2, effect.Radius + 1));
             }
             else if (effect.Kind == EffectKind.Ping)
@@ -324,14 +327,31 @@ public sealed class GameRenderer
                 var expansion = 1f - progress;
                 var radius = effect.Radius + expansion * 34f;
                 p.DashedRing(batch, effect.Start, radius, effectColor, 18, 3);
-                p.Ring(batch, effect.Start, Math.Max(7, effect.Radius * progress), ColorPalette.WithAlpha(ColorPalette.Paper, alpha), 2);
-                p.DrawShape(batch, effect.Start, 8, "diamond", effectColor, ColorPalette.Paper, 1, false);
+                if (!ReducedEffects)
+                {
+                    p.Ring(batch, effect.Start, Math.Max(7, effect.Radius * progress), ColorPalette.WithAlpha(ColorPalette.Paper, alpha), 2);
+                    p.DrawShape(batch, effect.Start, 8, "diamond", effectColor, ColorPalette.Paper, 1, false);
+                }
             }
             else
             {
                 var radius = effect.Radius * (1.2f - progress * 0.2f);
                 p.Ring(batch, effect.Start, radius, effectColor, 4);
-                if (progress > 0.2f) p.Ring(batch, effect.Start, Math.Max(2, radius - 5), ColorPalette.Paper, 2);
+                if (!ReducedEffects && progress > 0.2f)
+                {
+                    p.Ring(batch, effect.Start, Math.Max(2, radius - 5), ColorPalette.Paper, 2);
+                    if (effect.Radius >= 20)
+                    {
+                        var spokeInner = radius + 3;
+                        var spokeOuter = radius + 10 + 5 * (1 - progress);
+                        for (var index = 0; index < 4; index++)
+                        {
+                            var angle = MathHelper.PiOver4 + index * MathHelper.PiOver2;
+                            var direction = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+                            p.Line(batch, effect.Start + direction * spokeInner, effect.Start + direction * spokeOuter, effectColor, 2);
+                        }
+                    }
+                }
             }
         }
     }

@@ -1,5 +1,19 @@
 # Overnight Changelog
 
+## Arena progression, roles, protocols, and presentation pass
+
+Date: 2026-08-15
+
+- Added Easy, Normal, Hard, and Bastion profiles with persistent save/co-op identity and deterministic checksums. Hard preserves the previous authored economy and enemy values; Normal is the default onboarding experience.
+- Gave Foundry Loop, Prism Circuit, and Surge Divide separate 20-wave campaigns. Surge now carries the hardest roster and opening economy instead of granting nine nodes against the same opposition as Foundry.
+- Added Prism Circuit as a third arena with a distinct continuous conduit visual, a new route/build topology, and three restrained Surge Nodes.
+- Expanded all ten towers to two tier-3 roles (20 total), including differentiated swarm/armor, tempo/control, reach/output, and support choices. Fixed Shard Fan's armor-pierce path so the authored value is applied in combat.
+- Replaced the generic flat Overdrive with ten named tower-specific Protocols, including burst damage/status, range, pierce, aura, and tempo effects. Added one optional auto-armed tower with deterministic enemy-aware activation, save/co-op/checksum support, and clear in-world/UI state.
+- Added a persistent Settings screen to both title and pause menus: windowed/fullscreen, four output presets, VSync, SFX volume, and full/reduced effects. The 2560x1440 scene target and centralized palette remain independent of output scaling.
+- Added compact procedural sound cues for placement, upgrades, sales, Protocols, kills, leaks, waves, Pulse Plates, and the Charge Forge. Audio initialization fails safely to silent play on systems without a usable device.
+- Refined large attack flashes with crisp geometric impact spokes while the reduced-effects option retains only essential combat feedback.
+- Current verification: 46/46 deterministic tests, clean Release build with zero warnings, and native visual QA of title, settings, gameplay, and pause layouts.
+
 ## Range, branch, and menu harmony pass
 
 - Reduced Watchtower direct damage while retaining its defining 250-290 range; seeded LongRange results moved from 10/10 perfect dominance to 8/10 viable finishes.
@@ -134,7 +148,7 @@ Date: 2026-08-14
 
 - Direct internet host requires manual router forwarding or VPN connectivity.
 - No hosted relay, matchmaking, automatic NAT traversal, or encryption.
-- No audio, persistent settings, volume/reduced-motion controls, difficulty modes, or run history.
+- No persistent run-history browser beyond individual save metadata and end-of-run analysis.
 - LongRange remains the strongest automated policy and should be challenged by future map design before a stat nerf.
 - Human remote-latency and late-wave playtesting remain necessary despite deterministic/loopback coverage.
 

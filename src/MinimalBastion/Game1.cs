@@ -1,3 +1,4 @@
+using MinimalBastion.Audio;
 using MinimalBastion.Core;
 using MinimalBastion.Data;
 using MinimalBastion.Debugging;
@@ -15,6 +16,7 @@ public sealed class Game1 : Game
     private const int OnlineCoOpPort = 28741;
     private const int NetworkInputDelayTicks = 6;
     private readonly GraphicsDeviceManager _graphics;
+    private readonly UserSettings _settings;
     private readonly ViewportTransform _viewportTransform = new();
     private InputRouter _input = null!;
     private SpriteBatch _spriteBatch = null!;
@@ -23,6 +25,7 @@ public sealed class Game1 : Game
     private GameRenderer _gameRenderer = null!;
     private UIManager _ui = null!;
     private DebugOverlay _debug = null!;
+    private AudioManager? _audio;
     private GameContent _content = null!;
     private GameSession? _session;
     private GameState _state = GameState.MainMenu;
@@ -53,18 +56,21 @@ public sealed class Game1 : Game
     private int? _activeSaveSlot;
     private GameState _saveSlotReturnState = GameState.MainMenu;
     private bool _saveSlotWriteMode;
+    private GameState _settingsReturnState = GameState.MainMenu;
 
     public Game1()
     {
+        _settings = UserSettingsStore.Load();
         _graphics = new GraphicsDeviceManager(this)
         {
-            PreferredBackBufferWidth = GameConstants.LogicalWidth,
-            PreferredBackBufferHeight = GameConstants.LogicalHeight,
-            SynchronizeWithVerticalRetrace = true,
+            PreferredBackBufferWidth = _settings.WindowWidth,
+            PreferredBackBufferHeight = _settings.WindowHeight,
+            SynchronizeWithVerticalRetrace = _settings.VSync,
             // The fixed 2x scene target already provides edge supersampling.
             // Backbuffer MSAA is unnecessary for the final textured composite.
             PreferMultiSampling = false,
-            IsFullScreen = false
+            IsFullScreen = _settings.Fullscreen,
+            HardwareModeSwitch = false
         };
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
@@ -104,8 +110,12 @@ public sealed class Game1 : Game
             _ui.ConfigureMaps(_content.Maps.Values);
             _ui.ConfigureDifficulties(_content.Difficulties.Values);
             _ui.ConfigureTowerLibrary(_content.Towers.Values);
+            _ui.ConfigureSettings(_settings);
             _ui.SetSaveState(SaveGameStore.Exists);
             _debug = new DebugOverlay(font);
+            _gameRenderer.ReducedEffects = _settings.ReducedEffects;
+            _audio = AudioManager.TryCreate();
+            if (_audio is not null) _audio.Volume = _settings.SfxVolume;
         }
         catch (Exception exception)
         {
@@ -121,6 +131,7 @@ public sealed class Game1 : Game
     {
         _viewportTransform.Update(GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
         var input = _input.Update();
+        _audio?.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
 
         if (_loadError is not null)
         {
@@ -136,6 +147,9 @@ public sealed class Game1 : Game
                 break;
             case GameState.TowerLibrary:
                 HandleMenuAction(_ui.HandleTitleTowerLibrary(input));
+                break;
+            case GameState.Settings:
+                HandleSettingsAction(_ui.HandleSettingsInput(input));
                 break;
             case GameState.SaveSlots:
                 HandleSaveSlotAction(_ui.HandleSaveSlots(input));
@@ -225,12 +239,17 @@ public sealed class Game1 : Game
     {
         if (action == UiAction.Play)
         {
-            _session = new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId);
+            AssignSession(new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId));
             _lastAutosavedWave = -1;
             _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
             _state = GameState.Playing;
         }
         else if (action == UiAction.TowerLibrary) _state = GameState.TowerLibrary;
+        else if (action == UiAction.Settings)
+        {
+            _settingsReturnState = GameState.MainMenu;
+            _state = GameState.Settings;
+        }
         else if (action == UiAction.LoadGame) OpenSaveSlots(false, GameState.MainMenu);
         else if (action == UiAction.MainMenu) _state = GameState.MainMenu;
         else if (action == UiAction.CoOp) _state = GameState.CoOpMenu;
@@ -259,7 +278,7 @@ public sealed class Game1 : Game
         CleanupNetwork();
         try
         {
-            _session = restoredSession;
+            AssignSession(restoredSession);
             _activeSaveSlot = saveSlot ?? SaveGameStore.FindFirstEmptySlot();
             _lastAutosavedWave = restoredSession?.CurrentWave ?? -1;
             _networkCancellation = new CancellationTokenSource();
@@ -390,15 +409,17 @@ public sealed class Game1 : Game
 
     private void InitializeHostSession()
     {
-        if (_session is null)
+        var session = _session;
+        if (session is null)
         {
-            _session = new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId);
-            _session.ConfigureCoOp(1);
+            session = new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId);
+            AssignSession(session);
+            session.ConfigureCoOp(1);
         }
-        else if (!_session.IsCoOp)
-            _session.ConfigureCoOp(1);
+        else if (!session.IsCoOp)
+            session.ConfigureCoOp(1);
         ResetCoOpWaveReadyState(false);
-        _networkRunner = new DeterministicSessionRunner(_session);
+        _networkRunner = new DeterministicSessionRunner(session);
         AttachNetworkRunner();
     }
 
@@ -407,8 +428,9 @@ public sealed class Game1 : Game
         _networkChecksums.Clear();
         _remoteNetworkChecksums.Clear();
         _repliedChecksumTicks.Clear();
-        _session = GameSession.RestoreCoOpState(_content, snapshot, 2);
-        _networkRunner = new DeterministicSessionRunner(_session, snapshot.Tick);
+        var restored = GameSession.RestoreCoOpState(_content, snapshot, 2);
+        AssignSession(restored);
+        _networkRunner = new DeterministicSessionRunner(restored, snapshot.Tick);
         _networkRunner.RestorePendingCommands(snapshot.PendingCommands);
         AttachNetworkRunner();
         _coOpWaveReady.ApplyState(snapshot.ReadyMask, snapshot.WaveStartQueued, snapshot.WaveEarlyBonusQueued);
@@ -787,7 +809,7 @@ public sealed class Game1 : Game
         _joinEndpoint = null;
         _joinCode = "";
         _reconnectRetryRemaining = 0;
-        _session = null;
+        AssignSession(null);
         _activeSaveSlot = null;
     }
 
@@ -798,6 +820,10 @@ public sealed class Game1 : Game
             case UiAction.Resume: _state = GameState.Playing; break;
             case UiAction.SaveGame: OpenSaveSlots(true, GameState.Paused); break;
             case UiAction.LoadGame: OpenSaveSlots(false, GameState.Paused); break;
+            case UiAction.Settings:
+                _settingsReturnState = GameState.Paused;
+                _state = GameState.Settings;
+                break;
             case UiAction.Restart: Restart(); break;
             case UiAction.MainMenu: CleanupNetwork(); _state = GameState.MainMenu; break;
         }
@@ -833,7 +859,7 @@ public sealed class Game1 : Game
         }
         var mapId = _session?.Map.Definition.Id ?? _ui.SelectedMapId;
         var difficultyId = _session?.DifficultyId ?? _ui.SelectedDifficultyId;
-        _session = new GameSession(_content, mapId, difficultyId);
+        AssignSession(new GameSession(_content, mapId, difficultyId));
         _lastAutosavedWave = -1;
         _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
         _state = GameState.Playing;
@@ -861,7 +887,7 @@ public sealed class Game1 : Game
         if (!_isNetworkHost || _session is null || _coOpConnection is null) return;
         var mapId = _session.Map.Definition.Id;
         var difficultyId = _session.DifficultyId;
-        _session = new GameSession(_content, mapId, difficultyId);
+        AssignSession(new GameSession(_content, mapId, difficultyId));
         _session.ConfigureCoOp(1);
         _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
         _lastAutosavedWave = -1;
@@ -973,10 +999,10 @@ public sealed class Game1 : Game
             }
 
             CleanupNetwork();
-            _session = restored;
+            AssignSession(restored);
             _activeSaveSlot = slot;
-            _lastAutosavedWave = _session.CurrentWave;
-            _ui.SetSaveState(true, $"Loaded solo slot {slot} after wave {_session.CurrentWave}.");
+            _lastAutosavedWave = restored.CurrentWave;
+            _ui.SetSaveState(true, $"Loaded solo slot {slot} after wave {restored.CurrentWave}.");
             _state = GameState.Playing;
         }
         catch (Exception exception)
@@ -1033,11 +1059,38 @@ public sealed class Game1 : Game
         base.Draw(gameTime);
     }
 
+    private void HandleSettingsAction(UiAction action)
+    {
+        if (action == UiAction.ApplySettings) ApplyUserSettings();
+        else if (action == UiAction.CloseSettings) _state = _settingsReturnState;
+    }
+
+    private void ApplyUserSettings()
+    {
+        _settings.Normalize();
+        _graphics.PreferredBackBufferWidth = _settings.WindowWidth;
+        _graphics.PreferredBackBufferHeight = _settings.WindowHeight;
+        _graphics.SynchronizeWithVerticalRetrace = _settings.VSync;
+        _graphics.HardwareModeSwitch = false;
+        _graphics.IsFullScreen = _settings.Fullscreen;
+        _graphics.ApplyChanges();
+        _gameRenderer.ReducedEffects = _settings.ReducedEffects;
+        if (_audio is not null) _audio.Volume = _settings.SfxVolume;
+        UserSettingsStore.Save(_settings);
+    }
+
+    private void AssignSession(GameSession? session)
+    {
+        _session = session;
+        if (session is not null) _audio?.Attach(session);
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
             CleanupNetwork();
+            _audio?.Dispose();
             _sceneTarget?.Dispose();
             _primitives?.Dispose();
         }

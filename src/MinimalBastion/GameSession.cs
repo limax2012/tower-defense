@@ -98,6 +98,8 @@ public sealed class GameSession
     public event Action<ChargeForgeInstance, int>? GeneratorUpgraded;
     public event Action<ChargeForgeInstance, int>? GeneratorSold;
     public event Action? EmergencyChargeProduced;
+    public event Action<WaveDefinition>? WaveStarted;
+    public event Action<int>? WaveCompleted;
 
     public GameSession(GameContent content, string? mapId = null, string? difficultyId = null)
     {
@@ -733,6 +735,7 @@ public sealed class GameSession
         AnnouncementSubtitle = earlyCallBonus > 0 ? $"EARLY CALL +{earlyCallBonus} // {wave.Briefing}" : wave.Briefing;
         AnnouncementPositive = false;
         AnnouncementRemaining = 2.4f;
+        WaveStarted?.Invoke(wave);
     }
 
     public void OnWaveCompleted(int waveNumber)
@@ -741,6 +744,7 @@ public sealed class GameSession
         AnnouncementSubtitle = $"+{40 + 10 * waveNumber} completion credits";
         AnnouncementPositive = true;
         AnnouncementRemaining = 2.2f;
+        WaveCompleted?.Invoke(waveNumber);
     }
 
     public void OnEnemyKilled(EnemyInstance enemy)

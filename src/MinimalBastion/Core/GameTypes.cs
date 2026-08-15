@@ -31,6 +31,7 @@ public enum GameState
 {
     MainMenu,
     TowerLibrary,
+    Settings,
     SaveSlots,
     CoOpMenu,
     CoOpLobby,
