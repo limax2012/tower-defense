@@ -50,6 +50,7 @@ Network code never implements a second copy of placement, affordability, upgrade
 - Message types: hello/welcome/rejected, command request/receipt/authoritative command, state snapshot/resync request, ready/wave ready, tick sync, restart request, ping, and disconnect.
 - Map, difficulty, challenge, active combat, pending commands, economy, ready state, and run identity travel in the authoritative snapshot. Player 2 reconstructs the exact host session before readying.
 - Host command input delay: six fixed ticks, providing a small latency buffer.
+- The periodic checksum exchange also acts as a heartbeat. Fifteen seconds without valid inbound traffic preserves the match and enters reconnect instead of waiting for a platform TCP timeout.
 
 ## Test coverage
 
@@ -63,6 +64,7 @@ Network code never implements a second copy of placement, affordability, upgrade
 - Active-combat snapshot round trip, future-command restoration, post-reconnect combat soak, repeated loopback reconnection, and graceful connection close detection.
 - Jittered 0-5 tick command delivery across shared placement, branching, targeting, Protocols, speed, and selling, plus explicit rejection once the six-tick authority buffer has been missed.
 - Real loopback coverage for bounded framing, malformed-envelope rejection, shared pause transport, restart requests, reconnect listener reuse, and post-snapshot checksum fencing.
+- Heartbeat tolerance, activity refresh, sustained-silence timeout, and resumed-frame clamping.
 
 The native menu, address/code fields, map selection label, and lobby presentation have also been visually inspected.
 

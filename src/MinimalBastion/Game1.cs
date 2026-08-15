@@ -42,6 +42,7 @@ public sealed class Game1 : Game
     private readonly HashSet<long> _repliedChecksumTicks = new();
     private readonly CoOpWaveReadyCoordinator _coOpWaveReady = new();
     private readonly CoOpCursorTracker _coOpCursor = new();
+    private readonly CoOpHeartbeatMonitor _coOpHeartbeat = new();
     private AuthoritativeCommandHost? _authoritativeCommands;
     private DeterministicSessionRunner? _networkRunner;
     private bool _isNetworkHost;
@@ -195,6 +196,9 @@ public sealed class Game1 : Game
                 UpdateDefeatField(input, gameTime);
                 break;
         }
+
+        if (_coOpConnection is not null && _coOpHeartbeat.Advance(elapsedSeconds))
+            HandleConnectionLoss("CONNECTION TIMED OUT", "No co-op traffic was received for 15 seconds. The match is preserved for reconnection.");
 
         RecordTerminalRun();
 
@@ -405,6 +409,7 @@ public sealed class Game1 : Game
         try
         {
             _coOpConnection = connectionTask.GetAwaiter().GetResult();
+            _coOpHeartbeat.MarkInboundActivity();
             _ui.SetCoOpConnectionState(true, true);
             _receiveTask = null;
             _pendingNetworkSends.Clear();
@@ -504,6 +509,7 @@ public sealed class Game1 : Game
                 return;
             }
             HandleNetworkEnvelope(envelope);
+            _coOpHeartbeat.MarkInboundActivity();
         }
         catch (OperationCanceledException) when (_networkCancellation?.IsCancellationRequested == true)
         {
@@ -839,6 +845,7 @@ public sealed class Game1 : Game
         if (receive is not null) _ = ObserveNetworkTaskAsync(receive);
         foreach (var send in sends) _ = ObserveNetworkTaskAsync(send);
         _coOpCursor.Reset();
+        _coOpHeartbeat.Reset();
         SyncRemoteCoOpCursor();
     }
 

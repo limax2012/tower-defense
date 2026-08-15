@@ -84,6 +84,7 @@ internal static class Program
             ("co-op cursor presence", CoOpCursorPresence),
             ("online co-op transport", CoOpLoopbackTransport),
             ("online co-op framing bounds", CoOpFramingBounds),
+            ("online co-op heartbeat", CoOpHeartbeat),
             ("online co-op reconnect transport", CoOpReconnectTransport),
             ("co-op invalid code", CoOpInvalidCode),
             ("co-op incompatible build", CoOpIncompatibleBuild),
@@ -1645,6 +1646,22 @@ internal static class Program
     private static void CoOpReconnectTransport()
     {
         CoOpReconnectTransportAsync().GetAwaiter().GetResult();
+    }
+
+    private static void CoOpHeartbeat()
+    {
+        var heartbeat = new CoOpHeartbeatMonitor();
+        Check.True(!heartbeat.Advance(CoOpHeartbeatMonitor.TimeoutSeconds - 1),
+            "ordinary silence remains inside the reconnect tolerance");
+        heartbeat.MarkInboundActivity();
+        Check.Nearly(0, heartbeat.SilenceSeconds, "any valid inbound envelope refreshes liveness");
+        for (var second = 0; second < (int)CoOpHeartbeatMonitor.TimeoutSeconds - 1; second++)
+            Check.True(!heartbeat.Advance(1), "heartbeat remains live before its full timeout");
+        Check.True(heartbeat.Advance(1), "sustained inbound silence reaches the reconnect threshold");
+        heartbeat.Reset();
+        Check.True(!heartbeat.Advance(float.PositiveInfinity), "nonfinite frame time cannot force a timeout");
+        Check.True(!heartbeat.Advance(CoOpHeartbeatMonitor.TimeoutSeconds * 2),
+            "one resumed-frame sample is clamped instead of disconnecting a live peer");
     }
 
     private static void CoOpFramingBounds()

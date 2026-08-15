@@ -31,7 +31,7 @@ Co-op uses shared credits, lives, plates, waves, and speed. Both players can upg
 
 Either player can press Esc, P, or the HUD Pause button to pause/resume the shared deterministic simulation. Both peers stop on the same fixed tick, the banner identifies who paused, and tower placement and management remain available for joint planning.
 
-If the link drops, the match pauses and the client retries automatically. The host's preserved-session overlay keeps the six-character rejoin code visible and lets it be copied by clicking the code or pressing Ctrl+C.
+If the link drops—or valid inbound traffic disappears for 15 seconds—the match pauses and the client retries automatically. The host's preserved-session overlay keeps the six-character rejoin code visible and lets it be copied by clicking the code or pressing Ctrl+C.
 
 At victory or defeat, **Restart Co-op** uses a two-click confirmation, keeps both players connected, and asks the host to initialize a fresh authoritative game on the same map. Both peers receive the new state before play resumes, wave-ready state is cleared, and the host assigns the restarted run a new save slot so the completed run is not overwritten. Solo restart is confirmed the same way. **Main Menu** remains the explicit action that ends the online session.
 
