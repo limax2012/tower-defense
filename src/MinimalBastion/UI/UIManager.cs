@@ -89,7 +89,7 @@ public sealed class UIManager
     private int _remoteCoOpCursorPlayerId;
     private int _remoteCoOpSelectedTowerId;
     private bool _saveAvailable;
-    private string _persistenceStatus = "Progress is stored in independent save slots between waves.";
+    private string _persistenceStatus = "One rolling autosave plus protected manual slots are available between waves.";
     private IReadOnlyList<SaveSlotInfo> _saveSlots = Array.Empty<SaveSlotInfo>();
     private bool _saveSlotWriteMode;
     private int _selectedSaveSlot = 1;
@@ -227,7 +227,7 @@ public sealed class UIManager
         ? "Between waves - save slots are available."
         : "Active wave - saving unlocks after it clears.";
 
-    public const string RestartPreservationLabel = "FRESH RUN | EXISTING CHECKPOINTS STAY SAVED";
+    public const string RestartPreservationLabel = "FRESH RUN | MANUAL SAVES STAY PROTECTED";
 
     public static string CoOpWaveButtonLabel(int localPlayerId, int currentWave, int readyMask,
         bool startQueued, bool earlyBonusQueued, float intermissionRemaining)
@@ -638,7 +638,7 @@ public sealed class UIManager
                 return UiAction.DeleteSaveSlot;
             }
             _saveSlotDeleteArmed = true;
-            _persistenceStatus = $"Delete slot {_selectedSaveSlot}? Click the red CONFIRM DELETE button again. ESC cancels.";
+            _persistenceStatus = $"Delete {SaveSlotLabel(_selectedSaveSlot).ToLowerInvariant()}? Click the red CONFIRM DELETE button again. ESC cancels.";
             return UiAction.None;
         }
         if (_saveSlotBackButton.Contains(point)) return UiAction.CloseSaveSlots;
@@ -1588,6 +1588,11 @@ public sealed class UIManager
         var pauseLabel = session.IsCoOpPaused ? "RESUME" : "PAUSE";
         DrawButton(batch, p, _pauseButton, pauseLabel, !session.IsCoOp || _coOpPeerConnected,
             session.IsCoOpPaused ? ColorPalette.Green : ColorPalette.Coral);
+
+        DrawText(batch, "RUN SETUP", new Vector2(974, 8), ColorPalette.Cyan, 0.55f);
+        DrawFittedText(batch,
+            $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
+            new Vector2(974, 28), ColorPalette.Paper, 0.52f, 288);
     }
 
     private void DrawCoOpPausedBanner(SpriteBatch batch, PrimitiveRenderer p, int pausedByPlayerId)
@@ -2197,7 +2202,7 @@ public sealed class UIManager
         DrawText(batch,
             _saveSlotWriteMode
                 ? "Choose a slot. Overwriting occurs only after pressing the confirmation button."
-                : "Solo saves resume immediately. Co-op saves reopen as a hosted game for your friend.",
+                : "One autosave is replaced each wave. Numbered slots are protected manual saves.",
             new Vector2(640, 102), ColorPalette.Muted, 0.58f, true);
         DrawButton(batch, p, _saveSlotHistoryButton, "RUN HISTORY", true, ColorPalette.Cyan);
 
@@ -2212,7 +2217,7 @@ public sealed class UIManager
             p.DrawRect(batch, rect, selected ? ColorPalette.Cobalt : ColorPalette.CardOutline, selected ? 3 : 1);
             p.FillRect(batch, new Rectangle(rect.X, rect.Y, 8, rect.Height),
                 !slot.IsOccupied ? ColorPalette.Disabled : slot.IsCoOp ? ColorPalette.Violet : ColorPalette.Cyan);
-            DrawText(batch, $"SLOT {slot.Slot}", new Vector2(rect.X + 22, rect.Y + 13), ColorPalette.Navy, 0.68f);
+            DrawText(batch, SaveSlotLabel(slot.Slot), new Vector2(rect.X + 22, rect.Y + 13), ColorPalette.Navy, 0.68f);
 
             if (!slot.IsOccupied)
             {
@@ -2244,14 +2249,15 @@ public sealed class UIManager
 
         var selectedSlot = _saveSlots.FirstOrDefault(slot => slot.Slot == _selectedSaveSlot);
         var canConfirm = _saveSlotWriteMode || selectedSlot is { IsOccupied: true, Error: null };
+        var selectedLabel = SaveSlotLabel(_selectedSaveSlot);
         var confirmLabel = _saveSlotWriteMode
             ? selectedSlot is { IsOccupied: true } ? $"OVERWRITE SLOT {_selectedSaveSlot}" : $"SAVE TO SLOT {_selectedSaveSlot}"
-            : $"LOAD SLOT {_selectedSaveSlot}";
+            : $"LOAD {selectedLabel}";
         DrawButton(batch, p, _saveSlotConfirmButton, confirmLabel, canConfirm,
             _saveSlotWriteMode && selectedSlot is { IsOccupied: true } ? ColorPalette.Orange : ColorPalette.Green);
         var canDelete = selectedSlot is { IsOccupied: true };
         DrawButton(batch, p, _saveSlotDeleteButton,
-            _saveSlotDeleteArmed ? $"CONFIRM DELETE {_selectedSaveSlot}" : $"DELETE SLOT {_selectedSaveSlot}",
+            _saveSlotDeleteArmed ? $"CONFIRM DELETE {selectedLabel}" : $"DELETE {selectedLabel}",
             canDelete, _saveSlotDeleteArmed ? ColorPalette.Coral : ColorPalette.Orange);
         DrawText(batch, $"PAGE {_saveSlotPage + 1}/{pageCount}", new Vector2(640, 574), ColorPalette.Muted, 0.48f, true);
         DrawButton(batch, p, _saveSlotPreviousButton, "PREVIOUS", _saveSlotPage > 0, ColorPalette.Cyan);
@@ -2260,6 +2266,9 @@ public sealed class UIManager
         DrawFittedCenteredText(batch, $"ARROWS SELECT  |  ENTER CONFIRMS  |  {_persistenceStatus}",
             new Vector2(640, 654), _saveSlotDeleteArmed ? ColorPalette.Coral : ColorPalette.Muted, 0.48f, 1080);
     }
+
+    private static string SaveSlotLabel(int slot) =>
+        slot == SaveSlotRepository.AutosaveSlot ? "AUTOSAVE" : $"SLOT {slot}";
 
     private void DrawRunHistory(SpriteBatch batch, PrimitiveRenderer p)
     {

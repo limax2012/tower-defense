@@ -20,6 +20,7 @@ public sealed record SaveSlotInfo(
 
 public sealed class SaveSlotRepository
 {
+    public const int AutosaveSlot = 0;
     public const long MaximumSaveFileBytes = 8 * 1024 * 1024;
     private const int MaximumTowers = 1024;
     private const int MaximumPulsePlates = 256;
@@ -40,19 +41,12 @@ public sealed class SaveSlotRepository
 
     public string RootDirectory { get; }
     public string SavesDirectory => Path.Combine(RootDirectory, "Saves");
-    public string LegacySavePath => Path.Combine(RootDirectory, "savegame.json");
-    public bool Exists
-    {
-        get
-        {
-            TryMigrateLegacySave();
-            return GetExistingSlotNumbers().Count > 0;
-        }
-    }
+    public bool Exists => SlotExists(AutosaveSlot) || GetExistingSlotNumbers().Count > 0;
 
     public string GetSlotPath(int slot)
     {
         ValidateSlot(slot);
+        if (slot == AutosaveSlot) return Path.Combine(SavesDirectory, "autosave.json");
         return Path.Combine(SavesDirectory, $"slot-{slot}.json");
     }
 
@@ -60,9 +54,9 @@ public sealed class SaveSlotRepository
 
     public IReadOnlyList<SaveSlotInfo> GetSlots()
     {
-        TryMigrateLegacySave();
         var occupiedSlots = GetExistingSlotNumbers();
-        var slots = occupiedSlots.Select(ReadSlotInfo).ToList();
+        var slots = new List<SaveSlotInfo> { ReadSlotInfo(AutosaveSlot) };
+        slots.AddRange(occupiedSlots.Select(ReadSlotInfo));
         if (FindFirstEmptySlot(occupiedSlots) is { } emptySlot)
             slots.Add(new SaveSlotInfo(emptySlot, false));
         return slots.OrderBy(slot => slot.Slot).ToArray();
@@ -70,7 +64,6 @@ public sealed class SaveSlotRepository
 
     public int? FindFirstEmptySlot()
     {
-        TryMigrateLegacySave();
         return FindFirstEmptySlot(GetExistingSlotNumbers());
     }
 
@@ -87,7 +80,6 @@ public sealed class SaveSlotRepository
     {
         ArgumentNullException.ThrowIfNull(content);
         ValidateSlot(slot);
-        TryMigrateLegacySave();
         var path = GetSlotPath(slot);
         var backupPath = GetSlotBackupPath(slot);
         if (!File.Exists(path) && !File.Exists(backupPath))
@@ -118,7 +110,6 @@ public sealed class SaveSlotRepository
     public SaveGameData LoadData(int slot)
     {
         ValidateSlot(slot);
-        TryMigrateLegacySave();
         return LoadDataCore(slot);
     }
 
@@ -154,7 +145,6 @@ public sealed class SaveSlotRepository
     public bool Delete(int slot)
     {
         ValidateSlot(slot);
-        TryMigrateLegacySave();
         var path = GetSlotPath(slot);
         var backupPath = GetSlotBackupPath(slot);
         var deleted = false;
@@ -177,9 +167,9 @@ public sealed class SaveSlotRepository
         if (!File.Exists(path) && !File.Exists(GetSlotBackupPath(slot))) return new SaveSlotInfo(slot, false);
         try
         {
-            // GetSlots already performed legacy migration and enumerated every
-            // occupied slot once. Avoid repeating that directory scan for each
-            // row so large, dynamically growing save collections remain linear.
+            // GetSlots already enumerated every occupied manual slot once.
+            // Avoid repeating that directory scan for each row so dynamically
+            // growing save collections remain linear.
             var data = LoadDataCore(slot);
             return new SaveSlotInfo(
                 slot,
@@ -197,21 +187,6 @@ public sealed class SaveSlotRepository
         catch (Exception exception)
         {
             return new SaveSlotInfo(slot, true, Error: exception.GetBaseException().Message);
-        }
-    }
-
-    private void TryMigrateLegacySave()
-    {
-        if (!File.Exists(LegacySavePath) || GetExistingSlotNumbers().Count > 0) return;
-        try
-        {
-            var data = ReadSaveData(LegacySavePath);
-            WriteAtomically(GetSlotPath(1), data);
-        }
-        catch
-        {
-            // Preserve an unreadable legacy file untouched; the slot screen can still
-            // be used normally and no user data is destroyed during migration.
         }
     }
 
@@ -245,6 +220,8 @@ public sealed class SaveSlotRepository
         return candidate;
     }
 
+    private bool SlotExists(int slot) => File.Exists(GetSlotPath(slot)) || File.Exists(GetSlotBackupPath(slot));
+
     private static void WriteAtomically(string path, SaveGameData data)
     {
         data.SavedAtUtc = DateTime.UtcNow;
@@ -274,8 +251,7 @@ public sealed class SaveSlotRepository
             throw new InvalidDataException($"Save file '{Path.GetFileName(path)}' exceeds the supported size limit.");
         var data = JsonSerializer.Deserialize<SaveGameData>(File.ReadAllText(path), JsonOptions)
             ?? throw new InvalidDataException($"Save file '{Path.GetFileName(path)}' is empty or invalid.");
-        if (data.SchemaVersion < SaveGameData.MinimumSupportedSchemaVersion ||
-            data.SchemaVersion > SaveGameData.CurrentSchemaVersion)
+        if (data.SchemaVersion != SaveGameData.CurrentSchemaVersion)
             throw new InvalidDataException($"Save schema {data.SchemaVersion} is not supported.");
         ValidateSaveStructure(data);
         return data;
@@ -384,8 +360,8 @@ public sealed class SaveSlotRepository
 
     private static void ValidateSlot(int slot)
     {
-        if (slot < 1)
-            throw new ArgumentOutOfRangeException(nameof(slot), "Save slot must be a positive number.");
+        if (slot < AutosaveSlot)
+            throw new ArgumentOutOfRangeException(nameof(slot), "Save slot cannot be negative.");
     }
 }
 
@@ -396,8 +372,7 @@ public static class SaveGameStore
         "MinimalBastion"));
 
     public static string SavesDirectory => DefaultRepository.SavesDirectory;
-    public static string LegacySavePath => DefaultRepository.LegacySavePath;
-    public static string SavePath => DefaultRepository.GetSlotPath(1);
+    public static string SavePath => DefaultRepository.GetSlotPath(SaveSlotRepository.AutosaveSlot);
     public static bool Exists => DefaultRepository.Exists;
     public static string GetSlotPath(int slot) => DefaultRepository.GetSlotPath(slot);
     public static IReadOnlyList<SaveSlotInfo> GetSlots() => DefaultRepository.GetSlots();

@@ -589,8 +589,8 @@ internal static class Program
         Check.Equal(UiAction.ApplySettings,
             ui.HandleSettingsInput(WorldInput(new Vector2(500, 245)) with { LeftPressed = true }),
             "display mode changes apply immediately");
-        Check.True(UIManager.RestartPreservationLabel.Contains("CHECKPOINTS STAY SAVED", StringComparison.Ordinal),
-            "restart confirmation explicitly preserves existing checkpoints");
+        Check.True(UIManager.RestartPreservationLabel.Contains("MANUAL SAVES STAY PROTECTED", StringComparison.Ordinal),
+            "restart confirmation explicitly preserves manual saves");
         Check.True(settings.Fullscreen, "settings UI toggles fullscreen");
         Check.Equal(UiAction.None,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { NavigateLeftPressed = true }),
@@ -3643,10 +3643,6 @@ internal static class Program
         legacyForgeSave.Generator!.ProductionRemaining = currentForgeInterval + 4;
         Check.Throws<InvalidDataException>(() => GameSession.RestoreSaveGame(legacyForgeSession.Content, legacyForgeSave),
             "current checkpoints reject an out-of-range Forge timer");
-        legacyForgeSave.SchemaVersion = SaveGameData.MinimumSupportedSchemaVersion;
-        var migratedForge = GameSession.RestoreSaveGame(legacyForgeSession.Content, legacyForgeSave);
-        Check.Nearly(currentForgeInterval, migratedForge.Generator!.ProductionRemaining,
-            "local checkpoint migrates a timer authored before the Forge interval was shortened");
 
         var strictNetworkForge = legacyForgeSession.CaptureCoOpState(0, 0, false);
         strictNetworkForge.Generator!.ProductionRemaining = currentForgeInterval + 4;
@@ -3670,9 +3666,6 @@ internal static class Program
         edgeSave.NextTowerId = 2;
         Check.Throws<InvalidDataException>(() => GameSession.RestoreSaveGame(authoredContent, edgeSave),
             "current checkpoints retain exclusive build-region edges");
-        edgeSave.SchemaVersion = SaveGameData.MinimumSupportedSchemaVersion;
-        Check.Equal(1, GameSession.RestoreSaveGame(authoredContent, edgeSave).Towers.Count,
-            "legacy checkpoints retain towers authored exactly on old closed region edges");
 
         var overCapacitySave = edgeSession.CaptureSaveGame();
         var plateDefinition = authoredContent.Tactics.EmergencyDefense;
@@ -3693,10 +3686,6 @@ internal static class Program
         overCapacitySave.NextEmergencyDefenseId = plateDefinition.MaximumActive + 2;
         Check.Throws<InvalidDataException>(() => GameSession.RestoreSaveGame(authoredContent, overCapacitySave),
             "current checkpoints enforce the active Pulse Plate cap");
-        overCapacitySave.SchemaVersion = SaveGameData.MinimumSupportedSchemaVersion;
-        Check.Equal(plateDefinition.MaximumActive + 1,
-            GameSession.RestoreSaveGame(authoredContent, overCapacitySave).EmergencyDefenses.Count,
-            "legacy checkpoints preserve historical over-cap plates until they are consumed");
 
         var invalidLayout = session.CaptureSaveGame();
         invalidLayout.Towers[0].X = 500;
@@ -3728,11 +3717,15 @@ internal static class Program
 
             var repository = new SaveSlotRepository(testRoot);
             Check.True(!repository.Exists, "empty dynamic save repository reports no checkpoint");
+            var emptySlots = repository.GetSlots();
+            Check.Equal(2, emptySlots.Count, "an empty repository exposes one autosave and one manual slot");
+            Check.True(!emptySlots.Single(slot => slot.Slot == SaveSlotRepository.AutosaveSlot).IsOccupied,
+                "autosave begins empty");
             repository.Save(solo, 2);
             repository.Save(coOp, 4);
             Check.True(repository.Exists, "metadata-only existence check detects dynamic saves");
             var slots = repository.GetSlots();
-            Check.Equal(3, slots.Count, "occupied saves plus the next available slot are enumerated");
+            Check.Equal(4, slots.Count, "autosave, occupied manual saves, and the next manual slot are enumerated");
             Check.True(slots.Single(slot => slot.Slot == 2).IsOccupied, "solo slot is occupied");
             Check.True(!slots.Single(slot => slot.Slot == 2).IsCoOp, "solo metadata remains solo");
             Check.True(slots.Single(slot => slot.Slot == 4).IsCoOp, "co-op metadata is identified");
@@ -3741,18 +3734,29 @@ internal static class Program
             foreach (var slot in new[] { 1, 3, 5, 6, 7, 8 })
                 repository.Save(slot % 2 == 0 ? coOp : solo, slot);
             slots = repository.GetSlots();
-            Check.Equal(9, slots.Count, "dynamic save list expands beyond the old five-slot limit");
+            Check.Equal(10, slots.Count, "manual save list expands beyond the old five-slot limit beside autosave");
             Check.Equal(9, repository.FindFirstEmptySlot()!.Value, "full initial pages allocate a new slot instead of overwriting");
-            Check.True(slots.Take(8).All(slot => slot.IsOccupied), "all existing saves remain occupied after expansion");
+            Check.True(slots.Where(slot => slot.Slot is >= 1 and <= 8).All(slot => slot.IsOccupied),
+                "all existing manual saves remain occupied after expansion");
+
+            repository.Save(solo, SaveSlotRepository.AutosaveSlot);
+            Check.True(repository.GetSlots().Single(slot => slot.Slot == SaveSlotRepository.AutosaveSlot).IsOccupied,
+                "the dedicated autosave is independently discoverable");
+            solo.Economy.AddCredits(7);
+            repository.Save(solo, SaveSlotRepository.AutosaveSlot);
+            Check.Equal(solo.Economy.Credits, repository.LoadData(SaveSlotRepository.AutosaveSlot).Economy.Credits,
+                "autosave overwrites its single dedicated checkpoint");
+            Check.True(repository.GetSlots().Single(slot => slot.Slot == 2).IsOccupied,
+                "autosave updates do not overwrite manual slots");
 
             var slotUi = new UIManager(null!);
             slotUi.ConfigureSaveSlots(slots, false);
             slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
             Check.Equal(2, slotUi.SelectedSaveSlot, "save browser Down selects the next slot");
             slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { NavigateRightPressed = true });
-            Check.Equal(6, slotUi.SelectedSaveSlot, "save browser Right advances to the next page");
+            Check.Equal(5, slotUi.SelectedSaveSlot, "save browser Right advances to the next page after autosave");
             slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
-            Check.Equal(5, slotUi.SelectedSaveSlot, "save browser Up crosses back to the previous page");
+            Check.Equal(4, slotUi.SelectedSaveSlot, "save browser Up crosses back to the previous page");
             slotUi.ConfigureSaveSlots(slots, false);
             Check.Equal(UiAction.ConfirmSaveSlot,
                 slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { EnterPressed = true }),
@@ -3760,7 +3764,7 @@ internal static class Program
             Check.Equal(UiAction.None,
                 slotUi.HandleSaveSlots(WorldInput(new Vector2(870, 600)) with { LeftPressed = true }),
                 "next-page control changes pages without loading");
-            Check.Equal(6, slotUi.SelectedSaveSlot, "second save page selects its first entry");
+            Check.Equal(5, slotUi.SelectedSaveSlot, "second save page selects its first entry after autosave");
             Check.Equal(UiAction.None,
                 slotUi.HandleSaveSlots(WorldInput(new Vector2(845, 543)) with { LeftPressed = true }),
                 "first delete click arms confirmation");
@@ -3782,20 +3786,22 @@ internal static class Program
             Directory.CreateDirectory(legacyRoot);
             var legacyRepository = new SaveSlotRepository(legacyRoot);
             var legacyData = solo.CaptureSaveGame();
-            legacyData.SchemaVersion = SaveGameData.MinimumSupportedSchemaVersion;
+            legacyData.SchemaVersion = SaveGameData.CurrentSchemaVersion - 1;
             legacyData.RunId = "";
             legacyData.DifficultyId = "";
             legacyData.ChallengeId = "";
-            File.WriteAllText(legacyRepository.LegacySavePath, JsonSerializer.Serialize(legacyData));
-            var migrated = legacyRepository.GetSlots();
-            Check.True(migrated[0].IsOccupied, "legacy checkpoint migrates into slot one");
-            Check.Equal("hard", migrated[0].DifficultyId, "legacy slot metadata identifies the original hard rules");
-            Check.Equal("standard", migrated[0].ChallengeId, "legacy slot metadata defaults to the standard directive");
-            var restoredLegacy = legacyRepository.Load(solo.Content);
-            Check.Equal("hard", restoredLegacy.DifficultyId, "legacy checkpoint restores the original hard rules");
-            Check.Equal("standard", restoredLegacy.ChallengeId, "legacy checkpoint restores the standard directive");
-            Check.True(!string.IsNullOrWhiteSpace(restoredLegacy.RunId), "legacy checkpoint receives a valid run identity");
-            Check.True(File.Exists(legacyRepository.LegacySavePath), "legacy checkpoint remains untouched after migration");
+            var legacyPath = Path.Combine(legacyRoot, "savegame.json");
+            File.WriteAllText(legacyPath, JsonSerializer.Serialize(legacyData));
+            var cleanSlots = legacyRepository.GetSlots();
+            Check.True(cleanSlots.All(slot => !slot.IsOccupied),
+                "legacy checkpoint files are ignored instead of resurrecting a deleted slot");
+            Check.True(!legacyRepository.Exists, "ignored legacy checkpoints do not enable the load menu");
+            Check.True(!File.Exists(legacyRepository.GetSlotPath(1)), "legacy checkpoint is never copied into a manual slot");
+
+            Directory.CreateDirectory(legacyRepository.SavesDirectory);
+            File.WriteAllText(legacyRepository.GetSlotPath(1), JsonSerializer.Serialize(legacyData));
+            Check.True(legacyRepository.GetSlots().Single(slot => slot.Slot == 1).Error is not null,
+                "outdated slot schemas are marked unreadable instead of migrated");
         }
         finally
         {
