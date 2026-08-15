@@ -1637,6 +1637,11 @@ internal static class Program
         Check.Equal("AB12CD", ui.JoinCodeInput, "Tab switches keyboard entry to the join-code field");
         Check.Equal(UiAction.JoinCoOp, ui.HandleCoOpMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
             "Enter joins after both keyboard fields are complete");
+        ui.SetCoOpLobbyStatus("HOSTING ONLINE CO-OP", "Share this code with your friend.", "Q7M2XP");
+        Check.Equal(UiAction.None, ui.HandleCoOpLobby(WorldInput(Vector2.Zero) with { CopyPressed = true }),
+            "copying the host join code keeps the lobby open");
+        Check.True(ui.CoOpLobbyCopyStatus is "JOIN CODE COPIED" or "CLIPBOARD UNAVAILABLE",
+            "host lobby reports the join-code copy result");
     }
 
     private static void BuildFingerprintContentCoverage()

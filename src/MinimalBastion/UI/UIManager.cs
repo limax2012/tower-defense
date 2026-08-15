@@ -70,6 +70,7 @@ public sealed class UIManager
     private string _joinHostInput = "";
     private string _joinCodeInput = "";
     private bool _editingJoinCode;
+    private string _coOpLobbyCopyStatus = "CLICK CODE OR CTRL+C TO COPY";
     private int _coOpWaveReadyMask;
     private bool _coOpWaveStartQueued;
     private bool _coOpEarlyBonusQueued;
@@ -134,6 +135,7 @@ public sealed class UIManager
     private readonly Rectangle _hostCoOpButton = new(500, 396, 280, 46);
     private readonly Rectangle _joinCoOpButton = new(500, 452, 280, 46);
     private readonly Rectangle _backButton = new(500, 518, 280, 44);
+    private readonly Rectangle _coOpLobbyCodeButton = new(500, 270, 280, 64);
     private readonly Rectangle _resumeButton = new(500, 236, 280, 46);
     private readonly Rectangle _towerLibraryButton = new(500, 288, 135, 46);
     private readonly Rectangle _pauseSettingsButton = new(645, 288, 135, 46);
@@ -161,6 +163,7 @@ public sealed class UIManager
     public string CoOpLobbyTitle { get; private set; } = "PREPARING ONLINE CO-OP";
     public string CoOpLobbyDetail { get; private set; } = "Starting the internet connection...";
     public string CoOpLobbyCode { get; private set; } = "";
+    public string CoOpLobbyCopyStatus => _coOpLobbyCopyStatus;
     public string SelectedMapId => _maps.Count == 0 ? "foundry_loop" : _maps[_selectedMapIndex].Id;
     public string SelectedMapName => _maps.Count == 0 ? "Foundry Loop" : _maps[_selectedMapIndex].Name;
     public string SelectedDifficultyId => _difficulties.Count == 0 ? DifficultyCatalog.DefaultId : _difficulties[_selectedDifficultyIndex].Id;
@@ -561,6 +564,14 @@ public sealed class UIManager
     public UiAction HandleCoOpLobby(InputSnapshot input)
     {
         if (input.EscapePressed) return UiAction.MainMenu;
+        if (!string.IsNullOrEmpty(CoOpLobbyCode) &&
+            (input.CopyPressed || input.LeftPressed && _coOpLobbyCodeButton.Contains(input.MousePosition.ToPoint())))
+        {
+            _coOpLobbyCopyStatus = ClipboardService.TrySetText(CoOpLobbyCode)
+                ? "JOIN CODE COPIED"
+                : "CLIPBOARD UNAVAILABLE";
+            return UiAction.None;
+        }
         return input.LeftPressed && _backButton.Contains(input.MousePosition.ToPoint()) ? UiAction.MainMenu : UiAction.None;
     }
 
@@ -568,6 +579,8 @@ public sealed class UIManager
     {
         CoOpLobbyTitle = title;
         CoOpLobbyDetail = detail;
+        if (!string.Equals(CoOpLobbyCode, code, StringComparison.Ordinal))
+            _coOpLobbyCopyStatus = "CLICK CODE OR CTRL+C TO COPY";
         CoOpLobbyCode = code;
     }
 
@@ -1752,9 +1765,13 @@ public sealed class UIManager
         if (!string.IsNullOrEmpty(CoOpLobbyCode))
         {
             DrawText(batch, "JOIN CODE", new Vector2(640, 260), ColorPalette.Muted, 0.62f, true);
-            DrawText(batch, CoOpLobbyCode, new Vector2(640, 305), ColorPalette.Cobalt, 1.8f, true);
+            p.FillRect(batch, _coOpLobbyCodeButton, ColorPalette.PanelAlt);
+            p.DrawRect(batch, _coOpLobbyCodeButton, ColorPalette.Cobalt, 2);
+            DrawText(batch, CoOpLobbyCode, new Vector2(640, 302), ColorPalette.Cobalt, 1.55f, true);
+            DrawText(batch, _coOpLobbyCopyStatus, new Vector2(640, 348),
+                _coOpLobbyCopyStatus == "JOIN CODE COPIED" ? ColorPalette.Green : ColorPalette.Muted, 0.48f, true);
         }
-        DrawText(batch, CoOpLobbyDetail, new Vector2(640, 385), ColorPalette.Muted, 0.66f, true);
+        DrawFittedCenteredText(batch, CoOpLobbyDetail, new Vector2(640, 392), ColorPalette.Muted, 0.62f, 440);
         DrawButton(batch, p, _backButton, "CANCEL", true, ColorPalette.Coral);
     }
 

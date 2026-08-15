@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Made the host's six-character co-op join code a clear copy target. Clicking the code or pressing Ctrl+C copies it, with inline success/failure feedback in the waiting lobby.
 - Added conventional arrow-key navigation to dynamic save slots, paginated run history, and every Tactical Library page. Selection follows page changes, cancels armed deletes, and keeps Enter confirmation deterministic.
 
 ## Arena progression, roles, protocols, and presentation pass
