@@ -50,6 +50,7 @@ public sealed class Game1 : Game
     private int _localPlayerId = 1;
     private long _nextClientRequestId = 1;
     private long _lastSyncTick = -1;
+    private long _checksumSnapshotFenceTick = -1;
     private OnlineHostEndpoint? _joinEndpoint;
     private string _joinCode = "";
     private float _reconnectRetryRemaining;
@@ -468,6 +469,7 @@ public sealed class Game1 : Game
         _coOpWaveReady.ApplyState(snapshot.ReadyMask, snapshot.WaveStartQueued, snapshot.WaveEarlyBonusQueued);
         _ui.SetCoOpWaveReadyState(_coOpWaveReady.ReadyMask, _coOpWaveReady.StartQueued, _coOpWaveReady.EarlyBonusQueued);
         _lastSyncTick = snapshot.Tick - 1;
+        _checksumSnapshotFenceTick = snapshot.Tick;
         _networkResyncing = false;
         _networkStarted = false;
         _ui.SetCoOpLobbyStatus("STATE SYNCHRONIZED", "Waiting for the host to resume both players...", _joinCode);
@@ -721,7 +723,8 @@ public sealed class Game1 : Game
 
     private void HandleTickSync(CoOpEnvelope envelope)
     {
-        if (envelope.Tick < 0 || string.IsNullOrWhiteSpace(envelope.Checksum)) return;
+        if (_networkRunner is null || string.IsNullOrWhiteSpace(envelope.Checksum) ||
+            !CoOpChecksumWindow.IsAcceptable(_networkRunner.Tick, _checksumSnapshotFenceTick, envelope.Tick)) return;
         _remoteNetworkChecksums[envelope.Tick] = envelope.Checksum;
         CompareNetworkChecksum(envelope.Tick);
     }
@@ -751,6 +754,7 @@ public sealed class Game1 : Game
         _repliedChecksumTicks.Clear();
         var snapshot = _session.CaptureCoOpState(_networkRunner.Tick, _coOpWaveReady.ReadyMask,
             _coOpWaveReady.StartQueued, _coOpWaveReady.EarlyBonusQueued);
+        _checksumSnapshotFenceTick = snapshot.Tick;
         // Snapshot capture compacts expired telemetry source IDs. Hash the
         // resulting authoritative state, not the pre-compaction state.
         _networkChecksums[_networkRunner.Tick] = SessionChecksum.Compute(_session, _networkRunner.Tick);
@@ -859,6 +863,7 @@ public sealed class Game1 : Game
         _localPlayerId = 1;
         _nextClientRequestId = 1;
         _lastSyncTick = -1;
+        _checksumSnapshotFenceTick = -1;
         _joinEndpoint = null;
         _joinCode = "";
         _reconnectRetryRemaining = 0;
@@ -951,6 +956,7 @@ public sealed class Game1 : Game
         AttachNetworkRunner();
         ResetCoOpWaveReadyState(false);
         _lastSyncTick = -1;
+        _checksumSnapshotFenceTick = -1;
         _networkStarted = true;
         _networkResyncing = false;
         _ui.SetCoOpLobbyStatus("RESTARTING CO-OP", "Sending both players a fresh defense on the same map...", _coOpHost?.JoinCode ?? "");

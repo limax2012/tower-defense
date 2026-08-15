@@ -100,6 +100,14 @@ public sealed class DeterministicSessionRunner
     }
 }
 
+public static class CoOpChecksumWindow
+{
+    public static bool IsAcceptable(long localTick, long snapshotFenceTick, long remoteTick) =>
+        localTick >= 0 && remoteTick > snapshotFenceTick &&
+        remoteTick >= Math.Max(0, localTick - DeterministicSessionRunner.MaximumFutureTicks) &&
+        remoteTick <= localTick + DeterministicSessionRunner.MaximumFutureTicks;
+}
+
 public static class SessionChecksum
 {
     private const ulong Offset = 14695981039346656037UL;

@@ -1428,6 +1428,15 @@ internal static class Program
 
     private static void CoOpChecksumCoverage()
     {
+        Check.True(!CoOpChecksumWindow.IsAcceptable(100, 100, 100),
+            "checksum from the repaired snapshot tick is fenced as pre-repair traffic");
+        Check.True(CoOpChecksumWindow.IsAcceptable(120, 100, 120),
+            "fresh post-snapshot checksum is accepted");
+        Check.True(!CoOpChecksumWindow.IsAcceptable(500, 100, 200),
+            "stale checksum outside the bounded history window is ignored");
+        Check.True(!CoOpChecksumWindow.IsAcceptable(100, -1, 100 + DeterministicSessionRunner.MaximumFutureTicks + 1),
+            "far-future checksum cannot accumulate while a peer catches up");
+
         var host = SessionWithWave();
         host.Content.Towers["tower"].Tier2Doctrines = new List<TowerDoctrineDefinition>
         {
