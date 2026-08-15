@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "prism_circuit",
   "displayName": "Prism Circuit",
-  "description": "A long conduit, isolated build pockets, and three modest relay nodes.",
+  "description": "A long conduit, isolated build pockets, and three modest Surge Nodes.",
   "challengeRating": 3,
   "logicalSize": { "width": 960, "height": 720 },
   "background": { "base": "#152D36", "accent": "#30465B", "motif": "facets" },

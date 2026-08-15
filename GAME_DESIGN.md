@@ -2,7 +2,7 @@
 
 ## Core loop
 
-Spend credits to place geometric defenses in continuous build zones around a fixed route. Read the next mixed threat, choose coverage and counters, upgrade or specialize towers, use targeting priorities, and intervene with Pulse Plates or Overdrive. Calling a wave during its ten-second preparation window grants 20 credits. Survive all 20 waves and the phased Bastion Core boss.
+Spend credits to place geometric defenses in continuous build zones around a fixed route. Read the next mixed threat, choose coverage and counters, upgrade or specialize towers, use targeting priorities, and intervene with Pulse Plates or tower-specific Protocols. Calling a wave during its ten-second preparation window grants 20 credits. Survive all 20 waves and the phased Bastion Core boss.
 
 Permanent tower damage is mechanically consistent from wave 1 through wave 20. There is no hidden early-game damage lift.
 

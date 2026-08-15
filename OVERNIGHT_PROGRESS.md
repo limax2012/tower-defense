@@ -18,8 +18,8 @@ Updated: 2026-08-15
 
 - Added rendering-independent fixed-step full-game simulation with seeded choices, safety limits, and JSON reports.
 - Added 12 agents: Conservative, Economy, Aggressive, UpgradeFocused, Spam, AntiSwarm, AntiArmor, LongRange, Control, Tactical, Adaptive, and Randomized.
-- Agents use continuous placement, Surge Zones, route coverage, reserves, upgrades, selling, branches, targeting, early calls, plates, forge production, elites/boss reads, and Overdrive.
-- Telemetry covers economy, purchases/upgrades/sales, branches, attributed damage/kills, armor/shield/overkill, enemies, waves, plates, forge production, Overdrives, and early-call rewards.
+- Agents use continuous placement, Surge Nodes, route coverage, reserves, upgrades, selling, branches, targeting, early calls, plates, forge production, elites/boss reads, and Protocols.
+- Telemetry covers economy, purchases/upgrades/sales, branches, attributed damage/kills, armor/shield/overkill, enemies, waves, plates, forge production, Protocol activations, and early-call rewards.
 - CLI supports `--simulate`, `--simulate-full`, `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, `--no-protocols`, and `--output`.
 
 ### Waves, enemies, and strategic information

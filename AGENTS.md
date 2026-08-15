@@ -32,7 +32,7 @@ If a build reports a locked executable, inspect `Get-Process MinimalBastion`, ve
 
 - `Game1` owns window, input, state-screen, transport, fixed-network-runner, and render lifecycle.
 - One `GameSession` owns authoritative match state and updates systems in deterministic order.
-- `MapRuntime`/`PathRuntime` own placement and route geometry, including Surge Zone buffs.
+- `MapRuntime`/`PathRuntime` own placement and route geometry, including Surge Node buffs.
 - `WaveManager` schedules authored groups, intermissions, early calls, elites, and the final boss.
 - `TowerSystem`, narrow `ITowerBehavior` modules, `TargetSelector`, `ProjectileSystem`, `DamageResolver`, status/effect systems, and `EnemySystem` execute combat.
 - `TacticalDefenseSystem`, `PulsePlateInstance`, and `ChargeForgeInstance` own emergency defenses and wave-powered production.
@@ -52,7 +52,7 @@ Do not casually replace this with ECS, dependency injection, a physics engine, o
 - Wave start requires both players ready. Speed and pause are shared, command-synchronized state.
 - Public internet play is direct TCP `28741` with a six-character join code and build/content fingerprint negotiation. There is no matchmaking, relay server, automatic port mapping, or encryption; hosts still need a reachable address/port forward where NAT requires it.
 - A disconnected Player 2 can reconnect to the existing host. The host pauses the simulation, rotates that player's request-replay session, sends a validated authoritative snapshot (including combat, economy, wave, readiness, and pending-command state), then resumes both peers.
-- Keep stable internal IDs such as `relay_divide`; the player-facing map/feature names are `Surge Divide` and `Surge Zone`.
+- Keep stable internal IDs such as `relay_divide`; the player-facing map/feature names are `Surge Divide` and `Surge Node`.
 
 ## Gameplay invariants
 
