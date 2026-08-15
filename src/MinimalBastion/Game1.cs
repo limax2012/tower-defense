@@ -201,7 +201,9 @@ public sealed class Game1 : Game
                 break;
         }
 
-        if (_coOpConnection is not null && _coOpHeartbeat.Advance(elapsedSeconds))
+        var connectionTimedOut = _coOpConnection is not null && _coOpHeartbeat.Advance(elapsedSeconds);
+        _ui?.SetCoOpLinkSilence(_coOpHeartbeat.SilenceSeconds);
+        if (connectionTimedOut)
             HandleConnectionLoss("CONNECTION TIMED OUT", "No co-op traffic was received for 15 seconds. The match is preserved for reconnection.");
 
         RecordTerminalRun();

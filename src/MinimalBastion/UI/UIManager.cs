@@ -77,6 +77,7 @@ public sealed class UIManager
     private bool _coOpEarlyBonusQueued;
     private bool _coOpPeerConnected;
     private bool _coOpResyncing;
+    private float _coOpLinkSilenceSeconds;
     private Vector2? _remoteCoOpCursor;
     private int _remoteCoOpCursorPlayerId;
     private int _remoteCoOpSelectedTowerId;
@@ -239,6 +240,16 @@ public sealed class UIManager
         return string.IsNullOrEmpty(earlyStatus)
             ? $"P1 {p1} | P2 {p2}"
             : $"P1 {p1} | P2 {p2} | {earlyStatus}";
+    }
+
+    public static string CoOpLinkStatusLabel(bool connected, bool resyncing, float silenceSeconds)
+    {
+        if (!connected) return "WAITING FOR P2";
+        if (resyncing) return "P1 + P2 | RESYNC";
+        var silence = float.IsFinite(silenceSeconds) ? MathF.Max(0, silenceSeconds) : 0;
+        if (silence < 1.5f) return "P1 + P2 | LIVE";
+        if (silence < 5f) return $"LINK DELAY | {MathF.Ceiling(silence):0}s";
+        return $"LINK STALLED | {MathF.Ceiling(silence):0}s";
     }
 
     public static string PulsePlateButtonLabel(MinimalBastion.GameSession session)
@@ -799,7 +810,11 @@ public sealed class UIManager
     {
         _coOpPeerConnected = connected;
         _coOpResyncing = resyncing;
+        if (!connected) _coOpLinkSilenceSeconds = 0;
     }
+
+    public void SetCoOpLinkSilence(float silenceSeconds) =>
+        _coOpLinkSilenceSeconds = float.IsFinite(silenceSeconds) ? MathF.Max(0, silenceSeconds) : 0;
 
     public void SetRemoteCoOpCursor(Vector2? position, int playerId, int selectedTowerId = 0)
     {
@@ -1555,7 +1570,10 @@ public sealed class UIManager
         DrawText(batch, "TACTICAL SYSTEMS", new Vector2(986, 64), ColorPalette.Paper, 1.0f);
         if (session.IsCoOp)
         {
-            DrawText(batch, _coOpPeerConnected ? "P1 + P2 ONLINE" : "WAITING FOR P2", new Vector2(1210, 69), _coOpPeerConnected ? ColorPalette.Green : ColorPalette.Coral, 0.43f, true);
+            var linkLabel = CoOpLinkStatusLabel(_coOpPeerConnected, _coOpResyncing, _coOpLinkSilenceSeconds);
+            var linkColor = !_coOpPeerConnected ? ColorPalette.Coral : _coOpResyncing ? ColorPalette.Cyan :
+                _coOpLinkSilenceSeconds >= 5 ? ColorPalette.Coral : _coOpLinkSilenceSeconds >= 1.5f ? ColorPalette.Gold : ColorPalette.Green;
+            DrawFittedCenteredText(batch, linkLabel, new Vector2(1210, 69), linkColor, 0.43f, 112);
             var readyStatus = session.CanStartWave
                 ? CoOpReadyStatusLabel(session.CurrentWave, _coOpWaveReadyMask, _coOpWaveStartQueued,
                     _coOpEarlyBonusQueued, session.IntermissionRemaining)

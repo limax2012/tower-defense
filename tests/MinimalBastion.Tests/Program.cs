@@ -1802,6 +1802,11 @@ internal static class Program
         Check.True(!heartbeat.Advance(float.PositiveInfinity), "nonfinite frame time cannot force a timeout");
         Check.True(!heartbeat.Advance(CoOpHeartbeatMonitor.TimeoutSeconds * 2),
             "one resumed-frame sample is clamped instead of disconnecting a live peer");
+        Check.Equal("WAITING FOR P2", UIManager.CoOpLinkStatusLabel(false, false, 0), "co-op link label reports absent peer");
+        Check.Equal("P1 + P2 | RESYNC", UIManager.CoOpLinkStatusLabel(true, true, 0), "co-op link label prioritizes repair state");
+        Check.Equal("P1 + P2 | LIVE", UIManager.CoOpLinkStatusLabel(true, false, 0.8f), "fresh traffic reports a live link");
+        Check.Equal("LINK DELAY | 3s", UIManager.CoOpLinkStatusLabel(true, false, 2.1f), "delayed traffic reports age without claiming RTT");
+        Check.Equal("LINK STALLED | 8s", UIManager.CoOpLinkStatusLabel(true, false, 7.2f), "stalled traffic warns before reconnect timeout");
     }
 
     private static void CoOpFramingBounds()

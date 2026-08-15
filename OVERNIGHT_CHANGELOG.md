@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Added a deterministic-safe co-op link indicator based on valid inbound-traffic age. Both players now see LIVE, DELAY, STALLED, or RESYNC in the sidebar before the existing 15-second reconnect threshold, with no gameplay state or extra protocol traffic.
 - Added a native-verified Systems page to the title/pause Tactical Library. Six clean reference cards explain progression, targeting, status precedence, manual/automatic Protocols, Beacon/Surge stacking, and data-driven Pulse Plate/Forge values without crowding live Tower Intel.
 - Carried every route's dash pattern continuously through corners instead of restarting it on each straight. Gold road markings no longer imply separate tiles at bends, and Surge Divide's moving power packets now flow around the complete rail without visible jumps.
 - Cleaned defeat-field inspection without altering the concluded simulation: surviving enemies, defenses, roads, nodes, and ranges remain visible, while projectiles and momentary attack rings from the fatal tick are suppressed instead of appearing frozen. This is renderer-only, so solo/co-op checksums remain untouched.
