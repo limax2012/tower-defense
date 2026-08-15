@@ -61,6 +61,7 @@ Network code never implements a second copy of placement, affordability, upgrade
 - Wave-ready coordinator behavior.
 - Map/difficulty/challenge identity and latent future-entity state in checksums and session construction.
 - Active-combat snapshot round trip, future-command restoration, post-reconnect combat soak, repeated loopback reconnection, and graceful connection close detection.
+- Jittered 0-5 tick command delivery across shared placement, branching, targeting, Protocols, speed, and selling, plus explicit rejection once the six-tick authority buffer has been missed.
 
 The native menu, address/code fields, map selection label, and lobby presentation have also been visually inspected.
 

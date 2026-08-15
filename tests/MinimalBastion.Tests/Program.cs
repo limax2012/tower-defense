@@ -70,6 +70,7 @@ internal static class Program
             ("defeat field inspection", DefeatFieldInspection),
             ("co-op shared control commands", CoOpOwnershipCommands),
             ("network deterministic commands", NetworkDeterministicCommands),
+            ("co-op buffered jitter commands", CoOpBufferedJitterCommands),
             ("co-op active state snapshot", CoOpActiveStateSnapshot),
             ("co-op checksum coverage", CoOpChecksumCoverage),
             ("co-op reconnect combat soak", CoOpReconnectCombatSoak),
@@ -867,6 +868,54 @@ internal static class Program
         Check.True(first.Towers[0].IsOverdriven, "mirrored active ability state");
         Check.True(first.OverdriveCooldownRemaining > 0, "mirrored cooldown state");
         Check.Equal(1, first.AutoOverdriveTowerId, "mirrored auto protocol state");
+    }
+
+    private static void CoOpBufferedJitterCommands()
+    {
+        var host = SessionWithWaves(2);
+        var client = SessionWithWaves(2);
+        host.ConfigureCoOp(1);
+        client.ConfigureCoOp(2);
+        host.Economy.AddCredits(1_500);
+        client.Economy.AddCredits(1_500);
+        var hostRunner = new DeterministicSessionRunner(host);
+        var clientRunner = new DeterministicSessionRunner(client);
+        var deliveries = new[]
+        {
+            (Target: 8L, Delay: 5L, Command: new GameCommand { Sequence = 1, ClientRequestId = 1, PlayerId = 2, Type = GameCommandType.PlaceTower, TowerDefinitionId = "tower", X = 50, Y = 200 }),
+            (Target: 12L, Delay: 0L, Command: new GameCommand { Sequence = 2, ClientRequestId = 2, PlayerId = 1, Type = GameCommandType.PlaceTower, TowerDefinitionId = "tower", X = 50, Y = 90 }),
+            (Target: 18L, Delay: 3L, Command: new GameCommand { Sequence = 3, ClientRequestId = 3, PlayerId = 1, Type = GameCommandType.UpgradeTower, EntityId = 1 }),
+            (Target: 24L, Delay: 1L, Command: new GameCommand { Sequence = 4, ClientRequestId = 4, PlayerId = 2, Type = GameCommandType.SpecializeTower, EntityId = 1, SpecializationId = "alpha" }),
+            (Target: 30L, Delay: 4L, Command: new GameCommand { Sequence = 5, ClientRequestId = 5, PlayerId = 1, Type = GameCommandType.SetTargetMode, EntityId = 1, TargetMode = TargetMode.Armored }),
+            (Target: 36L, Delay: 2L, Command: new GameCommand { Sequence = 6, ClientRequestId = 6, PlayerId = 2, Type = GameCommandType.OverdriveTower, EntityId = 1 }),
+            (Target: 38L, Delay: 5L, Command: new GameCommand { Sequence = 7, ClientRequestId = 7, PlayerId = 2, Type = GameCommandType.ToggleAutoProtocol, EntityId = 2 }),
+            (Target: 42L, Delay: 0L, Command: new GameCommand { Sequence = 8, ClientRequestId = 8, PlayerId = 1, Type = GameCommandType.StartWave }),
+            (Target: 50L, Delay: 3L, Command: new GameCommand { Sequence = 9, ClientRequestId = 9, PlayerId = 2, Type = GameCommandType.SetSpeed, Speed = 2f }),
+            (Target: 90L, Delay: 5L, Command: new GameCommand { Sequence = 10, ClientRequestId = 10, PlayerId = 1, Type = GameCommandType.SellTower, EntityId = 2 })
+        };
+        foreach (var delivery in deliveries)
+            Check.True(hostRunner.Schedule(delivery.Target, delivery.Command), "host schedules buffered command");
+
+        for (var tick = 0L; tick < 220; tick++)
+        {
+            foreach (var delivery in deliveries.Where(delivery => delivery.Target - delivery.Delay == tick))
+                Check.True(clientRunner.Schedule(delivery.Target, delivery.Command), "jittered command arrives inside six-tick buffer");
+            hostRunner.RunTicks(1);
+            clientRunner.RunTicks(1);
+        }
+
+        Check.Equal(SessionChecksum.Compute(host, hostRunner.Tick), SessionChecksum.Compute(client, clientRunner.Tick),
+            "zero-to-five-tick delivery jitter preserves authoritative state");
+        Check.Equal(1, host.Towers.Count, "shared remote sale applied once");
+        Check.Equal(2, host.Towers[0].OwnerPlayerId, "original placer survives shared cross-player operations");
+        Check.Equal("alpha", host.Towers[0].SpecializationId!, "jittered specialization applied");
+        Check.Equal(TargetMode.Armored, host.Towers[0].TargetMode, "jittered target mode applied");
+        Check.Equal(0, host.AutoOverdriveTowerId, "selling the armed tower clears shared automation");
+
+        var lateRunner = new DeterministicSessionRunner(Session());
+        lateRunner.RunTicks(2);
+        Check.True(!lateRunner.Schedule(1, new GameCommand { Sequence = 99, PlayerId = 2, Type = GameCommandType.SetSpeed, Speed = 2 }),
+            "a command arriving after its authoritative tick is rejected for resynchronization");
     }
 
     private static void CoOpActiveStateSnapshot()
