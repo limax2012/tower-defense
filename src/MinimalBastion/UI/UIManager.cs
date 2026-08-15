@@ -920,10 +920,10 @@ public sealed class UIManager
             : autoArmed ? $"AUTO ARMED: {tower.Protocol.DisplayName.ToUpperInvariant()}  |  THREAT {tower.Protocol.AutoTriggerCount}+" : null;
         var primaryHint = beaconHint ?? TowerInfo.Strength(tower.Definition);
         var secondaryHint = powerHint ?? overdriveHint ?? (beaconHint is not null ? TowerInfo.Strength(tower.Definition) : TowerInfo.Limitation(tower.Definition));
-        DrawFittedText(batch, primaryHint, new Vector2(980, 597),
+        DrawFittedText(batch, primaryHint, new Vector2(980, 594),
             beaconHint is not null ? ColorPalette.Gold : ColorPalette.Muted,
             beaconHint is not null ? 0.48f : 0.53f, 280);
-        DrawFittedText(batch, secondaryHint, new Vector2(980, 615),
+        DrawFittedText(batch, secondaryHint, new Vector2(980, 610),
             powerHint is not null ? powerNodes[0].NodeColor : overdriveHint is not null ? ColorPalette.Coral : ColorPalette.Muted,
             powerHint is not null ? 0.44f : 0.50f, 280);
         var upgradeLine = _specializationHint ?? (tower.RequiresSpecialization
@@ -931,7 +931,7 @@ public sealed class UIManager
             : tower.CanUpgrade
                 ? $"NEXT {tower.UpgradeCost}: {TowerInfo.UpgradeSummary(tower.Definition, tower.LevelIndex, supportBuff, power)}"
                 : "MAXIMUM LEVEL");
-        DrawFittedText(batch, upgradeLine, new Vector2(980, 633),
+        DrawFittedText(batch, upgradeLine, new Vector2(980, 626),
             _specializationHint is not null ? ColorPalette.Cobalt : tower.RequiresSpecialization || tower.CanUpgrade ? ColorPalette.Violet : ColorPalette.Muted,
             0.52f, 280);
 
