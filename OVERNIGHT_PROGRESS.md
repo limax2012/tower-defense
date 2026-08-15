@@ -8,7 +8,7 @@ Updated: 2026-08-15
 - Deterministic regression suite: 66/66 passing.
 - Self-contained Windows x64 publish: `.build/publish/MinimalBastion.exe`.
 - Content: 4 maps with independently authored campaigns, 10 towers with 20 tier-two doctrines and 20 final specializations, 10 distinct Protocols, 5 enemy bases plus elite/boss ranks, difficulty/directive profiles, tactical reserves, and endless continuation.
-- Canonical five-seed Hard matrix: 140/240 wins (58.3%). A fresh three-seed audit on the current executable produced 73/144 wins (50.7%), with every final Breaker role appearing in winning runs and Surge Divide remaining the hardest arena.
+- Canonical five-seed Hard matrix: 140/240 wins (58.3%). A fresh three-seed audit on the current executable produced 75/144 wins (52.1%), with the reworked Rapid Array active and Surge Divide remaining the hardest arena.
 - Native visual QA covers title/settings/co-op flows, all map treatments, tactical sidebar states, Surge Node overlap intel, Protocol/Beacon markers, Pulse Plates/Forge, high-resolution and wide-aspect rendering, result/field inspection, and the complete Tower/Threat/Campaign library. The latest 1920-wide pass reconfirmed title and doctrine-card spacing plus Breaker/Beacon contrast.
 - Git history is maintained on `agent/overnight-arena-progression` and mirrored to `origin`; tested feature units are committed incrementally while `main` remains untouched during the active overnight run.
 
@@ -104,6 +104,7 @@ Updated: 2026-08-15
   - `.build/balance/overnight-audit-normal-3x.json`
   - `.build/balance/overnight-audit-hard-3x.json`
   - `.build/balance/overnight-audit-bastion-3x.json`
+  - `.build/balance/all-difficulties-current-3x.json`
   - `.build/balance/overnight-endless60-easy-1x.json`
   - `.build/balance/overnight-endless60-normal-1x.json`
   - `.build/balance/overnight-endless60-hard-1x.json`
@@ -125,12 +126,12 @@ The current executable was rerun for three seeds across 12 strategies and all fo
 
 | Difficulty | Wins | Win rate | Average wave | Average lives |
 |---|---:|---:|---:|---:|
-| Easy | 116/144 | 80.6% | 19.3 | 23.4 |
-| Normal | 106/144 | 73.6% | 18.7 | 16.5 |
-| Hard | 73/144 | 50.7% | 16.9 | 8.8 |
-| Bastion | 16/144 | 11.1% | 13.0 | 1.2 |
+| Easy | 113/144 | 78.5% | 19.0 | 22.6 |
+| Normal | 106/144 | 73.6% | 18.5 | 15.9 |
+| Hard | 75/144 | 52.1% | 16.8 | 8.2 |
+| Bastion | 16/144 | 11.1% | 12.0 | 1.0 |
 
-The clean separation supports preserving the current multipliers. On Hard, Surge clears 12/36 versus 17-26/36 elsewhere; on Bastion it clears 1/36. Easy remains broadly forgiving while the intentionally dysfunctional Economy and indiscriminate level-1 Spam policies still fail, so it does not collapse into an automatic win.
+The clean separation supports preserving the current multipliers. On Hard, Surge clears 17/36 versus 19-20/36 elsewhere; on Bastion it clears 2/36 and remains the harshest arena. Easy remains broadly forgiving while the intentionally dysfunctional Economy and indiscriminate level-1 Spam policies still fail, so it does not collapse into an automatic win.
 
 ## Significant decisions and rejected designs
 
@@ -168,7 +169,7 @@ The clean separation supports preserving the current multipliers. On Hard, Surge
 - Online co-op shared pause now exposes the complete Tactical Library locally by click or Tab. Network polling remains active, and the overlay consumes mouse/keyboard input so planning clicks cannot leak through to the battlefield; a second Escape cleanly requests authoritative resume.
 - Challenge automation now supports `--challenge all` and quiet aggregate runs. A 384-run Hard matrix measured Standard 47.9%, Close Quarters 49.0%, No Reserves 46.9%, and the intentionally severe Core Six 29.2%, supporting the current fixed opening compensation without another economy change.
 - Challenge sweeps now print an arena-by-directive matrix, exposing geometry-specific restriction spikes instead of allowing them to disappear inside one aggregate directive result. The existing two-seed Hard corpus shows Close Quarters at 54.2% on Crosswind, 45.8% on Foundry, 54.2% on Prism, and 41.7% on Surge; Core Six remains consistently severe rather than containing one anomalous arena. Content loading also rejects shared or byte-equivalent campaign rosters, preserving independently authored waves for every arena.
-- Full campaign automation can now sweep `--difficulty all` across every authored arena. A two-seed, twelve-strategy, 384-run matrix measured Easy 80.2%, Normal 72.9%, Hard 47.9%, and Bastion 11.5% wins; Surge Divide remained the hardest aggregate arena, followed closely by Prism Circuit, while Crosswind Basin was the most forgiving.
+- Full campaign automation can now sweep `--difficulty all` across every authored arena. The current three-seed, twelve-strategy, 576-run matrix measures Easy 78.5%, Normal 73.6%, Hard 52.1%, and Bastion 11.1%; Surge Divide remains the hardest Hard/Bastion arena after the Rapid Array rebalance.
 - The deterministic balance bench now reports swarm kills, controlled survivors, leaks, and aggregate health removed separately. Control towers no longer appear inactive simply because slowed enemies remain alive when the scenario clock ends.
 - Forced-build automation can now sweep one tower's four doctrine/final-role pairings or all forty completed paths, retaining the tested path in each machine-readable result. The first all-map Hard Mortar audit placed its four paths within 45.8%-52.1% wins; Quake's low organic pick count reflects agent preference rather than a failed branch, so no speculative stat change was made.
 - A 1,920-run all-path audit exposed Rapid Array as the one clear specialization mismatch: it surrendered Rail Pin's reach and armor pierce without actually affecting a crowd. Rapid now fires a compact 16-unit burst capped at two enemies, with lower per-needle damage; Cycler Feed gains a modest cadence-throughput edge and no longer carries an unrelated range penalty. A fresh 144-run Hard audit lands at 52.1%, preserving the target difficulty while making the labeled swarm route mechanically real.
