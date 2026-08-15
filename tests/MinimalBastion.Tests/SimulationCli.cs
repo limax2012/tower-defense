@@ -61,19 +61,19 @@ internal static class SimulationCli
         var batch = new SimulationBatchResult { Runs = runs };
         Console.WriteLine();
         var endlessAudit = maximumWave > content.Waves.Waves.Count;
-        var outcomeLabel = endlessAudit ? $"wave {maximumWave} reaches" : "wins";
-        Console.WriteLine($"Runs {runs.Count}, {outcomeLabel} {batch.Wins}, rate {batch.WinRate:P1}, average wave {batch.AverageWaveReached:0.0}, average lives {batch.AverageLivesRemaining:0.0}.");
+        var outcomeLabel = endlessAudit ? $"reach wave {maximumWave}" : "wins";
+        Console.WriteLine($"Runs {runs.Count}, {(endlessAudit ? $"wave-{maximumWave} targets reached" : "wins")} {batch.Wins}, rate {batch.WinRate:P1}, average wave {batch.AverageWaveReached:0.0}, average lives {batch.AverageLivesRemaining:0.0}.");
         if (endlessAudit) PrintEndlessProgress(runs);
         if (forcedBuilds.Count == 1 && forcedBuilds[0] is { } onlyForcedBuild)
             Console.WriteLine($"Forced requested path: {onlyForcedBuild.TowerId}:{onlyForcedBuild.DoctrineId}>{onlyForcedBuild.SpecializationId}");
         if (!useProtocols) Console.WriteLine("Protocol activations disabled for this control group.");
-        PrintStrategySummary(runs);
-        PrintDifficultySummary(runs);
-        PrintChallengeSummary(runs);
-        PrintMapSummary(runs);
+        PrintStrategySummary(runs, outcomeLabel);
+        PrintDifficultySummary(runs, outcomeLabel);
+        PrintChallengeSummary(runs, outcomeLabel);
+        PrintMapSummary(runs, outcomeLabel);
         PrintArenaDifficultyMatrix(runs, content);
         PrintArenaChallengeMatrix(runs, content);
-        PrintForcedBuildSummary(runs);
+        PrintForcedBuildSummary(runs, outcomeLabel);
         PrintForcedBuildArenaMatrix(runs);
         PrintTowerSummary(runs);
         PrintDoctrineSummary(runs);
@@ -196,38 +196,38 @@ internal static class SimulationCli
         int DeepestWave,
         float AverageEndlessDepth);
 
-    private static void PrintMapSummary(IEnumerable<SimulationRunResult> runs)
+    private static void PrintMapSummary(IEnumerable<SimulationRunResult> runs, string outcomeLabel)
     {
         Console.WriteLine();
         Console.WriteLine("MAP SUMMARY");
         foreach (var group in runs.GroupBy(x => x.MapId).OrderBy(x => x.Key))
-            Console.WriteLine($"{group.Key,-18} {group.Count(x => x.Won),2}/{group.Count(),-2} wins  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
+            Console.WriteLine($"{group.Key,-18} {group.Count(x => x.Won),2}/{group.Count(),-2} {outcomeLabel}  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
     }
 
-    private static void PrintStrategySummary(IEnumerable<SimulationRunResult> runs)
+    private static void PrintStrategySummary(IEnumerable<SimulationRunResult> runs, string outcomeLabel)
     {
         Console.WriteLine();
         Console.WriteLine("STRATEGY SUMMARY");
         foreach (var group in runs.GroupBy(x => x.Strategy).OrderBy(x => x.Key))
-            Console.WriteLine($"{group.Key,-16} {group.Count(x => x.Won),2}/{group.Count(),-2} wins  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
+            Console.WriteLine($"{group.Key,-16} {group.Count(x => x.Won),2}/{group.Count(),-2} {outcomeLabel}  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
     }
 
-    private static void PrintDifficultySummary(IEnumerable<SimulationRunResult> runs)
+    private static void PrintDifficultySummary(IEnumerable<SimulationRunResult> runs, string outcomeLabel)
     {
         Console.WriteLine();
         Console.WriteLine("DIFFICULTY SUMMARY");
         foreach (var group in runs.GroupBy(x => x.DifficultyId).OrderBy(x => x.Key))
-            Console.WriteLine($"{group.Key,-18} {group.Count(x => x.Won),2}/{group.Count(),-2} wins  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
+            Console.WriteLine($"{group.Key,-18} {group.Count(x => x.Won),2}/{group.Count(),-2} {outcomeLabel}  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
     }
 
-    private static void PrintChallengeSummary(IEnumerable<SimulationRunResult> runs)
+    private static void PrintChallengeSummary(IEnumerable<SimulationRunResult> runs, string outcomeLabel)
     {
         var materialized = runs.ToArray();
         if (materialized.Select(x => x.ChallengeId).Distinct(StringComparer.OrdinalIgnoreCase).Count() < 2) return;
         Console.WriteLine();
         Console.WriteLine("CHALLENGE SUMMARY");
         foreach (var group in materialized.GroupBy(x => x.ChallengeId).OrderBy(x => x.Key))
-            Console.WriteLine($"{group.Key,-18} {group.Count(x => x.Won),2}/{group.Count(),-2} wins  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
+            Console.WriteLine($"{group.Key,-18} {group.Count(x => x.Won),2}/{group.Count(),-2} {outcomeLabel}  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
     }
 
     private static void PrintArenaDifficultyMatrix(IEnumerable<SimulationRunResult> runs, GameContent content)
@@ -239,7 +239,7 @@ internal static class SimulationCli
         if (difficultyIds.Length < 2) return;
 
         Console.WriteLine();
-        Console.WriteLine("ARENA x DIFFICULTY (win rate / average wave)");
+        Console.WriteLine("ARENA x DIFFICULTY (success rate / average wave)");
         Console.Write($"{"Arena",-18}");
         foreach (var difficultyId in difficultyIds) Console.Write($"  {difficultyId,-15}");
         Console.WriteLine();
@@ -265,7 +265,7 @@ internal static class SimulationCli
         if (challengeIds.Length < 2) return;
 
         Console.WriteLine();
-        Console.WriteLine("ARENA x DIRECTIVE (win rate / average wave)");
+        Console.WriteLine("ARENA x DIRECTIVE (success rate / average wave)");
         Console.Write($"{"Arena",-18}");
         foreach (var challengeId in challengeIds) Console.Write($"  {challengeId,-15}");
         Console.WriteLine();
@@ -317,7 +317,7 @@ internal static class SimulationCli
         }).ToArray();
     }
 
-    private static void PrintForcedBuildSummary(IEnumerable<SimulationRunResult> runs)
+    private static void PrintForcedBuildSummary(IEnumerable<SimulationRunResult> runs, string outcomeLabel)
     {
         var rows = SummarizeForcedBuilds(runs);
         if (rows.Count == 0) return;
@@ -325,7 +325,7 @@ internal static class SimulationCli
         Console.WriteLine();
         Console.WriteLine("FORCED BUILD PATHS");
         foreach (var row in rows)
-            Console.WriteLine($"{row.Path,-58} {row.Wins,2}/{row.Runs,-2} wins  avg wave {row.AverageWave,4:0.0}  lives {row.AverageLives,4:0.0}  complete {row.CompletedRuns,2}/{row.Runs,-2} runs ({row.CompletedWins,2} wins, {row.CompletedTowers,3} towers)  complete impact/credit {row.CompletedImpactPerCredit,6:0.0}");
+            Console.WriteLine($"{row.Path,-58} {row.Wins,2}/{row.Runs,-2} {outcomeLabel}  avg wave {row.AverageWave,4:0.0}  lives {row.AverageLives,4:0.0}  complete {row.CompletedRuns,2}/{row.Runs,-2} runs ({row.CompletedWins,2} successful, {row.CompletedTowers,3} towers)  complete impact/credit {row.CompletedImpactPerCredit,6:0.0}");
     }
 
     internal static IReadOnlyList<ForcedBuildArenaSummary> SummarizeForcedBuildsByArena(IEnumerable<SimulationRunResult> runs) =>
@@ -352,7 +352,7 @@ internal static class SimulationCli
         if (mapIds.Length < 2) return;
 
         Console.WriteLine();
-        Console.WriteLine("FORCED PATH x ARENA (win rate / completion rate / average wave)");
+        Console.WriteLine("FORCED PATH x ARENA (success rate / completion rate / average wave)");
         Console.Write($"{"Path",-58}");
         foreach (var mapId in mapIds) Console.Write($"  {mapId,-22}");
         Console.WriteLine();
@@ -448,7 +448,7 @@ internal static class SimulationCli
             .OrderBy(row => row.Tower)
             .ThenBy(row => row.Choice);
         foreach (var row in rows)
-            Console.WriteLine($"{row.Tower,-18} {row.Choice,-20} picks {row.Picks,4}  in winning runs {row.WinningPicks,4}");
+            Console.WriteLine($"{row.Tower,-18} {row.Choice,-20} picks {row.Picks,4}  in successful runs {row.WinningPicks,4}");
     }
 
     private static void PrintDoctrineSummary(IEnumerable<SimulationRunResult> runs)
@@ -474,7 +474,7 @@ internal static class SimulationCli
             .OrderBy(row => row.Tower)
             .ThenBy(row => row.Choice);
         foreach (var row in rows)
-            Console.WriteLine($"{row.Tower,-18} {row.Choice,-20} picks {row.Picks,4}  in winning runs {row.WinningPicks,4}");
+            Console.WriteLine($"{row.Tower,-18} {row.Choice,-20} picks {row.Picks,4}  in successful runs {row.WinningPicks,4}");
     }
 
     private static void PrintBuildPathSummary(IEnumerable<SimulationRunResult> runs)
@@ -500,7 +500,7 @@ internal static class SimulationCli
             .OrderBy(row => row.Tower)
             .ThenBy(row => row.Path);
         foreach (var row in rows)
-            Console.WriteLine($"{row.Tower,-18} {row.Path,-42} picks {row.Picks,4}  in winning runs {row.WinningPicks,4}");
+            Console.WriteLine($"{row.Tower,-18} {row.Path,-42} picks {row.Picks,4}  in successful runs {row.WinningPicks,4}");
     }
 
     private static string? ReadValue(string[] args, string name)
