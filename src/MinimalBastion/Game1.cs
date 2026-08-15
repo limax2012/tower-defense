@@ -366,7 +366,7 @@ public sealed class Game1 : Game
 
     private void UpdateCoOpReconnect(InputSnapshot input, GameTime gameTime)
     {
-        if (input.EscapePressed)
+        if (_ui.HandleCoOpReconnect(input) == UiAction.MainMenu)
         {
             CleanupNetwork();
             _state = GameState.CoOpMenu;

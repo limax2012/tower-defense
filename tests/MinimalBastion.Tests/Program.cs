@@ -1692,6 +1692,12 @@ internal static class Program
             "copying the host join code keeps the lobby open");
         Check.True(ui.CoOpLobbyCopyStatus is "JOIN CODE COPIED" or "CLIPBOARD UNAVAILABLE",
             "host lobby reports the join-code copy result");
+        Check.Equal(UiAction.None, ui.HandleCoOpReconnect(WorldInput(Vector2.Zero) with { CopyPressed = true }),
+            "copying the host rejoin code keeps the preserved session open");
+        Check.True(ui.CoOpLobbyCopyStatus is "REJOIN CODE COPIED" or "CLIPBOARD UNAVAILABLE",
+            "reconnect overlay reports the rejoin-code copy result");
+        Check.Equal(UiAction.MainMenu, ui.HandleCoOpReconnect(WorldInput(Vector2.Zero) with { EscapePressed = true }),
+            "reconnect Escape remains the explicit leave-session action");
     }
 
     private static void BuildFingerprintContentCoverage()

@@ -138,6 +138,7 @@ public sealed class UIManager
     private readonly Rectangle _joinCoOpButton = new(500, 452, 280, 46);
     private readonly Rectangle _backButton = new(500, 518, 280, 44);
     private readonly Rectangle _coOpLobbyCodeButton = new(500, 270, 280, 64);
+    private readonly Rectangle _coOpReconnectCodeButton = new(500, 370, 280, 46);
     private readonly Rectangle _resumeButton = new(500, 236, 280, 46);
     private readonly Rectangle _towerLibraryButton = new(500, 288, 135, 46);
     private readonly Rectangle _pauseSettingsButton = new(645, 288, 135, 46);
@@ -619,6 +620,19 @@ public sealed class UIManager
             return UiAction.None;
         }
         return input.LeftPressed && _backButton.Contains(input.MousePosition.ToPoint()) ? UiAction.MainMenu : UiAction.None;
+    }
+
+    public UiAction HandleCoOpReconnect(InputSnapshot input)
+    {
+        if (input.EscapePressed) return UiAction.MainMenu;
+        if (!string.IsNullOrEmpty(CoOpLobbyCode) &&
+            (input.CopyPressed || input.LeftPressed && _coOpReconnectCodeButton.Contains(input.MousePosition.ToPoint())))
+        {
+            _coOpLobbyCopyStatus = ClipboardService.TrySetText(CoOpLobbyCode)
+                ? "REJOIN CODE COPIED"
+                : "CLIPBOARD UNAVAILABLE";
+        }
+        return UiAction.None;
     }
 
     public void SetCoOpLobbyStatus(string title, string detail, string code = "")
@@ -1857,7 +1871,7 @@ public sealed class UIManager
     private void DrawCoOpReconnectOverlay(SpriteBatch batch, PrimitiveRenderer p)
     {
         p.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight), ColorPalette.WithAlpha(ColorPalette.Navy, 205));
-        var panel = new Rectangle(370, 214, 540, 250);
+        var panel = new Rectangle(370, 204, 540, 292);
         p.FillRect(batch, panel, ColorPalette.Panel);
         p.FillRect(batch, new Rectangle(panel.X, panel.Y, panel.Width, 7), _coOpPeerConnected ? ColorPalette.Cyan : ColorPalette.Coral);
         p.DrawRect(batch, panel, ColorPalette.Ink, 2);
@@ -1866,9 +1880,13 @@ public sealed class UIManager
         if (!string.IsNullOrEmpty(CoOpLobbyCode))
         {
             DrawText(batch, "REJOIN CODE", new Vector2(640, 360), ColorPalette.Muted, 0.50f, true);
-            DrawText(batch, CoOpLobbyCode, new Vector2(640, 392), ColorPalette.Cobalt, 1.2f, true);
+            p.FillRect(batch, _coOpReconnectCodeButton, ColorPalette.PanelAlt);
+            p.DrawRect(batch, _coOpReconnectCodeButton, ColorPalette.Cobalt, 2);
+            DrawText(batch, CoOpLobbyCode, new Vector2(640, 393), ColorPalette.Cobalt, 1.2f, true);
+            DrawText(batch, _coOpLobbyCopyStatus, new Vector2(640, 432),
+                _coOpLobbyCopyStatus == "REJOIN CODE COPIED" ? ColorPalette.Green : ColorPalette.Muted, 0.44f, true);
         }
-        DrawText(batch, "The match is paused and preserved.  ESC leaves the session.", new Vector2(640, 435), ColorPalette.Coral, 0.54f, true);
+        DrawText(batch, "The match is paused and preserved.  ESC leaves the session.", new Vector2(640, 466), ColorPalette.Coral, 0.54f, true);
     }
 
     private static void DrawMenuFrame(SpriteBatch batch, PrimitiveRenderer p)

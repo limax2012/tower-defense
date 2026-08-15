@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Made the preserved-session rejoin code clickable and Ctrl+C-copyable, with clear reconnect-overlay feedback so a host can resend it without abandoning the match.
 - Protected solo and co-op runs from accidental resets: Restart now arms a clearly coral `CONFIRM RESTART` action on both pause and result screens. The confirmed fresh run still claims a new slot, preserving the previous checkpoint.
 - Added complete keyboard operation to Settings with a visible focus outline, Up/Down selection, bidirectional resolution/volume adjustment, Enter activation, and unchanged immediate persistence.
 - Replaced unbounded newline-based co-op reads with explicit length-prefixed UTF-8 frames. Both peers reject invalid or oversized lengths before allocating the declared payload, while the existing single-writer queue preserves ordered sends.
