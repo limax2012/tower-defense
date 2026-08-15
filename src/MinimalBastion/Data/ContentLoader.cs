@@ -33,6 +33,7 @@ public sealed class ContentLoader
                 throw new InvalidDataException($"Wave set {candidateWaves.Id} belongs to {candidateWaves.MapId}, not map {candidateMap.Id}.");
             DataValidator.Validate(towers, enemies, candidateMap, candidateWaves, tactics);
         }
+        ValidateIndependentCampaigns(maps, waveSets);
         DataValidator.ValidateDifficulties(difficulties);
         DataValidator.ValidateChallenges(challenges, towers);
 
@@ -48,6 +49,30 @@ public sealed class ContentLoader
             Challenges = challenges.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase),
             Tactics = tactics
         };
+    }
+
+    private static void ValidateIndependentCampaigns(
+        IReadOnlyDictionary<string, MapDefinition> maps,
+        IReadOnlyDictionary<string, WaveSetDefinition> waveSets)
+    {
+        var assignments = maps.Values.Select(map => new
+        {
+            Map = map,
+            Waves = waveSets[map.WaveSet],
+            Signature = JsonSerializer.Serialize(waveSets[map.WaveSet].Waves, ContentJson.Options)
+        }).ToArray();
+
+        var reusedIdentity = assignments
+            .GroupBy(x => x.Waves.Id, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (reusedIdentity is not null)
+            throw new InvalidDataException($"Wave set {reusedIdentity.Key} is assigned to multiple maps; each arena requires its own campaign.");
+
+        var duplicatedRoster = assignments
+            .GroupBy(x => x.Signature, StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicatedRoster is not null)
+            throw new InvalidDataException($"Maps {string.Join(", ", duplicatedRoster.Select(x => x.Map.Id))} use identical wave rosters; each arena requires independently authored waves.");
     }
 
     private Dictionary<string, MapDefinition> LoadMaps()

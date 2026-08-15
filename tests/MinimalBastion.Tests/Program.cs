@@ -492,6 +492,15 @@ internal static class Program
             "each arena has a distinct background motif");
         Check.Equal(4, content.Maps.Values.Select(map => map.PathVisual.Style).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             "each arena has a distinct route treatment");
+        Check.Equal(content.Maps.Count,
+            content.Maps.Values.Select(map => map.WaveSet).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+            "each arena references a distinct campaign identity");
+        Check.Equal(content.Maps.Count,
+            content.Maps.Values
+                .Select(map => JsonSerializer.Serialize(content.WaveSets[map.WaveSet].Waves, ContentJson.Options))
+                .Distinct(StringComparer.Ordinal)
+                .Count(),
+            "each arena has an independently authored wave roster");
         Check.True(content.Maps.Values.All(map => !map.Background.Motif.Equals("none", StringComparison.OrdinalIgnoreCase)),
             "every arena opts into a visual identity motif");
         Check.Equal("conduit", prism.PathVisual.Style, "Prism uses a distinct conduit path");

@@ -68,6 +68,7 @@ internal static class SimulationCli
         PrintChallengeSummary(runs);
         PrintMapSummary(runs);
         PrintArenaDifficultyMatrix(runs, content);
+        PrintArenaChallengeMatrix(runs, content);
         PrintTowerSummary(runs);
         PrintDoctrineSummary(runs);
         PrintSpecializationSummary(runs);
@@ -186,6 +187,32 @@ internal static class SimulationCli
             foreach (var difficultyId in difficultyIds)
             {
                 var cell = mapGroup.Where(run => run.DifficultyId.Equals(difficultyId, StringComparison.OrdinalIgnoreCase)).ToArray();
+                var value = cell.Length == 0 ? "-" : $"{cell.Count(run => run.Won) / (float)cell.Length:P0} / {cell.Average(run => run.WaveReached):0.0}";
+                Console.Write($"  {value,-15}");
+            }
+            Console.WriteLine();
+        }
+    }
+
+    private static void PrintArenaChallengeMatrix(IEnumerable<SimulationRunResult> runs, GameContent content)
+    {
+        var materialized = runs.ToArray();
+        var challengeIds = content.Challenges.Values.Select(x => x.Id)
+            .Where(id => materialized.Any(run => run.ChallengeId.Equals(id, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+        if (challengeIds.Length < 2) return;
+
+        Console.WriteLine();
+        Console.WriteLine("ARENA x DIRECTIVE (win rate / average wave)");
+        Console.Write($"{"Arena",-18}");
+        foreach (var challengeId in challengeIds) Console.Write($"  {challengeId,-15}");
+        Console.WriteLine();
+        foreach (var mapGroup in materialized.GroupBy(x => x.MapId).OrderBy(x => x.Key))
+        {
+            Console.Write($"{mapGroup.Key,-18}");
+            foreach (var challengeId in challengeIds)
+            {
+                var cell = mapGroup.Where(run => run.ChallengeId.Equals(challengeId, StringComparison.OrdinalIgnoreCase)).ToArray();
                 var value = cell.Length == 0 ? "-" : $"{cell.Count(run => run.Won) / (float)cell.Length:P0} / {cell.Average(run => run.WaveReached):0.0}";
                 Console.Write($"  {value,-15}");
             }
