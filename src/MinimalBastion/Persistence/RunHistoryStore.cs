@@ -60,6 +60,10 @@ public sealed record RunHistoryEntry
 
 public sealed class RunHistoryRepository
 {
+    public const long MaximumHistoryFileBytes = 16 * 1024 * 1024;
+    public const int MaximumHistoryEntries = 16_384;
+    private const int MaximumLabelLength = 128;
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
@@ -106,8 +110,12 @@ public sealed class RunHistoryRepository
     public void Upsert(RunHistoryEntry entry)
     {
         if (string.IsNullOrWhiteSpace(entry.RunId)) throw new ArgumentException("Run history entries require a run ID.", nameof(entry));
+        entry = entry with { CompletedAtUtc = entry.CompletedAtUtc == default ? DateTime.UtcNow : entry.CompletedAtUtc };
+        ValidateEntries([entry], nameof(entry));
         var entries = GetEntries().Where(existing => !existing.RunId.Equals(entry.RunId, StringComparison.OrdinalIgnoreCase)).ToList();
-        entries.Add(entry with { CompletedAtUtc = entry.CompletedAtUtc == default ? DateTime.UtcNow : entry.CompletedAtUtc });
+        if (entries.Count >= MaximumHistoryEntries)
+            throw new InvalidOperationException($"Run history has reached its {MaximumHistoryEntries:N0}-record safety limit.");
+        entries.Add(entry);
         Write(entries.OrderByDescending(existing => existing.CompletedAtUtc).ToArray());
     }
 
@@ -123,11 +131,15 @@ public sealed class RunHistoryRepository
 
     private void Write(IReadOnlyList<RunHistoryEntry> entries)
     {
+        ValidateEntries(entries);
         Directory.CreateDirectory(HistoryDirectory);
         var temporaryPath = HistoryPath + ".tmp";
         try
         {
-            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(entries, JsonOptions));
+            var payload = JsonSerializer.SerializeToUtf8Bytes(entries, JsonOptions);
+            if (payload.LongLength > MaximumHistoryFileBytes)
+                throw new InvalidOperationException("Run history is too large to store safely.");
+            File.WriteAllBytes(temporaryPath, payload);
             if (File.Exists(HistoryPath) && IsReadableHistory(HistoryPath)) File.Copy(HistoryPath, BackupPath, true);
             File.Move(temporaryPath, HistoryPath, true);
         }
@@ -139,21 +151,43 @@ public sealed class RunHistoryRepository
 
     private static IReadOnlyList<RunHistoryEntry> Read(string path)
     {
+        var length = new FileInfo(path).Length;
+        if (length <= 0 || length > MaximumHistoryFileBytes)
+            throw new InvalidDataException("Run history has an invalid file size.");
         var entries = JsonSerializer.Deserialize<List<RunHistoryEntry>>(File.ReadAllText(path), JsonOptions)
             ?? throw new InvalidDataException("Run history is empty or invalid.");
-        if (entries.Select(entry => entry.RunId).Distinct(StringComparer.OrdinalIgnoreCase).Count() != entries.Count ||
-            entries.Any(entry => string.IsNullOrWhiteSpace(entry.RunId) || entry.RunId.Length > 64 ||
-                entry.CompletedAtUtc == default || string.IsNullOrWhiteSpace(entry.MapId) || string.IsNullOrWhiteSpace(entry.MapName) ||
-                string.IsNullOrWhiteSpace(entry.DifficultyId) || string.IsNullOrWhiteSpace(entry.DifficultyName) ||
-                entry.CurrentWave < 0 || entry.TotalWaves <= 0 || entry.Lives < 0 || entry.StartingLives <= 0 ||
-                entry.Kills < 0 || entry.Leaks < 0 || entry.CreditsEarned < 0 || entry.CreditsSpent < 0 ||
-                !float.IsFinite(entry.DefenseSeconds) || entry.DefenseSeconds < 0 ||
-                !float.IsFinite(entry.TopTowerContribution) || entry.TopTowerContribution < 0))
-            throw new InvalidDataException("Run history contains structurally invalid records.");
+        ValidateEntries(entries);
         return entries
             .OrderByDescending(entry => entry.CompletedAtUtc)
             .ToArray();
     }
+
+    private static void ValidateEntries(IReadOnlyList<RunHistoryEntry> entries, string? argumentName = null)
+    {
+        var valid = entries.Count <= MaximumHistoryEntries &&
+            entries.Select(entry => entry.RunId).Distinct(StringComparer.OrdinalIgnoreCase).Count() == entries.Count &&
+            entries.All(IsValidEntry);
+        if (valid) return;
+        if (argumentName is not null)
+            throw new ArgumentException("Run history entry is structurally invalid.", argumentName);
+        throw new InvalidDataException("Run history contains structurally invalid records.");
+    }
+
+    private static bool IsValidEntry(RunHistoryEntry entry)
+    {
+        return !string.IsNullOrWhiteSpace(entry.RunId) && entry.RunId.Length <= 64 &&
+            entry.CompletedAtUtc != default && IsValidLabel(entry.MapId) && IsValidLabel(entry.MapName) &&
+            IsValidLabel(entry.DifficultyId) && IsValidLabel(entry.DifficultyName) &&
+            IsValidLabel(entry.ChallengeId) && IsValidLabel(entry.ChallengeName) &&
+            IsValidLabel(entry.TopTowerName) && entry.CurrentWave >= 0 && entry.TotalWaves > 0 &&
+            entry.Lives >= 0 && entry.StartingLives > 0 && entry.Kills >= 0 && entry.Leaks >= 0 &&
+            entry.CreditsEarned >= 0 && entry.CreditsSpent >= 0 &&
+            float.IsFinite(entry.DefenseSeconds) && entry.DefenseSeconds >= 0 &&
+            float.IsFinite(entry.TopTowerContribution) && entry.TopTowerContribution >= 0;
+    }
+
+    private static bool IsValidLabel(string value) =>
+        !string.IsNullOrWhiteSpace(value) && value.Length <= MaximumLabelLength;
 
     private static bool IsReadableHistory(string path)
     {

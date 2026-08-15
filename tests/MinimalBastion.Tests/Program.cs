@@ -2909,6 +2909,16 @@ internal static class Program
             Check.Equal("run-a", semanticRepository.GetEntries().Single().RunId,
                 "semantic history corruption cannot replace a known-good recovery generation");
 
+            var oversizedRepository = new RunHistoryRepository(Path.Combine(testRoot, "oversized-recovery"));
+            oversizedRepository.Upsert(first);
+            oversizedRepository.Upsert(first with { RunId = "run-b", CompletedAtUtc = first.CompletedAtUtc.AddHours(1) });
+            using (var oversized = File.Create(oversizedRepository.HistoryPath))
+                oversized.SetLength(RunHistoryRepository.MaximumHistoryFileBytes + 1);
+            Check.Equal("run-a", oversizedRepository.GetEntries().Single().RunId,
+                "oversized history primary is rejected before allocation and falls back to recovery");
+            Check.Throws<ArgumentException>(() => oversizedRepository.Upsert(first with { RunId = "run-c", TopTowerName = new string('X', 129) }),
+                "invalid caller-supplied history is rejected before writing");
+
             var session = Session();
             var runId = session.RunId;
             var restoredSave = GameSession.RestoreSaveGame(session.Content, session.CaptureSaveGame());
