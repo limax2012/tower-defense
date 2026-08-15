@@ -205,6 +205,8 @@ public static class DataValidator
             x.Position.X < 0 || x.Position.X > map.LogicalSize.Width || x.Position.Y < 0 || x.Position.Y > map.LogicalSize.Height ||
             x.AttackSpeedBonus + x.RangeBonus + x.DamageBonus + x.ArmorPierceBonus <= 0))
             throw new InvalidDataException($"Invalid power node in map: {map.Id}");
+        if (map.PowerNodes.Any(node => !MapPositionIsBuildable(node.Position, map)))
+            throw new InvalidDataException($"Power node center is not a valid tower position in map: {map.Id}");
         RequireUnique(map.PowerNodes.Select(x => x.Id), "power node");
         if (waves.Waves.Count != 20) throw new InvalidDataException("Version 1 requires exactly 20 waves.");
         if (tactics.EmergencyDefense.PurchaseCost <= 0 || tactics.EmergencyDefense.DirectPurchaseCostIncrease < 0 ||
@@ -290,6 +292,12 @@ public static class DataValidator
         region.Y >= GameConstants.TopBarHeight + GameConstants.TowerRadius &&
         region.X + region.Width <= size.Width - GameConstants.TowerRadius &&
         region.Y + region.Height <= size.Height - GameConstants.TowerRadius;
+
+    private static bool MapPositionIsBuildable(PointData position, MapDefinition map) =>
+        map.BuildableRegions.Any(region => PointInRectangle(
+            position.ToVector2(), region.X, region.X + region.Width, region.Y, region.Y + region.Height)) &&
+        !map.RestrictedRegions.Any(region => PointInRectangle(
+            position.ToVector2(), region.X, region.X + region.Width, region.Y, region.Y + region.Height));
 
     private static float MinimumPathDistance(RectangleData region, IReadOnlyList<PointData> path)
     {

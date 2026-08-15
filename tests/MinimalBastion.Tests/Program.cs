@@ -641,6 +641,17 @@ internal static class Program
         Check.True(relay.PowerNodes.All(x => x.Radius <= 42), "surge nodes stay compact");
         Check.True(relay.PowerNodes.Any(x => x.DamageBonus > 0), "damage node exists");
         Check.True(relay.PowerNodes.Any(x => x.ArmorPierceBonus > 0), "armor-pierce node exists");
+        Check.True(content.Maps.Values.SelectMany(map => map.PowerNodes.Select(node => (map, node)))
+                .All(entry => new MapRuntime(entry.map).IsBuildable(entry.node.Position.ToVector2())),
+            "every advertised node center is directly placeable");
+
+        var invalidNodeMap = JsonSerializer.Deserialize<MapDefinition>(
+            JsonSerializer.Serialize(relay, ContentJson.Options), ContentJson.Options)!;
+        invalidNodeMap.PowerNodes[0].Position = relay.Path[1];
+        Check.Throws<InvalidDataException>(() => DataValidator.Validate(
+                content.Towers.Values.ToList(), content.Enemies.Values.ToList(), invalidNodeMap,
+                content.WaveSets[relay.WaveSet], content.Tactics),
+            "content validation rejects an unusable node center");
         var session = new GameSession(content, relay.Id);
         Check.Equal("relay_divide", session.Map.Definition.Id, "selected map session");
         Check.True(session.TryPlaceTower("needle_turret", new Vector2(72, 285)), "tower on accelerator node");
