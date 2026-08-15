@@ -77,6 +77,7 @@ internal static class Program
             ("co-op command history bounds", CoOpCommandHistoryBounds),
             ("co-op buffered jitter commands", CoOpBufferedJitterCommands),
             ("co-op active state snapshot", CoOpActiveStateSnapshot),
+            ("co-op malformed snapshot rejection", CoOpMalformedSnapshotRejection),
             ("co-op checksum coverage", CoOpChecksumCoverage),
             ("co-op reconnect combat soak", CoOpReconnectCombatSoak),
             ("co-op wave ready", CoOpWaveReady),
@@ -1217,6 +1218,65 @@ internal static class Program
         clientRunner.RunTicks(20);
         Check.Equal(SessionChecksum.Compute(host, hostRunner.Tick), SessionChecksum.Compute(client, clientRunner.Tick), "restored sessions remain deterministic");
         Check.Nearly(2f, client.Speed, "restored future command executes");
+    }
+
+    private static void CoOpMalformedSnapshotRejection()
+    {
+        var session = SessionWithWave();
+
+        var missingCollection = session.CaptureCoOpState(0, 0, false);
+        missingCollection.Towers = null!;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, missingCollection, 2),
+            "missing snapshot collections fail with a data error");
+
+        var duplicateEnemies = session.CaptureCoOpState(0, 0, false);
+        duplicateEnemies.Enemies.Add(new EnemyRuntimeState { Id = 7, DefinitionId = "enemy" });
+        duplicateEnemies.Enemies.Add(new EnemyRuntimeState { Id = 7, DefinitionId = "enemy" });
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, duplicateEnemies, 2),
+            "duplicate network enemy identities are rejected before dictionary restoration");
+
+        var staleIdentity = session.CaptureCoOpState(0, 0, false);
+        staleIdentity.Enemies.Add(new EnemyRuntimeState { Id = staleIdentity.NextEnemyId, DefinitionId = "enemy" });
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, staleIdentity, 2),
+            "stale next-entity identities are rejected instead of silently changing the client checksum");
+
+        var invalidProgress = session.CaptureCoOpState(0, 0, false);
+        invalidProgress.Enemies.Add(new EnemyRuntimeState
+        {
+            Id = 1,
+            DefinitionId = "enemy",
+            DistanceAlongPath = session.Map.Path.TotalLength + 1
+        });
+        invalidProgress.NextEnemyId = 2;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, invalidProgress, 2),
+            "enemy progress beyond the map path is rejected instead of clamped into divergence");
+
+        var nonfiniteProjectile = session.CaptureCoOpState(0, 0, false);
+        nonfiniteProjectile.Projectiles.Add(new ProjectileRuntimeState
+        {
+            X = float.NaN,
+            Kind = (int)ProjectileKind.Straight,
+            Speed = 100,
+            Damage = 10,
+            Radius = 2
+        });
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, nonfiniteProjectile, 2),
+            "nonfinite network combat state is rejected");
+
+        var excessivePending = session.CaptureCoOpState(0, 0, false);
+        excessivePending.PendingCommands = Enumerable.Range(1, DeterministicSessionRunner.MaximumPendingCommands + 1)
+            .Select(sequence => new ScheduledCommandState
+            {
+                Tick = 1,
+                Command = new GameCommand { Sequence = sequence, PlayerId = 1, Type = GameCommandType.SetSpeed, Speed = 1 }
+            }).ToList();
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, excessivePending, 2),
+            "oversized network command state is rejected before allocation into the runner");
+
+        var missingStatistics = session.CaptureCoOpState(0, 0, false);
+        missingStatistics.Statistics.Towers = null!;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, missingStatistics, 2),
+            "missing nested telemetry state is rejected cleanly");
     }
 
     private static void CoOpChecksumCoverage()

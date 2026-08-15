@@ -873,8 +873,7 @@ public sealed class GameSession
 
     public static GameSession RestoreCoOpState(GameContent content, CoOpStateSnapshot data, int localPlayerId)
     {
-        if (data.SchemaVersion != CoOpStateSnapshot.CurrentSchemaVersion)
-            throw new InvalidDataException($"Unsupported co-op state schema {data.SchemaVersion}.");
+        CoOpSnapshotValidator.Validate(data);
         if (localPlayerId is < 1 or > 2) throw new ArgumentOutOfRangeException(nameof(localPlayerId));
         var knownMap = content.Maps.ContainsKey(data.MapId) || content.Map.Id.Equals(data.MapId, StringComparison.OrdinalIgnoreCase);
         if (!knownMap) throw new InvalidDataException($"Network map '{data.MapId}' is not available.");
@@ -903,6 +902,8 @@ public sealed class GameSession
         {
             if (!content.Enemies.TryGetValue(savedEnemy.DefinitionId, out var definition))
                 throw new InvalidDataException($"Network enemy '{savedEnemy.DefinitionId}' is not available.");
+            if (savedEnemy.DistanceAlongPath > session.Map.Path.TotalLength + 0.01f)
+                throw new InvalidDataException("Network enemy progress is outside the selected map path.");
             session.Enemies.Add(EnemyInstance.RestoreCoOpState(savedEnemy, definition, session.Map.Path));
         }
 
