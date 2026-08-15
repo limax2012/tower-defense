@@ -1678,6 +1678,18 @@ internal static class Program
         clientRunner.RunTicks(20);
         Check.Equal(SessionChecksum.Compute(host, hostRunner.Tick), SessionChecksum.Compute(client, clientRunner.Tick), "restored sessions remain deterministic");
         Check.Nearly(2f, client.Speed, "restored future command executes");
+
+        var intermissionHost = SessionWithWave();
+        Check.True(intermissionHost.StartNextWave(), "start wave for intermission snapshot");
+        ResolveSingleEnemyWave(intermissionHost);
+        var intermissionState = intermissionHost.CaptureCoOpState(40, 0, false);
+        Check.Equal(0, intermissionState.Waves.GroupIndex, "completed wave clears inactive group index");
+        Check.Equal(0, intermissionState.Waves.SpawnedInGroup, "completed wave clears inactive spawn progress");
+        Check.Nearly(0, intermissionState.Waves.GroupTimer, "completed wave clears inactive group timer");
+        Check.Nearly(0, intermissionState.Waves.DelayRemaining, "completed wave clears inactive group delay");
+        var intermissionClient = GameSession.RestoreCoOpState(intermissionHost.Content, intermissionState, 2);
+        Check.Equal(SessionChecksum.Compute(intermissionHost, 40), SessionChecksum.Compute(intermissionClient, 40),
+            "intermission reconnect preserves the complete authoritative checksum");
     }
 
     private static void CoOpMalformedSnapshotRejection()
@@ -1813,6 +1825,11 @@ internal static class Program
         inconsistentWave.Waves.QueuedEnemies++;
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, inconsistentWave, 2),
             "queued enemies must agree with authoritative group progress");
+
+        var staleInactiveProgress = session.CaptureCoOpState(0, 0, false);
+        staleInactiveProgress.Waves.GroupIndex = 1;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, staleInactiveProgress, 2),
+            "inactive reconnect snapshots cannot retain stale group progress that restoration would reset");
 
         var invalidProgress = session.CaptureCoOpState(0, 0, false);
         invalidProgress.Enemies.Add(new EnemyRuntimeState

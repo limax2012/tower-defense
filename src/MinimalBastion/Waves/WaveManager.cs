@@ -99,6 +99,11 @@ public sealed class WaveManager
         session.Economy.AwardWave(completedWave);
         session.OnWaveCompleted(completedWave);
         _activeDefinition = null;
+        _groupIndex = 0;
+        _spawnedInGroup = 0;
+        _groupTimer = 0;
+        _delayRemaining = 0;
+        QueuedEnemies = 0;
         IntermissionRemaining = GameConstants.IntermissionSeconds;
         if (completedWave == _waves.Count) IsFinalWaveCleared = true;
     }
@@ -186,8 +191,9 @@ public sealed class WaveManager
             if (data.QueuedEnemies != expectedQueued)
                 throw new InvalidDataException("Network queued-enemy count does not match wave progress.");
         }
-        else if (data.QueuedEnemies != 0)
-            throw new InvalidDataException("Network inactive wave cannot retain queued enemies.");
+        else if (data.GroupIndex != 0 || data.SpawnedInGroup != 0 || data.GroupTimer != 0 ||
+                 data.DelayRemaining != 0 || data.QueuedEnemies != 0)
+            throw new InvalidDataException("Network inactive wave cannot retain active group progress.");
 
         CurrentWaveNumber = data.CurrentWaveNumber;
         _groupIndex = _activeDefinition is null ? 0 : data.GroupIndex;
