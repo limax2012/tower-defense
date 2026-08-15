@@ -72,16 +72,16 @@ The current five-seed matrices cover 12 strategies across Foundry Loop, Crosswin
 
 | Difficulty | Wins | Win rate | Average wave | Average lives |
 | --- | ---: | ---: | ---: | ---: |
-| Easy | 200/240 | 83.3% | 19.4 | 24.8 |
-| Normal | 185/240 | 77.1% | 18.9 | 17.8 |
+| Easy | 198/240 | 82.5% | 19.4 | 24.3 |
+| Normal | 181/240 | 75.4% | 18.8 | 16.9 |
 | Hard | 140/240 | 58.3% | 17.4 | 10.1 |
-| Bastion | 47/240 | 19.6% | 13.0 | 2.3 |
+| Bastion | 40/240 | 16.7% | 12.8 | 1.9 |
 
-Hard is the authored uncompromised baseline. After the doctrine and Watchtower coverage passes, its map results are Crosswind 40/60, Foundry 38/60, Prism 35/60, and Surge 27/60. Surge is therefore materially harder despite its nine nodes. The Easy, Normal, and Bastion rows retain the previous matched profile baseline pending the next all-difficulty doctrine sweep.
+Hard is the authored uncompromised baseline. After the doctrine and Watchtower coverage passes, its map results are Crosswind 40/60, Foundry 38/60, Prism 35/60, and Surge 27/60. Surge is therefore materially harder despite its nine nodes. Easy remains forgiving and nearly map-neutral at 49-50 clears per arena; Normal ranges from 43-49; Bastion sharply exposes Surge's campaign pressure at only 2/60.
 
 Hard strategy wins are Conservative 18/20, Economy 0/20, Aggressive 0/20, UpgradeFocused 17/20, Spam 0/20, AntiSwarm 12/20, AntiArmor 17/20, LongRange 18/20, Control 17/20, Tactical 13/20, Adaptive 17/20, and Randomized 11/20. Long Range remains a leading viable policy without clearing every seed; Conservative, AntiArmor, Control, Adaptive, and UpgradeFocused remain competitive alternatives.
 
-Canonical reports: `.build/balance/four-map-easy-5x.json`, `.build/balance/four-map-normal-5x.json`, `.build/balance/range-trade-final-hard-5x.json`, and `.build/balance/four-map-bastion-5x.json`.
+Canonical reports: `.build/balance/doctrine-range-easy-5x.json`, `.build/balance/doctrine-range-normal-5x.json`, `.build/balance/range-trade-final-hard-5x.json`, and `.build/balance/doctrine-range-bastion-5x.json`.
 
 ## Challenge directive baseline
 
@@ -109,8 +109,8 @@ Reports: `.build/balance/four-map-hard-close_quarters-3x.json`, `.build/balance/
 - The doctrine matrix originally preserved the overall Hard baseline almost exactly (143/240 versus 144/240), but LongRange became seed-perfect. A surgical Watchtower pass trims Heavy Optics reach by roughly 5%, Deadeye reach from 345 to 335, and Deadeye damage from 118 to 112. The resulting 140/240 matrix moves LongRange to 18/20 without changing global enemy stats.
 - Crosswind remains the most forgiving doctrine-era arena at 40/60, while Surge remains hardest at 27/60 despite its nodes. Each map moved by no more than one clear from the pre-adjustment matrix.
 - Conservative and LongRange reach 18/20; AntiArmor, UpgradeFocused, Control, and Adaptive reach 17/20. Multiple mixed approaches are therefore credible alternatives rather than one policy being seed-perfect.
-- Economy reaches wave 15.5 on average on Hard without winning; its delayed Forge investment remains meaningful but risky. Spam also remains intentionally nonviable.
-- Tactical wins 19/20 while deploying 1,312 plates across the matrix. The 16-field cap, active-wave escalating direct cost, knockback grace, and boss resistance prevent the former endless plate lock despite making the system useful.
+- Economy reaches wave 15.8 on average on Hard without winning; its delayed Forge investment remains meaningful but risky. Spam also remains intentionally nonviable.
+- Tactical wins 13/20 while deploying 544 plates across the Hard matrix. The 16-field cap, active-wave escalating direct cost, knockback grace, and boss resistance prevent the former endless plate lock while preserving a viable hands-on strategy.
 - Mortar's deterministic shell caps reduce Hard aggregate damage/credit to 14.2 and keep it below Watchtower, Breaker, Needle, Shard, Frost, and Ember rather than allowing unlimited crowded-wave scaling.
 - Every tier-two doctrine and every final specialization still appears in winning Hard runs after the Watchtower pass. The least-used doctrine and final role each have 15 winning placements, so each branch retains a demonstrated success scenario.
 - The Beacon benchmark now measures indirect output. Tempo contributes 18.4 assisted DPS to a compact three-Needle cluster, while Horizon contributes 12.0 versus Tempo's 8.0 in a spread three-Watchtower formation by reaching two extra recipients.
