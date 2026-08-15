@@ -125,6 +125,8 @@ public static class SessionChecksum
             Add(ref hash, tower.LifetimeDamage);
             Add(ref hash, tower.LifetimeKills);
             Add(ref hash, tower.LifetimeSupportDamageEquivalent);
+            Add(ref hash, tower.LifetimeExposeDamageEquivalent);
+            Add(ref hash, tower.LifetimeArmorBreakDamageEquivalent);
             Add(ref hash, tower.LifetimeControlSeconds);
             Add(ref hash, tower.LifetimeExposeSeconds);
             Add(ref hash, tower.LifetimeArmorBreakSeconds);

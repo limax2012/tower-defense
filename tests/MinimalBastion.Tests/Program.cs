@@ -445,6 +445,18 @@ internal static class Program
         session.DamageResolver.Apply(shielded, new DamagePayload { Damage = 12 });
         Check.Nearly(100, shielded.Health, "shield prevents health damage");
         Check.Nearly(8, shielded.Shield, "shield remaining");
+
+        var assisted = new EnemyInstance(3, Enemy("assisted", 100, 10, 1, 4, 0), path, 1, 1);
+        assisted.StatusEffects.Apply(new StatusApplication { Type = StatusType.ArmorBreak, Duration = 2, Magnitude = 2, SourceId = 7 });
+        assisted.StatusEffects.Apply(new StatusApplication { Type = StatusType.Exposed, Duration = 2, Magnitude = 0.5f, SourceId = 8 });
+        DamageReport? report = null;
+        session.DamageResolver.DamageApplied += value => report = value;
+        session.DamageResolver.Apply(assisted, new DamagePayload { Damage = 10, SourceTowerId = 9 });
+        Check.Nearly(87, assisted.Health, "combined utility modifies actual damage once");
+        Check.Equal(8, report!.Value.ExposeSourceTowerId, "damage report identifies expose source");
+        Check.Nearly(5, report.Value.ExposeDamageEquivalent, "damage report measures marginal expose damage");
+        Check.Equal(7, report.Value.ArmorBreakSourceTowerId, "damage report identifies armor-break source");
+        Check.Nearly(2, report.Value.ArmorBreakDamageEquivalent, "damage report measures marginal armor-break damage without double counting");
     }
 
     private static void DamageOverTimeFloor()
@@ -574,6 +586,14 @@ internal static class Program
         Check.Nearly(100f / 3f, beaconStats.SupportDamageEquivalent, "beacon receives marginal attack-rate contribution credit");
         Check.Nearly(100f / 3f, beaconStats.ContributionDamage, "support contribution participates in run impact");
         Check.Nearly(100f / 3f, beacon.LifetimeSupportDamageEquivalent, "individual beacon retains its assisted damage");
+        var utilityTarget = new EnemyInstance(4, session.Content.Enemies["armored"], session.Map.Path, 1, 1);
+        utilityTarget.StatusEffects.Apply(new StatusApplication { Type = StatusType.ArmorBreak, Duration = 2, Magnitude = 2, SourceId = idleTower.Id });
+        utilityTarget.StatusEffects.Apply(new StatusApplication { Type = StatusType.Exposed, Duration = 2, Magnitude = 0.5f, SourceId = idleTower.Id });
+        session.DamageResolver.Apply(utilityTarget, new DamagePayload { Damage = 10, SourceTowerId = tower.Id });
+        Check.Nearly(5, idleTower.LifetimeExposeDamageEquivalent, "individual source retains expose assist damage");
+        Check.Nearly(2, idleTower.LifetimeArmorBreakDamageEquivalent, "individual source retains armor-break assist damage");
+        Check.Nearly(5, towerStats.ExposeDamageEquivalent, "run telemetry attributes expose assist damage");
+        Check.Nearly(2, towerStats.ArmorBreakDamageEquivalent, "run telemetry attributes armor-break assist damage");
         var statusTarget = new EnemyInstance(3, session.Content.Enemies["armored"], session.Map.Path, 1, 1);
         statusTarget.StatusEffects.Apply(new StatusApplication
         {
@@ -587,14 +607,18 @@ internal static class Program
         Check.Nearly(0.2f, towerStats.ControlSeconds, "run telemetry attributes source control uptime");
         Check.Nearly(0.2f, tower.LifetimeControlSeconds, "individual tower retains control uptime");
         session.Enemies.Remove(statusTarget);
+        var beaconAssistBeforeSave = beacon.LifetimeSupportDamageEquivalent;
+        var beaconAggregateBeforeSave = beaconStats.SupportDamageEquivalent;
         var restoredSession = GameSession.RestoreSaveGame(session.Content, session.CaptureSaveGame());
         var restoredStatistics = restoredSession.Statistics;
-        Check.Nearly(100f / 3f, restoredStatistics.Towers.Single(metrics => metrics.TowerId == "beacon").SupportDamageEquivalent,
+        Check.Nearly(beaconAggregateBeforeSave, restoredStatistics.Towers.Single(metrics => metrics.TowerId == "beacon").SupportDamageEquivalent,
             "support contribution survives save restoration");
-        Check.Nearly(100f / 3f, restoredSession.Towers.Single(candidate => candidate.Definition.Id == "beacon").LifetimeSupportDamageEquivalent,
+        Check.Nearly(beaconAssistBeforeSave, restoredSession.Towers.Single(candidate => candidate.Definition.Id == "beacon").LifetimeSupportDamageEquivalent,
             "individual support contribution survives save restoration");
         Check.Nearly(0.2f, restoredSession.Towers.Single(candidate => candidate.Id == tower.Id).LifetimeControlSeconds,
             "individual control uptime survives save restoration");
+        Check.Nearly(5, restoredSession.Towers.Single(candidate => candidate.Id == idleTower.Id).LifetimeExposeDamageEquivalent,
+            "individual expose assist survives save restoration");
 
         var escaped = new EnemyInstance(2, session.Content.Enemies["armored"], session.Map.Path, 1, 1);
         session.OnEnemyEscaped(escaped);
@@ -981,6 +1005,8 @@ internal static class Program
         Check.Equal(first.CreditsSpent, second.CreditsSpent, "deterministic spend");
         Check.Equal(first.Towers.Values.Sum(x => x.Purchases), second.Towers.Values.Sum(x => x.Purchases), "deterministic purchases");
         Check.Nearly(first.Towers.Values.Sum(x => x.SupportDamageEquivalent), second.Towers.Values.Sum(x => x.SupportDamageEquivalent), "deterministic support attribution");
+        Check.Nearly(first.Towers.Values.Sum(x => x.ExposeDamageEquivalent), second.Towers.Values.Sum(x => x.ExposeDamageEquivalent), "deterministic expose attribution");
+        Check.Nearly(first.Towers.Values.Sum(x => x.ArmorBreakDamageEquivalent), second.Towers.Values.Sum(x => x.ArmorBreakDamageEquivalent), "deterministic armor-break attribution");
         Check.Nearly(first.Towers.Values.Sum(x => x.StatusEnemySeconds.Values.Sum()), second.Towers.Values.Sum(x => x.StatusEnemySeconds.Values.Sum()), "deterministic status uptime");
         Check.True(first.WaveReached >= 2, "headless bot reaches requested wave limit");
     }

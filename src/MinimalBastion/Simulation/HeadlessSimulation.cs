@@ -241,6 +241,11 @@ public static class HeadlessSimulation
             var level = _towerLevels.GetValueOrDefault(report.SourceTowerId, 1);
             metrics.DamageByLevel[level] = metrics.DamageByLevel.GetValueOrDefault(level) + report.HealthDamage + report.ShieldDamage;
 
+            if (_towerIdToDefinition.TryGetValue(report.ExposeSourceTowerId, out var exposeTowerId))
+                GetTower(exposeTowerId).ExposeDamageEquivalent += report.ExposeDamageEquivalent;
+            if (_towerIdToDefinition.TryGetValue(report.ArmorBreakSourceTowerId, out var breakTowerId))
+                GetTower(breakTowerId).ArmorBreakDamageEquivalent += report.ArmorBreakDamageEquivalent;
+
             if (!_towerInstances.TryGetValue(report.SourceTowerId, out var sourceTower)) return;
             var support = session.GetSupportBuff(sourceTower);
             if (support.AttackSpeedBonus <= 0 || !_towerIdToDefinition.TryGetValue(support.AttackSpeedSourceTowerId, out var supportTowerId)) return;

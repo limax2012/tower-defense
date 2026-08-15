@@ -103,7 +103,7 @@ internal static class SimulationCli
                 Picks = group.Sum(x => x.Purchases),
                 Upgrades = group.Sum(x => x.Upgrades),
                 Damage = group.Sum(x => x.Damage),
-                Assist = group.Sum(x => x.SupportDamageEquivalent),
+                Assist = group.Sum(x => x.SupportDamageEquivalent + x.ExposeDamageEquivalent + x.ArmorBreakDamageEquivalent),
                 SlowSeconds = group.Sum(x => x.StatusEnemySeconds.GetValueOrDefault("Slow")),
                 StunSeconds = group.Sum(x => x.StatusEnemySeconds.GetValueOrDefault("Stun")),
                 ExposeSeconds = group.Sum(x => x.StatusEnemySeconds.GetValueOrDefault("Exposed")),

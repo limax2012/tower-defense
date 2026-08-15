@@ -33,6 +33,8 @@ public sealed class TowerInstance
     public float LifetimeDamage { get; private set; }
     public int LifetimeKills { get; private set; }
     public float LifetimeSupportDamageEquivalent { get; private set; }
+    public float LifetimeExposeDamageEquivalent { get; private set; }
+    public float LifetimeArmorBreakDamageEquivalent { get; private set; }
     public float LifetimeControlSeconds { get; private set; }
     public float LifetimeExposeSeconds { get; private set; }
     public float LifetimeArmorBreakSeconds { get; private set; }
@@ -113,6 +115,12 @@ public sealed class TowerInstance
     internal void RecordSupport(float damageEquivalent) =>
         LifetimeSupportDamageEquivalent += MathF.Max(0, damageEquivalent);
 
+    internal void RecordExposeAssist(float damageEquivalent) =>
+        LifetimeExposeDamageEquivalent += MathF.Max(0, damageEquivalent);
+
+    internal void RecordArmorBreakAssist(float damageEquivalent) =>
+        LifetimeArmorBreakDamageEquivalent += MathF.Max(0, damageEquivalent);
+
     internal void RecordStatusUptime(Effects.StatusType type, float activeSeconds)
     {
         activeSeconds = MathF.Max(0, activeSeconds);
@@ -137,6 +145,8 @@ public sealed class TowerInstance
         LifetimeDamage = LifetimeDamage,
         LifetimeKills = LifetimeKills,
         LifetimeSupportDamageEquivalent = LifetimeSupportDamageEquivalent,
+        LifetimeExposeDamageEquivalent = LifetimeExposeDamageEquivalent,
+        LifetimeArmorBreakDamageEquivalent = LifetimeArmorBreakDamageEquivalent,
         LifetimeControlSeconds = LifetimeControlSeconds,
         LifetimeExposeSeconds = LifetimeExposeSeconds,
         LifetimeArmorBreakSeconds = LifetimeArmorBreakSeconds
@@ -163,6 +173,8 @@ public sealed class TowerInstance
             LifetimeDamage = MathF.Max(0, data.LifetimeDamage),
             LifetimeKills = Math.Max(0, data.LifetimeKills),
             LifetimeSupportDamageEquivalent = MathF.Max(0, data.LifetimeSupportDamageEquivalent),
+            LifetimeExposeDamageEquivalent = MathF.Max(0, data.LifetimeExposeDamageEquivalent),
+            LifetimeArmorBreakDamageEquivalent = MathF.Max(0, data.LifetimeArmorBreakDamageEquivalent),
             LifetimeControlSeconds = MathF.Max(0, data.LifetimeControlSeconds),
             LifetimeExposeSeconds = MathF.Max(0, data.LifetimeExposeSeconds),
             LifetimeArmorBreakSeconds = MathF.Max(0, data.LifetimeArmorBreakSeconds)

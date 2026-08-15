@@ -63,6 +63,8 @@ public sealed class TowerSaveData
     public float LifetimeDamage { get; set; }
     public int LifetimeKills { get; set; }
     public float LifetimeSupportDamageEquivalent { get; set; }
+    public float LifetimeExposeDamageEquivalent { get; set; }
+    public float LifetimeArmorBreakDamageEquivalent { get; set; }
     public float LifetimeControlSeconds { get; set; }
     public float LifetimeExposeSeconds { get; set; }
     public float LifetimeArmorBreakSeconds { get; set; }
@@ -120,6 +122,8 @@ public sealed class RunTowerStatisticsSaveData
     public int Overdrives { get; set; }
     public float Damage { get; set; }
     public float SupportDamageEquivalent { get; set; }
+    public float ExposeDamageEquivalent { get; set; }
+    public float ArmorBreakDamageEquivalent { get; set; }
     public float ControlSeconds { get; set; }
     public float ExposeSeconds { get; set; }
     public float ArmorBreakSeconds { get; set; }

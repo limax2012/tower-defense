@@ -967,6 +967,10 @@ public sealed class UIManager
     {
         var utility = tower.LifetimeSupportDamageEquivalent > 0
             ? $"{tower.LifetimeSupportDamageEquivalent:0} SUPPORT"
+            : tower.LifetimeExposeDamageEquivalent > 0
+                ? $"+{tower.LifetimeExposeDamageEquivalent:0} EXPOSE"
+                : tower.LifetimeArmorBreakDamageEquivalent > 0
+                    ? $"+{tower.LifetimeArmorBreakDamageEquivalent:0} BREAK"
             : tower.LifetimeControlSeconds > 0
                 ? $"{tower.LifetimeControlSeconds:0}s CONTROL"
                 : tower.LifetimeExposeSeconds > 0
@@ -1417,8 +1421,8 @@ public sealed class UIManager
                 _ => ColorPalette.Orange
             };
             DrawText(batch, tower.DisplayName.ToUpperInvariant(), new Vector2(rect.X + 14, y), ColorPalette.Ink, 0.58f);
-            var contribution = tower.SupportDamageEquivalent > 0
-                ? $"{tower.Damage:0} DAMAGE +{tower.SupportDamageEquivalent:0} SUPPORT"
+            var contribution = tower.AssistDamageEquivalent > 0
+                ? $"{tower.Damage:0} DAMAGE +{tower.AssistDamageEquivalent:0} ASSIST"
                 : $"{tower.Damage:0} DAMAGE   {tower.Kills} KILLS";
             DrawTextRight(batch, contribution, new Vector2(rect.Right - 14, y), ColorPalette.Muted, 0.46f);
             var bar = new Rectangle(rect.X + 14, y + 24, rect.Width - 28, 9);

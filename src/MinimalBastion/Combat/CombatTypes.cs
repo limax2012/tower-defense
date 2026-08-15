@@ -29,7 +29,11 @@ public readonly record struct DamageReport(
     float ArmorAbsorbed,
     float HealthDamage,
     float Overkill,
-    bool Killed);
+    bool Killed,
+    int ExposeSourceTowerId = 0,
+    float ExposeDamageEquivalent = 0,
+    int ArmorBreakSourceTowerId = 0,
+    float ArmorBreakDamageEquivalent = 0);
 
 public sealed class ProjectileInstance
 {

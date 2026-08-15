@@ -108,6 +108,8 @@ public sealed class RunStatistics
             Overdrives = x.Overdrives,
             Damage = x.Damage,
             SupportDamageEquivalent = x.SupportDamageEquivalent,
+            ExposeDamageEquivalent = x.ExposeDamageEquivalent,
+            ArmorBreakDamageEquivalent = x.ArmorBreakDamageEquivalent,
             ControlSeconds = x.ControlSeconds,
             ExposeSeconds = x.ExposeSeconds,
             ArmorBreakSeconds = x.ArmorBreakSeconds,
@@ -156,6 +158,8 @@ public sealed class RunStatistics
                 Overdrives = Math.Max(0, saved.Overdrives),
                 Damage = MathF.Max(0, saved.Damage),
                 SupportDamageEquivalent = MathF.Max(0, saved.SupportDamageEquivalent),
+                ExposeDamageEquivalent = MathF.Max(0, saved.ExposeDamageEquivalent),
+                ArmorBreakDamageEquivalent = MathF.Max(0, saved.ArmorBreakDamageEquivalent),
                 ControlSeconds = MathF.Max(0, saved.ControlSeconds),
                 ExposeSeconds = MathF.Max(0, saved.ExposeSeconds),
                 ArmorBreakSeconds = MathF.Max(0, saved.ArmorBreakSeconds),
@@ -236,6 +240,18 @@ public sealed class RunStatistics
         metrics.ArmorAbsorbed += report.ArmorAbsorbed;
         metrics.Overkill += report.Overkill;
         if (report.Killed) metrics.Kills++;
+        if (report.ExposeDamageEquivalent > 0 && _towerByInstance.TryGetValue(report.ExposeSourceTowerId, out var exposeMetrics))
+        {
+            exposeMetrics.ExposeDamageEquivalent += report.ExposeDamageEquivalent;
+            if (_towerInstances.TryGetValue(report.ExposeSourceTowerId, out var exposeTower))
+                exposeTower.RecordExposeAssist(report.ExposeDamageEquivalent);
+        }
+        if (report.ArmorBreakDamageEquivalent > 0 && _towerByInstance.TryGetValue(report.ArmorBreakSourceTowerId, out var breakMetrics))
+        {
+            breakMetrics.ArmorBreakDamageEquivalent += report.ArmorBreakDamageEquivalent;
+            if (_towerInstances.TryGetValue(report.ArmorBreakSourceTowerId, out var breakTower))
+                breakTower.RecordArmorBreakAssist(report.ArmorBreakDamageEquivalent);
+        }
         if (_towerInstances.TryGetValue(report.SourceTowerId, out var tower))
         {
             tower.RecordCombat(appliedDamage, report.Killed);
@@ -283,13 +299,16 @@ public sealed class RunTowerStatistics
     public int Overdrives { get; internal set; }
     public float Damage { get; internal set; }
     public float SupportDamageEquivalent { get; internal set; }
+    public float ExposeDamageEquivalent { get; internal set; }
+    public float ArmorBreakDamageEquivalent { get; internal set; }
     public float ControlSeconds { get; internal set; }
     public float ExposeSeconds { get; internal set; }
     public float ArmorBreakSeconds { get; internal set; }
     public float ArmorAbsorbed { get; internal set; }
     public float Overkill { get; internal set; }
     public Dictionary<string, int> Specializations { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public float ContributionDamage => Damage + SupportDamageEquivalent;
+    public float AssistDamageEquivalent => SupportDamageEquivalent + ExposeDamageEquivalent + ArmorBreakDamageEquivalent;
+    public float ContributionDamage => Damage + AssistDamageEquivalent;
     public float DamagePerCredit => CreditsSpent <= 0 ? 0 : ContributionDamage / CreditsSpent;
 
     public RunTowerStatistics(string towerId, string displayName)
