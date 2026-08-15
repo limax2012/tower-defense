@@ -2670,7 +2670,10 @@ public sealed class UIManager
         p.DrawShape(batch, new Vector2(panel.X + 36, panel.Y + 42), 20, definition.Visual.Shape,
             definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
         DrawText(batch, definition.DisplayName.ToUpperInvariant(), new Vector2(panel.X + 72, panel.Y + 16), ColorPalette.Ink, 0.94f);
-        DrawText(batch, $"{TowerInfo.ShortRole(definition).ToUpperInvariant()}  |  BUILD {definition.PurchaseCost}  |  DEFAULT TARGET {definition.DefaultTargetMode.ToUpperInvariant()}",
+        var operation = definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase)
+            ? "AURA SUPPORT  |  NO TARGETING"
+            : $"DEFAULT TARGET {definition.DefaultTargetMode.ToUpperInvariant()}";
+        DrawText(batch, $"{TowerInfo.ShortRole(definition).ToUpperInvariant()}  |  BUILD {definition.PurchaseCost}  |  {operation}",
             new Vector2(panel.X + 72, panel.Y + 43), ColorPalette.Muted, 0.53f);
         DrawFittedText(batch, TowerInfo.ProtocolSummary(definition), new Vector2(panel.X + 72, panel.Y + 64), ColorPalette.Coral, 0.43f, panel.Width - 90);
         DrawFittedText(batch, $"{TowerInfo.Strength(definition)}  |  {TowerInfo.Limitation(definition)}",

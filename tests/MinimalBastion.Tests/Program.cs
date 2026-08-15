@@ -2455,6 +2455,9 @@ internal static class Program
         var beaconUpgrade = TowerInfo.UpgradeSummary(beacon, 0);
         Check.True(beaconUpgrade.Contains("AURA 145>165", StringComparison.Ordinal), "beacon upgrade compares aura radius");
         Check.True(beaconUpgrade.Contains("RATE +15%>+25%", StringComparison.Ordinal), "beacon upgrade compares aura rate");
+        Check.Nearly(0, beacon.Protocol.AttackSpeedBonus, "beacon protocol does not advertise a no-op self attack-rate bonus");
+        Check.True(!TowerInfo.ProtocolBonuses(beacon.Protocol).StartsWith("RATE", StringComparison.Ordinal),
+            "beacon protocol summary leads with its actual aura effects");
     }
 
     private static void TowerLibraryReference()

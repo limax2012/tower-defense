@@ -218,7 +218,7 @@
   {
     "id": "signal_beacon", "displayName": "Signal Beacon", "role": "Support aura", "behavior": "aura", "purchaseCost": 300, "defaultTargetMode": "First",
     "visual": { "shape": "circle", "primary": "#F6E58D", "accent": "#B7791F", "radius": 19, "marks": 1, "ring": true },
-    "protocol": { "displayName": "Network Surge", "summary": "Temporarily expands and strengthens its aura", "durationSeconds": 6, "cooldownSeconds": 18, "auraAttackSpeedBonus": 0.22, "auraRangeBonus": 0.2, "autoTriggerCount": 6 },
+    "protocol": { "displayName": "Network Surge", "summary": "Temporarily expands and strengthens its aura", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0, "auraAttackSpeedBonus": 0.22, "auraRangeBonus": 0.2, "autoTriggerCount": 6 },
     "tier2Doctrines": [
       { "id": "beacon_amplifier", "displayName": "Field Amplifier", "shortLabel": "AMPLIFY", "summary": "Stronger support inside a tighter field", "upgradeCost": 180, "damageMultiplier": 1.0, "attackSpeedMultiplier": 1.0, "rangeMultiplier": 0.88, "utilityMultiplier": 1.12 },
       { "id": "beacon_repeater", "displayName": "Range Repeater", "shortLabel": "REPEAT", "summary": "Wider support with lighter bonuses", "upgradeCost": 180, "damageMultiplier": 1.0, "attackSpeedMultiplier": 1.0, "rangeMultiplier": 1.16, "utilityMultiplier": 0.86 }
