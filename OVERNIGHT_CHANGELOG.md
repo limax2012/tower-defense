@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Added authoritative reconstruction coverage for all 40 completed tower paths. Player-2 ownership, Player-1 shared doctrine/final-role/target controls, manual Protocol state, automatic Protocol assignment, investments, and exact checksums must survive every branch snapshot.
 - Extended the 64-profile reconstruction matrix into each arena's live authored opening wave. Every difficulty/directive combination must now restore active spawn progress, scaled enemies, timers, economy, and wave identity to an exact Player-2 checksum as well as its intermission state.
 - Added exhaustive initial-state reconstruction coverage for all 64 selectable arena, difficulty, and directive combinations. Every profile now must survive both checkpoint restore and a structurally validated Player-2 authoritative snapshot with an exact deterministic checksum.
 - Corrected endless balance-report outcome semantics. Reaching a configured custom wave cap now counts as simulation success instead of an impossible post-victory `Victory`, while a dedicated progression block separately reports campaign clears, target reaches, deepest wave, average post-clear depth, and arena splits.

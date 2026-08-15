@@ -81,6 +81,7 @@ internal static class Program
             ("co-op command history bounds", CoOpCommandHistoryBounds),
             ("co-op buffered jitter commands", CoOpBufferedJitterCommands),
             ("co-op active state snapshot", CoOpActiveStateSnapshot),
+            ("co-op tower path reconstruction", CoOpTowerPathReconstruction),
             ("co-op malformed snapshot rejection", CoOpMalformedSnapshotRejection),
             ("co-op checksum coverage", CoOpChecksumCoverage),
             ("co-op reconnect combat soak", CoOpReconnectCombatSoak),
@@ -1766,6 +1767,60 @@ internal static class Program
             "client prunes sold attribution source on restored phase");
         Check.Equal(SessionChecksum.Compute(compactionHost, 51), SessionChecksum.Compute(compactionClient, 51),
             "sold-source cleanup remains synchronized after reconnect");
+    }
+
+    private static void CoOpTowerPathReconstruction()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        var map = content.Maps["foundry_loop"];
+        var region = map.BuildableRegions[0];
+        var position = new Vector2(region.X + region.Width * 0.5f, region.Y + region.Height * 0.5f);
+        var pathCount = 0;
+
+        foreach (var definition in content.Towers.Values)
+        foreach (var doctrine in definition.Tier2Doctrines)
+        foreach (var specialization in definition.Specializations)
+        {
+            var session = new GameSession(content, map.Id, "hard");
+            session.ConfigureCoOp(1);
+            session.Economy.AddCredits(5_000);
+            Check.True(session.TryPlaceTower(definition.Id, position, 2, false),
+                $"place {definition.Id} for {doctrine.Id}>{specialization.Id}");
+            var tower = session.Towers.Single();
+            Check.True(session.TryChooseTowerDoctrine(tower.Id, doctrine.Id, 1),
+                $"shared doctrine {definition.Id}:{doctrine.Id}");
+            Check.True(session.TrySpecializeTower(tower.Id, specialization.Id, 1),
+                $"shared final role {definition.Id}:{specialization.Id}");
+            if (!tower.IsSupport)
+                Check.True(session.TrySetTargetMode(tower.Id, TargetMode.Armored, 1),
+                    $"shared targeting {definition.Id}:{specialization.Id}");
+            Check.True(session.TryToggleAutoProtocol(tower.Id, 1),
+                $"automatic Protocol assignment {definition.Id}:{specialization.Id}");
+            Check.True(session.TryOverdriveTower(tower.Id, 2),
+                $"shared Protocol activation {definition.Id}:{specialization.Id}");
+
+            var snapshot = session.CaptureCoOpState(23, 0, false);
+            Check.True(CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+            {
+                Type = CoOpMessageType.StateSnapshot,
+                PlayerId = 1,
+                Tick = snapshot.Tick,
+                State = snapshot
+            }), $"{definition.Id}:{doctrine.Id}>{specialization.Id} envelope");
+            var peer = GameSession.RestoreCoOpState(content, snapshot, 2);
+            var restored = peer.Towers.Single();
+            Check.Equal(2, restored.OwnerPlayerId, $"{definition.Id} original owner");
+            Check.Equal(doctrine.Id, restored.DoctrineId!, $"{definition.Id} doctrine identity");
+            Check.Equal(specialization.Id, restored.SpecializationId!, $"{definition.Id} final-role identity");
+            Check.True(restored.IsOverdriven && peer.AutoOverdriveTowerId == restored.Id,
+                $"{definition.Id} Protocol state");
+            Check.Equal(SessionChecksum.Compute(session, 23), SessionChecksum.Compute(peer, 23),
+                $"{definition.Id}:{doctrine.Id}>{specialization.Id} checksum");
+            pathCount++;
+        }
+
+        Check.Equal(40, pathCount, "every complete tower path reconstructs through co-op");
     }
 
     private static void CoOpMalformedSnapshotRejection()

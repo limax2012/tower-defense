@@ -5,7 +5,7 @@ Updated: 2026-08-15
 ## Verified checkpoint
 
 - Release build: 0 warnings, 0 errors with the workspace-local .NET 10 SDK.
-- Deterministic regression suite: 69/69 passing.
+- Deterministic regression suite: 70/70 passing.
 - Self-contained Windows x64 publish: `.build/publish/MinimalBastion.exe`.
 - Content: 4 maps with independently authored campaigns, 10 towers with 20 tier-two doctrines and 20 final specializations, 10 distinct Protocols, 5 enemy bases plus elite/boss ranks, difficulty/directive profiles, tactical reserves, and endless continuation.
 - Canonical five-seed Hard matrix: 140/240 wins (58.3%). A fresh three-seed audit on the current executable produced 83/144 wins (57.6%) after the bounded Rapid Array, Breach Round, and Razor Bloom role repairs; the game remains in its demanding target band and Surge Divide retains the lowest average surviving lives.
@@ -14,6 +14,7 @@ Updated: 2026-08-15
 - Pulse Plate snapping now rejects sidebar/out-of-canvas coordinates before route projection, preventing a tactical-control click near the exit route from becoming an accidental deployment; the authored endpoint regression is included in the suite.
 - Endless simulations now distinguish authored campaign clears from reaching a requested endless target and report depth by arena. Current wave-35 audits show finite failure pressure across Easy, Normal, and Hard, while the strongest easier-profile control plans retain meaningful post-campaign runway.
 - The reconstruction matrix now verifies all 64 arena/difficulty/directive combinations through local checkpoint restore plus both intermission and live-opening authoritative Player-2 snapshots with exact checksum parity.
+- All 40 completed tower paths now have a Player-2 reconstruction regression covering shared management, ownership attribution, targeting, manual/automatic Protocol state, and checksum parity.
 
 ## Completed work
 
