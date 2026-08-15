@@ -2601,7 +2601,9 @@ public sealed class UIManager
         p.DrawRect(batch, panel, ColorPalette.Ink, 2);
 
         DrawText(batch, "TACTICAL LIBRARY", new Vector2(62, 48), ColorPalette.Navy, 1.25f);
-        DrawText(batch, _libraryShowsSystems
+        // Keep the page description on its own row below the tab strip. Long
+        // descriptions previously continued beneath the TOWERS/THREATS tabs.
+        DrawFittedText(batch, _libraryShowsSystems
             ? "Core rules, status behavior, tactical reserves, support stacking, and co-op flow."
             : _libraryShowsProfiles
             ? "Exact difficulty scaling and optional directive restrictions before committing to a run."
@@ -2610,7 +2612,7 @@ public sealed class UIManager
             : _libraryShowsThreats
                 ? "Base enemy profiles, rank rules, counterplay, and battlefield status symbols."
                 : "Exact tower values. Click a Tier 2 doctrine to preview either final role.",
-            new Vector2(62, 82), ColorPalette.Muted, 0.56f);
+            new Vector2(62, 90), ColorPalette.Muted, 0.50f, 1156);
         DrawButton(batch, p, _towerLibraryTowerTabButton, "TOWERS", true,
             _libraryShowsThreats || _libraryShowsCampaign || _libraryShowsProfiles || _libraryShowsSystems ? ColorPalette.PanelAlt : ColorPalette.Cyan,
             _libraryShowsThreats || _libraryShowsCampaign || _libraryShowsProfiles || _libraryShowsSystems ? ColorPalette.Ink : ColorPalette.Navy);
