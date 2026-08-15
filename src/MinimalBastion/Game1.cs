@@ -714,9 +714,11 @@ public sealed class Game1 : Game
         _networkChecksums.Clear();
         _remoteNetworkChecksums.Clear();
         _repliedChecksumTicks.Clear();
-        _networkChecksums[_networkRunner.Tick] = SessionChecksum.Compute(_session, _networkRunner.Tick);
         var snapshot = _session.CaptureCoOpState(_networkRunner.Tick, _coOpWaveReady.ReadyMask,
             _coOpWaveReady.StartQueued, _coOpWaveReady.EarlyBonusQueued);
+        // Snapshot capture compacts expired telemetry source IDs. Hash the
+        // resulting authoritative state, not the pre-compaction state.
+        _networkChecksums[_networkRunner.Tick] = SessionChecksum.Compute(_session, _networkRunner.Tick);
         snapshot.PendingCommands = _networkRunner.CapturePendingCommands();
         QueueSend(new CoOpEnvelope
         {

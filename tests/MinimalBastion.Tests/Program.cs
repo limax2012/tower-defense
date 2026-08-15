@@ -761,10 +761,20 @@ internal static class Program
         var original = Session();
         Check.True(original.TryPlaceTower("tower", new Vector2(50, 200)), "sold utility source placement");
         var sourceId = original.Towers.Single().Id;
+        var lingering = new EnemyInstance(87, original.Content.Enemies["enemy"], original.Map.Path, 1, 1);
+        lingering.StatusEffects.Apply(new StatusApplication
+        {
+            Type = StatusType.Slow,
+            Duration = 1,
+            Magnitude = 0.3f,
+            SourceId = sourceId
+        });
+        original.Enemies.Add(lingering);
         Check.True(original.TrySellTower(sourceId), "sold utility source removal");
+        Check.Equal(0, original.Statistics.TrackedTowerObjectCount, "sold tower object is released immediately");
         var savedStatistics = original.Statistics.CaptureSaveData();
         Check.Equal("tower", savedStatistics.TowerDefinitionByInstance[sourceId],
-            "sold source definition is retained in telemetry state");
+            "sold source definition is retained while its utility is active");
 
         var restored = Session();
         restored.Statistics.RestoreSaveData(savedStatistics, Array.Empty<TowerInstance>());
@@ -780,6 +790,23 @@ internal static class Program
         restored.Statistics.Advance(0.25f);
         Check.Nearly(0.25f, restored.Statistics.Towers.Single(value => value.TowerId == "tower").ControlSeconds,
             "lingering sold-tower utility remains attributed after restoration");
+        target.StatusEffects.Update(2);
+        restored.Statistics.Advance(2.1f);
+        Check.True(!restored.Statistics.TowerDefinitionByInstance.ContainsKey(sourceId),
+            "expired sold-tower attribution is compacted");
+
+        var churn = Session();
+        for (var index = 0; index < 300; index++)
+        {
+            churn.Economy.AddCredits(100);
+            Check.True(churn.TryPlaceTower("tower", new Vector2(50, 200)), "endless churn tower placement");
+            Check.True(churn.TrySellTower(churn.Towers.Single().Id), "endless churn tower sale");
+        }
+        churn.Statistics.Advance(2.1f);
+        Check.Equal(0, churn.Statistics.TowerDefinitionByInstance.Count,
+            "historical source IDs do not grow under repeated sell/rebuild churn");
+        Check.Equal(0, churn.Statistics.TrackedTowerObjectCount,
+            "historical sold tower objects do not remain referenced");
     }
 
     private static void DefeatFieldInspection()

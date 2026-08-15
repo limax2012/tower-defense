@@ -10,12 +10,14 @@ namespace MinimalBastion.Analytics;
 
 public sealed class RunStatistics
 {
+    private const float AttributionCompactionInterval = 2f;
     private readonly GameSession _session;
     private readonly Dictionary<int, RunTowerStatistics> _towerByInstance = new();
     private readonly Dictionary<int, string> _towerDefinitionByInstance = new();
     private readonly Dictionary<int, TowerInstance> _towerInstances = new();
     private readonly Dictionary<string, RunTowerStatistics> _towers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, RunEnemyStatistics> _enemies = new(StringComparer.OrdinalIgnoreCase);
+    private float _attributionCompactionRemaining = AttributionCompactionInterval;
 
     public float SimulatedSeconds { get; private set; }
     public int EmergencyDeployments { get; private set; }
@@ -30,6 +32,7 @@ public sealed class RunStatistics
     public IReadOnlyCollection<RunTowerStatistics> Towers => _towers.Values;
     public IReadOnlyCollection<RunEnemyStatistics> Enemies => _enemies.Values;
     public IReadOnlyDictionary<int, string> TowerDefinitionByInstance => _towerDefinitionByInstance;
+    public int TrackedTowerObjectCount => _towerInstances.Count;
     public IEnumerable<RunTowerStatistics> TowerLeaders => _towers.Values
         .Where(x => x.ContributionDamage > 0)
         .OrderByDescending(x => x.ContributionDamage)
@@ -82,53 +85,64 @@ public sealed class RunStatistics
             if (_towerInstances.TryGetValue(status.SourceId, out var sourceTower))
                 sourceTower.RecordStatusUptime(status.Type, activeSeconds);
         }
+
+        _attributionCompactionRemaining -= deltaSeconds;
+        if (_attributionCompactionRemaining <= 0)
+        {
+            CompactAttributionSources();
+            _attributionCompactionRemaining = AttributionCompactionInterval;
+        }
     }
 
-    public RunStatisticsSaveData CaptureSaveData() => new()
+    public RunStatisticsSaveData CaptureSaveData()
     {
-        SimulatedSeconds = SimulatedSeconds,
-        EmergencyDeployments = EmergencyDeployments,
-        EmergencyDirectPurchases = EmergencyDirectPurchases,
-        EmergencyTriggers = EmergencyTriggers,
-        EmergencyHits = EmergencyHits,
-        EmergencyKills = EmergencyKills,
-        EmergencyDamage = EmergencyDamage,
-        GeneratedCharges = GeneratedCharges,
-        GeneratorPurchases = GeneratorPurchases,
-        GeneratorUpgrades = GeneratorUpgrades,
-        TowerDefinitionByInstance = new Dictionary<int, string>(_towerDefinitionByInstance),
-        Towers = _towers.Values.Select(x => new RunTowerStatisticsSaveData
+        CompactAttributionSources();
+        return new RunStatisticsSaveData
         {
-            TowerId = x.TowerId,
-            DisplayName = x.DisplayName,
-            Purchases = x.Purchases,
-            Upgrades = x.Upgrades,
-            Sales = x.Sales,
-            CreditsSpent = x.CreditsSpent,
-            CreditsRecovered = x.CreditsRecovered,
-            Hits = x.Hits,
-            Kills = x.Kills,
-            Overdrives = x.Overdrives,
-            Damage = x.Damage,
-            SupportDamageEquivalent = x.SupportDamageEquivalent,
-            ExposeDamageEquivalent = x.ExposeDamageEquivalent,
-            ArmorBreakDamageEquivalent = x.ArmorBreakDamageEquivalent,
-            ControlSeconds = x.ControlSeconds,
-            ExposeSeconds = x.ExposeSeconds,
-            ArmorBreakSeconds = x.ArmorBreakSeconds,
-            ArmorAbsorbed = x.ArmorAbsorbed,
-            Overkill = x.Overkill,
-            Specializations = new Dictionary<string, int>(x.Specializations, StringComparer.OrdinalIgnoreCase)
-        }).ToList(),
-        Enemies = _enemies.Values.Select(x => new RunEnemyStatisticsSaveData
-        {
-            EnemyId = x.EnemyId,
-            DisplayName = x.DisplayName,
-            Kills = x.Kills,
-            Escapes = x.Escapes,
-            LivesLost = x.LivesLost
-        }).ToList()
-    };
+            SimulatedSeconds = SimulatedSeconds,
+            EmergencyDeployments = EmergencyDeployments,
+            EmergencyDirectPurchases = EmergencyDirectPurchases,
+            EmergencyTriggers = EmergencyTriggers,
+            EmergencyHits = EmergencyHits,
+            EmergencyKills = EmergencyKills,
+            EmergencyDamage = EmergencyDamage,
+            GeneratedCharges = GeneratedCharges,
+            GeneratorPurchases = GeneratorPurchases,
+            GeneratorUpgrades = GeneratorUpgrades,
+            TowerDefinitionByInstance = new Dictionary<int, string>(_towerDefinitionByInstance),
+            Towers = _towers.Values.Select(x => new RunTowerStatisticsSaveData
+            {
+                TowerId = x.TowerId,
+                DisplayName = x.DisplayName,
+                Purchases = x.Purchases,
+                Upgrades = x.Upgrades,
+                Sales = x.Sales,
+                CreditsSpent = x.CreditsSpent,
+                CreditsRecovered = x.CreditsRecovered,
+                Hits = x.Hits,
+                Kills = x.Kills,
+                Overdrives = x.Overdrives,
+                Damage = x.Damage,
+                SupportDamageEquivalent = x.SupportDamageEquivalent,
+                ExposeDamageEquivalent = x.ExposeDamageEquivalent,
+                ArmorBreakDamageEquivalent = x.ArmorBreakDamageEquivalent,
+                ControlSeconds = x.ControlSeconds,
+                ExposeSeconds = x.ExposeSeconds,
+                ArmorBreakSeconds = x.ArmorBreakSeconds,
+                ArmorAbsorbed = x.ArmorAbsorbed,
+                Overkill = x.Overkill,
+                Specializations = new Dictionary<string, int>(x.Specializations, StringComparer.OrdinalIgnoreCase)
+            }).ToList(),
+            Enemies = _enemies.Values.Select(x => new RunEnemyStatisticsSaveData
+            {
+                EnemyId = x.EnemyId,
+                DisplayName = x.DisplayName,
+                Kills = x.Kills,
+                Escapes = x.Escapes,
+                LivesLost = x.LivesLost
+            }).ToList()
+        };
+    }
 
     public void RestoreSaveData(RunStatisticsSaveData data, IEnumerable<TowerInstance> activeTowers)
     {
@@ -145,6 +159,7 @@ public sealed class RunStatistics
         _towerByInstance.Clear();
         _towerDefinitionByInstance.Clear();
         _towerInstances.Clear();
+        _attributionCompactionRemaining = AttributionCompactionInterval;
         _towers.Clear();
         _enemies.Clear();
 
@@ -225,6 +240,25 @@ public sealed class RunStatistics
         var metrics = GetTower(tower.Definition.Id, tower.Definition.DisplayName);
         metrics.Sales++;
         metrics.CreditsRecovered += value;
+        _towerInstances.Remove(tower.Id);
+    }
+
+    private void CompactAttributionSources()
+    {
+        var activeSources = _session.Towers.Select(tower => tower.Id).ToHashSet();
+        foreach (var enemy in _session.Enemies)
+        foreach (var status in enemy.StatusEffects.Active)
+            if (status.SourceId > 0) activeSources.Add(status.SourceId);
+        foreach (var projectile in _session.Projectiles.Projectiles)
+            if (!projectile.IsExpired && projectile.Payload.SourceTowerId > 0)
+                activeSources.Add(projectile.Payload.SourceTowerId);
+
+        foreach (var expired in _towerDefinitionByInstance.Keys.Where(id => !activeSources.Contains(id)).ToArray())
+        {
+            _towerDefinitionByInstance.Remove(expired);
+            _towerByInstance.Remove(expired);
+            _towerInstances.Remove(expired);
+        }
     }
 
     private void OnEnemyKilled(EnemyInstance enemy)
