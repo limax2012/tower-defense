@@ -2113,9 +2113,9 @@ public sealed class UIManager
             var localTime = entry.CompletedAtUtc.Kind == DateTimeKind.Unspecified
                 ? DateTime.SpecifyKind(entry.CompletedAtUtc, DateTimeKind.Utc).ToLocalTime()
                 : entry.CompletedAtUtc.ToLocalTime();
-            DrawText(batch,
+            DrawFittedText(batch,
                 $"{localTime:g}  |  {(entry.IsCoOp ? "CO-OP" : "SOLO")}  |  LIVES {entry.Lives}/{entry.StartingLives}  |  KILLS {entry.Kills}  |  TOP {entry.TopTowerName.ToUpperInvariant()}",
-                new Vector2(rect.X + 150, rect.Y + 39), ColorPalette.Muted, 0.44f);
+                new Vector2(rect.X + 150, rect.Y + 39), ColorPalette.Muted, 0.44f, rect.Width - 164);
         }
 
         DrawButton(batch, p, _runHistoryDeleteButton,
@@ -2125,7 +2125,21 @@ public sealed class UIManager
         DrawButton(batch, p, _saveSlotPreviousButton, "PREVIOUS", _runHistoryPage > 0, ColorPalette.Cyan);
         DrawButton(batch, p, _saveSlotBackButton, "BACK TO SAVES", true, ColorPalette.Violet);
         DrawButton(batch, p, _saveSlotNextButton, "NEXT", _runHistoryPage + 1 < pageCount, ColorPalette.Cyan);
-        DrawText(batch, $"ARROWS SELECT  |  {_runHistoryStatus}", new Vector2(640, 654), ColorPalette.Muted, 0.48f, true);
+        var selectedEntry = _runHistory.FirstOrDefault(entry => entry.RunId == _selectedRunHistoryId);
+        if (selectedEntry is not null)
+        {
+            var duration = TimeSpan.FromSeconds(selectedEntry.DefenseSeconds);
+            var defenseTime = duration.TotalHours >= 1
+                ? $"{(int)duration.TotalHours}:{duration.Minutes:00}:{duration.Seconds:00}"
+                : $"{duration.Minutes:00}:{duration.Seconds:00}";
+            DrawFittedCenteredText(batch,
+                $"ECONOMY  {selectedEntry.CreditsEarned} EARNED  |  {selectedEntry.CreditsSpent} SPENT  |  +{selectedEntry.EarlyCallCredits} EARLY  |  LEAKS {selectedEntry.Leaks}  |  TIME {defenseTime}",
+                new Vector2(640, 646), ColorPalette.Cyan, 0.42f, 1000);
+            DrawFittedCenteredText(batch,
+                $"TACTICAL  {selectedEntry.ProtocolActivations} PROTOCOLS  |  {selectedEntry.PlateDeployments} PLATES  |  {selectedEntry.PlateDamage:0} PLATE DAMAGE  |  {selectedEntry.ForgedCharges} FORGED  |  TOP {selectedEntry.TopTowerContribution:0} IMPACT",
+                new Vector2(640, 667), ColorPalette.Violet, 0.42f, 1000);
+        }
+        DrawFittedCenteredText(batch, $"ARROWS SELECT  |  {_runHistoryStatus}", new Vector2(640, 690), ColorPalette.Muted, 0.40f, 1080);
     }
 
     private void DrawCoOpMenu(SpriteBatch batch, PrimitiveRenderer p)

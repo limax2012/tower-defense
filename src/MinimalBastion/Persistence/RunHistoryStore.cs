@@ -23,6 +23,11 @@ public sealed record RunHistoryEntry
     public int Leaks { get; init; }
     public int CreditsEarned { get; init; }
     public int CreditsSpent { get; init; }
+    public int EarlyCallCredits { get; init; }
+    public int ProtocolActivations { get; init; }
+    public int PlateDeployments { get; init; }
+    public float PlateDamage { get; init; }
+    public int ForgedCharges { get; init; }
     public float DefenseSeconds { get; init; }
     public string TopTowerName { get; init; } = "NONE";
     public float TopTowerContribution { get; init; }
@@ -51,6 +56,11 @@ public sealed record RunHistoryEntry
             Leaks = session.Economy.EscapedEnemies,
             CreditsEarned = session.Economy.TotalCreditsEarned,
             CreditsSpent = session.Economy.TotalCreditsSpent,
+            EarlyCallCredits = session.Economy.EarlyStartCreditsEarned,
+            ProtocolActivations = session.Statistics.ProtocolActivations,
+            PlateDeployments = session.Statistics.EmergencyDeployments,
+            PlateDamage = session.Statistics.EmergencyDamage,
+            ForgedCharges = session.Statistics.GeneratedCharges,
             DefenseSeconds = session.Statistics.SimulatedSeconds,
             TopTowerName = leader?.DisplayName ?? "NONE",
             TopTowerContribution = leader?.ContributionDamage ?? 0
@@ -181,7 +191,9 @@ public sealed class RunHistoryRepository
             IsValidLabel(entry.ChallengeId) && IsValidLabel(entry.ChallengeName) &&
             IsValidLabel(entry.TopTowerName) && entry.CurrentWave >= 0 && entry.TotalWaves > 0 &&
             entry.Lives >= 0 && entry.StartingLives > 0 && entry.Kills >= 0 && entry.Leaks >= 0 &&
-            entry.CreditsEarned >= 0 && entry.CreditsSpent >= 0 &&
+            entry.CreditsEarned >= 0 && entry.CreditsSpent >= 0 && entry.EarlyCallCredits >= 0 &&
+            entry.ProtocolActivations >= 0 && entry.PlateDeployments >= 0 && entry.ForgedCharges >= 0 &&
+            float.IsFinite(entry.PlateDamage) && entry.PlateDamage >= 0 &&
             float.IsFinite(entry.DefenseSeconds) && entry.DefenseSeconds >= 0 &&
             float.IsFinite(entry.TopTowerContribution) && entry.TopTowerContribution >= 0;
     }

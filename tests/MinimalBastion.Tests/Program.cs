@@ -3073,6 +3073,14 @@ internal static class Program
                 Lives = 8,
                 StartingLives = 20,
                 Kills = 1090,
+                CreditsEarned = 24000,
+                CreditsSpent = 21000,
+                EarlyCallCredits = 180,
+                ProtocolActivations = 24,
+                PlateDeployments = 8,
+                PlateDamage = 640,
+                ForgedCharges = 6,
+                DefenseSeconds = 1234,
                 TopTowerName = "Needle Turret"
             };
             repository.Upsert(first);
@@ -3088,6 +3096,10 @@ internal static class Program
             var updated = repository.GetEntries().Single();
             Check.Equal(31, updated.CurrentWave, "endless continuation updates the original run record");
             Check.True(!updated.Victory && updated.IsEndless, "run conclusion changes from campaign clear to endless defeat");
+            Check.Equal(24, updated.ProtocolActivations, "run history retains protocol usage");
+            Check.Equal(8, updated.PlateDeployments, "run history retains tactical deployments");
+            Check.Nearly(640, updated.PlateDamage, "run history retains tactical damage");
+            Check.Equal(6, updated.ForgedCharges, "run history retains forged charge output");
             Check.True(File.Exists(repository.BackupPath), "run history retains a recovery generation");
 
             repository.Upsert(first with { RunId = "run-b", CompletedAtUtc = first.CompletedAtUtc.AddHours(2) });
