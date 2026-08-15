@@ -502,6 +502,8 @@ internal static class Program
         Check.Equal(UiAction.ApplySettings,
             ui.HandleSettingsInput(WorldInput(new Vector2(500, 245)) with { LeftPressed = true }),
             "display mode changes apply immediately");
+        Check.True(UIManager.RestartPreservationLabel.Contains("CHECKPOINTS STAY SAVED", StringComparison.Ordinal),
+            "restart confirmation explicitly preserves existing checkpoints");
         Check.True(settings.Fullscreen, "settings UI toggles fullscreen");
         ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
         Check.Equal(1, ui.SelectedSettingsIndex, "settings Down selects the resolution control");

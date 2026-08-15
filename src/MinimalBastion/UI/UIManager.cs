@@ -218,6 +218,8 @@ public sealed class UIManager
         ? "Between waves - save slots are available."
         : "Active wave - saving unlocks after it clears.";
 
+    public const string RestartPreservationLabel = "FRESH RUN | EXISTING CHECKPOINTS STAY SAVED";
+
     public static string CoOpWaveButtonLabel(int localPlayerId, int currentWave, int readyMask,
         bool startQueued, bool earlyBonusQueued, float intermissionRemaining)
     {
@@ -2304,6 +2306,8 @@ public sealed class UIManager
                 _restartArmed ? ColorPalette.Coral : ColorPalette.Cobalt);
             DrawButton(batch, p, _resultMenuButton, "MAIN MENU", true, ColorPalette.Violet);
         }
+        if (_restartArmed)
+            DrawFittedCenteredText(batch, RestartPreservationLabel, new Vector2(640, 562), ColorPalette.Coral, 0.42f, 620);
         var focus = ResultOptionRectangle(Math.Clamp(_resultMenuSelection, 0, 2));
         focus.Inflate(3, 3);
         p.DrawRect(batch, focus, ColorPalette.Ink, 2);
@@ -2437,8 +2441,10 @@ public sealed class UIManager
         focus.Inflate(3, 3);
         p.DrawRect(batch, focus, ColorPalette.Ink, 2);
         DrawFittedCenteredText(batch,
-            $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
-            new Vector2(640, 580), session.Challenge.AccentColor, 0.50f, 500);
+            _restartArmed
+                ? RestartPreservationLabel
+                : $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
+            new Vector2(640, 580), _restartArmed ? ColorPalette.Coral : session.Challenge.AccentColor, 0.50f, 500);
         DrawText(batch, "UP/DOWN SELECT  |  ENTER ACTIVATE", new Vector2(640, 608), ColorPalette.Muted, 0.44f, true);
     }
 
