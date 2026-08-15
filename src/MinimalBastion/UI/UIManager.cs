@@ -95,6 +95,7 @@ public sealed class UIManager
     private bool _towerLibraryOpen;
     private UserSettings _settings = new();
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
+    private int _settingsSelection;
     private int _towerLibraryIndex;
     private int _towerLibraryDoctrineIndex;
     private int _enemyLibraryIndex;
@@ -180,6 +181,7 @@ public sealed class UIManager
     public int SelectedLibraryCampaignWaveCount => SelectedLibraryCampaignMapId is { } mapId && _libraryCampaignWaves.TryGetValue(mapId, out var waves)
         ? waves.Count
         : 0;
+    public int SelectedSettingsIndex => _settingsSelection;
 
     public void ConfigureSettings(UserSettings settings) => _settings = settings;
     public void SetSettingsStatus(string status) => _settingsStatus = status;
@@ -367,21 +369,64 @@ public sealed class UIManager
     public UiAction HandleSettingsInput(InputSnapshot input)
     {
         if (input.EscapePressed || input.PausePressed || input.RightPressed) return UiAction.CloseSettings;
+        if (input.NavigateUpPressed || input.NavigateDownPressed)
+        {
+            var delta = input.NavigateUpPressed ? -1 : 1;
+            _settingsSelection = (_settingsSelection + delta + 6) % 6;
+            return UiAction.None;
+        }
+        if (input.NavigateLeftPressed || input.NavigateRightPressed)
+            return ApplySelectedSetting(input.NavigateLeftPressed ? -1 : 1);
+        if (input.EnterPressed)
+            return _settingsSelection == 5 ? UiAction.CloseSettings : ApplySelectedSetting(1);
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
-        if (_settingsBackButton.Contains(point)) return UiAction.CloseSettings;
-        if (_windowModeButton.Contains(point)) _settings.Fullscreen = !_settings.Fullscreen;
-        else if (_resolutionButton.Contains(point)) _settings.CycleResolution();
-        else if (_vsyncButton.Contains(point)) _settings.VSync = !_settings.VSync;
-        else if (_effectsButton.Contains(point)) _settings.ReducedEffects = !_settings.ReducedEffects;
-        else if (_volumeButton.Contains(point))
+        for (var index = 0; index < 6; index++)
         {
-            _settings.SfxVolume += 0.25f;
-            if (_settings.SfxVolume > 1.001f) _settings.SfxVolume = 0;
+            if (!SettingsOptionRectangle(index).Contains(point)) continue;
+            _settingsSelection = index;
+            return index == 5 ? UiAction.CloseSettings : ApplySelectedSetting(1);
         }
-        else return UiAction.None;
+        return UiAction.None;
+    }
+
+    private UiAction ApplySelectedSetting(int direction)
+    {
+        switch (_settingsSelection)
+        {
+            case 0:
+                _settings.Fullscreen = !_settings.Fullscreen;
+                break;
+            case 1:
+                _settings.CycleResolution(direction);
+                break;
+            case 2:
+                _settings.VSync = !_settings.VSync;
+                break;
+            case 3:
+                _settings.ReducedEffects = !_settings.ReducedEffects;
+                break;
+            case 4:
+                _settings.SfxVolume += direction < 0 ? -0.25f : 0.25f;
+                if (_settings.SfxVolume > 1.001f) _settings.SfxVolume = 0;
+                else if (_settings.SfxVolume < -0.001f) _settings.SfxVolume = 1;
+                break;
+            default:
+                return UiAction.None;
+        }
         return UiAction.ApplySettings;
     }
+
+    private Rectangle SettingsOptionRectangle(int index) => index switch
+    {
+        0 => _windowModeButton,
+        1 => _resolutionButton,
+        2 => _vsyncButton,
+        3 => _effectsButton,
+        4 => _volumeButton,
+        5 => _settingsBackButton,
+        _ => Rectangle.Empty
+    };
 
     private static int DifficultyOrder(string id) => id.ToLowerInvariant() switch
     {
@@ -1605,7 +1650,12 @@ public sealed class UIManager
         DrawButton(batch, p, _volumeButton, $"SOUND EFFECTS  {MathF.Round(_settings.SfxVolume * 100):0}%  |  CLICK TO CHANGE",
             true, ColorPalette.Gold, ColorPalette.Ink);
         DrawButton(batch, p, _settingsBackButton, "BACK", true, ColorPalette.Coral);
+        var focus = SettingsOptionRectangle(Math.Clamp(_settingsSelection, 0, 5));
+        focus.Inflate(4, 4);
+        p.DrawRect(batch, focus, ColorPalette.Ink, 2);
 
+        DrawText(batch, "UP/DOWN SELECT   |   LEFT/RIGHT ADJUST   |   ENTER ACTIVATE",
+            new Vector2(640, 504), ColorPalette.Navy, 0.50f, true);
         DrawText(batch, "Rendering remains crisp at every output size through the fixed high-resolution scene target.",
             new Vector2(640, 540), ColorPalette.Muted, 0.54f, true);
         DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 574), ColorPalette.Cobalt, 0.50f, 820);

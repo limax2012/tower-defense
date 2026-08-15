@@ -368,6 +368,16 @@ internal static class Program
             ui.HandleSettingsInput(WorldInput(new Vector2(500, 245)) with { LeftPressed = true }),
             "display mode changes apply immediately");
         Check.True(settings.Fullscreen, "settings UI toggles fullscreen");
+        ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
+        Check.Equal(1, ui.SelectedSettingsIndex, "settings Down selects the resolution control");
+        Check.Equal(UiAction.ApplySettings,
+            ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { NavigateLeftPressed = true }),
+            "settings Left applies a reverse adjustment");
+        Check.Equal(1280, settings.WindowWidth, "settings reverse resolution navigation selects the previous preset");
+        Check.Equal(UiAction.ApplySettings,
+            ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+            "settings Enter activates the focused control");
+        Check.Equal(1600, settings.WindowWidth, "settings Enter advances the focused resolution");
         Check.Equal(UiAction.CloseSettings,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),
             "escape closes settings safely");

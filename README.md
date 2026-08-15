@@ -66,6 +66,7 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 
 - **Tower Library** is available from both the title screen and pause menu. Click either tier-two doctrine to preview its exact stats, cumulative cost, and interaction with both final roles before starting or while planning a run.
 - `Enter`: activate the primary action on the title screen, pause/results screens, or selected save slot. Arrow keys navigate save slots and run history; Up/Down also select Tactical Library entries. `Tab` cycles Tactical Library pages and switches between the co-op address/code fields.
+- In Settings, Up/Down moves the visible focus, Left/Right adjusts the selected option, and Enter activates it.
 - Left click: select, place, or activate a UI control.
 - Right click or Escape: cancel placement; Escape pauses in solo play.
 - `1`-`0`: prepare the corresponding tower.

@@ -27,11 +27,14 @@ public sealed class UserSettings
         SfxVolume = float.IsFinite(SfxVolume) ? Math.Clamp(SfxVolume, 0, 1) : 0.65f;
     }
 
-    public void CycleResolution()
+    public void CycleResolution(int direction = 1)
     {
         var current = Array.FindIndex(ResolutionPresets,
             preset => preset.Width == WindowWidth && preset.Height == WindowHeight);
-        var next = current < 0 ? 0 : (current + 1) % ResolutionPresets.Length;
+        var step = direction < 0 ? -1 : 1;
+        var next = current < 0
+            ? step < 0 ? ResolutionPresets.Length - 1 : 0
+            : (current + step + ResolutionPresets.Length) % ResolutionPresets.Length;
         (WindowWidth, WindowHeight) = ResolutionPresets[next];
     }
 }
