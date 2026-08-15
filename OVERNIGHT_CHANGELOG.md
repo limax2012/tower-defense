@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Separated graphics application from settings persistence. A read-only/full local-data directory no longer masquerades as an unsupported display mode or forces a successfully applied resolution back to 1280x720; the live choice remains active with a clear save warning.
 - Rejected empty or oversized settings generations before JSON allocation. Startup now falls through to the last-known-good display/audio configuration when a local settings file is implausibly large.
 - Applied the checkpoint safety contract to persistent Run History: generations are size-bounded before allocation, records and labels are validated on both read and write, implausible record counts are rejected, and an oversized primary transparently recovers from its last-known-good generation.
 - Bounded checkpoint files and nested collections before expensive reads or reconstruction. Empty/oversized primaries, implausible tower/plate/stat counts, and oversized handled-enemy/specialization lists now recover through the known-good backup instead of risking excessive local allocation; normal save-slot quantity remains filesystem-limited rather than capped.

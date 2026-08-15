@@ -1247,8 +1247,6 @@ public sealed class Game1 : Game
         try
         {
             ApplyGraphicsSettings();
-            UserSettingsStore.Save(_settings);
-            _ui.SetSettingsStatus("Settings saved. Tactical canvas, geometry, and palette are unchanged.");
         }
         catch (Exception exception)
         {
@@ -1258,6 +1256,20 @@ public sealed class Game1 : Game
             try { ApplyGraphicsSettings(); } catch { }
             try { UserSettingsStore.Save(_settings); } catch { }
             _ui.SetSettingsStatus($"Display mode was unsupported; restored 1280 x 720 windowed. {exception.GetBaseException().Message}");
+            return;
+        }
+
+        try
+        {
+            UserSettingsStore.Save(_settings);
+            _ui.SetSettingsStatus("Settings saved. Tactical canvas, geometry, and palette are unchanged.");
+        }
+        catch (Exception exception)
+        {
+            // A storage failure must not undo a display mode that the graphics
+            // device already accepted. Keep it live for this process and give
+            // the player an actionable persistence warning.
+            _ui.SetSettingsStatus($"Settings applied for this session but could not be saved: {exception.GetBaseException().Message}");
         }
     }
 
