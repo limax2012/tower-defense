@@ -31,7 +31,7 @@ public static class TowerInfo
         ? definition.Tier2Doctrines.Min(x => x.UpgradeCost)
         : definition.Levels.FirstOrDefault()?.UpgradeCost ?? 0;
 
-    public static string ProtocolBonuses(TowerProtocolDefinition protocol)
+    public static string ProtocolBonuses(TowerProtocolDefinition protocol, int maximumBonuses = 3)
     {
         var bonuses = new List<string>();
         if (protocol.AttackSpeedBonus > 0) bonuses.Add($"RATE +{protocol.AttackSpeedBonus:P0}");
@@ -39,17 +39,28 @@ public static class TowerInfo
         if (protocol.RangeBonus > 0) bonuses.Add($"RANGE +{protocol.RangeBonus:P0}");
         if (protocol.ArmorPierceBonus > 0) bonuses.Add($"PIERCE +{protocol.ArmorPierceBonus:0.#}");
         if (protocol.AuraAttackSpeedBonus > 0) bonuses.Add($"AURA RATE +{protocol.AuraAttackSpeedBonus:P0}");
-        if (protocol.AuraRangeBonus > 0) bonuses.Add($"AURA RANGE +{protocol.AuraRangeBonus:P0}");
+        if (protocol.AuraRangeBonus > 0) bonuses.Add($"AURA/TOWER RANGE +{protocol.AuraRangeBonus:P0}");
         if (protocol.BurstDamage > 0) bonuses.Add($"PULSE {protocol.BurstDamage:0.#}");
-        if (!string.IsNullOrWhiteSpace(protocol.BurstStatus)) bonuses.Add(protocol.BurstStatus.ToUpperInvariant());
-        return string.Join("  ", bonuses.Take(3));
+        if (!string.IsNullOrWhiteSpace(protocol.BurstStatus)) bonuses.Add(ProtocolStatusBonus(protocol));
+        return string.Join("  ", bonuses.Take(Math.Max(0, maximumBonuses)));
     }
 
     public static string ProtocolSummary(TowerDefinition definition) =>
         $"PROTOCOL: {definition.Protocol.DisplayName.ToUpperInvariant()}  {definition.Protocol.DurationSeconds:0.#}s  |  {ProtocolBonuses(definition.Protocol)}";
 
     public static string ProtocolLibrarySummary(TowerDefinition definition) =>
-        $"PROTOCOL: {definition.Protocol.DisplayName.ToUpperInvariant()}  ACTIVE {definition.Protocol.DurationSeconds:0.#}s  CD {definition.Protocol.CooldownSeconds:0.#}s  |  {ProtocolBonuses(definition.Protocol)}  |  AUTO {definition.Protocol.AutoTriggerCount}+ / ELITE";
+        $"PROTOCOL: {definition.Protocol.DisplayName.ToUpperInvariant()}  {definition.Protocol.DurationSeconds:0.#}s / CD {definition.Protocol.CooldownSeconds:0.#}s  |  {ProtocolBonuses(definition.Protocol, int.MaxValue)}  |  AUTO {definition.Protocol.AutoTriggerCount}+ / ELITE/BOSS";
+
+    private static string ProtocolStatusBonus(TowerProtocolDefinition protocol) =>
+        protocol.BurstStatus.ToLowerInvariant() switch
+        {
+            "slow" => $"SLOW {protocol.BurstStatusMagnitude:P0}/{protocol.BurstStatusDuration:0.##}s",
+            "burn" => $"BURN {protocol.BurstStatusMagnitude:0.#}/s/{protocol.BurstStatusDuration:0.##}s",
+            "exposed" => $"EXPOSE +{protocol.BurstStatusMagnitude:P0}/{protocol.BurstStatusDuration:0.##}s",
+            "armorbreak" => $"BREAK {protocol.BurstStatusMagnitude:0.#}/{protocol.BurstStatusDuration:0.##}s",
+            "stun" => $"STUN {protocol.BurstStatusDuration:0.##}s",
+            _ => protocol.BurstStatus.ToUpperInvariant()
+        };
 
     public static IReadOnlyList<string> LibraryStatLines(TowerDefinition definition, TowerLevelDefinition level)
     {

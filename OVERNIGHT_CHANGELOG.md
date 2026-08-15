@@ -1,5 +1,7 @@
 # Overnight Changelog
 
+- Expanded Tactical Library Protocol references beyond the compact live-label limit. Every unique burst now exposes its pulse damage plus exact Slow, Burn, Expose, Armor Break, or Stun magnitude/duration, while the battlefield continues showing only the first three bonuses to prevent sidebar clutter.
+- Corrected Network Surge's range label to `AURA/TOWER RANGE`, making clear that the same temporary bonus expands Beacon coverage and recipient-tower reach exactly as the existing mechanics already do.
 - Made automatic Protocol behavior explicit in planning UI. Tactical Library entries now show active duration, cooldown, pressure threshold, and elite override; an armed tower's live Intel likewise says that any elite/boss can trigger below the normal nearby-enemy count.
 - Removed Signal Beacon's inherited, nonfunctional `RATE +75%` Protocol claim and labeled its Tactical Library header `AURA SUPPORT / NO TARGETING`. Network Surge retains only the aura-rate/range effects it actually applies, with no combat-stat change.
 - Rotated Player 2's request-replay window when the host accepts a reconnect while preserving global authoritative sequence and scheduled commands. A friend who restarts their client can now resume at request ID 1 instead of having every control mistaken for an old duplicate.

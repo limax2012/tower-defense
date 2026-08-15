@@ -2458,11 +2458,16 @@ internal static class Program
         Check.Nearly(0, beacon.Protocol.AttackSpeedBonus, "beacon protocol does not advertise a no-op self attack-rate bonus");
         Check.True(!TowerInfo.ProtocolBonuses(beacon.Protocol).StartsWith("RATE", StringComparison.Ordinal),
             "beacon protocol summary leads with its actual aura effects");
+        Check.True(TowerInfo.ProtocolBonuses(beacon.Protocol).Contains("AURA/TOWER RANGE +20%", StringComparison.Ordinal),
+            "beacon protocol explains that its range surge affects coverage and recipients");
         var protocolReference = TowerInfo.ProtocolLibrarySummary(needle);
-        Check.True(protocolReference.Contains("ACTIVE 6s", StringComparison.Ordinal) &&
-            protocolReference.Contains("CD 18s", StringComparison.Ordinal) &&
-            protocolReference.Contains("AUTO 4+ / ELITE", StringComparison.Ordinal),
+        Check.True(protocolReference.Contains("6s / CD 18s", StringComparison.Ordinal) &&
+            protocolReference.Contains("AUTO 4+ / ELITE/BOSS", StringComparison.Ordinal),
             "tower library exposes exact protocol timing and automatic trigger rules");
+        var breakerProtocol = TowerInfo.ProtocolLibrarySummary(content.Towers["breaker_cannon"]);
+        Check.True(breakerProtocol.Contains("PULSE 20", StringComparison.Ordinal) &&
+            breakerProtocol.Contains("BREAK 4/5s", StringComparison.Ordinal),
+            "tower library preserves instant Protocol damage and status payload beyond compact live labels");
     }
 
     private static void TowerLibraryReference()
