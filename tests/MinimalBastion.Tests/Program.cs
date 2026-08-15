@@ -412,23 +412,24 @@ internal static class Program
         ui.ConfigureDifficulties(content.Difficulties.Values);
         Check.Equal("normal", ui.SelectedDifficultyId, "new game UI defaults to normal");
         Check.Equal("Medium", ui.SelectedDifficultyName, "the 90% profile is clearly named Medium");
-        Check.Equal(UiAction.OpenSoloSetup, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
-            "title Enter opens the prominent new-game setup");
+        Check.Equal(UiAction.None, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+            "title ignores keyboard activation so it has no hidden focus state");
         Check.Equal(UiAction.None, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { NavigateDownPressed = true }),
-            "title arrows move the visible keyboard focus");
-        Check.Equal(UiAction.OpenCoOpSetup, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
-            "title Enter opens the focused online co-op setup");
-        ui.HandleMainMenu(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
-        Check.Equal(UiAction.OpenSoloSetup, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
-            "title keyboard focus returns to New Game");
+            "title ignores keyboard navigation so mouse choices remain unambiguous");
+        Check.Equal(UiAction.OpenSoloSetup, ui.HandleMainMenu(WorldInput(new Vector2(640, 390)) with { LeftPressed = true }),
+            "title mouse opens the new-game setup");
+        Check.Equal(UiAction.OpenCoOpSetup, ui.HandleMainMenu(WorldInput(new Vector2(640, 440)) with { LeftPressed = true }),
+            "title mouse opens the online co-op setup");
         ui.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
         ui.PrepareGameSetup(false);
-        ui.HandleGameSetup(WorldInput(new Vector2(700, 330)) with { LeftPressed = true });
-        Check.Equal("hard", ui.SelectedDifficultyId, "difficulty selector cycles profiles");
-        Check.Equal(UiAction.Play, ui.HandleGameSetup(WorldInput(new Vector2(560, 647)) with { LeftPressed = true }),
+        Check.Equal(UiAction.None, ui.HandleGameSetup(WorldInput(Vector2.Zero) with { NavigateRightPressed = true }),
+            "setup ignores keyboard navigation and preserves the visible mouse selections");
+        ui.HandleGameSetup(WorldInput(new Vector2(700, 245)) with { LeftPressed = true });
+        Check.Equal("hard", ui.SelectedDifficultyId, "difficulty row selects profiles directly");
+        Check.Equal(UiAction.Play, ui.HandleGameSetup(WorldInput(new Vector2(560, 609)) with { LeftPressed = true }),
             "solo setup confirms the selected profile");
         ui.PrepareGameSetup(true);
-        Check.Equal(UiAction.CoOp, ui.HandleGameSetup(WorldInput(new Vector2(560, 647)) with { LeftPressed = true }),
+        Check.Equal(UiAction.CoOp, ui.HandleGameSetup(WorldInput(new Vector2(560, 609)) with { LeftPressed = true }),
             "online setup continues with the selected host profile");
     }
 
@@ -470,8 +471,8 @@ internal static class Program
         ui.ConfigureChallenges(content.Challenges.Values);
         Check.Equal("standard", ui.SelectedChallengeId, "challenge UI defaults to standard");
         ui.PrepareGameSetup(false);
-        ui.HandleGameSetup(WorldInput(new Vector2(500, 450)) with { LeftPressed = true });
-        Check.Equal("close_quarters", ui.SelectedChallengeId, "challenge selector advances to close quarters");
+        ui.HandleGameSetup(WorldInput(new Vector2(500, 345)) with { LeftPressed = true });
+        Check.Equal("close_quarters", ui.SelectedChallengeId, "mode row selects close quarters directly");
     }
 
     private static void ProfileMatrixStateReconstruction()
@@ -535,6 +536,21 @@ internal static class Program
         Check.Equal(new Rectangle(24, 0, 2000, 1125), transform.DestinationRectangle, "centered fullscreen letterbox");
         Check.Nearly(0, transform.ScreenToLogical(new Point(24, 0)).X, "left canvas edge maps to logical zero");
         Check.Nearly(GameConstants.LogicalWidth, transform.ScreenToLogical(new Point(2024, 1125)).X, "right canvas edge maps to logical width");
+        Check.Equal(new Point(320, 180),
+            WindowLayout.Recenter(new Rectangle(640, 360, 1280, 720), 1920, 1080, 2560, 1440),
+            "window resolution changes preserve the previous window center");
+        Check.Equal(new Point(960, 540),
+            WindowLayout.Recenter(new Rectangle(1700, 800, 800, 450), 1600, 900, 2560, 1440),
+            "window growth clamps to the desktop instead of expanding offscreen");
+        Check.Equal(new Microsoft.Xna.Framework.Point(0, 0),
+            WindowLayout.Recenter(new Rectangle(100, 100, 1280, 720), 2560, 1440, 1920, 1080),
+            "oversized window output anchors safely to the desktop origin");
+        Check.Equal((1920, 1080),
+            WindowLayout.FitClientInsideDesktop(1920, 1080, 2560, 1440),
+            "ordinary windowed presets retain their exact client resolution");
+        Check.Equal((2389, 1344),
+            WindowLayout.FitClientInsideDesktop(2560, 1440, 2560, 1440),
+            "desktop-sized windowed presets reserve room for window decorations");
     }
 
     private static void PersistentUserSettings()
@@ -576,23 +592,24 @@ internal static class Program
         Check.True(UIManager.RestartPreservationLabel.Contains("CHECKPOINTS STAY SAVED", StringComparison.Ordinal),
             "restart confirmation explicitly preserves existing checkpoints");
         Check.True(settings.Fullscreen, "settings UI toggles fullscreen");
-        ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
-        Check.Equal(1, ui.SelectedSettingsIndex, "settings Down selects the resolution control");
         Check.Equal(UiAction.None,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { NavigateLeftPressed = true }),
-            "fullscreen ignores windowed resolution adjustments");
+            "settings ignores keyboard adjustment so there is no hidden focus");
+        Check.Equal(0, ui.SelectedSettingsIndex, "settings keyboard input does not move selection");
+        Check.Equal(UiAction.None,
+            ui.HandleSettingsInput(WorldInput(new Vector2(800, 245)) with { LeftPressed = true }),
+            "fullscreen ignores clicked windowed resolution adjustments");
+        Check.Equal(1, ui.SelectedSettingsIndex, "clicked resolution remains identifiable to graphics handling");
         Check.Equal(1600, settings.WindowWidth, "fullscreen preserves the selected windowed size");
         Check.Equal((2560, 1440), settings.ResolveBackBufferSize(2560, 1440),
             "fullscreen resolves to the desktop-sized backbuffer");
         Check.Equal(UiAction.None,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EnterPressed = true }),
-            "fullscreen resolution activation remains inert");
-        for (var index = 0; index < 4; index++)
-            ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
-        Check.Equal(5, ui.SelectedSettingsIndex, "settings navigation reaches independent music control");
+            "settings ignores keyboard activation");
         Check.Equal(UiAction.ApplySettings,
-            ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EnterPressed = true }),
-            "music control applies immediately");
+            ui.HandleSettingsInput(WorldInput(new Vector2(640, 450)) with { LeftPressed = true }),
+            "clicked music control applies immediately");
+        Check.Equal(5, ui.SelectedSettingsIndex, "clicked music control remains identifiable");
         Check.Nearly(0, settings.MusicVolume, "full music volume wraps to mute");
         Check.Equal(UiAction.CloseSettings,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),
@@ -714,7 +731,7 @@ internal static class Program
         mapUi.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
         Check.Equal("foundry_loop", mapUi.SelectedMapId, "arena selector starts on Foundry");
         mapUi.PrepareGameSetup(false);
-        mapUi.HandleGameSetup(WorldInput(new Vector2(500, 200)) with { LeftPressed = true });
+        mapUi.HandleGameSetup(WorldInput(new Vector2(500, 150)) with { LeftPressed = true });
         Check.Equal("crosswind_basin", mapUi.SelectedMapId, "arena selector advances by challenge rating");
         Check.Equal(3, prism.PowerNodes.Count, "Prism has a restrained node roster");
         Check.Equal("prism_waves", prism.WaveSet, "Prism has its own campaign");

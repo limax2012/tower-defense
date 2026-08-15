@@ -156,6 +156,40 @@ public sealed class ViewportTransform
     }
 }
 
+public static class WindowLayout
+{
+    private const int DesktopHorizontalReserve = 32;
+    private const int DesktopVerticalReserve = 96;
+
+    public static (int Width, int Height) FitClientInsideDesktop(int requestedWidth, int requestedHeight, int desktopWidth, int desktopHeight)
+    {
+        requestedWidth = Math.Max(1, requestedWidth);
+        requestedHeight = Math.Max(1, requestedHeight);
+        var availableWidth = Math.Max(1, desktopWidth - DesktopHorizontalReserve);
+        var availableHeight = Math.Max(1, desktopHeight - DesktopVerticalReserve);
+        var scale = MathF.Min(1f, MathF.Min(availableWidth / (float)requestedWidth, availableHeight / (float)requestedHeight));
+        return (
+            Math.Max(1, (int)MathF.Floor(requestedWidth * scale)),
+            Math.Max(1, (int)MathF.Floor(requestedHeight * scale)));
+    }
+
+    public static Point Recenter(Rectangle previousBounds, int newWidth, int newHeight, int desktopWidth, int desktopHeight)
+    {
+        newWidth = Math.Max(1, newWidth);
+        newHeight = Math.Max(1, newHeight);
+        desktopWidth = Math.Max(1, desktopWidth);
+        desktopHeight = Math.Max(1, desktopHeight);
+
+        var previousCenterX = previousBounds.X + previousBounds.Width / 2;
+        var previousCenterY = previousBounds.Y + previousBounds.Height / 2;
+        var maximumX = Math.Max(0, desktopWidth - newWidth);
+        var maximumY = Math.Max(0, desktopHeight - newHeight);
+        return new Point(
+            Math.Clamp(previousCenterX - newWidth / 2, 0, maximumX),
+            Math.Clamp(previousCenterY - newHeight / 2, 0, maximumY));
+    }
+}
+
 public sealed class InputRouter
 {
     private KeyboardState _previousKeyboard;

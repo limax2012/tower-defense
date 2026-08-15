@@ -101,9 +101,7 @@ public sealed class UIManager
     private bool _towerLibraryOpen;
     private UserSettings _settings = new();
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
-    private int _mainMenuSelection;
     private bool _setupForCoOp;
-    private int _setupSelection;
     private int _settingsSelection;
     private int _pauseMenuSelection;
     private int _resultMenuSelection;
@@ -127,8 +125,8 @@ public sealed class UIManager
     private readonly Rectangle _mainMenuLibraryButton = new(490, 520, 300, 42);
     private readonly Rectangle _mainMenuSettingsButton = new(490, 570, 300, 42);
     private readonly Rectangle _quitButton = new(490, 620, 300, 42);
-    private readonly Rectangle _setupConfirmButton = new(438, 625, 270, 44);
-    private readonly Rectangle _setupBackButton = new(722, 625, 120, 44);
+    private readonly Rectangle _setupConfirmButton = new(438, 586, 270, 46);
+    private readonly Rectangle _setupBackButton = new(722, 586, 120, 46);
     private readonly Rectangle[] _saveSlotRows =
     {
         new(330, 130, 620, 66),
@@ -406,30 +404,14 @@ public sealed class UIManager
 
     public UiAction HandleMainMenu(InputSnapshot input)
     {
-        if (input.TabPressed || input.NavigateUpPressed || input.NavigateDownPressed)
-        {
-            MoveMainMenuSelection(input.NavigateUpPressed ? -1 : 1);
-            return UiAction.None;
-        }
-        if (input.EnterPressed) return ActivateMainMenuSelection(_mainMenuSelection);
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
         for (var index = 0; index < 6; index++)
         {
             if (!MainMenuOptionRectangle(index).Contains(point)) continue;
-            _mainMenuSelection = index;
             return ActivateMainMenuSelection(index);
         }
         return UiAction.None;
-    }
-
-    private void MoveMainMenuSelection(int direction)
-    {
-        for (var attempts = 0; attempts < 6; attempts++)
-        {
-            _mainMenuSelection = (_mainMenuSelection + direction + 6) % 6;
-            if (_mainMenuSelection != 2 || _saveAvailable) return;
-        }
     }
 
     private UiAction ActivateMainMenuSelection(int selection)
@@ -449,76 +431,40 @@ public sealed class UIManager
     public void PrepareGameSetup(bool forCoOp)
     {
         _setupForCoOp = forCoOp;
-        _setupSelection = 0;
     }
 
     public UiAction HandleGameSetup(InputSnapshot input)
     {
-        if (input.EscapePressed || input.RightPressed) return UiAction.MainMenu;
-        if (input.NavigateUpPressed || input.NavigateDownPressed || input.TabPressed)
-        {
-            var direction = input.NavigateUpPressed ? -1 : 1;
-            _setupSelection = (_setupSelection + direction + 5) % 5;
-            return UiAction.None;
-        }
-        if (input.NavigateLeftPressed || input.NavigateRightPressed)
-        {
-            CycleSetupSelector(_setupSelection, input.NavigateLeftPressed ? -1 : 1);
-            return UiAction.None;
-        }
-        if (input.EnterPressed)
-        {
-            if (_setupSelection <= 2)
-            {
-                CycleSetupSelector(_setupSelection, 1);
-                return UiAction.None;
-            }
-            return _setupSelection == 3 ? (_setupForCoOp ? UiAction.CoOp : UiAction.Play) : UiAction.MainMenu;
-        }
+        if (input.EscapePressed) return UiAction.MainMenu;
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
         for (var index = 0; index < _maps.Count; index++)
         {
             if (!SetupCardRectangle(0, index, _maps.Count).Contains(point)) continue;
             _selectedMapIndex = index;
-            _setupSelection = 0;
             return UiAction.None;
         }
         for (var index = 0; index < _difficulties.Count; index++)
         {
             if (!SetupCardRectangle(1, index, _difficulties.Count).Contains(point)) continue;
             _selectedDifficultyIndex = index;
-            _setupSelection = 1;
             return UiAction.None;
         }
         for (var index = 0; index < _challenges.Count; index++)
         {
             if (!SetupCardRectangle(2, index, _challenges.Count).Contains(point)) continue;
             _selectedChallengeIndex = index;
-            _setupSelection = 2;
             return UiAction.None;
         }
         if (_setupConfirmButton.Contains(point))
         {
-            _setupSelection = 3;
             return _setupForCoOp ? UiAction.CoOp : UiAction.Play;
         }
         if (_setupBackButton.Contains(point))
         {
-            _setupSelection = 4;
             return UiAction.MainMenu;
         }
         return UiAction.None;
-    }
-
-    private void CycleSetupSelector(int selection, int direction)
-    {
-        if (selection == 0 && _maps.Count > 1)
-            _selectedMapIndex = (_selectedMapIndex + direction + _maps.Count) % _maps.Count;
-        else if (selection == 1 && _difficulties.Count > 1)
-            _selectedDifficultyIndex = (_selectedDifficultyIndex + direction + _difficulties.Count) % _difficulties.Count;
-        else if (selection == 2 && _challenges.Count > 1)
-            _selectedChallengeIndex = (_selectedChallengeIndex + direction + _challenges.Count) % _challenges.Count;
     }
 
     private Rectangle MainMenuOptionRectangle(int index) => index switch
@@ -539,24 +485,13 @@ public sealed class UIManager
         const int gap = 12;
         var safeCount = Math.Max(1, count);
         var width = (totalWidth - gap * (safeCount - 1)) / safeCount;
-        var y = row switch { 0 => 142, 1 => 286, _ => 402 };
-        var height = row switch { 0 => 124, 1 => 92, _ => 104 };
-        return new Rectangle(left + index * (width + gap), y, width, height);
+        var y = row switch { 0 => 132, 1 => 226, _ => 320 };
+        return new Rectangle(left + index * (width + gap), y, width, 52);
     }
 
     public UiAction HandleSettingsInput(InputSnapshot input)
     {
-        if (input.EscapePressed || input.PausePressed || input.RightPressed) return UiAction.CloseSettings;
-        if (input.NavigateUpPressed || input.NavigateDownPressed)
-        {
-            var delta = input.NavigateUpPressed ? -1 : 1;
-            _settingsSelection = (_settingsSelection + delta + 7) % 7;
-            return UiAction.None;
-        }
-        if (input.NavigateLeftPressed || input.NavigateRightPressed)
-            return ApplySelectedSetting(input.NavigateLeftPressed ? -1 : 1);
-        if (input.EnterPressed)
-            return _settingsSelection == 6 ? UiAction.CloseSettings : ApplySelectedSetting(1);
+        if (input.EscapePressed || input.PausePressed) return UiAction.CloseSettings;
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
         for (var index = 0; index < 7; index++)
@@ -2098,9 +2033,6 @@ public sealed class UIManager
         DrawButton(batch, p, _mainMenuLibraryButton, "TOWER LIBRARY", true, ColorPalette.Cyan);
         DrawButton(batch, p, _mainMenuSettingsButton, "SETTINGS", true, ColorPalette.Orange, ColorPalette.Ink);
         DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
-        var focus = MainMenuOptionRectangle(Math.Clamp(_mainMenuSelection, 0, 5));
-        focus.Inflate(3, 3);
-        p.DrawRect(batch, focus, ColorPalette.Ink, 2);
         DrawText(batch, "Choose a mode, then configure its arena and rules.", new Vector2(640, 682), ColorPalette.Muted, 0.50f, true);
     }
 
@@ -2108,95 +2040,75 @@ public sealed class UIManager
     {
         DrawMenuFrame(batch, p);
         DrawText(batch, _setupForCoOp ? "ONLINE DEFENSE SETUP" : "NEW DEFENSE SETUP",
-            new Vector2(640, 54), ColorPalette.Ink, 1.48f, true);
+            new Vector2(640, 45), ColorPalette.Ink, 1.48f, true);
         DrawText(batch, _setupForCoOp
                 ? "Choose the host profile first; your friend receives the same rules when joining."
-                : "Choose an arena, difficulty, and directive before deployment.",
-            new Vector2(640, 90), ColorPalette.Muted, 0.56f, true);
+                : "Choose one option from each row, then begin the defense.",
+            new Vector2(640, 78), ColorPalette.Muted, 0.54f, true);
 
-        DrawSetupRowLabel(batch, "ARENA", 120, ColorPalette.Berry);
+        DrawSetupRowLabel(batch, p, "ARENA", 110, ColorPalette.Berry);
         for (var index = 0; index < _maps.Count; index++)
-            DrawMapSetupCard(batch, p, SetupCardRectangle(0, index, _maps.Count), _maps[index], index == _selectedMapIndex);
+            DrawSetupChoice(batch, p, SetupCardRectangle(0, index, _maps.Count), _maps[index].Name,
+                MapLibraryAccent(_maps[index].PathStyle), index == _selectedMapIndex);
 
-        DrawSetupRowLabel(batch, "DIFFICULTY", 270, ColorPalette.Cobalt);
+        DrawSetupRowLabel(batch, p, "DIFFICULTY", 204, ColorPalette.Cobalt);
         for (var index = 0; index < _difficulties.Count; index++)
-            DrawDifficultySetupCard(batch, p, SetupCardRectangle(1, index, _difficulties.Count), _difficulties[index], index == _selectedDifficultyIndex);
+            DrawSetupChoice(batch, p, SetupCardRectangle(1, index, _difficulties.Count), _difficulties[index].DisplayName,
+                _difficulties[index].AccentColor, index == _selectedDifficultyIndex);
 
-        DrawSetupRowLabel(batch, "DIRECTIVE", 386, ColorPalette.Cyan);
+        DrawSetupRowLabel(batch, p, "MODE", 298, ColorPalette.Cyan);
         for (var index = 0; index < _challenges.Count; index++)
-            DrawChallengeSetupCard(batch, p, SetupCardRectangle(2, index, _challenges.Count), _challenges[index], index == _selectedChallengeIndex);
+            DrawSetupChoice(batch, p, SetupCardRectangle(2, index, _challenges.Count), _challenges[index].DisplayName,
+                _challenges[index].AccentColor, index == _selectedChallengeIndex);
 
         var map = _maps.Count > 0 ? _maps[_selectedMapIndex] : default;
         var difficulty = _difficulties.Count > 0 ? _difficulties[_selectedDifficultyIndex] : null;
         var challenge = _challenges.Count > 0 ? _challenges[_selectedChallengeIndex] : null;
-        var summary = new Rectangle(118, 526, 1044, 78);
+        var summary = new Rectangle(48, 390, 1184, 176);
         p.FillRect(batch, summary, ColorPalette.PanelAlt);
-        p.FillRect(batch, new Rectangle(summary.X, summary.Y, 6, summary.Height), challenge?.AccentColor ?? ColorPalette.Cyan);
         p.DrawRect(batch, summary, ColorPalette.CardOutline, 1);
+        DrawSetupSummaryLine(batch, p, summary, 406, "ARENA", map.Name ?? "Foundry Loop",
+            map.Description ?? "Balanced tactical arena.", MapLibraryAccent(map.PathStyle ?? "road"));
+        DrawSetupSummaryLine(batch, p, summary, 446, "DIFFICULTY", difficulty?.DisplayName ?? "Medium",
+            difficulty?.Description ?? "Balanced enemy pressure and starting resources.", difficulty?.AccentColor ?? ColorPalette.Cobalt);
+        DrawSetupSummaryLine(batch, p, summary, 486, "MODE", challenge?.DisplayName ?? "Standard",
+            challenge?.Description ?? "All systems available.", challenge?.AccentColor ?? ColorPalette.Cyan);
+
         var credits = StartingCreditsForSetup(map.StartingCredits, difficulty, challenge);
-        DrawFittedCenteredText(batch,
-            $"{map.Name?.ToUpperInvariant() ?? "FOUNDRY LOOP"}  |  {(difficulty?.DisplayName ?? "Medium").ToUpperInvariant()}  |  {(challenge?.DisplayName ?? "Standard").ToUpperInvariant()}  |  START {credits} CREDITS / {difficulty?.StartingLives ?? 24} LIVES",
-            new Vector2(640, 546), ColorPalette.Navy, 0.58f, 980);
         var best = BestRunLabel(_runHistory, map.Id ?? "foundry_loop", difficulty?.Id ?? DifficultyCatalog.DefaultId,
             challenge?.Id ?? ChallengeCatalog.DefaultId);
         DrawFittedCenteredText(batch,
-            string.IsNullOrEmpty(best) ? map.Campaign?.CompactSummary ?? "20-WAVE CAMPAIGN" : $"{map.Campaign?.CompactSummary}  |  {best}",
-            new Vector2(640, 570), ColorPalette.Cyan, 0.46f, 980);
-        DrawFittedCenteredText(batch, challenge?.Description ?? "All systems available.",
-            new Vector2(640, 590), challenge?.AccentColor ?? ColorPalette.Cyan, 0.43f, 980);
+            $"START {credits} CREDITS  |  {difficulty?.StartingLives ?? 24} LIVES  |  {map.Campaign?.CompactSummary ?? "20-WAVE CAMPAIGN"}{(string.IsNullOrEmpty(best) ? "" : $"  |  {best}")}",
+            new Vector2(640, 546), ColorPalette.Navy, 0.46f, 1100);
 
         DrawButton(batch, p, _setupConfirmButton, _setupForCoOp ? "CONTINUE TO CO-OP" : "BEGIN DEFENSE", true,
             _setupForCoOp ? ColorPalette.Green : ColorPalette.Cobalt);
         DrawButton(batch, p, _setupBackButton, "BACK", true, ColorPalette.Violet);
-        var focus = _setupSelection switch
-        {
-            0 when _maps.Count > 0 => SetupCardRectangle(0, _selectedMapIndex, _maps.Count),
-            1 when _difficulties.Count > 0 => SetupCardRectangle(1, _selectedDifficultyIndex, _difficulties.Count),
-            2 when _challenges.Count > 0 => SetupCardRectangle(2, _selectedChallengeIndex, _challenges.Count),
-            3 => _setupConfirmButton,
-            _ => _setupBackButton
-        };
-        focus.Inflate(3, 3);
-        p.DrawRect(batch, focus, ColorPalette.Ink, 2);
-        DrawText(batch, "ARROWS SELECT   |   ENTER CHANGES / CONFIRMS   |   ESC BACK",
-            new Vector2(640, 690), ColorPalette.Muted, 0.43f, true);
+        DrawText(batch, "CLICK ONE OPTION IN EACH ROW   |   ESC BACK",
+            new Vector2(640, 676), ColorPalette.Muted, 0.43f, true);
     }
 
-    private void DrawSetupRowLabel(SpriteBatch batch, string label, int y, Color color)
+    private void DrawSetupRowLabel(SpriteBatch batch, PrimitiveRenderer p, string label, int y, Color color)
     {
         DrawText(batch, label, new Vector2(48, y), color, 0.46f);
+        p.Line(batch, new Vector2(150, y + 8), new Vector2(1232, y + 8), ColorPalette.WithAlpha(color, 96), 1);
     }
 
-    private void DrawMapSetupCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect,
-        (string Id, string Name, int PowerNodes, int Challenge, int StartingCredits, string Description, string PathStyle,
-            CampaignIntelInfo Campaign, IReadOnlyList<Vector2> Path, Color PathBase, Color PathAccent) map, bool selected)
+    private void DrawSetupChoice(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string label, Color accent, bool selected)
     {
-        var accent = MapLibraryAccent(map.PathStyle);
         DrawSetupCardFrame(batch, p, rect, accent, selected);
-        DrawFittedText(batch, map.Name.ToUpperInvariant(), new Vector2(rect.X + 12, rect.Y + 13), ColorPalette.Navy, 0.62f, rect.Width - 24);
-        DrawFittedText(batch, $"THREAT {map.Challenge}/5  |  {(map.PowerNodes > 0 ? $"{map.PowerNodes} NODES" : MapPathLabel(map.PathStyle))}",
-            new Vector2(rect.X + 12, rect.Y + 38), accent, 0.46f, rect.Width - 24);
-        DrawWrappedText(batch, map.Description, new Rectangle(rect.X + 12, rect.Y + 61, rect.Width - 24, 38), ColorPalette.Muted, 0.43f, 2);
-        DrawFittedText(batch, $"BASE {map.StartingCredits}  |  {map.Campaign.TotalContacts:N0} CONTACTS  |  PEAK {map.Campaign.PeakContacts}", new Vector2(rect.X + 12, rect.Bottom - 19),
-            ColorPalette.Ink, 0.38f, rect.Width - 24);
+        DrawFittedCenteredText(batch, label.ToUpperInvariant(), new Vector2(rect.Center.X, rect.Center.Y),
+            selected ? accent : ColorPalette.Navy, 0.60f, rect.Width - 30);
     }
 
-    private void DrawDifficultySetupCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, DifficultyDefinition difficulty, bool selected)
+    private void DrawSetupSummaryLine(SpriteBatch batch, PrimitiveRenderer p, Rectangle summary, int y,
+        string category, string name, string description, Color accent)
     {
-        DrawSetupCardFrame(batch, p, rect, difficulty.AccentColor, selected);
-        DrawFittedText(batch, difficulty.DisplayName.ToUpperInvariant(), new Vector2(rect.X + 12, rect.Y + 12), ColorPalette.Navy, 0.62f, rect.Width - 24);
-        DrawFittedText(batch, $"HP {difficulty.EnemyHealthMultiplier:P0}  SPD {difficulty.EnemySpeedMultiplier:P0}  FUNDS {difficulty.StartingCreditsMultiplier:P0}",
-            new Vector2(rect.X + 12, rect.Y + 37), difficulty.AccentColor, 0.42f, rect.Width - 24);
-        DrawWrappedText(batch, difficulty.Description, new Rectangle(rect.X + 12, rect.Y + 57, rect.Width - 24, 29), ColorPalette.Muted, 0.39f, 2);
-    }
-
-    private void DrawChallengeSetupCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, ChallengeDefinition challenge, bool selected)
-    {
-        DrawSetupCardFrame(batch, p, rect, challenge.AccentColor, selected);
-        DrawFittedText(batch, challenge.DisplayName.ToUpperInvariant(), new Vector2(rect.X + 12, rect.Y + 12), ColorPalette.Navy, 0.57f, rect.Width - 24);
-        DrawFittedText(batch, challenge.TacticalSystemsEnabled ? "TACTICAL SYSTEMS ON" : "TACTICAL SYSTEMS OFF",
-            new Vector2(rect.X + 12, rect.Y + 36), challenge.AccentColor, 0.40f, rect.Width - 24);
-        DrawWrappedText(batch, challenge.Description, new Rectangle(rect.X + 12, rect.Y + 57, rect.Width - 24, 42), ColorPalette.Muted, 0.39f, 2);
+        p.FillRect(batch, new Rectangle(summary.X + 16, y, 5, 30), accent);
+        DrawFittedText(batch, $"{category}  {name}".ToUpperInvariant(), new Vector2(summary.X + 34, y + 4),
+            accent, 0.47f, 250);
+        DrawFittedText(batch, description, new Vector2(summary.X + 310, y + 4), ColorPalette.Muted, 0.43f,
+            summary.Width - 334);
     }
 
     private static int StartingCreditsForSetup(int baseCredits, DifficultyDefinition? difficulty, ChallengeDefinition? challenge)
@@ -2208,8 +2120,8 @@ public sealed class UIManager
     private static void DrawSetupCardFrame(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, Color accent, bool selected)
     {
         p.FillRect(batch, rect, selected ? ColorPalette.Panel : ColorPalette.PanelAlt);
-        p.FillRect(batch, new Rectangle(rect.X, rect.Y, rect.Width, 5), accent);
-        p.DrawRect(batch, rect, selected ? accent : ColorPalette.CardOutline, selected ? 3 : 1);
+        p.FillRect(batch, new Rectangle(rect.X, rect.Y, selected ? 7 : 4, rect.Height), accent);
+        p.DrawRect(batch, rect, selected ? accent : ColorPalette.CardOutline, selected ? 4 : 1);
     }
 
     private void DrawSettings(SpriteBatch batch, PrimitiveRenderer p)
@@ -2233,11 +2145,8 @@ public sealed class UIManager
         DrawButton(batch, p, _musicVolumeButton, $"TACTICAL MUSIC  {MathF.Round(_settings.MusicVolume * 100):0}%  |  CLICK TO CHANGE",
             true, ColorPalette.Violet);
         DrawButton(batch, p, _settingsBackButton, "BACK", true, ColorPalette.Coral);
-        var focus = SettingsOptionRectangle(Math.Clamp(_settingsSelection, 0, 6));
-        focus.Inflate(4, 4);
-        p.DrawRect(batch, focus, ColorPalette.Ink, 2);
 
-        DrawText(batch, "UP/DOWN SELECT   |   LEFT/RIGHT ADJUST   |   ENTER ACTIVATE",
+        DrawText(batch, "CLICK A CONTROL TO CHANGE IT   |   ESC BACK",
             new Vector2(640, 574), ColorPalette.Navy, 0.50f, true);
         DrawText(batch, "Rendering remains crisp at every output size through the fixed high-resolution scene target.",
             new Vector2(640, 608), ColorPalette.Muted, 0.54f, true);

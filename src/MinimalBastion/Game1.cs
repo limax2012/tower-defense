@@ -67,6 +67,8 @@ public sealed class Game1 : Game
         _settings = UserSettingsStore.Load();
         var desktopMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
         var outputSize = _settings.ResolveBackBufferSize(desktopMode.Width, desktopMode.Height);
+        if (!_settings.Fullscreen)
+            outputSize = WindowLayout.FitClientInsideDesktop(outputSize.Width, outputSize.Height, desktopMode.Width, desktopMode.Height);
         _graphics = new GraphicsDeviceManager(this)
         {
             PreferredBackBufferWidth = outputSize.Width,
@@ -1335,13 +1337,31 @@ public sealed class Game1 : Game
         // size while shrinking only the render surface, which also separates
         // MouseState coordinates from the logical input transform.
         var desktopMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+        var previousClientBounds = Window.ClientBounds;
+        var previousWindowBounds = new Rectangle(
+            Window.Position.X,
+            Window.Position.Y,
+            previousClientBounds.Width,
+            previousClientBounds.Height);
         var outputSize = _settings.ResolveBackBufferSize(desktopMode.Width, desktopMode.Height);
+        if (!_settings.Fullscreen)
+            outputSize = WindowLayout.FitClientInsideDesktop(outputSize.Width, outputSize.Height, desktopMode.Width, desktopMode.Height);
         _graphics.PreferredBackBufferWidth = outputSize.Width;
         _graphics.PreferredBackBufferHeight = outputSize.Height;
         _graphics.SynchronizeWithVerticalRetrace = _settings.VSync;
         _graphics.HardwareModeSwitch = false;
         _graphics.IsFullScreen = _settings.Fullscreen;
         _graphics.ApplyChanges();
+        if (!_settings.Fullscreen)
+        {
+            var resizedClientBounds = Window.ClientBounds;
+            Window.Position = WindowLayout.Recenter(
+                previousWindowBounds,
+                resizedClientBounds.Width,
+                resizedClientBounds.Height,
+                desktopMode.Width,
+                desktopMode.Height);
+        }
         _viewportTransform.Update(
             GraphicsDevice.PresentationParameters.BackBufferWidth,
             GraphicsDevice.PresentationParameters.BackBufferHeight);
