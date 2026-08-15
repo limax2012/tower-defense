@@ -689,6 +689,11 @@ internal static class Program
         Check.Equal(1, effects.Effects.Count(effect => effect.Kind == EffectKind.Flash),
             "large tactical flash displaces beam noise at capacity");
 
+        var impactCount = effects.Effects.Count(effect => effect.Kind == EffectKind.Impact);
+        effects.AddImpact(new Vector2(22, 20), Color.Coral);
+        Check.Equal(impactCount, effects.Effects.Count(effect => effect.Kind == EffectKind.Impact),
+            "minor impact cues yield instead of displacing major effects at capacity");
+
         for (var index = 0; index < EffectSystem.MaximumPings * 2; index++)
             effects.AddPing(new Vector2(index, index), Color.Cyan);
         Check.Equal(EffectSystem.MaximumPings, effects.Effects.Count(effect => effect.Kind == EffectKind.Ping),
@@ -2348,6 +2353,16 @@ internal static class Program
         Check.Nearly(0.4f, nearby.StatusEffects.SlowFactor, "frost applies area slow");
         var impact = session.Effects.Effects.Single(effect => effect.Kind == EffectKind.Flash);
         Check.Nearly(level.SplashRadius, impact.Radius, "splash effect communicates the actual impact radius");
+
+        var directSession = Session();
+        var directTarget = new EnemyInstance(13, directSession.Content.Enemies["enemy"], directSession.Map.Path, 1, 1);
+        directTarget.UpdateMovement(10, directSession.Map.Path);
+        directSession.Enemies.Add(directTarget);
+        directSession.Projectiles.Add(new ProjectileInstance(directTarget.Position, directTarget.Position, directTarget,
+            100, ProjectileKind.Homing, 0, new DamagePayload { Damage = 1 }, Color.Cyan, 4));
+        directSession.Projectiles.Update(0.1f, directSession);
+        Check.Equal(1, directSession.Effects.Effects.Count(effect => effect.Kind == EffectKind.Impact),
+            "direct projectile hit emits a compact geometric impact cue");
     }
 
     private static void MortarPredictiveAim()

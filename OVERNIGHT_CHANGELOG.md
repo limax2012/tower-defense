@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Added crisp geometric impact cues for direct projectiles, closing the feedback gap where Needle, Shard, Ember, Frost, and Breaker shots could vanish on contact without a hit response. Minor cues obey the existing hard effect budget and yield before displacing co-op pings, beams, or tactical blast rings.
 - Expanded Tactical Library Protocol references beyond the compact live-label limit. Every unique burst now exposes its pulse damage plus exact Slow, Burn, Expose, Armor Break, or Stun magnitude/duration, while the battlefield continues showing only the first three bonuses to prevent sidebar clutter.
 - Corrected Network Surge's range label to `AURA/TOWER RANGE`, making clear that the same temporary bonus expands Beacon coverage and recipient-tower reach exactly as the existing mechanics already do.
 - Made automatic Protocol behavior explicit in planning UI. Tactical Library entries now show active duration, cooldown, pressure threshold, and elite override; an armed tower's live Intel likewise says that any elite/boss can trigger below the normal nearby-enemy count.

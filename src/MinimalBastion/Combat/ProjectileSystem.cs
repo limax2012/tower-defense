@@ -46,6 +46,8 @@ public sealed class ProjectileSystem
             else if (projectile.Target is { IsDead: false, HasEscaped: false } target)
             {
                 session.DamageResolver.Apply(target, projectile.Payload);
+                session.Effects.AddImpact(target.Position, projectile.Color,
+                    MathF.Max(6, MathF.Min(12, target.Radius * 0.6f)));
             }
             projectile.Expire();
         }

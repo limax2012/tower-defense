@@ -478,6 +478,22 @@ public sealed class GameRenderer
                     p.DrawShape(batch, effect.Start, 8, "diamond", effectColor, ColorPalette.Paper, 1, false);
                 }
             }
+            else if (effect.Kind == EffectKind.Impact)
+            {
+                var age = 1f - progress;
+                var radius = effect.Radius * (0.72f + age * 0.38f);
+                p.Ring(batch, effect.Start, radius, effectColor, 2);
+                if (!ReducedEffects)
+                {
+                    for (var index = 0; index < 4; index++)
+                    {
+                        var angle = MathHelper.PiOver4 + index * MathHelper.PiOver2;
+                        var direction = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+                        p.Line(batch, effect.Start + direction * (radius + 1),
+                            effect.Start + direction * (radius + 4 + age * 3), effectColor, 2);
+                    }
+                }
+            }
             else
             {
                 var radius = effect.Radius * (1.2f - progress * 0.2f);

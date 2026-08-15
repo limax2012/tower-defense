@@ -6,6 +6,7 @@ public enum EffectKind
 {
     Flash,
     Beam,
+    Impact,
     Ping
 }
 
@@ -40,6 +41,22 @@ public sealed class EffectSystem
         _effects.Add(new EffectInstance { Kind = EffectKind.Beam, Start = start, End = end, Color = color, Duration = duration, Remaining = duration, Radius = 2 });
     }
 
+    public void AddImpact(Vector2 position, Color color, float radius = 9f)
+    {
+        const float duration = 0.12f;
+        if (!ReserveTransientSlot(EffectKind.Impact)) return;
+        _effects.Add(new EffectInstance
+        {
+            Kind = EffectKind.Impact,
+            Start = position,
+            End = position,
+            Color = color,
+            Duration = duration,
+            Remaining = duration,
+            Radius = MathF.Max(4, radius)
+        });
+    }
+
     public void AddPing(Vector2 position, Color color)
     {
         const float duration = 1.4f;
@@ -59,7 +76,14 @@ public sealed class EffectSystem
     private bool ReserveTransientSlot(EffectKind incomingKind)
     {
         if (_effects.Count < MaximumEffects) return true;
-        if (incomingKind == EffectKind.Beam) return false;
+        if (incomingKind is EffectKind.Beam or EffectKind.Impact) return false;
+
+        var oldestImpact = _effects.FindIndex(effect => effect.Kind == EffectKind.Impact);
+        if (oldestImpact >= 0)
+        {
+            _effects.RemoveAt(oldestImpact);
+            return true;
+        }
 
         var oldestBeam = _effects.FindIndex(effect => effect.Kind == EffectKind.Beam);
         if (oldestBeam >= 0)
