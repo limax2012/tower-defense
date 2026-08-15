@@ -15,6 +15,8 @@ namespace MinimalBastion.UI;
 public enum UiAction
 {
     None,
+    OpenSoloSetup,
+    OpenCoOpSetup,
     Play,
     TowerLibrary,
     Settings,
@@ -99,7 +101,9 @@ public sealed class UIManager
     private bool _towerLibraryOpen;
     private UserSettings _settings = new();
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
-    private int _mainMenuSelection = 5;
+    private int _mainMenuSelection;
+    private bool _setupForCoOp;
+    private int _setupSelection;
     private int _settingsSelection;
     private int _pauseMenuSelection;
     private int _resultMenuSelection;
@@ -117,15 +121,14 @@ public sealed class UIManager
     private IReadOnlyList<EnemyDefinition> _libraryEnemies = Array.Empty<EnemyDefinition>();
     private TacticsDefinition _libraryTactics = new();
     private readonly Dictionary<string, IReadOnlyList<CampaignWaveReference>> _libraryCampaignWaves = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Rectangle _mapButton = new(440, 370, 190, 40);
-    private readonly Rectangle _difficultyButton = new(640, 370, 90, 40);
-    private readonly Rectangle _challengeButton = new(740, 370, 100, 40);
-    private readonly Rectangle _continueButton = new(500, 420, 135, 44);
-    private readonly Rectangle _mainMenuLibraryButton = new(645, 420, 135, 44);
-    private readonly Rectangle _playButton = new(500, 474, 280, 44);
-    private readonly Rectangle _coOpButton = new(500, 528, 176, 44);
-    private readonly Rectangle _mainMenuSettingsButton = new(686, 528, 94, 44);
-    private readonly Rectangle _quitButton = new(500, 582, 280, 40);
+    private readonly Rectangle _playButton = new(490, 370, 300, 42);
+    private readonly Rectangle _coOpButton = new(490, 420, 300, 42);
+    private readonly Rectangle _continueButton = new(490, 470, 300, 42);
+    private readonly Rectangle _mainMenuLibraryButton = new(490, 520, 300, 42);
+    private readonly Rectangle _mainMenuSettingsButton = new(490, 570, 300, 42);
+    private readonly Rectangle _quitButton = new(490, 620, 300, 42);
+    private readonly Rectangle _setupConfirmButton = new(438, 625, 270, 44);
+    private readonly Rectangle _setupBackButton = new(722, 625, 120, 44);
     private readonly Rectangle[] _saveSlotRows =
     {
         new(330, 130, 620, 66),
@@ -148,13 +151,13 @@ public sealed class UIManager
     private readonly Rectangle _backButton = new(500, 518, 280, 44);
     private readonly Rectangle _coOpLobbyCodeButton = new(500, 270, 280, 64);
     private readonly Rectangle _coOpReconnectCodeButton = new(500, 370, 280, 46);
-    private readonly Rectangle _resumeButton = new(500, 236, 280, 46);
-    private readonly Rectangle _towerLibraryButton = new(500, 288, 135, 46);
-    private readonly Rectangle _pauseSettingsButton = new(645, 288, 135, 46);
-    private readonly Rectangle _saveButton = new(500, 340, 280, 46);
-    private readonly Rectangle _loadButton = new(500, 392, 280, 46);
-    private readonly Rectangle _restartButton = new(500, 444, 280, 46);
-    private readonly Rectangle _mainMenuButton = new(500, 496, 280, 46);
+    private readonly Rectangle _resumeButton = new(500, 226, 280, 42);
+    private readonly Rectangle _towerLibraryButton = new(500, 276, 280, 42);
+    private readonly Rectangle _pauseSettingsButton = new(500, 326, 280, 42);
+    private readonly Rectangle _saveButton = new(500, 376, 280, 42);
+    private readonly Rectangle _loadButton = new(500, 426, 280, 42);
+    private readonly Rectangle _restartButton = new(500, 476, 280, 42);
+    private readonly Rectangle _mainMenuButton = new(500, 526, 280, 42);
     private readonly Rectangle _towerLibraryCloseButton = new(1080, 48, 130, 38);
     private readonly Rectangle _towerLibraryTowerTabButton = new(390, 48, 125, 38);
     private readonly Rectangle _towerLibraryThreatTabButton = new(525, 48, 125, 38);
@@ -183,7 +186,7 @@ public sealed class UIManager
     public string SelectedMapId => _maps.Count == 0 ? "foundry_loop" : _maps[_selectedMapIndex].Id;
     public string SelectedMapName => _maps.Count == 0 ? "Foundry Loop" : _maps[_selectedMapIndex].Name;
     public string SelectedDifficultyId => _difficulties.Count == 0 ? DifficultyCatalog.DefaultId : _difficulties[_selectedDifficultyIndex].Id;
-    public string SelectedDifficultyName => _difficulties.Count == 0 ? "Normal" : _difficulties[_selectedDifficultyIndex].DisplayName;
+    public string SelectedDifficultyName => _difficulties.Count == 0 ? "Medium" : _difficulties[_selectedDifficultyIndex].DisplayName;
     public string SelectedChallengeId => _challenges.Count == 0 ? ChallengeCatalog.DefaultId : _challenges[_selectedChallengeIndex].Id;
     public string SelectedChallengeName => _challenges.Count == 0 ? "Standard" : _challenges[_selectedChallengeIndex].DisplayName;
     public int SelectedSaveSlot => _selectedSaveSlot;
@@ -408,56 +411,107 @@ public sealed class UIManager
             MoveMainMenuSelection(input.NavigateUpPressed ? -1 : 1);
             return UiAction.None;
         }
-        if (input.NavigateLeftPressed || input.NavigateRightPressed)
-        {
-            var direction = input.NavigateLeftPressed ? -1 : 1;
-            if (_mainMenuSelection <= 2)
-            {
-                CycleMainMenuSelector(_mainMenuSelection, direction);
-                return UiAction.None;
-            }
-        }
-        if (input.EnterPressed) return ActivateMainMenuSelection(_mainMenuSelection, 1);
+        if (input.EnterPressed) return ActivateMainMenuSelection(_mainMenuSelection);
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
-        for (var index = 0; index < 9; index++)
+        for (var index = 0; index < 6; index++)
         {
             if (!MainMenuOptionRectangle(index).Contains(point)) continue;
             _mainMenuSelection = index;
-            return ActivateMainMenuSelection(index, 1);
+            return ActivateMainMenuSelection(index);
         }
         return UiAction.None;
     }
 
     private void MoveMainMenuSelection(int direction)
     {
-        for (var attempts = 0; attempts < 9; attempts++)
+        for (var attempts = 0; attempts < 6; attempts++)
         {
-            _mainMenuSelection = (_mainMenuSelection + direction + 9) % 9;
-            if (_mainMenuSelection != 3 || _saveAvailable) return;
+            _mainMenuSelection = (_mainMenuSelection + direction + 6) % 6;
+            if (_mainMenuSelection != 2 || _saveAvailable) return;
         }
     }
 
-    private UiAction ActivateMainMenuSelection(int selection, int direction)
+    private UiAction ActivateMainMenuSelection(int selection)
     {
-        if (selection <= 2)
-        {
-            CycleMainMenuSelector(selection, direction);
-            return UiAction.None;
-        }
         return selection switch
         {
-            3 when _saveAvailable => UiAction.LoadGame,
-            4 => UiAction.TowerLibrary,
-            5 => UiAction.Play,
-            6 => UiAction.CoOp,
-            7 => UiAction.Settings,
-            8 => UiAction.Exit,
+            0 => UiAction.OpenSoloSetup,
+            1 => UiAction.OpenCoOpSetup,
+            2 when _saveAvailable => UiAction.LoadGame,
+            3 => UiAction.TowerLibrary,
+            4 => UiAction.Settings,
+            5 => UiAction.Exit,
             _ => UiAction.None
         };
     }
 
-    private void CycleMainMenuSelector(int selection, int direction)
+    public void PrepareGameSetup(bool forCoOp)
+    {
+        _setupForCoOp = forCoOp;
+        _setupSelection = 0;
+    }
+
+    public UiAction HandleGameSetup(InputSnapshot input)
+    {
+        if (input.EscapePressed || input.RightPressed) return UiAction.MainMenu;
+        if (input.NavigateUpPressed || input.NavigateDownPressed || input.TabPressed)
+        {
+            var direction = input.NavigateUpPressed ? -1 : 1;
+            _setupSelection = (_setupSelection + direction + 5) % 5;
+            return UiAction.None;
+        }
+        if (input.NavigateLeftPressed || input.NavigateRightPressed)
+        {
+            CycleSetupSelector(_setupSelection, input.NavigateLeftPressed ? -1 : 1);
+            return UiAction.None;
+        }
+        if (input.EnterPressed)
+        {
+            if (_setupSelection <= 2)
+            {
+                CycleSetupSelector(_setupSelection, 1);
+                return UiAction.None;
+            }
+            return _setupSelection == 3 ? (_setupForCoOp ? UiAction.CoOp : UiAction.Play) : UiAction.MainMenu;
+        }
+        if (!input.LeftPressed) return UiAction.None;
+        var point = input.MousePosition.ToPoint();
+        for (var index = 0; index < _maps.Count; index++)
+        {
+            if (!SetupCardRectangle(0, index, _maps.Count).Contains(point)) continue;
+            _selectedMapIndex = index;
+            _setupSelection = 0;
+            return UiAction.None;
+        }
+        for (var index = 0; index < _difficulties.Count; index++)
+        {
+            if (!SetupCardRectangle(1, index, _difficulties.Count).Contains(point)) continue;
+            _selectedDifficultyIndex = index;
+            _setupSelection = 1;
+            return UiAction.None;
+        }
+        for (var index = 0; index < _challenges.Count; index++)
+        {
+            if (!SetupCardRectangle(2, index, _challenges.Count).Contains(point)) continue;
+            _selectedChallengeIndex = index;
+            _setupSelection = 2;
+            return UiAction.None;
+        }
+        if (_setupConfirmButton.Contains(point))
+        {
+            _setupSelection = 3;
+            return _setupForCoOp ? UiAction.CoOp : UiAction.Play;
+        }
+        if (_setupBackButton.Contains(point))
+        {
+            _setupSelection = 4;
+            return UiAction.MainMenu;
+        }
+        return UiAction.None;
+    }
+
+    private void CycleSetupSelector(int selection, int direction)
     {
         if (selection == 0 && _maps.Count > 1)
             _selectedMapIndex = (_selectedMapIndex + direction + _maps.Count) % _maps.Count;
@@ -469,17 +523,26 @@ public sealed class UIManager
 
     private Rectangle MainMenuOptionRectangle(int index) => index switch
     {
-        0 => _mapButton,
-        1 => _difficultyButton,
-        2 => _challengeButton,
-        3 => _continueButton,
-        4 => _mainMenuLibraryButton,
-        5 => _playButton,
-        6 => _coOpButton,
-        7 => _mainMenuSettingsButton,
-        8 => _quitButton,
+        0 => _playButton,
+        1 => _coOpButton,
+        2 => _continueButton,
+        3 => _mainMenuLibraryButton,
+        4 => _mainMenuSettingsButton,
+        5 => _quitButton,
         _ => Rectangle.Empty
     };
+
+    private static Rectangle SetupCardRectangle(int row, int index, int count)
+    {
+        const int left = 48;
+        const int totalWidth = 1184;
+        const int gap = 12;
+        var safeCount = Math.Max(1, count);
+        var width = (totalWidth - gap * (safeCount - 1)) / safeCount;
+        var y = row switch { 0 => 142, 1 => 286, _ => 402 };
+        var height = row switch { 0 => 124, 1 => 92, _ => 104 };
+        return new Rectangle(left + index * (width + gap), y, width, height);
+    }
 
     public UiAction HandleSettingsInput(InputSnapshot input)
     {
@@ -912,6 +975,7 @@ public sealed class UIManager
         if (input.EmergencyPressed) session.BeginEmergencyPlacement();
         if (input.GeneratorPressed) session.BeginGeneratorPlacement();
         if (input.OverdrivePressed) RequestOverdrive(session, commandSink, playerId);
+        if (input.AutoProtocolPressed) RequestAutoProtocol(session, commandSink, playerId);
         if (input.TargetPressed) RequestTarget(session, commandSink, playerId);
         if (input.UpgradePressed) RequestUpgrade(session, commandSink, playerId);
         if (input.SellPressed) RequestSell(session, commandSink, playerId);
@@ -1443,6 +1507,11 @@ public sealed class UIManager
             DrawMainMenu(batch, p);
             return;
         }
+        if (state == GameState.GameSetup)
+        {
+            DrawGameSetup(batch, p);
+            return;
+        }
         if (state == GameState.TowerLibrary)
         {
             DrawTowerLibrary(batch, p, "title screen");
@@ -1564,7 +1633,7 @@ public sealed class UIManager
             startWaveEnabled = !_coOpWaveStartQueued && !localReady;
         }
         DrawButton(batch, p, _startWaveButton, startWaveLabel, startWaveEnabled, ColorPalette.Green);
-        DrawButton(batch, p, _speedButton, session.Speed >= 1.5f ? "2x" : "1x", true, ColorPalette.Violet);
+        DrawButton(batch, p, _speedButton, session.Speed >= 1.5f ? "[S] 2x" : "[S] 1x", true, ColorPalette.Violet);
         var pauseLabel = session.IsCoOpPaused ? "RESUME" : "PAUSE";
         DrawButton(batch, p, _pauseButton, pauseLabel, !session.IsCoOp || _coOpPeerConnected,
             session.IsCoOpPaused ? ColorPalette.Green : ColorPalette.Coral);
@@ -1626,7 +1695,7 @@ public sealed class UIManager
             $"[E] {selected.Protocol.DisplayName.ToUpperInvariant()}";
         DrawButton(batch, p, _overdriveButton, overdriveLabel, overdriveReady, ColorPalette.Coral);
         var autoActive = selected is not null && session.AutoOverdriveTowerId == selected.Id;
-        DrawButton(batch, p, _autoProtocolButton, autoActive ? "AUTO ON" : "AUTO", selected is not null,
+        DrawButton(batch, p, _autoProtocolButton, autoActive ? "[A] ON" : "[A] AUTO", selected is not null,
             autoActive ? ColorPalette.Green : ColorPalette.Cobalt);
     }
 
@@ -1773,9 +1842,9 @@ public sealed class UIManager
             : tower.CanUpgrade
                 ? $"NEXT {tower.UpgradeCost}: {TowerInfo.UpgradeSummary(tower.Definition, tower.LevelIndex, supportBuff, power)}"
                 : "MAXIMUM LEVEL");
-        DrawFittedText(batch, upgradeLine, new Vector2(980, 626),
+        DrawWrappedText(batch, upgradeLine, new Rectangle(980, 620, 280, 28),
             _specializationHint is not null ? ColorPalette.Cobalt : tower.RequiresDoctrine || tower.RequiresSpecialization || tower.CanUpgrade ? ColorPalette.Violet : ColorPalette.Muted,
-            0.52f, 280);
+            0.45f, 2);
 
         _targetButton = new Rectangle(980, 670, 88, 30);
         _upgradeButton = new Rectangle(1074, 670, 92, 30);
@@ -1853,7 +1922,7 @@ public sealed class UIManager
         else
         {
             DrawFittedText(batch, TowerInfo.Strength(definition), new Vector2(980, 590), ColorPalette.Muted, 0.54f, 280);
-            DrawFittedText(batch, TowerInfo.ProtocolSummary(definition), new Vector2(980, 612), ColorPalette.Coral, 0.46f, 280);
+            DrawWrappedText(batch, TowerInfo.ProtocolSummary(definition), new Rectangle(980, 604, 280, 30), ColorPalette.Coral, 0.43f, 2);
         }
         DrawFittedText(batch, $"L2 {level.UpgradeCost}: {TowerInfo.UpgradeSummary(definition, 0)}",
             new Vector2(980, 638), ColorPalette.Violet, 0.51f, 280);
@@ -2018,41 +2087,124 @@ public sealed class UIManager
 
         DrawText(batch, "MINIMAL BASTION", new Vector2(640, 295), ColorPalette.Ink, 2.2f, true);
         DrawText(batch, "A colorful geometric tower-defense game", new Vector2(640, 345), ColorPalette.Muted, 0.9f, true);
-        var map = _maps.Count == 0
-            ? (Id: "foundry_loop", Name: "Foundry Loop", PowerNodes: 0, Challenge: 2, StartingCredits: 400,
-                Description: "A balanced tactical arena.", PathStyle: "road",
-                Campaign: new CampaignIntelInfo(0, 0, "STANDARD", 1, 0), Path: (IReadOnlyList<Vector2>)Array.Empty<Vector2>(),
-                PathBase: ColorPalette.Path, PathAccent: ColorPalette.Gold)
-            : _maps[_selectedMapIndex];
-        var feature = map.PowerNodes > 0 ? $"{map.PowerNodes} SURGE NODES" : map.PathStyle.ToUpperInvariant();
-        var mapSuffix = $"THREAT {map.Challenge}/5 | {feature} | BASE {map.StartingCredits} CREDITS";
-        var difficulty = _difficulties.Count == 0 ? null : _difficulties[_selectedDifficultyIndex];
-        var challenge = _challenges.Count == 0 ? null : _challenges[_selectedChallengeIndex];
-        var bestRun = BestRunLabel(_runHistory, map.Id, difficulty?.Id ?? DifficultyCatalog.DefaultId,
-            challenge?.Id ?? ChallengeCatalog.DefaultId);
-        DrawButton(batch, p, _mapButton, $"{_selectedMapIndex + 1}/{Math.Max(1, _maps.Count)}  {map.Name.ToUpperInvariant()}", true, ColorPalette.Berry);
-        DrawButton(batch, p, _difficultyButton, (difficulty?.DisplayName ?? "Normal").ToUpperInvariant(), true,
-            difficulty?.AccentColor ?? ColorPalette.Cobalt);
-        DrawButton(batch, p, _challengeButton, (challenge?.MenuLabel ?? "Standard").ToUpperInvariant(), true,
-            challenge?.AccentColor ?? ColorPalette.Cyan);
-        DrawButton(batch, p, _continueButton, "LOAD SAVES", _saveAvailable, ColorPalette.Violet);
-        DrawButton(batch, p, _mainMenuLibraryButton, "TOWER LIBRARY", true, ColorPalette.Cyan);
         DrawButton(batch, p, _playButton, "NEW GAME", true, ColorPalette.Cobalt);
         DrawButton(batch, p, _coOpButton, "ONLINE CO-OP", true, ColorPalette.Green);
+        DrawButton(batch, p, _continueButton, "LOAD SAVES", _saveAvailable, ColorPalette.Violet);
+        DrawButton(batch, p, _mainMenuLibraryButton, "TOWER LIBRARY", true, ColorPalette.Cyan);
         DrawButton(batch, p, _mainMenuSettingsButton, "SETTINGS", true, ColorPalette.Orange, ColorPalette.Ink);
         DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
-        var focus = MainMenuOptionRectangle(Math.Clamp(_mainMenuSelection, 0, 8));
+        var focus = MainMenuOptionRectangle(Math.Clamp(_mainMenuSelection, 0, 5));
         focus.Inflate(3, 3);
         p.DrawRect(batch, focus, ColorPalette.Ink, 2);
-        var mapSummary = string.IsNullOrEmpty(bestRun)
-            ? $"{mapSuffix} | {map.Description}"
-            : $"{mapSuffix} | {bestRun} | {map.Description}";
-        DrawFittedCenteredText(batch, mapSummary, new Vector2(640, 632), ColorPalette.Muted, 0.50f, 920);
-        DrawFittedCenteredText(batch, map.Campaign.CompactSummary, new Vector2(640, 650), ColorPalette.Cyan, 0.44f, 940);
-        DrawFittedCenteredText(batch, $"{(difficulty?.DisplayName ?? "Normal").ToUpperInvariant()} | {difficulty?.ModifierSummary ?? "BALANCED PROFILE"}",
-            new Vector2(640, 669), difficulty?.AccentColor ?? ColorPalette.Cobalt, 0.44f, 920);
-        DrawFittedCenteredText(batch, $"{(challenge?.DisplayName ?? "Standard").ToUpperInvariant()} | {challenge?.Description ?? "All systems available."}",
-            new Vector2(640, 691), challenge?.AccentColor ?? ColorPalette.Cyan, 0.43f, 940);
+        DrawText(batch, "Choose a mode, then configure its arena and rules.", new Vector2(640, 682), ColorPalette.Muted, 0.50f, true);
+    }
+
+    private void DrawGameSetup(SpriteBatch batch, PrimitiveRenderer p)
+    {
+        DrawMenuFrame(batch, p);
+        DrawText(batch, _setupForCoOp ? "ONLINE DEFENSE SETUP" : "NEW DEFENSE SETUP",
+            new Vector2(640, 54), ColorPalette.Ink, 1.48f, true);
+        DrawText(batch, _setupForCoOp
+                ? "Choose the host profile first; your friend receives the same rules when joining."
+                : "Choose an arena, difficulty, and directive before deployment.",
+            new Vector2(640, 90), ColorPalette.Muted, 0.56f, true);
+
+        DrawSetupRowLabel(batch, "ARENA", 120, ColorPalette.Berry);
+        for (var index = 0; index < _maps.Count; index++)
+            DrawMapSetupCard(batch, p, SetupCardRectangle(0, index, _maps.Count), _maps[index], index == _selectedMapIndex);
+
+        DrawSetupRowLabel(batch, "DIFFICULTY", 270, ColorPalette.Cobalt);
+        for (var index = 0; index < _difficulties.Count; index++)
+            DrawDifficultySetupCard(batch, p, SetupCardRectangle(1, index, _difficulties.Count), _difficulties[index], index == _selectedDifficultyIndex);
+
+        DrawSetupRowLabel(batch, "DIRECTIVE", 386, ColorPalette.Cyan);
+        for (var index = 0; index < _challenges.Count; index++)
+            DrawChallengeSetupCard(batch, p, SetupCardRectangle(2, index, _challenges.Count), _challenges[index], index == _selectedChallengeIndex);
+
+        var map = _maps.Count > 0 ? _maps[_selectedMapIndex] : default;
+        var difficulty = _difficulties.Count > 0 ? _difficulties[_selectedDifficultyIndex] : null;
+        var challenge = _challenges.Count > 0 ? _challenges[_selectedChallengeIndex] : null;
+        var summary = new Rectangle(118, 526, 1044, 78);
+        p.FillRect(batch, summary, ColorPalette.PanelAlt);
+        p.FillRect(batch, new Rectangle(summary.X, summary.Y, 6, summary.Height), challenge?.AccentColor ?? ColorPalette.Cyan);
+        p.DrawRect(batch, summary, ColorPalette.CardOutline, 1);
+        var credits = StartingCreditsForSetup(map.StartingCredits, difficulty, challenge);
+        DrawFittedCenteredText(batch,
+            $"{map.Name?.ToUpperInvariant() ?? "FOUNDRY LOOP"}  |  {(difficulty?.DisplayName ?? "Medium").ToUpperInvariant()}  |  {(challenge?.DisplayName ?? "Standard").ToUpperInvariant()}  |  START {credits} CREDITS / {difficulty?.StartingLives ?? 24} LIVES",
+            new Vector2(640, 546), ColorPalette.Navy, 0.58f, 980);
+        var best = BestRunLabel(_runHistory, map.Id ?? "foundry_loop", difficulty?.Id ?? DifficultyCatalog.DefaultId,
+            challenge?.Id ?? ChallengeCatalog.DefaultId);
+        DrawFittedCenteredText(batch,
+            string.IsNullOrEmpty(best) ? map.Campaign?.CompactSummary ?? "20-WAVE CAMPAIGN" : $"{map.Campaign?.CompactSummary}  |  {best}",
+            new Vector2(640, 570), ColorPalette.Cyan, 0.46f, 980);
+        DrawFittedCenteredText(batch, challenge?.Description ?? "All systems available.",
+            new Vector2(640, 590), challenge?.AccentColor ?? ColorPalette.Cyan, 0.43f, 980);
+
+        DrawButton(batch, p, _setupConfirmButton, _setupForCoOp ? "CONTINUE TO CO-OP" : "BEGIN DEFENSE", true,
+            _setupForCoOp ? ColorPalette.Green : ColorPalette.Cobalt);
+        DrawButton(batch, p, _setupBackButton, "BACK", true, ColorPalette.Violet);
+        var focus = _setupSelection switch
+        {
+            0 when _maps.Count > 0 => SetupCardRectangle(0, _selectedMapIndex, _maps.Count),
+            1 when _difficulties.Count > 0 => SetupCardRectangle(1, _selectedDifficultyIndex, _difficulties.Count),
+            2 when _challenges.Count > 0 => SetupCardRectangle(2, _selectedChallengeIndex, _challenges.Count),
+            3 => _setupConfirmButton,
+            _ => _setupBackButton
+        };
+        focus.Inflate(3, 3);
+        p.DrawRect(batch, focus, ColorPalette.Ink, 2);
+        DrawText(batch, "ARROWS SELECT   |   ENTER CHANGES / CONFIRMS   |   ESC BACK",
+            new Vector2(640, 690), ColorPalette.Muted, 0.43f, true);
+    }
+
+    private void DrawSetupRowLabel(SpriteBatch batch, string label, int y, Color color)
+    {
+        DrawText(batch, label, new Vector2(48, y), color, 0.46f);
+    }
+
+    private void DrawMapSetupCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect,
+        (string Id, string Name, int PowerNodes, int Challenge, int StartingCredits, string Description, string PathStyle,
+            CampaignIntelInfo Campaign, IReadOnlyList<Vector2> Path, Color PathBase, Color PathAccent) map, bool selected)
+    {
+        var accent = MapLibraryAccent(map.PathStyle);
+        DrawSetupCardFrame(batch, p, rect, accent, selected);
+        DrawFittedText(batch, map.Name.ToUpperInvariant(), new Vector2(rect.X + 12, rect.Y + 13), ColorPalette.Navy, 0.62f, rect.Width - 24);
+        DrawFittedText(batch, $"THREAT {map.Challenge}/5  |  {(map.PowerNodes > 0 ? $"{map.PowerNodes} NODES" : map.PathStyle.ToUpperInvariant())}",
+            new Vector2(rect.X + 12, rect.Y + 38), accent, 0.46f, rect.Width - 24);
+        DrawWrappedText(batch, map.Description, new Rectangle(rect.X + 12, rect.Y + 61, rect.Width - 24, 38), ColorPalette.Muted, 0.43f, 2);
+        DrawFittedText(batch, $"BASE {map.StartingCredits}  |  {map.Campaign.TotalContacts:N0} CONTACTS  |  PEAK {map.Campaign.PeakContacts}", new Vector2(rect.X + 12, rect.Bottom - 19),
+            ColorPalette.Ink, 0.38f, rect.Width - 24);
+    }
+
+    private void DrawDifficultySetupCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, DifficultyDefinition difficulty, bool selected)
+    {
+        DrawSetupCardFrame(batch, p, rect, difficulty.AccentColor, selected);
+        DrawFittedText(batch, difficulty.DisplayName.ToUpperInvariant(), new Vector2(rect.X + 12, rect.Y + 12), ColorPalette.Navy, 0.62f, rect.Width - 24);
+        DrawFittedText(batch, $"HP {difficulty.EnemyHealthMultiplier:P0}  SPD {difficulty.EnemySpeedMultiplier:P0}  FUNDS {difficulty.StartingCreditsMultiplier:P0}",
+            new Vector2(rect.X + 12, rect.Y + 37), difficulty.AccentColor, 0.42f, rect.Width - 24);
+        DrawWrappedText(batch, difficulty.Description, new Rectangle(rect.X + 12, rect.Y + 57, rect.Width - 24, 29), ColorPalette.Muted, 0.39f, 2);
+    }
+
+    private void DrawChallengeSetupCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, ChallengeDefinition challenge, bool selected)
+    {
+        DrawSetupCardFrame(batch, p, rect, challenge.AccentColor, selected);
+        DrawFittedText(batch, challenge.DisplayName.ToUpperInvariant(), new Vector2(rect.X + 12, rect.Y + 12), ColorPalette.Navy, 0.57f, rect.Width - 24);
+        DrawFittedText(batch, challenge.TacticalSystemsEnabled ? "TACTICAL SYSTEMS ON" : "TACTICAL SYSTEMS OFF",
+            new Vector2(rect.X + 12, rect.Y + 36), challenge.AccentColor, 0.40f, rect.Width - 24);
+        DrawWrappedText(batch, challenge.Description, new Rectangle(rect.X + 12, rect.Y + 57, rect.Width - 24, 42), ColorPalette.Muted, 0.39f, 2);
+    }
+
+    private static int StartingCreditsForSetup(int baseCredits, DifficultyDefinition? difficulty, ChallengeDefinition? challenge)
+    {
+        var difficultyCredits = Math.Max(0, (int)MathF.Round(baseCredits * (difficulty?.StartingCreditsMultiplier ?? 1f) / 5f) * 5);
+        return Math.Max(0, (int)MathF.Round(difficultyCredits * (challenge?.StartingCreditsMultiplier ?? 1f) / 5f) * 5);
+    }
+
+    private static void DrawSetupCardFrame(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, Color accent, bool selected)
+    {
+        p.FillRect(batch, rect, selected ? ColorPalette.Panel : ColorPalette.PanelAlt);
+        p.FillRect(batch, new Rectangle(rect.X, rect.Y, rect.Width, 5), accent);
+        p.DrawRect(batch, rect, selected ? accent : ColorPalette.CardOutline, selected ? 3 : 1);
     }
 
     private void DrawSettings(SpriteBatch batch, PrimitiveRenderer p)
@@ -2475,7 +2627,7 @@ public sealed class UIManager
                 ? RestartPreservationLabel
                 : $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
             new Vector2(640, 580), _restartArmed ? ColorPalette.Coral : session.Challenge.AccentColor, 0.50f, 500);
-        DrawText(batch, "UP/DOWN SELECT  |  ENTER ACTIVATE", new Vector2(640, 608), ColorPalette.Muted, 0.44f, true);
+        DrawText(batch, "UP/DOWN SELECT  |  ENTER ACTIVATE", new Vector2(640, 612), ColorPalette.Muted, 0.44f, true);
     }
 
     private void DrawTowerLibrary(SpriteBatch batch, PrimitiveRenderer p, string returnDestination)
@@ -2774,15 +2926,15 @@ public sealed class UIManager
         var secondY = firstY + cardHeight + gap;
 
         DrawSystemCard(batch, p, new Rectangle(firstX, firstY, cardWidth, cardHeight),
-            "TOWER PROGRESSION", ColorPalette.Cobalt, "triangle",
+            "CORE CONTROLS", ColorPalette.Cobalt, "triangle",
         [
-            "LEVEL 1: BASE CHASSIS",
-            "LEVEL 2: CHOOSE 1 OF 2 DOCTRINES",
-            "LEVEL 3: CHOOSE 1 OF 2 FINAL ROLES",
-            "THE DOCTRINE PERSISTS: 4 COMPLETE PATHS",
-            "1 / 2 / 3 RING SPOKES SHOW LEVEL",
-            "CENTER UP / DOWN TRIANGLE SHOWS FINAL ROLE",
-            $"SELLING RETURNS {GameConstants.SellRatio:P0} OF ALL SPEND"
+            "SPACE: START / READY WAVE    S: 1x / 2x SPEED",
+            "ESC OR P: PAUSE    TAB: LIBRARY PAGE",
+            "1-0: SELECT TOWER    U: UPGRADE",
+            "T: TARGET MODE    DELETE: SELL",
+            "Q: PULSE PLATE    G: CHARGE FORGE",
+            "E: ACTIVATE PROTOCOL    A: TOGGLE AUTO",
+            "MIDDLE CLICK: CO-OP LOCATION PING"
         ]);
 
         DrawSystemCard(batch, p, new Rectangle(firstX + cardWidth + gap, firstY, cardWidth, cardHeight),
@@ -2813,7 +2965,7 @@ public sealed class UIManager
             "TOWER PROTOCOLS", ColorPalette.Violet, "square",
         [
             "E: ACTIVATE THE SELECTED TOWER MANUALLY",
-            "AUTO: ARM ONE TOWER FOR PRESSURE-AWARE USE",
+            "A OR AUTO: ARM ONE TOWER FOR PRESSURE-AWARE USE",
             "AUTO TRIGGERS AT ITS COUNT OR ANY ELITE / BOSS",
             "ANY ACTIVATION STARTS THE ONE SHARED COOLDOWN",
             "EACH TOWER HAS UNIQUE STATS, BURST, OR STATUS",
@@ -3107,10 +3259,11 @@ public sealed class UIManager
             : $"DEFAULT TARGET {definition.DefaultTargetMode.ToUpperInvariant()}";
         DrawText(batch, $"{TowerInfo.ShortRole(definition).ToUpperInvariant()}  |  BUILD {definition.PurchaseCost}  |  {operation}",
             new Vector2(panel.X + 72, panel.Y + 43), ColorPalette.Muted, 0.53f);
-        DrawFittedText(batch, TowerInfo.ProtocolLibrarySummary(definition), new Vector2(panel.X + 72, panel.Y + 64), ColorPalette.Coral, 0.43f, panel.Width - 90);
+        DrawWrappedText(batch, TowerInfo.ProtocolLibrarySummary(definition),
+            new Rectangle(panel.X + 72, panel.Y + 62, panel.Width - 90, 29), ColorPalette.Coral, 0.42f, 2);
         DrawFittedText(batch, $"{TowerInfo.Strength(definition)}  |  {TowerInfo.Limitation(definition)}",
-            new Vector2(panel.X + 18, panel.Y + 82), ColorPalette.ReadableAccent(definition.Visual.PrimaryColor, ColorPalette.Panel), 0.44f, panel.Width - 36);
-        p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 99, panel.Width - 36, 2), definition.Visual.PrimaryColor);
+            new Vector2(panel.X + 18, panel.Y + 94), ColorPalette.ReadableAccent(definition.Visual.PrimaryColor, ColorPalette.Panel), 0.44f, panel.Width - 36);
+        p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 110, panel.Width - 36, 2), definition.Visual.PrimaryColor);
 
         var levelOne = definition.Levels[0];
         var levelTwo = definition.Levels.Count > 1 ? definition.Levels[1] : levelOne;
@@ -3119,10 +3272,10 @@ public sealed class UIManager
             _towerLibraryDoctrineIndex = Math.Clamp(_towerLibraryDoctrineIndex, 0, 1);
             var doctrine = definition.Tier2Doctrines[_towerLibraryDoctrineIndex];
             const int doctrineWidth = 270;
-            var topY = panel.Y + 112;
-            _towerLibraryDoctrineAButton = new Rectangle(panel.X + 302, topY, doctrineWidth, 188);
-            _towerLibraryDoctrineBButton = new Rectangle(panel.X + 586, topY, doctrineWidth, 188);
-            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, topY, doctrineWidth, 188), definition,
+            var topY = panel.Y + 120;
+            _towerLibraryDoctrineAButton = new Rectangle(panel.X + 302, topY, doctrineWidth, 180);
+            _towerLibraryDoctrineBButton = new Rectangle(panel.X + 586, topY, doctrineWidth, 180);
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, topY, doctrineWidth, 180), definition,
                 levelOne, "LEVEL 1", $"BUILD {definition.PurchaseCost}  |  TOTAL {definition.PurchaseCost}", definition.Visual.PrimaryColor);
             var firstDoctrine = definition.Tier2Doctrines[0];
             var secondDoctrine = definition.Tier2Doctrines[1];
@@ -3149,9 +3302,9 @@ public sealed class UIManager
         if (definition.Specializations.Count > 0)
         {
             var topWidth = 418;
-            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, panel.Y + 112, topWidth, 180), definition,
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, panel.Y + 120, topWidth, 172), definition,
                 levelOne, "LEVEL 1", $"BUILD {definition.PurchaseCost}  |  TOTAL {definition.PurchaseCost}", definition.Visual.PrimaryColor);
-            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 454, panel.Y + 112, topWidth, 180), definition,
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 454, panel.Y + 120, topWidth, 172), definition,
                 levelTwo, "LEVEL 2", $"UPGRADE {levelOne.UpgradeCost ?? 0}  |  TOTAL {TowerInfo.TotalCostToLevel(definition, 1)}", ColorPalette.Cyan);
 
             for (var index = 0; index < Math.Min(2, definition.Specializations.Count); index++)
@@ -3173,7 +3326,7 @@ public sealed class UIManager
             var incrementalCost = index == 0 ? definition.PurchaseCost : definition.Levels[index - 1].UpgradeCost ?? 0;
             var costKind = index == 0 ? "BUILD" : "UPGRADE";
             var accent = index switch { 0 => definition.Visual.PrimaryColor, 1 => ColorPalette.Cyan, _ => ColorPalette.Violet };
-            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 290, panel.Y + 112, cardWidth, 412), definition,
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 290, panel.Y + 120, cardWidth, 404), definition,
                 level, $"LEVEL {index + 1}", $"{costKind} {incrementalCost}  |  TOTAL {TowerInfo.TotalCostToLevel(definition, index)}", accent);
         }
     }
@@ -3190,8 +3343,8 @@ public sealed class UIManager
         var dividerY = rect.Y + 62;
         if (!string.IsNullOrWhiteSpace(summary))
         {
-            DrawFittedText(batch, summary, new Vector2(rect.X + 12, rect.Y + 59), ColorPalette.Muted, 0.44f, rect.Width - 24);
-            dividerY = rect.Y + 82;
+            DrawWrappedText(batch, summary, new Rectangle(rect.X + 12, rect.Y + 59, rect.Width - 24, 32), ColorPalette.Muted, 0.42f, 2);
+            dividerY = rect.Y + 96;
         }
         p.FillRect(batch, new Rectangle(rect.X + 12, dividerY, rect.Width - 24, 1), ColorPalette.CardOutline);
         var y = dividerY + 12;
@@ -3247,7 +3400,8 @@ public sealed class UIManager
         var measuredWidth = _font.MeasureString(text).X * scale * GameConstants.FontDrawScale;
         if (measuredWidth > maximumWidth)
             scale *= maximumWidth / measuredWidth;
-        DrawText(batch, text, position, color, MathF.Max(0.36f, scale));
+        scale = MathF.Max(0.36f, scale);
+        DrawText(batch, Ellipsize(text, scale, maximumWidth), position, color, scale);
     }
 
     private void DrawStrictFittedText(SpriteBatch batch, string text, Vector2 position, Color color, float scale,
@@ -3256,7 +3410,8 @@ public sealed class UIManager
         var measuredWidth = _font.MeasureString(text).X * scale * GameConstants.FontDrawScale;
         if (measuredWidth > maximumWidth)
             scale *= maximumWidth / measuredWidth;
-        DrawText(batch, text, position, color, MathF.Max(minimumScale, scale));
+        scale = MathF.Max(minimumScale, scale);
+        DrawText(batch, Ellipsize(text, scale, maximumWidth), position, color, scale);
     }
 
     private void DrawFittedCenteredText(SpriteBatch batch, string text, Vector2 position, Color color, float scale, float maximumWidth)
@@ -3264,7 +3419,63 @@ public sealed class UIManager
         var measuredWidth = _font.MeasureString(text).X * scale * GameConstants.FontDrawScale;
         if (measuredWidth > maximumWidth)
             scale *= maximumWidth / measuredWidth;
-        DrawText(batch, text, position, color, MathF.Max(0.30f, scale), true);
+        scale = MathF.Max(0.30f, scale);
+        DrawText(batch, Ellipsize(text, scale, maximumWidth), position, color, scale, true);
+    }
+
+    private void DrawWrappedText(SpriteBatch batch, string text, Rectangle bounds, Color color, float scale, int maximumLines)
+    {
+        if (string.IsNullOrWhiteSpace(text) || maximumLines <= 0 || bounds.Width <= 0) return;
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var lines = new List<string>();
+        var line = "";
+        var wordIndex = 0;
+        for (; wordIndex < words.Length; wordIndex++)
+        {
+            var candidate = line.Length == 0 ? words[wordIndex] : $"{line} {words[wordIndex]}";
+            if (_font.MeasureString(candidate).X * scale * GameConstants.FontDrawScale <= bounds.Width)
+            {
+                line = candidate;
+                continue;
+            }
+            if (line.Length == 0)
+            {
+                lines.Add(Ellipsize(candidate, scale, bounds.Width));
+                line = "";
+            }
+            else
+            {
+                lines.Add(line);
+                line = words[wordIndex];
+            }
+            if (lines.Count >= maximumLines) break;
+        }
+        if (lines.Count < maximumLines && line.Length > 0) lines.Add(line);
+        var truncated = wordIndex < words.Length;
+        if (truncated && lines.Count > 0)
+            lines[^1] = Ellipsize(lines[^1] + "...", scale, bounds.Width);
+        var lineHeight = MathF.Max(12, _font.LineSpacing * scale * GameConstants.FontDrawScale * 1.05f);
+        for (var index = 0; index < lines.Count && index < maximumLines; index++)
+        {
+            if (bounds.Y + index * lineHeight >= bounds.Bottom) break;
+            DrawText(batch, lines[index], new Vector2(bounds.X, bounds.Y + index * lineHeight), color, scale);
+        }
+    }
+
+    private string Ellipsize(string text, float scale, float maximumWidth)
+    {
+        if (_font.MeasureString(text).X * scale * GameConstants.FontDrawScale <= maximumWidth) return text;
+        const string suffix = "...";
+        var low = 0;
+        var high = text.Length;
+        while (low < high)
+        {
+            var middle = (low + high + 1) / 2;
+            var candidate = text[..middle].TrimEnd() + suffix;
+            if (_font.MeasureString(candidate).X * scale * GameConstants.FontDrawScale <= maximumWidth) low = middle;
+            else high = middle - 1;
+        }
+        return text[..low].TrimEnd() + suffix;
     }
 
     private void DrawTextRight(SpriteBatch batch, string text, Vector2 position, Color color, float scale)

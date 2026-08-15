@@ -158,6 +158,9 @@ public sealed class Game1 : Game
             case GameState.MainMenu:
                 HandleMenuAction(WithUiAudio(_ui.HandleMainMenu(input)));
                 break;
+            case GameState.GameSetup:
+                HandleMenuAction(WithUiAudio(_ui.HandleGameSetup(input)));
+                break;
             case GameState.TowerLibrary:
                 HandleMenuAction(WithUiAudio(_ui.HandleTitleTowerLibrary(input)));
                 break;
@@ -284,7 +287,17 @@ public sealed class Game1 : Game
 
     private void HandleMenuAction(UiAction action)
     {
-        if (action == UiAction.Play)
+        if (action == UiAction.OpenSoloSetup)
+        {
+            _ui.PrepareGameSetup(false);
+            _state = GameState.GameSetup;
+        }
+        else if (action == UiAction.OpenCoOpSetup)
+        {
+            _ui.PrepareGameSetup(true);
+            _state = GameState.GameSetup;
+        }
+        else if (action == UiAction.Play)
         {
             AssignSession(new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId, _ui.SelectedChallengeId));
             _lastAutosaveAttemptedWave = -1;
@@ -328,7 +341,8 @@ public sealed class Game1 : Game
                 break;
             case UiAction.MainMenu:
                 CleanupNetwork();
-                _state = GameState.MainMenu;
+                _ui.PrepareGameSetup(true);
+                _state = GameState.GameSetup;
                 break;
         }
     }

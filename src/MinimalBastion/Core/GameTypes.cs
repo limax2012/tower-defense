@@ -33,6 +33,7 @@ public static class GameConstants
 public enum GameState
 {
     MainMenu,
+    GameSetup,
     TowerLibrary,
     Settings,
     SaveSlots,
@@ -119,7 +120,8 @@ public readonly record struct InputSnapshot(
     bool NavigateUpPressed = false,
     bool NavigateDownPressed = false,
     bool NavigateLeftPressed = false,
-    bool NavigateRightPressed = false);
+    bool NavigateRightPressed = false,
+    bool AutoProtocolPressed = false);
 
 public sealed class ViewportTransform
 {
@@ -207,7 +209,8 @@ public sealed class InputRouter
             IsPressed(keyboard, _previousKeyboard, Keys.Up),
             IsPressed(keyboard, _previousKeyboard, Keys.Down),
             IsPressed(keyboard, _previousKeyboard, Keys.Left),
-            IsPressed(keyboard, _previousKeyboard, Keys.Right));
+            IsPressed(keyboard, _previousKeyboard, Keys.Right),
+            IsPressed(keyboard, _previousKeyboard, Keys.A));
         _previousKeyboard = keyboard;
         _previousMouse = mouse;
         return snapshot;

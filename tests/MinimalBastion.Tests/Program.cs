@@ -411,17 +411,25 @@ internal static class Program
         var ui = new UIManager(null!);
         ui.ConfigureDifficulties(content.Difficulties.Values);
         Check.Equal("normal", ui.SelectedDifficultyId, "new game UI defaults to normal");
-        Check.Equal(UiAction.Play, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
-            "title Enter starts the prominent new-game action");
+        Check.Equal("Medium", ui.SelectedDifficultyName, "the 90% profile is clearly named Medium");
+        Check.Equal(UiAction.OpenSoloSetup, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+            "title Enter opens the prominent new-game setup");
         Check.Equal(UiAction.None, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { NavigateDownPressed = true }),
             "title arrows move the visible keyboard focus");
-        Check.Equal(UiAction.CoOp, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
-            "title Enter activates the focused online co-op action");
+        Check.Equal(UiAction.OpenCoOpSetup, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+            "title Enter opens the focused online co-op setup");
         ui.HandleMainMenu(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
-        Check.Equal(UiAction.Play, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+        Check.Equal(UiAction.OpenSoloSetup, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
             "title keyboard focus returns to New Game");
-        ui.HandleMainMenu(WorldInput(new Vector2(685, 390)) with { LeftPressed = true });
+        ui.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
+        ui.PrepareGameSetup(false);
+        ui.HandleGameSetup(WorldInput(new Vector2(700, 330)) with { LeftPressed = true });
         Check.Equal("hard", ui.SelectedDifficultyId, "difficulty selector cycles profiles");
+        Check.Equal(UiAction.Play, ui.HandleGameSetup(WorldInput(new Vector2(560, 647)) with { LeftPressed = true }),
+            "solo setup confirms the selected profile");
+        ui.PrepareGameSetup(true);
+        Check.Equal(UiAction.CoOp, ui.HandleGameSetup(WorldInput(new Vector2(560, 647)) with { LeftPressed = true }),
+            "online setup continues with the selected host profile");
     }
 
     private static void ChallengeDirectivesAndPersistence()
@@ -461,7 +469,8 @@ internal static class Program
         var ui = new UIManager(null!);
         ui.ConfigureChallenges(content.Challenges.Values);
         Check.Equal("standard", ui.SelectedChallengeId, "challenge UI defaults to standard");
-        ui.HandleMainMenu(WorldInput(new Vector2(790, 390)) with { LeftPressed = true });
+        ui.PrepareGameSetup(false);
+        ui.HandleGameSetup(WorldInput(new Vector2(500, 450)) with { LeftPressed = true });
         Check.Equal("close_quarters", ui.SelectedChallengeId, "challenge selector advances to close quarters");
     }
 
@@ -543,6 +552,10 @@ internal static class Program
             "active music rises with live battlefield pressure");
         Check.Nearly(1, AudioManager.MusicActivityTarget(true, 70, true),
             "boss pressure reaches the bounded music peak");
+        Check.True(AudioManager.CombatCueCooldown("needle_turret") < AudioManager.CombatCueCooldown("siege_mortar"),
+            "rapid and heavy tower impact cues use different anti-crowding cadences");
+        Check.True(AudioManager.CombatCueCooldown("signal_beacon") >= 0.4f,
+            "support contribution chimes stay sparse in dense defenses");
 
         settings.CycleResolution();
         Check.Equal(1280, settings.WindowWidth, "unknown resolution enters first preset");
@@ -553,7 +566,7 @@ internal static class Program
         var ui = new UIManager(null!);
         ui.ConfigureSettings(settings);
         Check.Equal(UiAction.Settings,
-            ui.HandleMainMenu(WorldInput(new Vector2(730, 550)) with { LeftPressed = true }),
+            ui.HandleMainMenu(WorldInput(new Vector2(640, 590)) with { LeftPressed = true }),
             "main menu settings button");
         Check.Equal(UiAction.ApplySettings,
             ui.HandleSettingsInput(WorldInput(new Vector2(500, 245)) with { LeftPressed = true }),
@@ -682,7 +695,8 @@ internal static class Program
         var mapUi = new UIManager(null!);
         mapUi.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
         Check.Equal("foundry_loop", mapUi.SelectedMapId, "arena selector starts on Foundry");
-        mapUi.HandleMainMenu(WorldInput(new Vector2(500, 370)) with { LeftPressed = true });
+        mapUi.PrepareGameSetup(false);
+        mapUi.HandleGameSetup(WorldInput(new Vector2(500, 200)) with { LeftPressed = true });
         Check.Equal("crosswind_basin", mapUi.SelectedMapId, "arena selector advances by challenge rating");
         Check.Equal(3, prism.PowerNodes.Count, "Prism has a restrained node roster");
         Check.Equal("prism_waves", prism.WaveSet, "Prism has its own campaign");
@@ -743,10 +757,10 @@ internal static class Program
             "pause Enter resumes the match");
         var restartUi = new UIManager(null!);
         Check.Equal(UiAction.None,
-            restartUi.HandlePausedInput(WorldInput(new Vector2(640, 467)) with { LeftPressed = true }, Session()),
+            restartUi.HandlePausedInput(WorldInput(new Vector2(640, 497)) with { LeftPressed = true }, Session()),
             "first pause-menu restart click arms confirmation");
         Check.Equal(UiAction.Restart,
-            restartUi.HandlePausedInput(WorldInput(new Vector2(640, 467)) with { LeftPressed = true }, Session()),
+            restartUi.HandlePausedInput(WorldInput(new Vector2(640, 497)) with { LeftPressed = true }, Session()),
             "second pause-menu restart click confirms the reset");
         var keyboardRestartUi = new UIManager(null!);
         var keyboardRestartSession = Session();
@@ -3342,7 +3356,7 @@ internal static class Program
             closeReference.Any(line => line.Contains("WATCHTOWER", StringComparison.Ordinal)),
             "profile reference exposes exact directive roster restrictions");
         Check.Equal(UiAction.TowerLibrary,
-            ui.HandleMainMenu(WorldInput(new Vector2(712, 442)) with { LeftPressed = true }),
+            ui.HandleMainMenu(WorldInput(new Vector2(640, 540)) with { LeftPressed = true }),
             "title screen opens tower library");
         Check.Equal(UiAction.None,
             ui.HandleTitleTowerLibrary(WorldInput(new Vector2(580, 67)) with { LeftPressed = true }),

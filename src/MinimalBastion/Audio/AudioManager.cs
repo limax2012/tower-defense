@@ -7,13 +7,16 @@ public sealed class AudioManager : IDisposable
 {
     private const int SampleRate = 44100;
     private readonly Dictionary<Cue, SoundEffect> _sounds = new();
+    private readonly Dictionary<string, SoundEffect> _towerImpacts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, float> _towerImpactCooldowns = new(StringComparer.OrdinalIgnoreCase);
     private SoundEffect? _musicSound;
     private SoundEffectInstance? _musicInstance;
     private float _killCooldown;
+    private float _combatImpactCooldown;
     private float _sfxVolume = 0.65f;
     private float _musicVolume = 0.20f;
-    private float _musicPitch;
     private float _musicActivity = 0.68f;
+    private string _musicThemeId = "menu";
     private bool _disposed;
     private GameSession? _attachedSession;
 
@@ -49,12 +52,15 @@ public sealed class AudioManager : IDisposable
             _sounds[Cue.UiConfirm] = CreateTone(410, 620, 0.075f, WaveShape.Sine);
             _sounds[Cue.UiBack] = CreateTone(430, 300, 0.075f, WaveShape.Triangle);
             _sounds[Cue.UiDelete] = CreateTone(230, 150, 0.10f, WaveShape.Saw);
-            TryStartMusic();
+            CreateTowerImpactPalette();
+            TryStartMusic("menu");
         }
         catch
         {
             foreach (var sound in _sounds.Values) sound.Dispose();
             _sounds.Clear();
+            foreach (var sound in _towerImpacts.Values) sound.Dispose();
+            _towerImpacts.Clear();
             throw;
         }
     }
@@ -68,6 +74,13 @@ public sealed class AudioManager : IDisposable
     public void Update(float deltaSeconds)
     {
         _killCooldown = MathF.Max(0, _killCooldown - MathF.Max(0, deltaSeconds));
+        _combatImpactCooldown = MathF.Max(0, _combatImpactCooldown - MathF.Max(0, deltaSeconds));
+        foreach (var towerId in _towerImpactCooldowns.Keys.ToArray())
+        {
+            var remaining = MathF.Max(0, _towerImpactCooldowns[towerId] - MathF.Max(0, deltaSeconds));
+            if (remaining <= 0) _towerImpactCooldowns.Remove(towerId);
+            else _towerImpactCooldowns[towerId] = remaining;
+        }
         if (_musicInstance is null) return;
         try
         {
@@ -78,7 +91,7 @@ public sealed class AudioManager : IDisposable
             var blend = 1f - MathF.Exp(-MathF.Max(0, deltaSeconds) * 2.4f);
             _musicActivity = MathHelper.Lerp(_musicActivity, targetActivity, blend);
             _musicInstance.Volume = Math.Clamp(_musicVolume * _musicActivity, 0, 1);
-            _musicInstance.Pitch = _musicPitch;
+            _musicInstance.Pitch = 0;
             if (_musicInstance.State == SoundState.Stopped) _musicInstance.Play();
         }
         catch
@@ -93,7 +106,7 @@ public sealed class AudioManager : IDisposable
     {
         if (ReferenceEquals(_attachedSession, session)) return;
         _attachedSession = session;
-        _musicPitch = MusicPitch(session.Map.Definition.Id);
+        SwitchMusic(session.Map.Definition.Id);
         session.TowerPlaced += _ => Play(Cue.Place, 0.72f);
         session.TowerUpgraded += (_, _) => Play(Cue.Upgrade, 0.78f);
         session.TowerSold += (_, _) => Play(Cue.Sell, 0.62f);
@@ -110,12 +123,14 @@ public sealed class AudioManager : IDisposable
         session.WaveStarted += _ => Play(Cue.WaveStart, 0.78f);
         session.WaveCompleted += wave => Play(wave >= session.TotalWaves && !session.IsEndlessMode ? Cue.Victory : Cue.WaveClear,
             wave >= session.TotalWaves && !session.IsEndlessMode ? 0.92f : 0.82f);
+        session.DamageResolver.DamageApplied += OnDamageApplied;
     }
 
     public void Detach()
     {
         _attachedSession = null;
-        _musicPitch = 0;
+        _towerImpactCooldowns.Clear();
+        SwitchMusic("menu");
     }
 
     public void PlayUiConfirm() => Play(Cue.UiConfirm, 0.42f);
@@ -148,11 +163,81 @@ public sealed class AudioManager : IDisposable
         }
     }
 
-    private void TryStartMusic()
+    private void OnDamageApplied(Combat.DamageReport report)
+    {
+        if (report.ShieldDamage + report.HealthDamage <= 0 || _attachedSession is null) return;
+        if (report.SourceTowerId > 0)
+        {
+            var source = _attachedSession.Towers.FirstOrDefault(tower => tower.Id == report.SourceTowerId);
+            if (source is not null)
+            {
+                TryPlayTowerImpact(source.Definition.Id, false);
+                var support = _attachedSession.GetSupportBuff(source);
+                var beaconId = support.AttackSpeedSourceTowerId > 0
+                    ? support.AttackSpeedSourceTowerId
+                    : support.RangeSourceTowerId;
+                if (beaconId > 0 && _attachedSession.Towers.FirstOrDefault(tower => tower.Id == beaconId) is { } beacon)
+                    TryPlayTowerImpact(beacon.Definition.Id, true);
+            }
+        }
+    }
+
+    private void TryPlayTowerImpact(string towerId, bool supportCue)
+    {
+        if (_disposed || _sfxVolume <= 0 || !_towerImpacts.TryGetValue(towerId, out var sound)) return;
+        if (_towerImpactCooldowns.ContainsKey(towerId) || !supportCue && _combatImpactCooldown > 0) return;
+        _towerImpactCooldowns[towerId] = CombatCueCooldown(towerId);
+        if (!supportCue) _combatImpactCooldown = 0.028f;
+        var liveEnemies = _attachedSession?.Enemies.Count(enemy => !enemy.IsDead && !enemy.HasEscaped) ?? 0;
+        var pressureMix = liveEnemies switch { > 80 => 0.42f, > 35 => 0.58f, > 12 => 0.74f, _ => 1f };
+        var cueVolume = (supportCue ? 0.07f : 0.13f) * pressureMix;
+        try { sound.Play(Math.Clamp(_sfxVolume * cueVolume, 0, 1), 0, 0); }
+        catch { _sfxVolume = 0; }
+    }
+
+    public static float CombatCueCooldown(string towerId) => towerId.ToLowerInvariant() switch
+    {
+        "needle_turret" => 0.085f,
+        "shard_fan" => 0.11f,
+        "arc_relay" => 0.12f,
+        "prism_beam" => 0.13f,
+        "frost_spire" => 0.15f,
+        "ember_coil" => 0.17f,
+        "watchtower" => 0.20f,
+        "breaker_cannon" => 0.22f,
+        "siege_mortar" => 0.28f,
+        "signal_beacon" => 0.42f,
+        _ => 0.14f
+    };
+
+    private void CreateTowerImpactPalette()
+    {
+        _towerImpacts["needle_turret"] = CreateTone(1080, 1420, 0.026f, WaveShape.Sine);
+        _towerImpacts["frost_spire"] = CreateTone(610, 360, 0.055f, WaveShape.Sine);
+        _towerImpacts["shard_fan"] = CreateTone(920, 540, 0.032f, WaveShape.Saw);
+        _towerImpacts["watchtower"] = CreateTone(310, 165, 0.070f, WaveShape.Triangle);
+        _towerImpacts["ember_coil"] = CreateTone(240, 120, 0.075f, WaveShape.Saw);
+        _towerImpacts["breaker_cannon"] = CreateTone(175, 78, 0.085f, WaveShape.Square);
+        _towerImpacts["signal_beacon"] = CreateChord(740, 1110, 0.065f);
+        _towerImpacts["arc_relay"] = CreateTone(820, 285, 0.060f, WaveShape.Triangle);
+        _towerImpacts["siege_mortar"] = CreateImpactPulse(0.095f, 82f);
+        _towerImpacts["prism_beam"] = CreateTone(1240, 710, 0.050f, WaveShape.Sine);
+    }
+
+    private void SwitchMusic(string themeId)
+    {
+        var normalized = string.IsNullOrWhiteSpace(themeId) ? "menu" : themeId.ToLowerInvariant();
+        if (_musicInstance is not null && normalized == _musicThemeId) return;
+        DisposeMusic();
+        TryStartMusic(normalized);
+    }
+
+    private void TryStartMusic(string themeId)
     {
         try
         {
-            _musicSound = CreateAmbientLoop();
+            _musicThemeId = themeId;
+            _musicSound = CreateTacticalLoop(themeId);
             _musicInstance = _musicSound.CreateInstance();
             _musicInstance.IsLooped = true;
             _musicInstance.Volume = 0;
@@ -163,14 +248,6 @@ public sealed class AudioManager : IDisposable
             DisposeMusic();
         }
     }
-
-    private static float MusicPitch(string mapId) => mapId.ToLowerInvariant() switch
-    {
-        "crosswind_basin" => 0.035f,
-        "prism_circuit" => 0.065f,
-        "relay_divide" => -0.045f,
-        _ => 0
-    };
 
     private static float ProtocolPitch(string towerId) => towerId.ToLowerInvariant() switch
     {
@@ -257,25 +334,53 @@ public sealed class AudioManager : IDisposable
         return CreateSoundEffect(samples);
     }
 
-    private static SoundEffect CreateAmbientLoop()
+    private static SoundEffect CreateImpactPulse(float seconds, float bodyFrequency)
     {
-        const float seconds = 16f;
+        var count = Math.Max(1, (int)(SampleRate * seconds));
+        var samples = new short[count];
+        uint state = 0x51E6E123u;
+        for (var index = 0; index < count; index++)
+        {
+            state = state * 1664525u + 1013904223u;
+            var noise = ((state >> 8) / (float)0xFFFFFF) * 2f - 1f;
+            var time = index / (float)SampleRate;
+            var t = index / (float)Math.Max(1, count - 1);
+            var body = MathF.Sin(MathHelper.TwoPi * bodyFrequency * (1f - t * 0.18f) * time);
+            samples[index] = ToSample((body * 0.76f + noise * 0.24f) * Envelope(t) * 0.28f);
+        }
+        return CreateSoundEffect(samples);
+    }
+
+    private static SoundEffect CreateTacticalLoop(string themeId)
+    {
+        const float seconds = 24f;
         var count = (int)(SampleRate * seconds);
         var samples = new short[count];
-        float[] upperNotes = [220f, 247.5f, 330f, 247.5f, 196f, 247.5f, 293.333f, 247.5f];
+        var theme = MusicTheme.For(themeId);
+        var stepSeconds = seconds / theme.Melody.Length;
         for (var index = 0; index < count; index++)
         {
             var time = index / (float)SampleRate;
-            var step = Math.Min(upperNotes.Length - 1, (int)(time / 2f));
-            var stepPhase = time % 2f;
-            var pulseEnvelope = MathHelper.SmoothStep(0, 1, Math.Clamp(stepPhase / 0.18f, 0, 1)) *
-                                MathHelper.SmoothStep(0, 1, Math.Clamp((1.72f - stepPhase) / 0.55f, 0, 1));
-            var lowPulse = 0.5f + 0.5f * MathF.Sin(MathHelper.TwoPi * 0.25f * time - MathHelper.PiOver2);
-            var drone = MathF.Sin(MathHelper.TwoPi * 55f * time) * 0.48f +
-                        MathF.Sin(MathHelper.TwoPi * 82.5f * time) * 0.25f;
-            var upper = MathF.Sin(MathHelper.TwoPi * upperNotes[step] * time) * pulseEnvelope * 0.22f;
-            var clock = MathF.Sin(MathHelper.TwoPi * 440f * time) * MathF.Pow(lowPulse, 10) * 0.05f;
-            samples[index] = ToSample((drone * (0.55f + lowPulse * 0.18f) + upper + clock) * 0.16f);
+            var step = Math.Min(theme.Melody.Length - 1, (int)(time / stepSeconds));
+            var bar = Math.Min(theme.Bass.Length - 1, (int)(time / (seconds / theme.Bass.Length)));
+            var stepPhase = time % stepSeconds;
+            var attack = MathHelper.SmoothStep(0, 1, Math.Clamp(stepPhase / 0.16f, 0, 1));
+            var release = MathHelper.SmoothStep(0, 1, Math.Clamp((stepSeconds - 0.16f - stepPhase) / 0.52f, 0, 1));
+            var noteEnvelope = attack * release;
+            var breathing = 0.78f + MathF.Sin(MathHelper.TwoPi * time / 6f - MathHelper.PiOver2) * 0.12f;
+            var bass = MathF.Sin(MathHelper.TwoPi * theme.Bass[bar] * time) * 0.48f +
+                       MathF.Sin(MathHelper.TwoPi * theme.Bass[bar] * 1.5f * time) * 0.18f;
+            var melodyFrequency = theme.Melody[step];
+            var melody = melodyFrequency <= 0 ? 0 :
+                (MathF.Sin(MathHelper.TwoPi * melodyFrequency * time) * 0.72f +
+                 MathF.Sin(MathHelper.TwoPi * melodyFrequency * 2f * time) * 0.12f) * noteEnvelope;
+            var counterFrequency = theme.Counter[(step / 2) % theme.Counter.Length];
+            var counter = MathF.Sin(MathHelper.TwoPi * counterFrequency * time) *
+                          (0.5f + 0.5f * MathF.Sin(MathHelper.TwoPi * time / 3f)) * 0.10f;
+            var clockPhase = time % theme.ClockSeconds;
+            var clockEnvelope = MathF.Exp(-clockPhase * 22f);
+            var clock = MathF.Sin(MathHelper.TwoPi * theme.ClockFrequency * time) * clockEnvelope * 0.08f;
+            samples[index] = ToSample((bass * breathing + melody * 0.34f + counter + clock) * theme.Gain);
         }
         return CreateSoundEffect(samples);
     }
@@ -326,6 +431,8 @@ public sealed class AudioManager : IDisposable
         DisposeMusic();
         foreach (var sound in _sounds.Values) sound.Dispose();
         _sounds.Clear();
+        foreach (var sound in _towerImpacts.Values) sound.Dispose();
+        _towerImpacts.Clear();
     }
 
     private void DisposeMusic()
@@ -343,4 +450,32 @@ public sealed class AudioManager : IDisposable
         UiConfirm, UiBack, UiDelete
     }
     private enum WaveShape { Sine, Triangle, Square, Saw }
+
+    private sealed record MusicTheme(float[] Bass, float[] Melody, float[] Counter, float ClockSeconds,
+        float ClockFrequency, float Gain)
+    {
+        public static MusicTheme For(string themeId) => themeId.ToLowerInvariant() switch
+        {
+            "crosswind_basin" => new(
+                [73.416f, 65.406f, 82.407f, 55f],
+                [293.665f, 0, 329.628f, 369.994f, 440f, 369.994f, 329.628f, 0, 293.665f, 329.628f, 246.942f, 293.665f, 369.994f, 329.628f, 293.665f, 0],
+                [146.832f, 164.814f, 184.997f, 123.471f], 0.75f, 587.33f, 0.115f),
+            "prism_circuit" => new(
+                [55f, 65.406f, 73.416f, 82.407f],
+                [329.628f, 391.995f, 493.883f, 0, 440f, 391.995f, 329.628f, 293.665f, 329.628f, 493.883f, 440f, 0, 391.995f, 329.628f, 293.665f, 246.942f],
+                [164.814f, 195.998f, 246.942f, 146.832f], 0.60f, 659.255f, 0.105f),
+            "relay_divide" => new(
+                [49f, 55f, 61.735f, 46.249f],
+                [246.942f, 277.183f, 293.665f, 0, 220f, 246.942f, 329.628f, 277.183f, 246.942f, 220f, 184.997f, 0, 220f, 277.183f, 246.942f, 184.997f],
+                [123.471f, 138.591f, 146.832f, 110f], 0.50f, 493.883f, 0.115f),
+            "foundry_loop" => new(
+                [55f, 65.406f, 49f, 73.416f],
+                [220f, 246.942f, 293.665f, 0, 329.628f, 293.665f, 246.942f, 220f, 196f, 246.942f, 277.183f, 0, 293.665f, 246.942f, 220f, 196f],
+                [110f, 130.813f, 146.832f, 98f], 0.75f, 440f, 0.11f),
+            _ => new(
+                [55f, 65.406f, 49f, 55f],
+                [220f, 0, 246.942f, 0, 293.665f, 0, 246.942f, 0, 196f, 0, 220f, 0, 246.942f, 0, 220f, 0],
+                [110f, 130.813f, 98f, 110f], 1.5f, 440f, 0.085f)
+        };
+    }
 }

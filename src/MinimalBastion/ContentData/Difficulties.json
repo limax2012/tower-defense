@@ -11,7 +11,7 @@
   },
   {
     "id": "normal",
-    "displayName": "Normal",
+    "displayName": "Medium",
     "description": "A balanced defense with a little strategic breathing room.",
     "enemyHealthMultiplier": 0.90,
     "enemySpeedMultiplier": 0.98,
