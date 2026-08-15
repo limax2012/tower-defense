@@ -153,12 +153,7 @@ internal static class CoOpSnapshotValidator
     }
 
     private static bool IsValidCommand(GameCommand command) =>
-        command.Sequence > 0 && command.PlayerId is >= 1 and <= 2 && Enum.IsDefined(command.Type) &&
-        command.TowerDefinitionId is not null && command.TowerDefinitionId.Length <= 128 &&
-        command.SpecializationId is not null && command.SpecializationId.Length <= 128 &&
-        command.DoctrineId is not null && command.DoctrineId.Length <= 128 &&
-        float.IsFinite(command.X) && float.IsFinite(command.Y) && Enum.IsDefined(command.TargetMode) &&
-        IsPositiveFinite(command.Speed);
+        command.Sequence > 0 && GameCommandValidator.IsStructurallyValid(command);
 
     private static bool IsValidStatus(StatusApplication? status) => status is null ||
         Enum.IsDefined(status.Type) && IsPositiveFinite(status.Duration) && IsPositiveFinite(status.Magnitude) &&

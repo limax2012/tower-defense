@@ -552,8 +552,9 @@ public sealed class Game1 : Game
                 QueueAuthoritativeCommand(envelope.Command with { PlayerId = 2 });
                 break;
             case CoOpMessageType.AuthoritativeCommand when !_isNetworkHost && envelope.Command is not null:
-                if (_networkRunner is null || !_networkRunner.Schedule(envelope.Tick, envelope.Command))
-                    RequestAuthoritativeResync("A command arrived after its simulation tick.");
+                if (!GameCommandValidator.IsStructurallyValid(envelope.Command) ||
+                    _networkRunner is null || !_networkRunner.Schedule(envelope.Tick, envelope.Command))
+                    RequestAuthoritativeResync("An authoritative command was malformed or arrived after its simulation tick.");
                 break;
             case CoOpMessageType.CommandReceipt:
                 break;

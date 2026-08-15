@@ -1122,6 +1122,20 @@ internal static class Program
         Check.Equal(1L, accepted.Command.Sequence, "host assigns sequence");
         Check.True(duplicate.Duplicate, "duplicate request identified");
         Check.Equal(1, sequencedSession.Towers.Count, "duplicate command not applied twice");
+
+        var malformed = new GameCommand
+        {
+            ClientRequestId = 43,
+            PlayerId = 2,
+            Type = GameCommandType.PlaceTower,
+            TowerDefinitionId = null!,
+            X = float.NaN,
+            Y = 200
+        };
+        Check.True(!GameCommandProcessor.Apply(sequencedSession, malformed).Accepted,
+            "malformed live command is rejected before gameplay lookup");
+        Check.True(!host.Sequence(malformed).Accepted,
+            "authority refuses to sequence malformed client input");
     }
 
     private static void NetworkDeterministicCommands()

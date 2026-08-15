@@ -48,11 +48,39 @@ public readonly record struct GameCommandResult(bool Accepted, string Reason)
     public static GameCommandResult Reject(string reason) => new(false, reason);
 }
 
+public static class GameCommandValidator
+{
+    public static bool IsStructurallyValid(GameCommand? command)
+    {
+        if (command is null || command.PlayerId is < 1 or > 2 || !Enum.IsDefined(command.Type) ||
+            command.EntityId < 0 || command.TowerDefinitionId is null || command.TowerDefinitionId.Length > 128 ||
+            command.SpecializationId is null || command.SpecializationId.Length > 128 ||
+            command.DoctrineId is null || command.DoctrineId.Length > 128 ||
+            !float.IsFinite(command.X) || !float.IsFinite(command.Y) || !Enum.IsDefined(command.TargetMode) ||
+            !float.IsFinite(command.Speed) || command.Speed <= 0)
+            return false;
+
+        return command.Type switch
+        {
+            GameCommandType.PlaceTower => !string.IsNullOrWhiteSpace(command.TowerDefinitionId),
+            GameCommandType.UpgradeTower or GameCommandType.OverdriveTower or GameCommandType.ToggleAutoProtocol or
+                GameCommandType.SellTower or GameCommandType.SetTargetMode => command.EntityId > 0,
+            GameCommandType.ChooseDoctrine => command.EntityId > 0 && !string.IsNullOrWhiteSpace(command.DoctrineId),
+            GameCommandType.SpecializeTower => command.EntityId > 0 && !string.IsNullOrWhiteSpace(command.SpecializationId),
+            GameCommandType.SetSpeed => command.Speed is 1f or 2f,
+            GameCommandType.DeployEmergencyDefense or GameCommandType.PlaceGenerator or
+                GameCommandType.UpgradeGenerator or GameCommandType.SellGenerator or GameCommandType.StartWave or
+                GameCommandType.ContinueEndless or GameCommandType.SetPaused => true,
+            _ => false
+        };
+    }
+}
+
 public static class GameCommandProcessor
 {
     public static GameCommandResult Apply(GameSession session, GameCommand command)
     {
-        if (command.PlayerId is < 1 or > 2) return GameCommandResult.Reject("Unknown player");
+        if (!GameCommandValidator.IsStructurallyValid(command)) return GameCommandResult.Reject("Malformed command");
         var accepted = command.Type switch
         {
             GameCommandType.PlaceTower => session.TryPlaceTower(command.TowerDefinitionId, command.Position, command.PlayerId, false),
@@ -119,8 +147,8 @@ public sealed class AuthoritativeCommandHost
 
     public CommandReceipt Sequence(GameCommand request)
     {
-        if (request.PlayerId is < 1 or > 2)
-            return new CommandReceipt(request, false, "Unknown player", false);
+        if (!GameCommandValidator.IsStructurallyValid(request))
+            return new CommandReceipt(request, false, "Malformed command", false);
         if (request.ClientRequestId <= 0)
             return new CommandReceipt(request, false, "Missing client request id", false);
         var key = (request.PlayerId, request.ClientRequestId);
