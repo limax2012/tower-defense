@@ -1360,6 +1360,17 @@ internal static class Program
     {
         var session = SessionWithWave();
 
+        var invalidPauseOwner = session.CaptureCoOpState(0, 0, false);
+        invalidPauseOwner.IsPaused = true;
+        invalidPauseOwner.PausedByPlayerId = 0;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, invalidPauseOwner, 2),
+            "paused snapshot requires a valid requesting player");
+
+        var stalePauseOwner = session.CaptureCoOpState(0, 0, false);
+        stalePauseOwner.PausedByPlayerId = 1;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, stalePauseOwner, 2),
+            "running snapshot rejects stale pause attribution");
+
         var missingCollection = session.CaptureCoOpState(0, 0, false);
         missingCollection.Towers = null!;
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, missingCollection, 2),
