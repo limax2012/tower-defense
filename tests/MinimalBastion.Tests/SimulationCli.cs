@@ -22,9 +22,7 @@ internal static class SimulationCli
             ? new[] { selectedMap }
             : deep ? content.Maps.Keys.OrderBy(x => x).ToArray() : new[] { content.Map.Id };
         var maximumWave = ResolveMaximumWave(args, content.Waves.Waves.Count);
-        var difficultyId = ReadValue(args, "--difficulty") ?? DifficultyCatalog.LegacyId;
-        if (!content.Difficulties.ContainsKey(difficultyId))
-            throw new ArgumentException($"Unknown difficulty '{difficultyId}'. Choose one of: {string.Join(", ", content.Difficulties.Keys.OrderBy(x => x))}.");
+        var difficulties = ResolveDifficulties(ReadValue(args, "--difficulty"), content);
         var challengeId = ReadValue(args, "--challenge") ?? ChallengeCatalog.DefaultId;
         if (!content.Challenges.ContainsKey(challengeId))
             throw new ArgumentException($"Unknown challenge '{challengeId}'. Choose one of: {string.Join(", ", content.Challenges.Keys.OrderBy(x => x))}.");
@@ -33,6 +31,7 @@ internal static class SimulationCli
 
         var runs = new List<SimulationRunResult>();
         foreach (var mapId in maps)
+        foreach (var difficultyId in difficulties)
             foreach (var strategy in strategies)
             {
                 for (var index = 0; index < runsPerStrategy; index++)
@@ -64,6 +63,7 @@ internal static class SimulationCli
             Console.WriteLine($"Forced completed path: {forcedBuild.TowerId}:{forcedBuild.DoctrineId}>{forcedBuild.SpecializationId}");
         if (!useProtocols) Console.WriteLine("Protocol activations disabled for this control group.");
         PrintStrategySummary(runs);
+        PrintDifficultySummary(runs);
         PrintMapSummary(runs);
         PrintTowerSummary(runs);
         PrintDoctrineSummary(runs);
@@ -87,6 +87,17 @@ internal static class SimulationCli
         return int.TryParse(ReadValue(args, "--max-wave"), out var parsedMaximumWave)
             ? Math.Max(1, parsedMaximumWave)
             : Math.Max(1, campaignWaveCount);
+    }
+
+    internal static IReadOnlyList<string> ResolveDifficulties(string? selectedDifficulty, GameContent content)
+    {
+        if (selectedDifficulty?.Equals("all", StringComparison.OrdinalIgnoreCase) == true)
+            return content.Difficulties.Keys.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray();
+
+        var difficultyId = selectedDifficulty ?? DifficultyCatalog.LegacyId;
+        if (!content.Difficulties.ContainsKey(difficultyId))
+            throw new ArgumentException($"Unknown difficulty '{difficultyId}'. Choose one of: all, {string.Join(", ", content.Difficulties.Keys.OrderBy(x => x))}.");
+        return new[] { content.Difficulties[difficultyId].Id };
     }
 
     internal static ForcedBuildPath? ParseForcedBuild(string? value, GameContent content)
@@ -122,6 +133,14 @@ internal static class SimulationCli
         Console.WriteLine("STRATEGY SUMMARY");
         foreach (var group in runs.GroupBy(x => x.Strategy).OrderBy(x => x.Key))
             Console.WriteLine($"{group.Key,-16} {group.Count(x => x.Won),2}/{group.Count(),-2} wins  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
+    }
+
+    private static void PrintDifficultySummary(IEnumerable<SimulationRunResult> runs)
+    {
+        Console.WriteLine();
+        Console.WriteLine("DIFFICULTY SUMMARY");
+        foreach (var group in runs.GroupBy(x => x.DifficultyId).OrderBy(x => x.Key))
+            Console.WriteLine($"{group.Key,-18} {group.Count(x => x.Won),2}/{group.Count(),-2} wins  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
     }
 
     private static void PrintTowerSummary(IEnumerable<SimulationRunResult> runs)

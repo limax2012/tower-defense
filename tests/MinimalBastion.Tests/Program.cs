@@ -132,6 +132,13 @@ internal static class Program
         Check.Equal(1, SimulationCli.ResolveMaximumWave(["--simulate", "--max-wave=0"], 20), "minimum explicit wave cap");
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
+        var defaultDifficulties = SimulationCli.ResolveDifficulties(null, content);
+        Check.Equal(1, defaultDifficulties.Count, "simulation defaults to one difficulty");
+        Check.Equal(DifficultyCatalog.LegacyId, defaultDifficulties[0], "simulation retains normal default");
+        var allDifficulties = SimulationCli.ResolveDifficulties("all", content);
+        Check.Equal(content.Difficulties.Count, allDifficulties.Count, "simulation can sweep every difficulty");
+        Check.True(allDifficulties.Distinct(StringComparer.OrdinalIgnoreCase).Count() == content.Difficulties.Count,
+            "difficulty sweep contains each profile once");
         var path = SimulationCli.ParseForcedBuild("siege_mortar:mortar_loader>quake_shell", content);
         Check.Equal("siege_mortar", path!.TowerId, "forced build parser tower");
         Check.Equal("mortar_loader", path.DoctrineId, "forced build parser doctrine");

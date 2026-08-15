@@ -165,6 +165,7 @@ The clean separation supports preserving the current multipliers. On Hard, Surge
 
 ## Current work
 
+- Full campaign automation can now sweep `--difficulty all` across every authored arena. A two-seed, twelve-strategy, 384-run matrix measured Easy 80.2%, Normal 72.9%, Hard 47.9%, and Bastion 11.5% wins; Surge Divide remained the hardest aggregate arena, followed closely by Prism Circuit, while Crosswind Basin was the most forgiving.
 - The deterministic balance bench now reports swarm kills, controlled survivors, leaks, and aggregate health removed separately. Control towers no longer appear inactive simply because slowed enemies remain alive when the scenario clock ends.
 - Run History now retains and exposes a selected defense's economy, early-call, Protocol, Pulse Plate, forge, leak, duration, and top-impact details. Existing history files remain valid because newly added fields default safely to zero.
 - Result analysis now exposes early-call earnings and total Protocol activations alongside economy, Pulse Plate, forge, leak, and duration metrics. The narrow panel uses a compact two-column hierarchy instead of adding more full-width rows.

@@ -52,12 +52,13 @@ Run the isolated combat benchmark and deterministic full-game agents with:
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --balance
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate --strategy Adaptive --seed 1337
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --runs 5
+dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --difficulty all --runs 3
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --map relay_divide --runs 10
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --difficulty hard --strategy LongRange "--force-build=siege_mortar:mortar_loader>quake_shell"
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --difficulty hard --no-protocols
 ```
 
-Reports are written under `.build\balance`. Supported filters include `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, `--no-protocols`, and `--output`. A forced build uses `tower:doctrine>specialization` and constrains that tower without changing other planning decisions; `--no-protocols` creates a matched active-ability control group. Tower reports list Protocol activations, doctrine, final-role, and completed-build-path usage, and distinguish direct damage from Signal Beacon damage-equivalent, recipient-seconds, and source-attributed Slow, Stun, Exposed, and Armor Break enemy-seconds so support/control value is not hidden behind raw kill totals.
+Reports are written under `.build\balance`. Supported filters include `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, `--no-protocols`, and `--output`; use `--difficulty all` for a complete profile sweep. A forced build uses `tower:doctrine>specialization` and constrains that tower without changing other planning decisions; `--no-protocols` creates a matched active-ability control group. Tower reports list Protocol activations, doctrine, final-role, and completed-build-path usage, and distinguish direct damage from Signal Beacon damage-equivalent, recipient-seconds, and source-attributed Slow, Stun, Exposed, and Armor Break enemy-seconds so support/control value is not hidden behind raw kill totals.
 
 Create a self-contained Windows build with:
 
