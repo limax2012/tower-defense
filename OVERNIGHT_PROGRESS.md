@@ -13,7 +13,7 @@ Updated: 2026-08-15
 - Git history is maintained on `agent/overnight-arena-progression` and mirrored to `origin`; tested feature units are committed incrementally while `main` remains untouched during the active overnight run.
 - Pulse Plate snapping now rejects sidebar/out-of-canvas coordinates before route projection, preventing a tactical-control click near the exit route from becoming an accidental deployment; the authored endpoint regression is included in the suite.
 - Endless simulations now distinguish authored campaign clears from reaching a requested endless target and report depth by arena. Current wave-35 audits show finite failure pressure across Easy, Normal, and Hard, while the strongest easier-profile control plans retain meaningful post-campaign runway.
-- The reconstruction matrix now verifies all 64 arena/difficulty/directive combinations through both local checkpoint restore and authoritative Player-2 state restore with exact checksum parity.
+- The reconstruction matrix now verifies all 64 arena/difficulty/directive combinations through local checkpoint restore plus both intermission and live-opening authoritative Player-2 snapshots with exact checksum parity.
 
 ## Completed work
 

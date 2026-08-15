@@ -491,6 +491,22 @@ internal static class Program
             var peer = GameSession.RestoreCoOpState(content, snapshot, 2);
             Check.Equal(SessionChecksum.Compute(session, 17), SessionChecksum.Compute(peer, 17),
                 $"{map.Id}/{difficulty.Id}/{challenge.Id} peer checksum");
+
+            Check.True(session.StartNextWave(), $"{map.Id}/{difficulty.Id}/{challenge.Id} starts authored opener");
+            for (var step = 0; step < 100 && session.Enemies.Count == 0; step++) session.Update(0.05f);
+            Check.True(session.Waves.IsActive && session.Enemies.Count > 0,
+                $"{map.Id}/{difficulty.Id}/{challenge.Id} opener enters live combat");
+            var activeSnapshot = session.CaptureCoOpState(31, 0, false);
+            Check.True(CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+            {
+                Type = CoOpMessageType.StateSnapshot,
+                PlayerId = 1,
+                Tick = activeSnapshot.Tick,
+                State = activeSnapshot
+            }), $"{map.Id}/{difficulty.Id}/{challenge.Id} active snapshot envelope");
+            var activePeer = GameSession.RestoreCoOpState(content, activeSnapshot, 2);
+            Check.Equal(SessionChecksum.Compute(session, 31), SessionChecksum.Compute(activePeer, 31),
+                $"{map.Id}/{difficulty.Id}/{challenge.Id} active peer checksum");
             combinations++;
         }
 
