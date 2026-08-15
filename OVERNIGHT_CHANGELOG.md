@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Added a native-verified Systems page to the title/pause Tactical Library. Six clean reference cards explain progression, targeting, status precedence, manual/automatic Protocols, Beacon/Surge stacking, and data-driven Pulse Plate/Forge values without crowding live Tower Intel.
 - Carried every route's dash pattern continuously through corners instead of restarting it on each straight. Gold road markings no longer imply separate tiles at bends, and Surge Divide's moving power packets now flow around the complete rail without visible jumps.
 - Cleaned defeat-field inspection without altering the concluded simulation: surviving enemies, defenses, roads, nodes, and ranges remain visible, while projectiles and momentary attack rings from the fatal tick are suppressed instead of appearing frozen. This is renderer-only, so solo/co-op checksums remain untouched.
 - Enforced the two-player wave gate at the transport boundary. Player 2 can no longer bypass the readiness coordinator with a raw `StartWave` request, false readiness cannot count as consent, and host ready flags must agree with the authoritative P1/P2 mask.

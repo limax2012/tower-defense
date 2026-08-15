@@ -114,7 +114,7 @@ public sealed class Game1 : Game
             _ui.ConfigureMaps(_content.Maps.Values, _content.WaveSets, _content.Enemies);
             _ui.ConfigureDifficulties(_content.Difficulties.Values);
             _ui.ConfigureChallenges(_content.Challenges.Values);
-            _ui.ConfigureTowerLibrary(_content.Towers.Values, _content.Enemies.Values);
+            _ui.ConfigureTowerLibrary(_content.Towers.Values, _content.Enemies.Values, _content.Tactics);
             _ui.ConfigureSettings(_settings);
             _ui.SetSaveState(SaveSlotsExistSafely());
             _debug = new DebugOverlay(font);

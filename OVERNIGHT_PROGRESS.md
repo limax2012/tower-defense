@@ -33,6 +33,7 @@ Updated: 2026-08-15
 ### Towers, branches, and active play
 
 - Added pre-purchase, hover, placement, selection, and exact-upgrade tower intelligence.
+- Added a fourth Tactical Library Systems page so progression marks, all seven targeting modes, status stacking, the shared Protocol cooldown, Beacon/Surge combination rules, and current Plate/Forge economics are discoverable before or during a run.
 - Added targeting modes First, Last, Strongest, Weakest, Nearest, Fastest, and Armored.
 - Added two mutually exclusive Tier-2 doctrines and two final specializations to all ten towers. Planning UI shows exact current, next, and completed-path stats before spending.
 - Replaced the generic Overdrive payload with ten thematic Protocols: each tower has its own duration, cooldown, stat package, burst/status effect, animation/audio feedback, synchronized command, telemetry, and optional pressure-aware automatic activation.

@@ -106,11 +106,13 @@ public sealed class UIManager
     private int _enemyLibraryIndex;
     private bool _libraryShowsThreats;
     private bool _libraryShowsCampaign;
+    private bool _libraryShowsSystems;
     private int _campaignLibraryMapIndex;
     private Rectangle _towerLibraryDoctrineAButton;
     private Rectangle _towerLibraryDoctrineBButton;
     private IReadOnlyList<TowerDefinition> _libraryTowers = Array.Empty<TowerDefinition>();
     private IReadOnlyList<EnemyDefinition> _libraryEnemies = Array.Empty<EnemyDefinition>();
+    private TacticsDefinition _libraryTactics = new();
     private readonly Dictionary<string, IReadOnlyList<CampaignWaveReference>> _libraryCampaignWaves = new(StringComparer.OrdinalIgnoreCase);
     private readonly Rectangle _mapButton = new(440, 370, 190, 40);
     private readonly Rectangle _difficultyButton = new(640, 370, 90, 40);
@@ -151,9 +153,10 @@ public sealed class UIManager
     private readonly Rectangle _restartButton = new(500, 444, 280, 46);
     private readonly Rectangle _mainMenuButton = new(500, 496, 280, 46);
     private readonly Rectangle _towerLibraryCloseButton = new(1080, 48, 130, 38);
-    private readonly Rectangle _towerLibraryTowerTabButton = new(600, 48, 145, 38);
-    private readonly Rectangle _towerLibraryThreatTabButton = new(755, 48, 145, 38);
-    private readonly Rectangle _towerLibraryCampaignTabButton = new(910, 48, 145, 38);
+    private readonly Rectangle _towerLibraryTowerTabButton = new(520, 48, 125, 38);
+    private readonly Rectangle _towerLibraryThreatTabButton = new(655, 48, 125, 38);
+    private readonly Rectangle _towerLibraryCampaignTabButton = new(790, 48, 130, 38);
+    private readonly Rectangle _towerLibrarySystemsTabButton = new(930, 48, 125, 38);
     private readonly Rectangle _resultContinueButton = new(296, 580, 206, 46);
     private readonly Rectangle _resultRestartButton = new(518, 580, 206, 46);
     private readonly Rectangle _resultMenuButton = new(740, 580, 206, 46);
@@ -182,6 +185,7 @@ public sealed class UIManager
     public string? SelectedRunHistoryId => _selectedRunHistoryId;
     public bool LibraryShowsThreats => _libraryShowsThreats;
     public bool LibraryShowsCampaign => _libraryShowsCampaign;
+    public bool LibraryShowsSystems => _libraryShowsSystems;
     public string? SelectedLibraryTowerId => _libraryTowers.Count == 0 ? null : _libraryTowers[_towerLibraryIndex].Id;
     public string? SelectedLibraryEnemyId => _libraryEnemies.Count == 0 ? null : _libraryEnemies[_enemyLibraryIndex].Id;
     public string? SelectedLibraryCampaignMapId => _maps.Count == 0 ? null : _maps[_campaignLibraryMapIndex].Id;
@@ -349,10 +353,12 @@ public sealed class UIManager
         _selectedChallengeIndex = defaultIndex >= 0 ? defaultIndex : 0;
     }
 
-    public void ConfigureTowerLibrary(IEnumerable<TowerDefinition> towers, IEnumerable<EnemyDefinition>? enemies = null)
+    public void ConfigureTowerLibrary(IEnumerable<TowerDefinition> towers, IEnumerable<EnemyDefinition>? enemies = null,
+        TacticsDefinition? tactics = null)
     {
         _libraryTowers = towers.OrderBy(x => x.PurchaseCost).ThenBy(x => x.Id).ToArray();
         _libraryEnemies = enemies?.OrderBy(x => x.MaxHealth).ThenBy(x => x.Id).ToArray() ?? Array.Empty<EnemyDefinition>();
+        if (tactics is not null) _libraryTactics = tactics;
         _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, Math.Max(0, _libraryTowers.Count - 1));
         _enemyLibraryIndex = Math.Clamp(_enemyLibraryIndex, 0, Math.Max(0, _libraryEnemies.Count - 1));
     }
@@ -1128,7 +1134,7 @@ public sealed class UIManager
         if (input.TabPressed) CycleTowerLibraryTab();
         if (input.NavigateUpPressed || input.NavigateDownPressed)
             MoveTowerLibrarySelection(input.NavigateUpPressed ? -1 : 1);
-        var activeCount = _libraryShowsCampaign ? _maps.Count : _libraryShowsThreats ? _libraryEnemies.Count : _libraryTowers.Count;
+        var activeCount = _libraryShowsSystems ? 0 : _libraryShowsCampaign ? _maps.Count : _libraryShowsThreats ? _libraryEnemies.Count : _libraryTowers.Count;
         if (input.TowerHotkey > 0 && input.TowerHotkey <= activeCount)
         {
             if (_libraryShowsCampaign) _campaignLibraryMapIndex = input.TowerHotkey - 1;
@@ -1143,20 +1149,31 @@ public sealed class UIManager
         {
             _libraryShowsThreats = false;
             _libraryShowsCampaign = false;
+            _libraryShowsSystems = false;
             return false;
         }
         if (_towerLibraryThreatTabButton.Contains(point) && _libraryEnemies.Count > 0)
         {
             _libraryShowsThreats = true;
             _libraryShowsCampaign = false;
+            _libraryShowsSystems = false;
             return false;
         }
         if (_towerLibraryCampaignTabButton.Contains(point) && _libraryCampaignWaves.Count > 0)
         {
             _libraryShowsThreats = false;
             _libraryShowsCampaign = true;
+            _libraryShowsSystems = false;
             return false;
         }
+        if (_towerLibrarySystemsTabButton.Contains(point))
+        {
+            _libraryShowsThreats = false;
+            _libraryShowsCampaign = false;
+            _libraryShowsSystems = true;
+            return false;
+        }
+        if (_libraryShowsSystems) return false;
         if (_libraryShowsCampaign)
         {
             for (var index = 0; index < _maps.Count; index++)
@@ -1199,19 +1216,31 @@ public sealed class UIManager
 
     private void CycleTowerLibraryTab()
     {
-        if (!_libraryShowsThreats && !_libraryShowsCampaign && _libraryEnemies.Count > 0)
+        if (!_libraryShowsThreats && !_libraryShowsCampaign && !_libraryShowsSystems && _libraryEnemies.Count > 0)
         {
             _libraryShowsThreats = true;
             return;
         }
-        if (!_libraryShowsCampaign && _libraryCampaignWaves.Count > 0)
+        if (_libraryShowsThreats && _libraryCampaignWaves.Count > 0)
         {
             _libraryShowsThreats = false;
             _libraryShowsCampaign = true;
             return;
         }
+        if (_libraryShowsCampaign)
+        {
+            _libraryShowsCampaign = false;
+            _libraryShowsSystems = true;
+            return;
+        }
+        if (_libraryShowsSystems)
+        {
+            _libraryShowsSystems = false;
+            return;
+        }
         _libraryShowsThreats = false;
         _libraryShowsCampaign = false;
+        _libraryShowsSystems = false;
     }
 
     private void MoveSaveSlotSelection(int delta)
@@ -1258,6 +1287,7 @@ public sealed class UIManager
 
     private void MoveTowerLibrarySelection(int delta)
     {
+        if (_libraryShowsSystems) return;
         if (_libraryShowsCampaign)
         {
             if (_maps.Count > 0) _campaignLibraryMapIndex = Math.Clamp(_campaignLibraryMapIndex + delta, 0, _maps.Count - 1);
@@ -2339,22 +2369,36 @@ public sealed class UIManager
         p.DrawRect(batch, panel, ColorPalette.Ink, 2);
 
         DrawText(batch, "TACTICAL LIBRARY", new Vector2(62, 48), ColorPalette.Navy, 1.25f);
-        DrawText(batch, _libraryShowsCampaign
+        DrawText(batch, _libraryShowsSystems
+            ? "Core rules, status behavior, tactical reserves, support stacking, and co-op flow."
+            : _libraryShowsCampaign
             ? "Every arena's exact authored wave roster, base scaling, and threat sequence."
             : _libraryShowsThreats
                 ? "Base enemy profiles, rank rules, counterplay, and battlefield status symbols."
                 : "Exact tower values. Click a Tier 2 doctrine to preview either final role.",
             new Vector2(62, 82), ColorPalette.Muted, 0.56f);
         DrawButton(batch, p, _towerLibraryTowerTabButton, "TOWERS", true,
-            _libraryShowsThreats || _libraryShowsCampaign ? ColorPalette.PanelAlt : ColorPalette.Cyan,
-            _libraryShowsThreats || _libraryShowsCampaign ? ColorPalette.Ink : ColorPalette.Navy);
+            _libraryShowsThreats || _libraryShowsCampaign || _libraryShowsSystems ? ColorPalette.PanelAlt : ColorPalette.Cyan,
+            _libraryShowsThreats || _libraryShowsCampaign || _libraryShowsSystems ? ColorPalette.Ink : ColorPalette.Navy);
         DrawButton(batch, p, _towerLibraryThreatTabButton, "THREATS", _libraryEnemies.Count > 0,
             _libraryShowsThreats ? ColorPalette.Coral : ColorPalette.PanelAlt,
             _libraryShowsThreats ? ColorPalette.Paper : ColorPalette.Ink);
         DrawButton(batch, p, _towerLibraryCampaignTabButton, "CAMPAIGNS", _libraryCampaignWaves.Count > 0,
             _libraryShowsCampaign ? ColorPalette.Violet : ColorPalette.PanelAlt,
             _libraryShowsCampaign ? ColorPalette.Paper : ColorPalette.Ink);
+        DrawButton(batch, p, _towerLibrarySystemsTabButton, "SYSTEMS", true,
+            _libraryShowsSystems ? ColorPalette.Green : ColorPalette.PanelAlt,
+            _libraryShowsSystems ? ColorPalette.Navy : ColorPalette.Ink);
         DrawButton(batch, p, _towerLibraryCloseButton, "BACK", true, ColorPalette.Violet);
+
+        if (_libraryShowsSystems)
+        {
+            var systemsPanel = new Rectangle(56, 112, 1168, 540);
+            p.FillRect(batch, systemsPanel, ColorPalette.Panel);
+            p.DrawRect(batch, systemsPanel, ColorPalette.CardOutline, 1);
+            DrawSystemsLibrary(batch, p, systemsPanel, returnDestination);
+            return;
+        }
 
         var listPanel = new Rectangle(56, 112, 264, 540);
         var detailPanel = new Rectangle(334, 112, 890, 540);
@@ -2465,6 +2509,118 @@ public sealed class UIManager
         DrawFittedCenteredText(batch,
             $"W21+ inherits this arena's final roster; HP accelerates, density/cadence stay capped, and a boss returns every 5 waves.  UP/DOWN selects; TAB changes page; ESC or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
+    }
+
+    private void DrawSystemsLibrary(SpriteBatch batch, PrimitiveRenderer p, Rectangle panel, string returnDestination)
+    {
+        _towerLibraryDoctrineAButton = Rectangle.Empty;
+        _towerLibraryDoctrineBButton = Rectangle.Empty;
+        const int cardWidth = 368;
+        const int cardHeight = 238;
+        const int gap = 14;
+        var firstX = panel.X + 18;
+        var firstY = panel.Y + 18;
+        var secondY = firstY + cardHeight + gap;
+
+        DrawSystemCard(batch, p, new Rectangle(firstX, firstY, cardWidth, cardHeight),
+            "TOWER PROGRESSION", ColorPalette.Cobalt, "triangle",
+        [
+            "LEVEL 1: BASE CHASSIS",
+            "LEVEL 2: CHOOSE 1 OF 2 DOCTRINES",
+            "LEVEL 3: CHOOSE 1 OF 2 FINAL ROLES",
+            "THE DOCTRINE PERSISTS: 4 COMPLETE PATHS",
+            "1 / 2 / 3 RING SPOKES SHOW LEVEL",
+            "CENTER UP / DOWN TRIANGLE SHOWS FINAL ROLE",
+            $"SELLING RETURNS {GameConstants.SellRatio:P0} OF ALL SPEND"
+        ]);
+
+        DrawSystemCard(batch, p, new Rectangle(firstX + cardWidth + gap, firstY, cardWidth, cardHeight),
+            "TARGETING MODES", ColorPalette.Cyan, "diamond",
+        [
+            "FIRST: FARTHEST ALONG THE ROUTE",
+            "LAST: LEAST ROUTE PROGRESS",
+            "STRONGEST: MOST HEALTH + SHIELD",
+            "WEAKEST: LOWEST HEALTH PERCENTAGE",
+            "NEAREST: SHORTEST DISTANCE TO TOWER",
+            "FASTEST: HIGHEST CURRENT MOVE SPEED",
+            "ARMORED: HIGHEST CURRENT ARMOR"
+        ]);
+
+        DrawSystemCard(batch, p, new Rectangle(firstX + (cardWidth + gap) * 2, firstY, cardWidth, cardHeight),
+            "STATUS RULES", ColorPalette.Coral, "hexagon",
+        [
+            "SLOW: STRONGEST ONLY; MOVEMENT REDUCTION CAPS AT 60%",
+            "STUN: STOPS MOVEMENT WHILE ACTIVE",
+            "BURN: UP TO 2 SOURCES; ALSO REDUCES ARMOR BY 2",
+            "EXPOSE: STRONGEST BONUS RAISES ALL INCOMING DAMAGE",
+            "ARMOR BREAK: STRONGEST REDUCTION LOWERS ARMOR",
+            "ELITE / BOSS CONTROL DURATION: -30% / -60%",
+            "THE THREATS PAGE SHOWS EVERY STATUS SYMBOL"
+        ]);
+
+        DrawSystemCard(batch, p, new Rectangle(firstX, secondY, cardWidth, cardHeight),
+            "TOWER PROTOCOLS", ColorPalette.Violet, "square",
+        [
+            "E: ACTIVATE THE SELECTED TOWER MANUALLY",
+            "AUTO: ARM ONE TOWER FOR PRESSURE-AWARE USE",
+            "AUTO TRIGGERS AT ITS COUNT OR ANY ELITE / BOSS",
+            "ANY ACTIVATION STARTS THE ONE SHARED COOLDOWN",
+            "EACH TOWER HAS UNIQUE STATS, BURST, OR STATUS",
+            "THE SIDEBAR SHOWS ACTIVE TIME AND COOLDOWN",
+            "TOWER PAGES LIST EXACT TIMING AND EFFECTS"
+        ]);
+
+        DrawSystemCard(batch, p, new Rectangle(firstX + cardWidth + gap, secondY, cardWidth, cardHeight),
+            "BEACONS + SURGE NODES", ColorPalette.Gold, "circle",
+        [
+            "SIGNAL BEACON BUFFS COMBAT TOWERS INSIDE ITS AURA",
+            "RATE AND RANGE EACH USE THE STRONGEST BEACON",
+            "MULTIPLE BEACONS NEVER ADD THE SAME STAT",
+            "SURGE NODES ALSO USE THE STRONGEST LOCAL STAT",
+            "BEACON, NODE, AND ACTIVE PROTOCOL MAY COMBINE",
+            "GOLD PIP = BEACON; DASHED GOLD RING = SURGE",
+            "TOWER INTEL SHOWS EACH EXACT STAT CHANGE"
+        ]);
+
+        var plate = _libraryTactics.EmergencyDefense;
+        var forge = _libraryTactics.Generator;
+        var cadence = string.Join(" / ", forge.Levels.Take(3).Select(level => $"{level.ProductionSeconds:0}s"));
+        var capacity = string.Join(" / ", forge.Levels.Take(3).Select(level => level.Capacity));
+        var damageBonus = string.Join(" / ", forge.Levels.Take(3).Select(level => $"+{level.DefenseDamageBonus:P0}"));
+        DrawSystemCard(batch, p, new Rectangle(firstX + (cardWidth + gap) * 2, secondY, cardWidth, cardHeight),
+            "PULSE PLATES + FORGE", ColorPalette.Green, "star",
+        [
+            $"PLATE: {plate.Charges} PULSES | {plate.Damage:0.#} DAMAGE | AREA {plate.BlastRadius:0}",
+            $"START STORED {plate.StartingInventory} | FIELD CAP {plate.MaximumActive}",
+            $"DIRECT BUY {plate.PurchaseCost} + {plate.DirectPurchaseCostIncrease} PER PURCHASE",
+            $"FORGE BUILD {forge.PurchaseCost}; PRODUCTION IS WAVE-POWERED",
+            $"FORGE CADENCE L1 / L2 / L3: {cadence}",
+            $"STORED CAP L1 / L2 / L3: {capacity}",
+            $"PLATE DAMAGE L1 / L2 / L3: {damageBonus}"
+        ]);
+
+        DrawFittedCenteredText(batch,
+            $"TAB changes page.  ESC, right-click, or BACK returns to {returnDestination}.  Co-op shares credits, lives, defenses, targeting, upgrades, Protocols, and wave readiness.",
+            new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
+    }
+
+    private void DrawSystemCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string title, Color accent,
+        string shape, IReadOnlyList<string> lines)
+    {
+        p.FillRect(batch, rect, ColorPalette.PanelAlt);
+        p.FillRect(batch, new Rectangle(rect.X, rect.Y, rect.Width, 5), accent);
+        p.DrawRect(batch, rect, ColorPalette.CardOutline, 1);
+        p.DrawShape(batch, new Vector2(rect.X + 24, rect.Y + 27), 10, shape, accent, ColorPalette.Navy, 1, false);
+        DrawFittedText(batch, title, new Vector2(rect.X + 45, rect.Y + 15),
+            ColorPalette.ReadableAccent(accent, ColorPalette.PanelAlt), 0.62f, rect.Width - 58);
+        p.FillRect(batch, new Rectangle(rect.X + 12, rect.Y + 47, rect.Width - 24, 1), ColorPalette.CardOutline);
+        var y = rect.Y + 60;
+        foreach (var line in lines)
+        {
+            DrawStrictFittedText(batch, line, new Vector2(rect.X + 12, y), ColorPalette.Ink, 0.43f,
+                rect.Width - 24, 0.33f);
+            y += 23;
+        }
     }
 
     private void DrawCampaignWaveRow(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, CampaignWaveReference wave)
