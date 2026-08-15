@@ -877,6 +877,7 @@ public sealed class Game1 : Game
         _coOpWaveReady.Reset();
         _ui?.SetCoOpWaveReadyState(0, false);
         _ui?.SetCoOpConnectionState(false);
+        _ui?.CloseGameplayOverlay();
         _authoritativeCommands = null;
         _networkRunner = null;
         _networkStarted = false;

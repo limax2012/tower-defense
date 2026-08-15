@@ -212,6 +212,8 @@ public sealed class UIManager
         _restartArmed = false;
     }
 
+    public void CloseGameplayOverlay() => _towerLibraryOpen = false;
+
     public static string PauseCheckpointStatus(bool canSave) => canSave
         ? "Between waves - save slots are available."
         : "Active wave - saving unlocks after it clears.";
@@ -2188,6 +2190,8 @@ public sealed class UIManager
         DrawText(batch, "Shared credits, lives, and tower control; placement is still marked P1/P2.", new Vector2(640, 590), ColorPalette.Muted, 0.56f, true);
         DrawFittedCenteredText(batch, "UP/DOWN SELECTS ACTIONS; ENTER ACTIVATES. TAB SWITCHES FIELDS; CTRL+V PASTES; HOLD BACKSPACE ERASES.",
             new Vector2(640, 613), ColorPalette.Muted, 0.46f, 900);
+        DrawFittedCenteredText(batch, "FIRST HOST: WINDOWS MAY REQUEST FIREWALL ACCESS  |  INTERNET HOSTS FORWARD TCP 28741",
+            new Vector2(640, 640), ColorPalette.Gold, 0.46f, 900);
     }
 
     private void DrawCoOpLobby(SpriteBatch batch, PrimitiveRenderer p)
