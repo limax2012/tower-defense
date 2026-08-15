@@ -71,6 +71,7 @@ internal static class SimulationCli
         PrintArenaDifficultyMatrix(runs, content);
         PrintArenaChallengeMatrix(runs, content);
         PrintForcedBuildSummary(runs);
+        PrintForcedBuildArenaMatrix(runs);
         PrintTowerSummary(runs);
         PrintDoctrineSummary(runs);
         PrintSpecializationSummary(runs);
@@ -253,7 +254,6 @@ internal static class SimulationCli
         {
             var groupedRuns = group.ToArray();
             var towerId = groupedRuns[0].ForcedTowerId!;
-            var branchPath = group.Key[(towerId.Length + 1)..];
             var entries = groupedRuns.Select(run =>
             {
                 run.Towers.TryGetValue(towerId, out var metrics);
@@ -261,7 +261,7 @@ internal static class SimulationCli
                 {
                     Run = run,
                     Metrics = metrics,
-                    CompletedTowers = metrics?.BuildPaths.GetValueOrDefault(branchPath) ?? 0
+                    CompletedTowers = ForcedPathCompletionCount(run)
                 };
             }).ToArray();
             var completedEntries = entries.Where(entry => entry.CompletedTowers > 0).ToArray();
@@ -291,6 +291,57 @@ internal static class SimulationCli
             Console.WriteLine($"{row.Path,-58} {row.Wins,2}/{row.Runs,-2} wins  avg wave {row.AverageWave,4:0.0}  lives {row.AverageLives,4:0.0}  complete {row.CompletedRuns,2}/{row.Runs,-2} runs ({row.CompletedWins,2} wins, {row.CompletedTowers,3} towers)  complete impact/credit {row.CompletedImpactPerCredit,6:0.0}");
     }
 
+    internal static IReadOnlyList<ForcedBuildArenaSummary> SummarizeForcedBuildsByArena(IEnumerable<SimulationRunResult> runs) =>
+        runs.Where(run => run.ForcedBuildPath is not null)
+            .GroupBy(run => (Path: run.ForcedBuildPath!, run.MapId))
+            .OrderBy(group => group.Key.Path)
+            .ThenBy(group => group.Key.MapId)
+            .Select(group =>
+            {
+                var groupedRuns = group.ToArray();
+                return new ForcedBuildArenaSummary(
+                    group.Key.Path,
+                    group.Key.MapId,
+                    groupedRuns.Length,
+                    groupedRuns.Count(run => run.Won),
+                    groupedRuns.Count(run => ForcedPathCompletionCount(run) > 0),
+                    (float)groupedRuns.Average(run => run.WaveReached));
+            }).ToArray();
+
+    private static void PrintForcedBuildArenaMatrix(IEnumerable<SimulationRunResult> runs)
+    {
+        var rows = SummarizeForcedBuildsByArena(runs);
+        var mapIds = rows.Select(row => row.MapId).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(id => id).ToArray();
+        if (mapIds.Length < 2) return;
+
+        Console.WriteLine();
+        Console.WriteLine("FORCED PATH x ARENA (win rate / completion rate / average wave)");
+        Console.Write($"{"Path",-58}");
+        foreach (var mapId in mapIds) Console.Write($"  {mapId,-22}");
+        Console.WriteLine();
+        foreach (var pathGroup in rows.GroupBy(row => row.Path).OrderBy(group => group.Key))
+        {
+            Console.Write($"{pathGroup.Key,-58}");
+            foreach (var mapId in mapIds)
+            {
+                var cell = pathGroup.FirstOrDefault(row => row.MapId.Equals(mapId, StringComparison.OrdinalIgnoreCase));
+                var value = cell is null
+                    ? "-"
+                    : $"{cell.Wins / (float)cell.Runs:P0} / {cell.CompletedRuns / (float)cell.Runs:P0} / {cell.AverageWave:0.0}";
+                Console.Write($"  {value,-22}");
+            }
+            Console.WriteLine();
+        }
+    }
+
+    private static int ForcedPathCompletionCount(SimulationRunResult run)
+    {
+        if (run.ForcedBuildPath is null || run.ForcedTowerId is null ||
+            !run.Towers.TryGetValue(run.ForcedTowerId, out var metrics)) return 0;
+        var branchPath = run.ForcedBuildPath[(run.ForcedTowerId.Length + 1)..];
+        return metrics.BuildPaths.GetValueOrDefault(branchPath);
+    }
+
     internal sealed record ForcedBuildSummary(
         string Path,
         int Runs,
@@ -301,6 +352,14 @@ internal static class SimulationCli
         int CompletedWins,
         int CompletedTowers,
         float CompletedImpactPerCredit);
+
+    internal sealed record ForcedBuildArenaSummary(
+        string Path,
+        string MapId,
+        int Runs,
+        int Wins,
+        int CompletedRuns,
+        float AverageWave);
 
     private static void PrintTowerSummary(IEnumerable<SimulationRunResult> runs)
     {

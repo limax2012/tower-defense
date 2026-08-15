@@ -171,7 +171,7 @@ internal static class Program
         const string specializationId = "rapid_array";
         const string branchPath = doctrineId + ">" + specializationId;
 
-        static SimulationRunResult Run(bool won, bool completed, int completedTowers, int seed)
+        static SimulationRunResult Run(bool won, bool completed, int completedTowers, int seed, string mapId = "foundry_loop")
         {
             var metrics = new TowerRunMetrics
             {
@@ -184,7 +184,7 @@ internal static class Program
             if (completed) metrics.BuildPaths[branchPath] = completedTowers;
             return new SimulationRunResult
             {
-                MapId = "foundry_loop",
+                MapId = mapId,
                 DifficultyId = "hard",
                 ChallengeId = "standard",
                 Strategy = AutoPlayerStrategy.Adaptive,
@@ -215,7 +215,7 @@ internal static class Program
         var summary = SimulationCli.SummarizeForcedBuilds([
             Run(true, true, 2, 1),
             Run(false, false, 0, 2),
-            Run(false, true, 1, 3)
+            Run(false, true, 1, 3, "relay_divide")
         ]).Single();
         Check.Equal($"{towerId}:{branchPath}", summary.Path, "forced summary path identity");
         Check.Equal(3, summary.Runs, "forced summary total runs");
@@ -224,6 +224,20 @@ internal static class Program
         Check.Equal(1, summary.CompletedWins, "forced summary wins among completed runs");
         Check.Equal(3, summary.CompletedTowers, "forced summary completed tower count");
         Check.Nearly(1, summary.CompletedImpactPerCredit, "forced summary excludes incomplete-run efficiency");
+
+        var arenas = SimulationCli.SummarizeForcedBuildsByArena([
+            Run(true, true, 2, 1),
+            Run(false, false, 0, 2),
+            Run(false, true, 1, 3, "relay_divide")
+        ]);
+        Check.Equal(2, arenas.Count, "forced summary separates authored arenas");
+        var foundry = arenas.Single(row => row.MapId == "foundry_loop");
+        Check.Equal(2, foundry.Runs, "forced arena summary run count");
+        Check.Equal(1, foundry.Wins, "forced arena summary win count");
+        Check.Equal(1, foundry.CompletedRuns, "forced arena summary completion count");
+        var surge = arenas.Single(row => row.MapId == "relay_divide");
+        Check.Equal(0, surge.Wins, "forced arena summary preserves loss");
+        Check.Equal(1, surge.CompletedRuns, "forced arena summary preserves completed loss");
     }
 
     private static void CrashReportFallback()

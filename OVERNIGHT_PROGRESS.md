@@ -22,6 +22,7 @@ Updated: 2026-08-15
 - Telemetry covers economy, purchases/upgrades/sales, branches, attributed damage/kills, armor/shield/overkill, enemies, waves, plates, forge production, Protocol activations, and early-call rewards.
 - CLI supports `--simulate`, `--simulate-full`, `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, `--no-protocols`, and `--output`.
 - Forced-build reports now distinguish the requested path from paths actually completed in each run, including completion coverage, wins among completed runs, completed tower count, and completed-run impact per credit. Expensive or late paths can no longer look weak merely because a failed run never afforded them.
+- Forced sweeps also print a path-by-arena matrix with win rate, completion rate, and average wave. A fresh 1,920-run Hard corpus demonstrates why both views matter: Arc finals were actually completed in only 7–8 of 48 requested-path runs, while Breach Round completed in 20–22 and still trailed Shatter Shell after conditioning on completion.
 - A matched Hard control measured Protocol value at 73/144 wins enabled versus 52/144 disabled. Every tower's Protocol activated; Tactical gained the most, confirming the active layer rewards engagement without becoming mandatory.
 
 ### Waves, enemies, and strategic information
