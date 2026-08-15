@@ -14,15 +14,15 @@ The listener is dual-stack and binds all adapters. The join code is a lightweigh
 ## Match rules
 
 - Two players share credits, lives, wave state, speed, emergency inventory, and the single Charge Forge.
-- Towers and the forge retain an owner. Only that owner may retarget, upgrade, specialize, Overdrive, or sell the structure.
+- Towers and the forge retain their original placer for the P1/P2 field ring and analytics, but ownership never restricts control. Either player may retarget, choose either upgrade branch, arm or trigger a Protocol, upgrade the forge, or sell any shared structure.
 - Either player may place towers and use shared Pulse Plates.
 - Both players must ready every wave. The host queues the authoritative start only after both bits are set.
-- A jointly early-called intermission awards the normal shared 20-credit reward.
+- A jointly early-called intermission awards the normal shared 20-credit reward only when the second ready signal reaches the host before the countdown expires.
 - Pause is disabled in online play; speed changes are shared authoritative commands.
 - Middle-click emits a transient cyan/coral player ping.
-- Result restart ends the online session rather than silently creating divergent rematches.
+- **Restart Co-op** retains the connection and asks the host to create and broadcast a fresh authoritative match on the same map. **Main Menu** explicitly ends the session.
 
-Shared economy is the smallest understandable cooperative model, while ownership prevents destructive griefing. Resource gifting is unnecessary because all spend already uses the same pool.
+Shared economy and unrestricted shared control make the defense a genuinely joint plan. Placer identity is presentation metadata rather than a permission boundary, and resource gifting is unnecessary because all spend already uses the same pool.
 
 ## Deterministic command seam
 
@@ -38,7 +38,7 @@ The host:
 
 Both peers advance `DeterministicSessionRunner` with a fixed simulation step. `SessionChecksum` includes map, waves, shared economy, enemies, towers, ownership, targeting, branches, Overdrive state/cooldown, projectiles, Pulse Plate handled-enemy IDs, and forge state. Peers exchange periodic tick/checksum messages and fail clearly on divergence or a command arriving after its tick.
 
-Network code never implements a second copy of placement, affordability, ownership, upgrade, tactical, or selling rules; it calls the same validated `GameSession` methods as solo UI and automated players.
+Network code never implements a second copy of placement, affordability, upgrade, tactical, or selling rules; it calls the same validated `GameSession` methods as solo UI and automated players.
 
 ## Transport
 
@@ -47,8 +47,8 @@ Network code never implements a second copy of placement, affordability, ownersh
 - Maximum message length: 65,536 characters.
 - TCP `NoDelay` enabled for command responsiveness.
 - Six-character code handshake before the host accepts Player 2.
-- Message types: hello/welcome/rejected, command request/receipt/authoritative command, start session, ready/wave ready, tick sync, ping, and disconnect.
-- Map ID travels in `StartSession`; Player 2 instantiates the exact host map before readying.
+- Message types: hello/welcome/rejected, command request/receipt/authoritative command, state snapshot/resync request, ready/wave ready, tick sync, restart request, ping, and disconnect.
+- Map, difficulty, challenge, active combat, pending commands, economy, ready state, and run identity travel in the authoritative snapshot. Player 2 reconstructs the exact host session before readying.
 - Host command input delay: six fixed ticks, providing a small latency buffer.
 
 ## Test coverage
@@ -56,11 +56,11 @@ Network code never implements a second copy of placement, affordability, ownersh
 - Valid direct transport handshake and command/receipt serialization through `localhost`.
 - Invalid join-code rejection at client and host.
 - DNS, IPv4/default-port, explicit-port, and bracketed IPv6 endpoint parsing.
-- Owner-only placement mutation, targeting, upgrade, specialization, Overdrive, and duplicate rejection.
+- Shared cross-player targeting, doctrine/final upgrades, Protocol control, selling, forge management, and duplicate rejection while preserving original placer identity.
 - Mirrored deterministic placement, wave start, Overdrive, active duration, cooldown, ownership, and final checksum.
 - Wave-ready coordinator behavior.
-- Map identity in checksums and map/session construction.
-- Graceful connection close detection.
+- Map/difficulty/challenge identity and latent future-entity state in checksums and session construction.
+- Active-combat snapshot round trip, future-command restoration, post-reconnect combat soak, repeated loopback reconnection, and graceful connection close detection.
 
 The native menu, address/code fields, map selection label, and lobby presentation have also been visually inspected.
 
