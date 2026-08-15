@@ -134,7 +134,9 @@ public static class TowerInfo
                 ? $"Burn {level.BurnDamagePerSecond:0.#}/s; AoE {level.SplashRadius:0}; scorched armor -2"
                 : $"Burn {level.BurnDamagePerSecond:0.#}/s; scorched armor -2",
             "armor_projectile" => level.PriorityDamageMultiplier > 1f
-                ? $"Heavy targets x{level.PriorityDamageMultiplier:0.##}; pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0}"
+                ? level.SplashTargetLimit > 1
+                    ? $"Heavy x{level.PriorityDamageMultiplier:0.##}; {level.SplashTargetLimit} targets max; pierce {level.ArmorPierce:0}"
+                    : $"Heavy targets x{level.PriorityDamageMultiplier:0.##}; pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0}"
                 : level.ArmorReduction > 0
                     ? $"Pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0}"
                     : $"Armor pierce {level.ArmorPierce:0}",

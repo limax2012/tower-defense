@@ -134,8 +134,8 @@
     ],
     "specializations": [
       {
-        "id": "breach_round", "displayName": "Breach Round", "shortLabel": "BREACH", "summary": "Armored, elite, and boss penetrator", "upgradeCost": 240,
-        "level": { "range": 205, "damage": 68, "attacksPerSecond": 0.70, "projectileSpeed": 720, "armorPierce": 20, "armorReduction": 5, "armorReductionDuration": 5.0, "priorityDamageMultiplier": 1.5, "upgradeCost": null }
+        "id": "breach_round", "displayName": "Breach Round", "shortLabel": "BREACH", "summary": "Two-target armored, elite, and boss penetrator", "upgradeCost": 240,
+        "level": { "range": 205, "damage": 68, "attacksPerSecond": 0.70, "projectileSpeed": 720, "splashRadius": 20, "splashTargetLimit": 2, "homingSplash": true, "armorPierce": 20, "armorReduction": 5, "armorReductionDuration": 5.0, "priorityDamageMultiplier": 1.5, "upgradeCost": null }
       },
       {
         "id": "shatter_shell", "displayName": "Shatter Shell", "shortLabel": "SHATTER", "summary": "Area armor-break impact", "upgradeCost": 235,

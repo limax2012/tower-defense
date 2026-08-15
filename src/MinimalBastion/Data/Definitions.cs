@@ -216,6 +216,7 @@ public sealed class TowerLevelDefinition
     public float PelletSpreadDegrees { get; set; }
     public float SplashRadius { get; set; }
     public int SplashTargetLimit { get; set; }
+    public bool HomingSplash { get; set; }
     public int ChainCount { get; set; }
     public float ChainDamage { get; set; }
     public float ChainRange { get; set; }
@@ -254,6 +255,7 @@ public sealed class TowerLevelDefinition
             PelletSpreadDegrees = PelletSpreadDegrees,
             SplashRadius = SplashRadius * utility,
             SplashTargetLimit = Math.Max(0, SplashTargetLimit + doctrine.SplashTargetLimitBonus),
+            HomingSplash = HomingSplash,
             ChainCount = Math.Max(0, ChainCount + doctrine.ChainCountBonus),
             ChainDamage = ChainDamage * damage,
             ChainRange = ChainRange * range,

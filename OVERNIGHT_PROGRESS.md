@@ -5,10 +5,10 @@ Updated: 2026-08-15
 ## Verified checkpoint
 
 - Release build: 0 warnings, 0 errors with the workspace-local .NET 10 SDK.
-- Deterministic regression suite: 67/67 passing.
+- Deterministic regression suite: 68/68 passing.
 - Self-contained Windows x64 publish: `.build/publish/MinimalBastion.exe`.
 - Content: 4 maps with independently authored campaigns, 10 towers with 20 tier-two doctrines and 20 final specializations, 10 distinct Protocols, 5 enemy bases plus elite/boss ranks, difficulty/directive profiles, tactical reserves, and endless continuation.
-- Canonical five-seed Hard matrix: 140/240 wins (58.3%). A fresh three-seed audit on the current executable produced 75/144 wins (52.1%), with the reworked Rapid Array active and Surge Divide remaining the hardest arena.
+- Canonical five-seed Hard matrix: 140/240 wins (58.3%). A fresh three-seed audit on the current executable produced 79/144 wins (54.9%) after the bounded Rapid Array and Breach Round role repairs; the game remains in its demanding target band and Surge Divide retains the lowest average surviving lives.
 - Native visual QA covers title/settings/co-op flows, all map treatments, tactical sidebar states, Surge Node overlap intel, Protocol/Beacon markers, Pulse Plates/Forge, high-resolution and wide-aspect rendering, result/field inspection, and the complete Tower/Threat/Campaign library. The latest 1920-wide pass reconfirmed title and doctrine-card spacing plus Breaker/Beacon contrast.
 - Git history is maintained on `agent/overnight-arena-progression` and mirrored to `origin`; tested feature units are committed incrementally while `main` remains untouched during the active overnight run.
 
@@ -41,6 +41,7 @@ Updated: 2026-08-15
 - Replaced the generic Overdrive payload with ten thematic Protocols: each tower has its own duration, cooldown, stat package, burst/status effect, animation/audio feedback, synchronized command, telemetry, and optional pressure-aware automatic activation.
 - Removed Watchtower's latent level-3 armor pierce after fixing generic projectile behavior; long range and anti-armor now retain distinct jobs.
 - Rebalanced Breaker Cannon's final roles with matched Hard simulations: Breach Round deals 1.5x damage to armored, elite, and boss targets, while Shatter Shell applies its area hit and armor break to at most four targets. Both doctrine pairings now have clear use cases instead of Shatter retaining unbounded crowd scaling.
+- Gave Breach Round a tracking 20-unit impact capped at two targets after completion-conditioned audits showed that its boss microbenchmark strength did not translate into viable mixed campaigns. Matched seed results improved its two doctrine paths from 15–16/48 to 21/48 wins while Shatter stayed at 22–25/48; Shatter still has more than twice the radius and twice the target cap.
 - Replaced the separate level badges with integrated radial level marks: one top spoke at level 1, then fixed 120/240-degree spokes for levels 2/3. Every tower also uses the same outer ring.
 
 ### Tactical defenses and economy integrity

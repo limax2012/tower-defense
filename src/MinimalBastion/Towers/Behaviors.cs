@@ -127,7 +127,10 @@ public sealed class ArmorProjectileBehavior : ITowerBehavior
     {
         var level = context.Tower.Level;
         var status = BehaviorHelpers.Status(context, StatusType.ArmorBreak, level.ArmorReductionDuration, level.ArmorReduction);
-        BehaviorHelpers.Projectile(context, context.Target, level.SplashRadius > 0 ? ProjectileKind.ImpactPoint : ProjectileKind.Homing,
+        var kind = level.SplashRadius > 0 && !level.HomingSplash
+            ? ProjectileKind.ImpactPoint
+            : ProjectileKind.Homing;
+        BehaviorHelpers.Projectile(context, context.Target, kind,
             context.Target.Position, level.SplashRadius,
             BehaviorHelpers.Payload(context, level, level.Damage, status, false, level.ArmorPierce), level.ProjectileSpeed,
             context.Tower.Definition.Visual.PrimaryColor, splashTargetLimit: level.SplashTargetLimit);

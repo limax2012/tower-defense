@@ -67,6 +67,7 @@ internal static class Program
             ("arc relay chain", ArcRelayChain),
             ("frost area control", FrostAreaControl),
             ("needle rapid micro burst", NeedleRapidMicroBurst),
+            ("breaker breach punch through", BreakerBreachPunchThrough),
             ("mortar predictive aim", MortarPredictiveAim),
             ("economy telemetry", EconomyTelemetry),
             ("run statistics", RunStatistics),
@@ -347,8 +348,11 @@ internal static class Program
             salvo.SplashTargetLimit == 7 && quake.SplashTargetLimit == 10,
             "Mortar impact caps bound extreme crowd scaling while Quake owns wider control");
         var breaker = content.Towers["breaker_cannon"];
-        Check.Nearly(1.5f, breaker.Specializations.Single(x => x.Id == "breach_round").Level.PriorityDamageMultiplier,
+        var breach = breaker.Specializations.Single(x => x.Id == "breach_round").Level;
+        Check.Nearly(1.5f, breach.PriorityDamageMultiplier,
             "Breach Round has an explicit armored, elite, and boss role");
+        Check.True(breach.HomingSplash && breach.SplashTargetLimit == 2 && breach.SplashRadius == 20,
+            "Breach Round gains tightly capped tracking punch-through without matching Shatter crowd coverage");
         Check.Equal(4, breaker.Specializations.Single(x => x.Id == "shatter_shell").Level.SplashTargetLimit,
             "Shatter Shell crowd throughput is bounded");
         var beacon = content.Towers["signal_beacon"];
@@ -2744,6 +2748,38 @@ internal static class Program
         Check.True(rapid.Level.SplashRadius <= 16, "Rapid Array remains a compact burst rather than general splash artillery");
     }
 
+    private static void BreakerBreachPunchThrough()
+    {
+        var session = Session();
+        var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        var definition = content.Towers["breaker_cannon"];
+        var tower = new TowerInstance(19, definition, new Vector2(100, 150));
+        Check.True(tower.TryChooseDoctrine("breaker_bored") && tower.TrySpecialize("breach_round"),
+            "create completed Breach Round path");
+        var crowd = Enumerable.Range(0, 3)
+            .Select(index => new EnemyInstance(60 + index, session.Content.Enemies["armored"], session.Map.Path, 1, 1))
+            .ToArray();
+        crowd[0].UpdateMovement(10, session.Map.Path);
+        crowd[1].UpdateMovement(10.8f, session.Map.Path);
+        crowd[2].UpdateMovement(13.2f, session.Map.Path);
+        session.Enemies.AddRange(crowd);
+
+        TowerBehaviorRegistry.Create("armor_projectile").Attack(new TowerInstanceContext
+        {
+            Tower = tower,
+            Target = crowd[0],
+            Session = session
+        });
+        var shell = session.Projectiles.Projectiles.Single();
+        Check.Equal(ProjectileKind.Homing, shell.Kind, "Breach Round tracks its priority target instead of firing at stale ground");
+        Check.Equal(2, shell.CaptureCoOpState().SplashTargetLimit, "Breach Round forwards its strict two-target cap");
+        session.Projectiles.Update(1, session);
+        Check.Equal(2, crowd.Count(enemy => enemy.Health < enemy.MaxHealth),
+            "Breach Round punches through only one nearby escort");
+        Check.True(crowd.Take(2).All(enemy => enemy.Health < enemy.MaxHealth) && crowd[2].Health == crowd[2].MaxHealth,
+            "Breach punch-through resolves the nearest packed targets without becoming Shatter crowd splash");
+    }
+
     private static void TowerInformation()
     {
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
@@ -2755,6 +2791,9 @@ internal static class Program
         Check.True(content.Towers.Values.All(x => TowerInfo.ShortRole(x).Length <= 10), "catalog roles fit compact cards");
         Check.True(content.Towers.Values.All(x => x.Visual.Marks == 1), "every tower begins with one level mark");
         Check.True(content.Towers.Values.All(x => x.Visual.Ring), "every tower has a consistent outer ring");
+        var breachLevel = content.Towers["breaker_cannon"].Specializations.Single(x => x.Id == "breach_round").Level;
+        Check.True(TowerInfo.Special(content.Towers["breaker_cannon"], breachLevel).Contains("2 targets max", StringComparison.Ordinal),
+            "compact Breach intel exposes its strict punch-through limit");
 
         var pelletLevel = content.Towers["shard_fan"].Levels[0];
         Check.Nearly(pelletLevel.Damage * pelletLevel.AttacksPerSecond * pelletLevel.PelletCount,
