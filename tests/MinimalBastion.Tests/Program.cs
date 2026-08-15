@@ -152,6 +152,14 @@ internal static class Program
         Check.Equal("siege_mortar", path!.TowerId, "forced build parser tower");
         Check.Equal("mortar_loader", path.DoctrineId, "forced build parser doctrine");
         Check.Equal("quake_shell", path.SpecializationId, "forced build parser final role");
+        var mortarPaths = SimulationCli.ResolveForcedBuilds("siege_mortar:all", content);
+        Check.Equal(4, mortarPaths.Count, "single-tower forced sweep covers every doctrine and final-role pairing");
+        Check.True(mortarPaths.All(candidate => candidate!.TowerId == "siege_mortar"),
+            "single-tower forced sweep stays on the requested tower");
+        var allPaths = SimulationCli.ResolveForcedBuilds("all", content);
+        Check.Equal(40, allPaths.Count, "complete forced sweep covers all forty finished build paths");
+        Check.Equal(40, allPaths.Select(candidate => $"{candidate!.TowerId}:{candidate.DoctrineId}>{candidate.SpecializationId}")
+            .Distinct(StringComparer.OrdinalIgnoreCase).Count(), "complete forced sweep has no duplicate build paths");
     }
 
     private static void CrashReportFallback()

@@ -44,6 +44,12 @@ public sealed class SimulationRunResult
     public required string ChallengeId { get; init; }
     public required AutoPlayerStrategy Strategy { get; init; }
     public required int Seed { get; init; }
+    public string? ForcedTowerId { get; init; }
+    public string? ForcedDoctrineId { get; init; }
+    public string? ForcedSpecializationId { get; init; }
+    public string? ForcedBuildPath => ForcedTowerId is null || ForcedDoctrineId is null || ForcedSpecializationId is null
+        ? null
+        : $"{ForcedTowerId}:{ForcedDoctrineId}>{ForcedSpecializationId}";
     public required string Result { get; init; }
     public required int WaveReached { get; init; }
     public required int LivesRemaining { get; init; }

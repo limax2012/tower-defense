@@ -24,7 +24,7 @@ internal static class SimulationCli
         var maximumWave = ResolveMaximumWave(args, content.Waves.Waves.Count);
         var difficulties = ResolveDifficulties(ReadValue(args, "--difficulty"), content);
         var challenges = ResolveChallenges(ReadValue(args, "--challenge"), content);
-        var forcedBuild = ParseForcedBuild(ReadValue(args, "--force-build"), content);
+        var forcedBuilds = ResolveForcedBuilds(ReadValue(args, "--force-build"), content);
         var useProtocols = !args.Any(arg => arg.Equals("--no-protocols", StringComparison.OrdinalIgnoreCase));
         var summaryOnly = args.Any(arg => arg.Equals("--summary-only", StringComparison.OrdinalIgnoreCase));
 
@@ -32,6 +32,7 @@ internal static class SimulationCli
         foreach (var mapId in maps)
         foreach (var difficultyId in difficulties)
         foreach (var challengeId in challenges)
+        foreach (var forcedBuild in forcedBuilds)
             foreach (var strategy in strategies)
             {
                 for (var index = 0; index < runsPerStrategy; index++)
@@ -60,8 +61,8 @@ internal static class SimulationCli
         var batch = new SimulationBatchResult { Runs = runs };
         Console.WriteLine();
         Console.WriteLine($"Runs {runs.Count}, wins {batch.Wins}, win rate {batch.WinRate:P1}, average wave {batch.AverageWaveReached:0.0}, average lives {batch.AverageLivesRemaining:0.0}.");
-        if (forcedBuild is not null)
-            Console.WriteLine($"Forced completed path: {forcedBuild.TowerId}:{forcedBuild.DoctrineId}>{forcedBuild.SpecializationId}");
+        if (forcedBuilds.Count == 1 && forcedBuilds[0] is { } onlyForcedBuild)
+            Console.WriteLine($"Forced completed path: {onlyForcedBuild.TowerId}:{onlyForcedBuild.DoctrineId}>{onlyForcedBuild.SpecializationId}");
         if (!useProtocols) Console.WriteLine("Protocol activations disabled for this control group.");
         PrintStrategySummary(runs);
         PrintDifficultySummary(runs);
@@ -69,6 +70,7 @@ internal static class SimulationCli
         PrintMapSummary(runs);
         PrintArenaDifficultyMatrix(runs, content);
         PrintArenaChallengeMatrix(runs, content);
+        PrintForcedBuildSummary(runs);
         PrintTowerSummary(runs);
         PrintDoctrineSummary(runs);
         PrintSpecializationSummary(runs);
@@ -131,6 +133,28 @@ internal static class SimulationCli
             throw new ArgumentException($"Unknown forced build '{value}'.");
         return new ForcedBuildPath(tower.Id, doctrineId, specializationId);
     }
+
+    internal static IReadOnlyList<ForcedBuildPath?> ResolveForcedBuilds(string? value, GameContent content)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return new ForcedBuildPath?[] { null };
+        if (value.Equals("all", StringComparison.OrdinalIgnoreCase))
+            return content.Towers.Values.SelectMany(BuildPathsForTower).Cast<ForcedBuildPath?>().ToArray();
+
+        const string allSuffix = ":all";
+        if (value.EndsWith(allSuffix, StringComparison.OrdinalIgnoreCase))
+        {
+            var towerId = value[..^allSuffix.Length];
+            if (!content.Towers.TryGetValue(towerId, out var tower))
+                throw new ArgumentException($"Unknown tower '{towerId}' for forced build sweep.");
+            return BuildPathsForTower(tower).Cast<ForcedBuildPath?>().ToArray();
+        }
+
+        return new ForcedBuildPath?[] { ParseForcedBuild(value, content) };
+    }
+
+    private static IEnumerable<ForcedBuildPath> BuildPathsForTower(TowerDefinition tower) =>
+        tower.Tier2Doctrines.SelectMany(doctrine => tower.Specializations.Select(specialization =>
+            new ForcedBuildPath(tower.Id, doctrine.Id, specialization.Id)));
 
     internal sealed record ForcedBuildPath(string TowerId, string DoctrineId, string SpecializationId);
 
@@ -217,6 +241,24 @@ internal static class SimulationCli
                 Console.Write($"  {value,-15}");
             }
             Console.WriteLine();
+        }
+    }
+
+    private static void PrintForcedBuildSummary(IEnumerable<SimulationRunResult> runs)
+    {
+        var materialized = runs.Where(run => run.ForcedBuildPath is not null).ToArray();
+        if (materialized.Length == 0) return;
+
+        Console.WriteLine();
+        Console.WriteLine("FORCED BUILD PATHS");
+        foreach (var group in materialized.GroupBy(run => run.ForcedBuildPath!).OrderBy(group => group.Key))
+        {
+            var towerId = group.First().ForcedTowerId!;
+            var towerMetrics = group.Select(run => run.Towers.GetValueOrDefault(towerId)).Where(metrics => metrics is not null).ToArray();
+            var completed = towerMetrics.Sum(metrics => metrics!.BuildPaths.GetValueOrDefault(group.Key[(towerId.Length + 1)..]));
+            var spent = towerMetrics.Sum(metrics => metrics!.CreditsSpent);
+            var impact = towerMetrics.Sum(metrics => metrics!.ContributionDamage);
+            Console.WriteLine($"{group.Key,-58} {group.Count(run => run.Won),2}/{group.Count(),-2} wins  avg wave {group.Average(run => run.WaveReached),4:0.0}  lives {group.Average(run => run.LivesRemaining),4:0.0}  completed {completed,3}  impact/credit {(spent == 0 ? 0 : impact / spent),6:0.0}");
         }
     }
 
