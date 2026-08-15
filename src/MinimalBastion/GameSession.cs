@@ -43,6 +43,17 @@ public sealed class GameSession
     public List<PulsePlateInstance> EmergencyDefenses { get; } = new();
     public ChargeForgeInstance? Generator { get; private set; }
     public int EmergencyInventory { get; private set; }
+    public int EmergencyDirectPurchasesThisWave { get; private set; }
+    public int CurrentEmergencyDirectPurchaseCost
+    {
+        get
+        {
+            var definition = _content.Tactics.EmergencyDefense;
+            var cost = (long)definition.PurchaseCost + (long)definition.DirectPurchaseCostIncrease * EmergencyDirectPurchasesThisWave;
+            return (int)Math.Min(int.MaxValue, cost);
+        }
+    }
+    public bool CanDirectPurchaseEmergencyDefense => Waves.IsActive && Economy.CanAfford(CurrentEmergencyDirectPurchaseCost);
     public TowerInstance? SelectedTower { get; private set; }
     public TowerInstance? HoveredTower { get; private set; }
     public ChargeForgeInstance? SelectedGenerator { get; private set; }
@@ -50,9 +61,8 @@ public sealed class GameSession
     public string? PlacementTowerId { get; private set; }
     public TacticalPlacementKind TacticalPlacement { get; private set; }
     public Vector2 PlacementPosition { get; private set; }
-    public Vector2 PlacementPreviewPosition => TacticalPlacement == TacticalPlacementKind.PulsePlate
-        ? Map.Path.Project(PlacementPosition).Position
-        : PlacementPosition;
+    public Vector2 PlacementPreviewPosition { get; private set; }
+    public bool HasTacticalPlacementPreview { get; private set; }
     public PlacementFailure PlacementFailure { get; private set; }
     public float Speed { get; private set; } = 1f;
     public float OverdriveCooldownRemaining { get; private set; }
@@ -66,10 +76,11 @@ public sealed class GameSession
     public bool AnnouncementPositive { get; private set; }
     public int CurrentWave => Waves.CurrentWaveNumber;
     public int TotalWaves => Waves.TotalWaves;
+    public bool IsEndlessMode => Waves.EndlessModeEnabled;
     public bool CanStartWave => Waves.CanStartNextWave;
     public float IntermissionRemaining => Waves.IntermissionRemaining;
     public int EnemiesRemaining => Waves.EstimateRemainingIncludingLive(Enemies.Count(x => !x.IsDead && !x.HasEscaped));
-    public bool CanSaveCheckpoint => !IsCoOp && !Waves.IsActive && Enemies.Count == 0 && !IsVictory && !IsDefeat;
+    public bool CanSaveCheckpoint => !Waves.IsActive && Enemies.Count == 0 && !IsVictory && !IsDefeat;
 
     public event Action<TowerInstance>? TowerPlaced;
     public event Action<TowerInstance, int>? TowerUpgraded;
@@ -126,28 +137,40 @@ public sealed class GameSession
         Waves.TryComplete(Enemies.Count == 0, this);
 
         if (Economy.Lives <= 0) IsDefeat = true;
-        else if (Waves.IsFinalWaveCleared && Enemies.Count == 0) IsVictory = true;
+        else if (Waves.IsFinalWaveCleared && !Waves.EndlessModeEnabled && Enemies.Count == 0) IsVictory = true;
     }
 
     public void HandleWorldInput(InputSnapshot input, Action<GameCommand>? commandSink = null, int playerId = 1)
     {
         PlacementPosition = input.MousePosition;
+        PlacementPreviewPosition = PlacementPosition;
+        HasTacticalPlacementPreview = TacticalPlacement != TacticalPlacementKind.None;
         HoveredTower = null;
         HoveredGenerator = null;
         if (TacticalPlacement != TacticalPlacementKind.None)
         {
-            PlacementFailure = ValidateTacticalPlacement(TacticalPlacement, PlacementPosition);
+            var tacticalPosition = PlacementPosition;
+            if (TacticalPlacement == TacticalPlacementKind.PulsePlate)
+            {
+                HasTacticalPlacementPreview = TryResolvePulsePlatePlacement(PlacementPosition, out tacticalPosition);
+                if (HasTacticalPlacementPreview) PlacementPreviewPosition = tacticalPosition;
+                PlacementFailure = ResolvePulsePlatePlacementFailure(PlacementPosition, tacticalPosition, HasTacticalPlacementPreview);
+            }
+            else
+            {
+                PlacementFailure = ValidateTacticalPlacement(TacticalPlacement, tacticalPosition);
+            }
             if (input.RightPressed || input.EscapePressed)
             {
                 CancelPlacement();
                 return;
             }
-            if (input.LeftPressed && PlacementFailure == PlacementFailure.None)
+            if (input.LeftPressed && PlacementFailure == PlacementFailure.None && HasTacticalPlacementPreview)
             {
                 if (commandSink is null)
                 {
-                    if (TacticalPlacement == TacticalPlacementKind.PulsePlate) TryDeployEmergencyDefense(PlacementPosition);
-                    else if (TacticalPlacement == TacticalPlacementKind.ChargeForge) TryPlaceGenerator(PlacementPosition);
+                    if (TacticalPlacement == TacticalPlacementKind.PulsePlate) TryDeployEmergencyDefense(tacticalPosition);
+                    else if (TacticalPlacement == TacticalPlacementKind.ChargeForge) TryPlaceGenerator(tacticalPosition);
                 }
                 else
                 {
@@ -155,8 +178,8 @@ public sealed class GameSession
                     {
                         PlayerId = playerId,
                         Type = TacticalPlacement == TacticalPlacementKind.PulsePlate ? GameCommandType.DeployEmergencyDefense : GameCommandType.PlaceGenerator,
-                        X = PlacementPosition.X,
-                        Y = PlacementPosition.Y
+                        X = tacticalPosition.X,
+                        Y = tacticalPosition.Y
                     });
                 }
                 CancelPlacement();
@@ -213,6 +236,38 @@ public sealed class GameSession
         }
     }
 
+    public void HandleInspectionInput(InputSnapshot input)
+    {
+        CancelPlacement();
+        PlacementPosition = input.MousePosition;
+        HoveredTower = null;
+        HoveredGenerator = null;
+        if (input.MousePosition.X < GameConstants.MapWidth && input.MousePosition.Y >= GameConstants.TopBarHeight)
+        {
+            if (Generator is { } generator)
+            {
+                var hitRadius = generator.Definition.Visual.Radius + 5f;
+                if (Vector2.DistanceSquared(generator.Position, input.MousePosition) <= hitRadius * hitRadius)
+                    HoveredGenerator = generator;
+            }
+            HoveredTower = HoveredGenerator is null ? Towers.OrderByDescending(tower => tower.Id).FirstOrDefault(tower =>
+            {
+                var hitRadius = tower.Definition.Visual.Radius + 4f;
+                return Vector2.DistanceSquared(tower.Position, input.MousePosition) <= hitRadius * hitRadius;
+            }) : null;
+            if (input.LeftPressed)
+            {
+                SelectedGenerator = HoveredGenerator;
+                SelectedTower = HoveredGenerator is null ? HoveredTower : null;
+            }
+        }
+        if (input.RightPressed)
+        {
+            SelectedTower = null;
+            SelectedGenerator = null;
+        }
+    }
+
     public void BeginPlacement(string towerId)
     {
         if (!_content.Towers.ContainsKey(towerId)) return;
@@ -228,6 +283,7 @@ public sealed class GameSession
         PlacementTowerId = null;
         TacticalPlacement = TacticalPlacementKind.PulsePlate;
         PlacementFailure = PlacementFailure.None;
+        HasTacticalPlacementPreview = false;
         SelectedTower = null;
         SelectedGenerator = null;
     }
@@ -243,6 +299,7 @@ public sealed class GameSession
         PlacementTowerId = null;
         TacticalPlacement = TacticalPlacementKind.ChargeForge;
         PlacementFailure = PlacementFailure.None;
+        HasTacticalPlacementPreview = false;
         SelectedTower = null;
         SelectedGenerator = null;
     }
@@ -252,6 +309,7 @@ public sealed class GameSession
         PlacementTowerId = null;
         TacticalPlacement = TacticalPlacementKind.None;
         PlacementFailure = PlacementFailure.None;
+        HasTacticalPlacementPreview = false;
     }
 
     public void ConfigureCoOp(int localPlayerId)
@@ -296,12 +354,16 @@ public sealed class GameSession
         if (kind == TacticalPlacementKind.PulsePlate)
         {
             var definition = _content.Tactics.EmergencyDefense;
-            if (EmergencyInventory <= 0 && !Economy.CanAfford(definition.PurchaseCost)) return PlacementFailure.NoDefenseAvailable;
+            if (EmergencyDefenses.Count >= definition.MaximumActive) return PlacementFailure.DefenseCapacityReached;
+            if (EmergencyInventory <= 0 && !CanDirectPurchaseEmergencyDefense) return PlacementFailure.NoDefenseAvailable;
             var projection = Map.Path.Project(position);
-            if (projection.DistanceToPath > Map.Definition.PathWidth * 0.42f) return PlacementFailure.MustBeOnPath;
-            if (projection.DistanceAlongPath < 70 || projection.DistanceAlongPath > Map.Path.TotalLength - 70)
+            if (projection.DistanceToPath > Map.Definition.PathWidth * 0.5f + definition.PlacementRoadTolerance)
+                return PlacementFailure.MustBeOnPath;
+            if (projection.DistanceAlongPath < definition.EndpointClearance ||
+                projection.DistanceAlongPath > Map.Path.TotalLength - definition.EndpointClearance)
                 return PlacementFailure.TooCloseToPathEndpoint;
-            if (EmergencyDefenses.Any(x => Vector2.DistanceSquared(x.Position, projection.Position) < 48f * 48f))
+            if (EmergencyDefenses.Any(x => Vector2.DistanceSquared(x.Position, projection.Position) <
+                definition.MinimumSpacing * definition.MinimumSpacing))
                 return PlacementFailure.OverlapsDefense;
             return PlacementFailure.None;
         }
@@ -320,6 +382,67 @@ public sealed class GameSession
         return PlacementFailure.None;
     }
 
+    /// <summary>
+    /// Resolves a cursor near the road to the closest legal pulse-plate slot. This keeps
+    /// the visible preview, local deployment, and network command on the same position.
+    /// Endpoint clearance and nearby plates are handled as snap constraints rather than
+    /// asking the player to estimate an invisible boundary.
+    /// </summary>
+    public bool TryResolvePulsePlatePlacement(Vector2 cursorPosition, out Vector2 placementPosition)
+    {
+        var definition = _content.Tactics.EmergencyDefense;
+        var projection = Map.Path.Project(cursorPosition);
+        placementPosition = projection.Position;
+        var roadSnapDistance = Map.Definition.PathWidth * 0.5f + definition.PlacementRoadTolerance;
+        if (projection.DistanceToPath > roadSnapDistance) return false;
+
+        var minimumDistance = definition.EndpointClearance;
+        var maximumDistance = Map.Path.TotalLength - definition.EndpointClearance;
+        if (maximumDistance < minimumDistance) return false;
+
+        var preferredDistance = MathHelper.Clamp(projection.DistanceAlongPath, minimumDistance, maximumDistance);
+        var searchDistance = MathF.Max(definition.EndpointClearance, definition.MinimumSpacing * 2f);
+        var bestDistanceSquared = float.MaxValue;
+        var bestPosition = placementPosition;
+        var found = false;
+
+        Consider(preferredDistance);
+        for (var offset = 1f; offset <= searchDistance; offset += 1f)
+        {
+            Consider(preferredDistance - offset);
+            Consider(preferredDistance + offset);
+        }
+
+        placementPosition = bestPosition;
+        return found;
+
+        void Consider(float distanceAlongPath)
+        {
+            if (distanceAlongPath < minimumDistance || distanceAlongPath > maximumDistance) return;
+            var candidate = Map.Path.GetPosition(distanceAlongPath);
+            var minimumSpacingSquared = definition.MinimumSpacing * definition.MinimumSpacing;
+            if (EmergencyDefenses.Any(defense => Vector2.DistanceSquared(defense.Position, candidate) < minimumSpacingSquared)) return;
+
+            var distanceSquared = Vector2.DistanceSquared(cursorPosition, candidate);
+            if (distanceSquared >= bestDistanceSquared) return;
+            bestDistanceSquared = distanceSquared;
+            bestPosition = candidate;
+            found = true;
+        }
+    }
+
+    private PlacementFailure ResolvePulsePlatePlacementFailure(Vector2 cursorPosition, Vector2 placementPosition, bool hasPlacement)
+    {
+        var definition = _content.Tactics.EmergencyDefense;
+        if (EmergencyDefenses.Count >= definition.MaximumActive) return PlacementFailure.DefenseCapacityReached;
+        if (EmergencyInventory <= 0 && !CanDirectPurchaseEmergencyDefense) return PlacementFailure.NoDefenseAvailable;
+        var projection = Map.Path.Project(cursorPosition);
+        if (projection.DistanceToPath > Map.Definition.PathWidth * 0.5f + definition.PlacementRoadTolerance)
+            return PlacementFailure.MustBeOnPath;
+        if (!hasPlacement) return PlacementFailure.OverlapsDefense;
+        return ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, placementPosition);
+    }
+
     public bool TryDeployEmergencyDefense(Vector2 position, int ownerPlayerId = 1)
     {
         if (ownerPlayerId is < 1 or > 2) return false;
@@ -328,7 +451,8 @@ public sealed class GameSession
         var purchased = EmergencyInventory <= 0;
         if (purchased)
         {
-            if (!Economy.TrySpend(definition.PurchaseCost)) return false;
+            if (!Waves.IsActive || !Economy.TrySpend(CurrentEmergencyDirectPurchaseCost)) return false;
+            EmergencyDirectPurchasesThisWave++;
         }
         else
         {
@@ -440,8 +564,21 @@ public sealed class GameSession
         return true;
     }
 
-    public bool StartNextWave() => Waves.TryStartNextWave(this);
+    public bool StartNextWave(bool? earlyStartEligible = null) => Waves.TryStartNextWave(this, earlyStartEligible);
     public void SetSpeed(float speed) => Speed = speed >= 1.5f ? 2f : 1f;
+
+    public bool BeginEndlessMode()
+    {
+        if (!IsVictory || IsDefeat || !Waves.EnableEndlessMode()) return false;
+        IsVictory = false;
+        AnnouncementTitle = "ENDLESS DEFENSE ONLINE";
+        AnnouncementSubtitle = $"Wave {CurrentWave + 1} is forming. Enemy pressure will keep scaling.";
+        AnnouncementPositive = true;
+        AnnouncementRemaining = 3.4f;
+        return true;
+    }
+
+    public TowerBuff GetSupportBuff(TowerInstance tower) => _buffSystem.Get(tower);
 
     public float GetEffectiveRange(TowerInstance tower)
     {
@@ -494,6 +631,7 @@ public sealed class GameSession
 
     public void OnWaveStarted(WaveDefinition wave, int earlyCallBonus = 0)
     {
+        EmergencyDirectPurchasesThisWave = 0;
         AnnouncementTitle = $"WAVE {wave.Number} // {wave.Archetype.ToUpperInvariant()}";
         AnnouncementSubtitle = earlyCallBonus > 0 ? $"EARLY CALL +{earlyCallBonus} // {wave.Briefing}" : wave.Briefing;
         AnnouncementPositive = false;
@@ -538,13 +676,15 @@ public sealed class GameSession
     public SaveGameData CaptureSaveGame()
     {
         if (!CanSaveCheckpoint)
-            throw new InvalidOperationException("Checkpoints can only be saved between waves in a solo game.");
+            throw new InvalidOperationException("Games can only be saved between waves.");
         return new SaveGameData
         {
+            IsCoOp = IsCoOp,
             MapId = Map.Definition.Id,
             Speed = Speed,
             OverdriveCooldownRemaining = OverdriveCooldownRemaining,
             EmergencyInventory = EmergencyInventory,
+            EmergencyDirectPurchasesThisWave = EmergencyDirectPurchasesThisWave,
             NextEnemyId = _nextEnemyId,
             NextTowerId = _nextTowerId,
             NextEmergencyDefenseId = _nextEmergencyDefenseId,
@@ -557,15 +697,17 @@ public sealed class GameSession
         };
     }
 
-    public CoOpStateSnapshot CaptureCoOpState(long tick, int readyMask, bool waveStartQueued) => new()
+    public CoOpStateSnapshot CaptureCoOpState(long tick, int readyMask, bool waveStartQueued, bool waveEarlyBonusQueued = false) => new()
     {
         MapId = Map.Definition.Id,
         Tick = Math.Max(0, tick),
         ReadyMask = readyMask,
         WaveStartQueued = waveStartQueued,
+        WaveEarlyBonusQueued = waveEarlyBonusQueued,
         Speed = Speed,
         OverdriveCooldownRemaining = OverdriveCooldownRemaining,
         EmergencyInventory = EmergencyInventory,
+        EmergencyDirectPurchasesThisWave = EmergencyDirectPurchasesThisWave,
         NextEnemyId = _nextEnemyId,
         NextTowerId = _nextTowerId,
         NextEmergencyDefenseId = _nextEmergencyDefenseId,
@@ -600,6 +742,7 @@ public sealed class GameSession
         session.Speed = data.Speed >= 1.5f ? 2f : 1f;
         session.OverdriveCooldownRemaining = MathF.Max(0, data.OverdriveCooldownRemaining);
         session.EmergencyInventory = Math.Max(0, data.EmergencyInventory);
+        session.EmergencyDirectPurchasesThisWave = Math.Max(0, data.EmergencyDirectPurchasesThisWave);
 
         foreach (var savedTower in data.Towers)
         {
@@ -646,11 +789,13 @@ public sealed class GameSession
         if (!knownMap) throw new InvalidDataException($"Saved map '{data.MapId}' is not available.");
 
         var session = new GameSession(content, data.MapId);
+        if (data.IsCoOp) session.ConfigureCoOp(1);
         session.Economy.RestoreSaveData(data.Economy);
         session.Waves.RestoreSaveData(data.Waves);
         session.Speed = data.Speed >= 1.5f ? 2f : 1f;
         session.OverdriveCooldownRemaining = MathF.Max(0, data.OverdriveCooldownRemaining);
         session.EmergencyInventory = Math.Max(0, data.EmergencyInventory);
+        session.EmergencyDirectPurchasesThisWave = Math.Max(0, data.EmergencyDirectPurchasesThisWave);
 
         foreach (var savedTower in data.Towers)
         {
@@ -674,7 +819,7 @@ public sealed class GameSession
         session.CancelPlacement();
         session.IsVictory = false;
         session.IsDefeat = false;
-        session.AnnouncementTitle = "CHECKPOINT RESTORED";
+        session.AnnouncementTitle = "SAVE RESTORED";
         session.AnnouncementSubtitle = $"Surge Divide state resumed after wave {session.CurrentWave}.";
         if (!session.Map.Definition.Id.Equals("relay_divide", StringComparison.OrdinalIgnoreCase))
             session.AnnouncementSubtitle = $"{session.Map.Definition.DisplayName} resumed after wave {session.CurrentWave}.";

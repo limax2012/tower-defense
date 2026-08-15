@@ -7,10 +7,12 @@ public sealed class SaveGameData
     public const int CurrentSchemaVersion = 1;
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public DateTime SavedAtUtc { get; set; } = DateTime.UtcNow;
+    public bool IsCoOp { get; set; }
     public string MapId { get; set; } = "";
     public float Speed { get; set; } = 1f;
     public float OverdriveCooldownRemaining { get; set; }
     public int EmergencyInventory { get; set; }
+    public int EmergencyDirectPurchasesThisWave { get; set; }
     public int NextEnemyId { get; set; } = 1;
     public int NextTowerId { get; set; } = 1;
     public int NextEmergencyDefenseId { get; set; } = 1;
@@ -40,6 +42,7 @@ public sealed class WaveSaveData
     public int CurrentWaveNumber { get; set; }
     public float IntermissionRemaining { get; set; }
     public bool IsFinalWaveCleared { get; set; }
+    public bool EndlessModeEnabled { get; set; }
 }
 
 public sealed class TowerSaveData
@@ -55,6 +58,8 @@ public sealed class TowerSaveData
     public TargetMode TargetMode { get; set; }
     public int InvestedCredits { get; set; }
     public float OverdriveRemaining { get; set; }
+    public float LifetimeDamage { get; set; }
+    public int LifetimeKills { get; set; }
 }
 
 public sealed class PulsePlateSaveData

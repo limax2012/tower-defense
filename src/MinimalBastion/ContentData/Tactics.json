@@ -2,27 +2,38 @@
   "emergencyDefense": {
     "id": "pulse_plate",
     "displayName": "Pulse Plate",
-    "purchaseCost": 70,
+    "purchaseCost": 60,
+    "directPurchaseCostIncrease": 15,
     "startingInventory": 1,
+    "maximumActive": 16,
     "charges": 2,
-    "damage": 32,
+    "damage": 38,
     "blastRadius": 52,
-    "triggerRadius": 20,
-    "armTime": 0.35,
-    "triggerCooldown": 0.0,
-    "stunDuration": 0.3,
+    "triggerRadius": 22,
+    "armTime": 0.2,
+    "triggerCooldown": 0.12,
+    "stunDuration": 0.35,
+    "slowPercent": 0.30,
+    "slowDuration": 1.5,
+    "knockbackDistance": 28,
+    "knockbackGraceSeconds": 0.75,
+    "eliteKnockbackMultiplier": 0.60,
+    "bossKnockbackMultiplier": 0.25,
     "armorPierce": 2,
+    "placementRoadTolerance": 4,
+    "minimumSpacing": 28,
+    "endpointClearance": 48,
     "visual": { "shape": "diamond", "primary": "#E8B637", "accent": "#EC5062", "radius": 13, "marks": 2, "ring": true }
   },
   "generator": {
     "id": "charge_forge",
     "displayName": "Charge Forge",
-    "purchaseCost": 320,
+    "purchaseCost": 300,
     "visual": { "shape": "hexagon", "primary": "#2AC275", "accent": "#E8B637", "radius": 22, "marks": 3, "ring": true },
     "levels": [
-      { "productionSeconds": 42, "capacity": 3, "defenseDamageBonus": 0.0, "upgradeCost": 210 },
-      { "productionSeconds": 32, "capacity": 4, "defenseDamageBonus": 0.15, "upgradeCost": 310 },
-      { "productionSeconds": 24, "capacity": 5, "defenseDamageBonus": 0.30, "upgradeCost": null }
+      { "productionSeconds": 34, "capacity": 3, "defenseDamageBonus": 0.0, "upgradeCost": 180 },
+      { "productionSeconds": 26, "capacity": 4, "defenseDamageBonus": 0.15, "upgradeCost": 250 },
+      { "productionSeconds": 20, "capacity": 5, "defenseDamageBonus": 0.30, "upgradeCost": null }
     ]
   }
 }

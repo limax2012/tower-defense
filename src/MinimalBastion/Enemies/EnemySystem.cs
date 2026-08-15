@@ -7,7 +7,7 @@ public sealed class EnemySystem
         foreach (var enemy in session.Enemies)
         {
             if (enemy.IsDead || enemy.HasEscaped) continue;
-            enemy.TickDamagePause(deltaSeconds);
+            enemy.TickRuntimeTimers(deltaSeconds);
             enemy.UpdateMovement(deltaSeconds, session.Map.Path);
             if (enemy.HasEscaped)
             {

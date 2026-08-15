@@ -16,13 +16,14 @@ public sealed class WaveManager
 
     public int CurrentWaveNumber { get; private set; }
     public bool IsActive => _activeDefinition is not null;
-    public bool CanStartNextWave => !IsActive && CurrentWaveNumber < _waves.Count;
+    public bool CanStartNextWave => !IsActive && (CurrentWaveNumber < _waves.Count || EndlessModeEnabled);
     public float IntermissionRemaining { get; private set; }
     public bool IsFinalWaveCleared { get; private set; }
+    public bool EndlessModeEnabled { get; private set; }
     public int TotalWaves => _waves.Count;
     public int QueuedEnemies { get; private set; }
     public WaveDefinition? ActiveWave => _activeDefinition;
-    public WaveDefinition? NextWave => CurrentWaveNumber < _waves.Count ? _waves[CurrentWaveNumber] : null;
+    public WaveDefinition? NextWave => ResolveWave(CurrentWaveNumber + 1);
 
     public WaveManager(IReadOnlyList<WaveDefinition> waves)
     {
@@ -30,11 +31,14 @@ public sealed class WaveManager
         CurrentWaveNumber = 0;
     }
 
-    public bool TryStartNextWave(MinimalBastion.GameSession session)
+    public bool TryStartNextWave(MinimalBastion.GameSession session, bool? earlyStartEligible = null)
     {
         if (!CanStartNextWave) return false;
-        var calledEarly = IntermissionRemaining > 0;
-        _activeDefinition = _waves[CurrentWaveNumber];
+        // Co-op locks eligibility when the host receives the second ready signal,
+        // so the fixed network input delay cannot erase a just-earned bonus.
+        var calledEarly = CurrentWaveNumber > 0 && (earlyStartEligible ?? IntermissionRemaining > 0);
+        _activeDefinition = ResolveWave(CurrentWaveNumber + 1);
+        if (_activeDefinition is null) return false;
         CurrentWaveNumber = _activeDefinition.Number;
         _groupIndex = 0;
         _spawnedInGroup = 0;
@@ -44,6 +48,14 @@ public sealed class WaveManager
         if (calledEarly) session.Economy.AwardEarlyStart();
         IntermissionRemaining = 0;
         session.OnWaveStarted(_activeDefinition, calledEarly ? GameConstants.EarlyStartBonus : 0);
+        return true;
+    }
+
+    public bool EnableEndlessMode()
+    {
+        if (EndlessModeEnabled || IsActive || !IsFinalWaveCleared || CurrentWaveNumber < _waves.Count) return false;
+        EndlessModeEnabled = true;
+        IntermissionRemaining = MathF.Max(IntermissionRemaining, GameConstants.IntermissionSeconds);
         return true;
     }
 
@@ -87,7 +99,7 @@ public sealed class WaveManager
         session.OnWaveCompleted(completedWave);
         _activeDefinition = null;
         IntermissionRemaining = GameConstants.IntermissionSeconds;
-        if (completedWave >= _waves.Count) IsFinalWaveCleared = true;
+        if (completedWave == _waves.Count) IsFinalWaveCleared = true;
     }
 
     public void UpdateIntermission(float deltaSeconds)
@@ -105,14 +117,17 @@ public sealed class WaveManager
         {
             CurrentWaveNumber = CurrentWaveNumber,
             IntermissionRemaining = IntermissionRemaining,
-            IsFinalWaveCleared = IsFinalWaveCleared
+            IsFinalWaveCleared = IsFinalWaveCleared,
+            EndlessModeEnabled = EndlessModeEnabled
         };
     }
 
     public void RestoreSaveData(WaveSaveData data)
     {
-        if (data.CurrentWaveNumber < 0 || data.CurrentWaveNumber > _waves.Count)
+        if (data.CurrentWaveNumber < 0 || (!data.EndlessModeEnabled && data.CurrentWaveNumber > _waves.Count))
             throw new InvalidDataException("Saved wave number is outside the current wave set.");
+        if (data.EndlessModeEnabled && (!data.IsFinalWaveCleared || data.CurrentWaveNumber < _waves.Count))
+            throw new InvalidDataException("Saved endless mode does not follow a completed campaign.");
         _activeDefinition = null;
         _groupIndex = 0;
         _spawnedInGroup = 0;
@@ -122,6 +137,7 @@ public sealed class WaveManager
         CurrentWaveNumber = data.CurrentWaveNumber;
         IntermissionRemaining = MathF.Max(0, data.IntermissionRemaining);
         IsFinalWaveCleared = data.IsFinalWaveCleared;
+        EndlessModeEnabled = data.EndlessModeEnabled;
     }
 
     public WaveRuntimeState CaptureCoOpState() => new()
@@ -134,17 +150,20 @@ public sealed class WaveManager
         DelayRemaining = _delayRemaining,
         IntermissionRemaining = IntermissionRemaining,
         IsFinalWaveCleared = IsFinalWaveCleared,
+        EndlessModeEnabled = EndlessModeEnabled,
         QueuedEnemies = QueuedEnemies
     };
 
     public void RestoreCoOpState(WaveRuntimeState data)
     {
-        if (data.CurrentWaveNumber < 0 || data.CurrentWaveNumber > _waves.Count)
+        if (data.CurrentWaveNumber < 0 || (!data.EndlessModeEnabled && data.CurrentWaveNumber > _waves.Count))
             throw new InvalidDataException("Network wave number is outside the current wave set.");
+        if (data.EndlessModeEnabled && (!data.IsFinalWaveCleared || data.CurrentWaveNumber < _waves.Count))
+            throw new InvalidDataException("Network endless mode does not follow a completed campaign.");
 
         _activeDefinition = data.ActiveWaveNumber <= 0
             ? null
-            : _waves.FirstOrDefault(wave => wave.Number == data.ActiveWaveNumber)
+            : ResolveWave(data.ActiveWaveNumber, data.EndlessModeEnabled)
                 ?? throw new InvalidDataException($"Network wave {data.ActiveWaveNumber} is unavailable.");
         if (_activeDefinition is not null && (data.GroupIndex < 0 || data.GroupIndex > _activeDefinition.Groups.Count))
             throw new InvalidDataException("Network wave group index is invalid.");
@@ -156,6 +175,15 @@ public sealed class WaveManager
         _delayRemaining = data.DelayRemaining;
         IntermissionRemaining = MathF.Max(0, data.IntermissionRemaining);
         IsFinalWaveCleared = data.IsFinalWaveCleared;
+        EndlessModeEnabled = data.EndlessModeEnabled;
         QueuedEnemies = Math.Max(0, data.QueuedEnemies);
+    }
+
+    private WaveDefinition? ResolveWave(int waveNumber, bool? endlessOverride = null)
+    {
+        if (waveNumber <= 0) return null;
+        if (waveNumber <= _waves.Count) return _waves[waveNumber - 1];
+        if (!(endlessOverride ?? EndlessModeEnabled) || _waves.Count == 0) return null;
+        return EndlessWaveGenerator.Create(waveNumber, _waves.Count, _waves[^1]);
     }
 }

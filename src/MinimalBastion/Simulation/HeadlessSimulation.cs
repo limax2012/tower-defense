@@ -17,8 +17,13 @@ public static class HeadlessSimulation
         var reactionTimer = 0f;
         var wasWaveActive = false;
 
-        while (!session.IsVictory && !session.IsDefeat && elapsed < options.MaximumSimulatedSeconds)
+        while (!session.IsDefeat && elapsed < options.MaximumSimulatedSeconds)
         {
+            if (session.IsVictory)
+            {
+                if (!options.ContinueEndless || options.MaximumWave <= session.TotalWaves || !session.BeginEndlessMode()) break;
+            }
+
             if (session.CanStartWave && session.CurrentWave < options.MaximumWave)
             {
                 player.PrepareForWave(session);

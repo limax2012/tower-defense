@@ -10,6 +10,7 @@ namespace MinimalBastion.Analytics;
 public sealed class RunStatistics
 {
     private readonly Dictionary<int, RunTowerStatistics> _towerByInstance = new();
+    private readonly Dictionary<int, TowerInstance> _towerInstances = new();
     private readonly Dictionary<string, RunTowerStatistics> _towers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, RunEnemyStatistics> _enemies = new(StringComparer.OrdinalIgnoreCase);
 
@@ -113,6 +114,7 @@ public sealed class RunStatistics
         GeneratorPurchases = Math.Max(0, data.GeneratorPurchases);
         GeneratorUpgrades = Math.Max(0, data.GeneratorUpgrades);
         _towerByInstance.Clear();
+        _towerInstances.Clear();
         _towers.Clear();
         _enemies.Clear();
 
@@ -146,7 +148,10 @@ public sealed class RunStatistics
             };
 
         foreach (var tower in activeTowers)
+        {
             _towerByInstance[tower.Id] = GetTower(tower.Definition.Id, tower.Definition.DisplayName);
+            _towerInstances[tower.Id] = tower;
+        }
     }
 
     private void OnTowerPlaced(TowerInstance tower)
@@ -155,6 +160,7 @@ public sealed class RunStatistics
         metrics.Purchases++;
         metrics.CreditsSpent += tower.Definition.PurchaseCost;
         _towerByInstance[tower.Id] = metrics;
+        _towerInstances[tower.Id] = tower;
     }
 
     private void OnTowerUpgraded(TowerInstance tower, int cost)
@@ -202,6 +208,8 @@ public sealed class RunStatistics
         metrics.ArmorAbsorbed += report.ArmorAbsorbed;
         metrics.Overkill += report.Overkill;
         if (report.Killed) metrics.Kills++;
+        if (_towerInstances.TryGetValue(report.SourceTowerId, out var tower))
+            tower.RecordCombat(appliedDamage, report.Killed);
     }
 
     private RunTowerStatistics GetTower(string id, string displayName)

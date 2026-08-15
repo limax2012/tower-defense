@@ -22,12 +22,13 @@ public enum CoOpMessageType
     Ping,
     StateSnapshot,
     ResyncRequest,
+    RestartRequest,
     Disconnect
 }
 
 public sealed record CoOpEnvelope
 {
-    public const int CurrentProtocolVersion = 2;
+    public const int CurrentProtocolVersion = 4;
     public CoOpMessageType Type { get; init; }
     public int ProtocolVersion { get; init; } = CurrentProtocolVersion;
     public string JoinCode { get; init; } = "";
@@ -40,6 +41,7 @@ public sealed record CoOpEnvelope
     public string Checksum { get; init; } = "";
     public bool Ready { get; init; }
     public int ReadyMask { get; init; }
+    public bool EarlyBonus { get; init; }
     public float X { get; init; }
     public float Y { get; init; }
     public CoOpStateSnapshot? State { get; init; }

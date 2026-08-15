@@ -26,15 +26,18 @@ internal static class BalanceSimulation
         foreach (var tower in content.Towers.Values.OrderBy(x => x.PurchaseCost))
         {
             var levelOne = SingleTarget(content, tower, 0, 20, 0);
-            var levelThree = SingleTarget(content, tower, 2, 20, 0);
+            var firstSpecialization = tower.Specializations.FirstOrDefault();
+            var terminalLevel = firstSpecialization?.Level ?? tower.Levels[2];
             var dense = DenseGroup(content, tower, 0, 12, 8);
             var levelTwo = SingleTarget(content, tower, 1, 20, 0);
             var upgradeDps = tower.Levels[0].UpgradeCost is { } firstCost
                 ? (levelTwo.DamagePerSecond - levelOne.DamagePerSecond) / firstCost
                 : 0;
 
-            Console.WriteLine($"{tower.DisplayName,-20}  {tower.PurchaseCost,4}  {RawDps(tower.Levels[0]),6:0.0}  {levelOne.DamagePerSecond,9:0.0}  {dense.DamagePerSecond,8:0.0}  {RawDps(tower.Levels[2]),6:0.0}  {upgradeDps,22:0.000}");
+            Console.WriteLine($"{tower.DisplayName,-20}  {tower.PurchaseCost,4}  {RawDps(tower.Levels[0]),6:0.0}  {levelOne.DamagePerSecond,9:0.0}  {dense.DamagePerSecond,8:0.0}  {RawDps(terminalLevel),6:0.0}  {upgradeDps,22:0.000}");
         }
+
+        PrintTierEconomy(content);
 
         Console.WriteLine();
         Console.WriteLine("ARMOR SWEEP (level 1 effective DPS; flat armor subtraction with 1 damage floor)");
@@ -67,17 +70,72 @@ internal static class BalanceSimulation
         Console.WriteLine("Metrics include projectile travel, path movement, armor, shields, DOT persistence, overkill, kills, leaks, and damage reports.");
     }
 
+    private static void PrintTierEconomy(GameContent content)
+    {
+        Console.WriteLine();
+        Console.WriteLine("ALL-TIER ECONOMY (20-second deterministic scenarios; cost is cumulative investment)");
+        Console.WriteLine("Tower / tier                  Cost  Marginal  Single DPS  Armor-8 DPS  Dense DPS  Dense / cost");
+        Console.WriteLine("----------------------------  ----  --------  ----------  -----------  ---------  ------------");
+
+        foreach (var tower in content.Towers.Values.OrderBy(x => x.PurchaseCost))
+        {
+            var rows = TierRows(tower);
+            foreach (var row in rows)
+            {
+                var single = SingleTarget(content, tower, row.LevelIndex, 20, 0, specializationId: row.SpecializationId);
+                var armored = SingleTarget(content, tower, row.LevelIndex, 20, 8, specializationId: row.SpecializationId);
+                var dense = DenseGroup(content, tower, row.LevelIndex, 20, 8, row.SpecializationId);
+                Console.WriteLine($"{tower.DisplayName + " " + row.Label,-28}  {row.CumulativeCost,4}  {row.MarginalCost,8}  {single.DamagePerSecond,10:0.0}  {armored.DamagePerSecond,11:0.0}  {dense.DamagePerSecond,9:0.0}  {dense.DamagePerSecond / Math.Max(1, row.CumulativeCost),12:0.000}");
+            }
+        }
+    }
+
+    private static IReadOnlyList<TierRow> TierRows(TowerDefinition tower)
+    {
+        var rows = new List<TierRow>
+        {
+            new("L1", 0, null, tower.PurchaseCost, tower.PurchaseCost)
+        };
+        var levelTwoCost = tower.Levels[0].UpgradeCost ?? 0;
+        var cumulativeLevelTwo = tower.PurchaseCost + levelTwoCost;
+        rows.Add(new TierRow("L2", 1, null, cumulativeLevelTwo, levelTwoCost));
+
+        if (tower.Specializations.Count > 0)
+        {
+            rows.AddRange(tower.Specializations.Select(specialization => new TierRow(
+                specialization.ShortLabel,
+                2,
+                specialization.Id,
+                cumulativeLevelTwo + specialization.UpgradeCost,
+                specialization.UpgradeCost)));
+        }
+        else
+        {
+            var levelThreeCost = tower.Levels[1].UpgradeCost ?? 0;
+            rows.Add(new TierRow("L3", 2, null, cumulativeLevelTwo + levelThreeCost, levelThreeCost));
+        }
+
+        return rows;
+    }
+
     private static float RawDps(TowerLevelDefinition level) => level.Damage * level.AttacksPerSecond;
 
     private static float WastePercent(SimulationResult result) => result.Damage + result.Overkill <= 0
         ? 0
         : result.Overkill / (result.Damage + result.Overkill) * 100;
 
-    private static SimulationResult SingleTarget(GameContent content, TowerDefinition tower, int levelIndex, float seconds, float armor, float health = 100_000)
+    private static SimulationResult SingleTarget(
+        GameContent content,
+        TowerDefinition tower,
+        int levelIndex,
+        float seconds,
+        float armor,
+        float health = 100_000,
+        string? specializationId = null)
     {
         var enemy = EnemyLike(content.Enemies.Values.First(), "benchmark_target", health, 0.01f, armor, 0, 0);
         var session = CreateSession(content, new[] { tower }, new[] { enemy }, StationaryMap());
-        var instance = AddTower(session, tower, new Vector2(400, 300), levelIndex);
+        AddTower(session, tower, new Vector2(400, 300), levelIndex, specializationId);
         var target = AddEnemy(session, enemy);
         var metrics = new Metrics();
         session.DamageResolver.DamageApplied += metrics.Record;
@@ -85,11 +143,11 @@ internal static class BalanceSimulation
         return metrics.ToResult(seconds, target);
     }
 
-    private static SimulationResult DenseGroup(GameContent content, TowerDefinition tower, int levelIndex, float seconds, int count)
+    private static SimulationResult DenseGroup(GameContent content, TowerDefinition tower, int levelIndex, float seconds, int count, string? specializationId = null)
     {
         var enemy = EnemyLike(content.Enemies.Values.First(), "benchmark_dense", 100_000, 0.01f, 0, 0, 0);
         var session = CreateSession(content, new[] { tower }, new[] { enemy }, StationaryMap());
-        AddTower(session, tower, new Vector2(400, 300), levelIndex);
+        AddTower(session, tower, new Vector2(400, 300), levelIndex, specializationId);
         var targets = Enumerable.Range(0, count).Select(_ => AddEnemy(session, enemy)).ToArray();
         var metrics = new Metrics();
         session.DamageResolver.DamageApplied += metrics.Record;
@@ -155,10 +213,25 @@ internal static class BalanceSimulation
         });
     }
 
-    private static TowerInstance AddTower(GameSession session, TowerDefinition definition, Vector2 position, int levelIndex)
+    private static TowerInstance AddTower(
+        GameSession session,
+        TowerDefinition definition,
+        Vector2 position,
+        int levelIndex,
+        string? specializationId = null)
     {
         var tower = new TowerInstance(session.Towers.Count + 1, definition, position);
-        for (var level = 0; level < levelIndex; level++) tower.TryUpgrade();
+        if (specializationId is not null)
+        {
+            if (!tower.TryUpgrade() || !tower.TrySpecialize(specializationId))
+                throw new InvalidOperationException($"Could not create {definition.Id} specialization {specializationId}.");
+        }
+        else
+        {
+            for (var level = 0; level < levelIndex; level++)
+                if (!tower.TryUpgrade())
+                    throw new InvalidOperationException($"Could not create {definition.Id} level {levelIndex + 1}.");
+        }
         session.Towers.Add(tower);
         return tower;
     }
@@ -217,6 +290,7 @@ internal static class BalanceSimulation
     private static PointData Point(float x, float y) => new() { X = x, Y = y };
 
     private sealed record SupportResult(float AssistedDamage, float AssistedDps);
+    private sealed record TierRow(string Label, int LevelIndex, string? SpecializationId, int CumulativeCost, int MarginalCost);
 
     private sealed class Metrics
     {

@@ -101,9 +101,9 @@ public sealed class GameRenderer
     private static void DrawRanges(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
         if (session.SelectedTower is { } selected)
-            p.DashedRing(batch, selected.Position, session.GetEffectiveRange(selected), ColorPalette.WithAlpha(ColorPalette.Gold, 155), 36, 2);
-        else if (session.HoveredTower is { IsSupport: false } hovered)
-            p.DashedRing(batch, hovered.Position, session.GetEffectiveRange(hovered), ColorPalette.WithAlpha(ColorPalette.Cyan, 105), 36, 2);
+            p.DashedRing(batch, selected.Position, DisplayRange(session, selected), ColorPalette.WithAlpha(ColorPalette.Gold, 155), 36, 2);
+        else if (session.HoveredTower is { } hovered)
+            p.DashedRing(batch, hovered.Position, DisplayRange(session, hovered), ColorPalette.WithAlpha(ColorPalette.Cyan, 105), 36, 2);
 
         var placementOnMap = session.PlacementPosition.X >= 0 && session.PlacementPosition.X < GameConstants.MapWidth &&
                              session.PlacementPosition.Y >= GameConstants.TopBarHeight && session.PlacementPosition.Y < GameConstants.LogicalHeight;
@@ -112,22 +112,28 @@ public sealed class GameRenderer
             var placementColor = session.ValidatePlacement(towerId, session.PlacementPosition) == PlacementFailure.None
                 ? ColorPalette.PlacementValid
                 : ColorPalette.PlacementInvalid;
-            p.DashedRing(batch, session.PlacementPosition, definition.Levels[0].Range, placementColor, 32, 2);
+            var placementRange = definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase)
+                ? definition.Levels[0].AuraRange
+                : definition.Levels[0].Range;
+            p.DashedRing(batch, session.PlacementPosition, placementRange, placementColor, 32, 2);
             p.DrawShape(batch, session.PlacementPosition, definition.Visual.Radius, definition.Visual.Shape,
                 ColorPalette.WithAlpha(definition.Visual.PrimaryColor, 175), definition.Visual.AccentColor, 1, true, levelMarks: true);
         }
 
         if (!placementOnMap || session.TacticalPlacement == TacticalPlacementKind.None) return;
-        var tacticalColor = session.ValidateTacticalPlacement(session.TacticalPlacement, session.PlacementPosition) == PlacementFailure.None
+        var tacticalColor = session.PlacementFailure == PlacementFailure.None
             ? ColorPalette.PlacementValid
             : ColorPalette.PlacementInvalid;
         if (session.TacticalPlacement == TacticalPlacementKind.PulsePlate)
         {
+            if (!session.HasTacticalPlacementPreview) return;
             var tactical = session.Content.Tactics.EmergencyDefense;
             var position = session.PlacementPreviewPosition;
-            p.DashedRing(batch, position, tactical.BlastRadius, tacticalColor, 28, 2);
+            var previewPrimary = session.PlacementFailure == PlacementFailure.None
+                ? ColorPalette.WithAlpha(tactical.Visual.PrimaryColor, 190)
+                : ColorPalette.WithAlpha(tacticalColor, 190);
             p.DrawShape(batch, position, tactical.Visual.Radius, tactical.Visual.Shape,
-                ColorPalette.WithAlpha(tactical.Visual.PrimaryColor, 190), tactical.Visual.AccentColor, tactical.Charges, true);
+                previewPrimary, tactical.Visual.AccentColor, tactical.Charges, true);
         }
         else if (session.TacticalPlacement == TacticalPlacementKind.ChargeForge)
         {
@@ -137,6 +143,9 @@ public sealed class GameRenderer
         }
     }
 
+    private static float DisplayRange(MinimalBastion.GameSession session, TowerInstance tower) =>
+        tower.IsSupport ? tower.Level.AuraRange : session.GetEffectiveRange(tower);
+
     private static void DrawTacticalDefenses(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
         foreach (var plate in session.EmergencyDefenses)
@@ -144,8 +153,6 @@ public sealed class GameRenderer
             var pulse = plate.ArmRemaining > 0 ? 0.82f : 1f;
             p.DrawShape(batch, plate.Position, plate.Definition.Visual.Radius, plate.Definition.Visual.Shape,
                 plate.Definition.Visual.PrimaryColor, plate.Definition.Visual.AccentColor, plate.ChargesRemaining, true, pulse);
-            if (plate.ArmRemaining > 0)
-                p.DashedRing(batch, plate.Position, plate.Definition.Visual.Radius + 7, ColorPalette.WithAlpha(ColorPalette.Paper, 130), 12, 2);
         }
 
         if (session.Generator is not { } generator) return;
@@ -177,10 +184,13 @@ public sealed class GameRenderer
             if (tower.Specialization is { } specialization)
             {
                 var branchIndex = tower.Definition.Specializations.IndexOf(specialization);
+                // The first and second specialization choices are stacked in Tower Intel,
+                // so matching up/down glyphs communicate the chosen branch more clearly
+                // than the old, otherwise unexplained circle/diamond pair.
                 if (branchIndex == 0)
-                    p.Circle(batch, tower.Position, 4f, ColorPalette.Paper);
+                    p.DrawPolygon(batch, tower.Position, 5f, 3, false, ColorPalette.Paper, -MathHelper.PiOver2);
                 else
-                    p.DrawPolygon(batch, tower.Position, 5f, 4, false, ColorPalette.Paper, MathHelper.PiOver4);
+                    p.DrawPolygon(batch, tower.Position, 5f, 3, false, ColorPalette.Paper, MathHelper.PiOver2);
             }
             if (session.Map.GetPowerBuff(tower.Position).IsPowered)
                 p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 10, ColorPalette.WithAlpha(ColorPalette.Gold, 190), 12, 2);
@@ -189,12 +199,28 @@ public sealed class GameRenderer
 
             if (session.IsCoOp)
                 p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 8, tower.OwnerPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral, 2);
+            if (session.GetSupportBuff(tower).IsActive)
+                DrawSignalBeaconEffect(batch, p, tower, time);
             if (tower == session.SelectedTower)
                 p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + (session.IsCoOp ? 12 : 8), ColorPalette.Gold, 3);
 
             if (tower.IsSupport)
                 p.DashedRing(batch, tower.Position, tower.Level.AuraRange, ColorPalette.WithAlpha(accent, 120), 28, 2);
         }
+    }
+
+    private static void DrawSignalBeaconEffect(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)
+    {
+        var pulse = (MathF.Sin(time * 5f + tower.Id) + 1f) * 0.5f;
+        var alpha = (byte)(175 + pulse * 55f);
+        var direction = new Vector2(MathF.Cos(-MathHelper.PiOver4), MathF.Sin(-MathHelper.PiOver4));
+        var markerPosition = tower.Position + direction * (tower.Definition.Visual.Radius + 1f);
+
+        // Keep the native accent ring completely visible: Beacon support is a status,
+        // not a replacement for tower identity. The pip sits inside the upper-right
+        // quadrant, clear of the level spokes and centered specialization glyph.
+        p.Circle(batch, markerPosition, 4.25f, ColorPalette.WithAlpha(ColorPalette.Navy, 225));
+        p.Circle(batch, markerPosition, 2.55f + pulse * 0.55f, ColorPalette.WithAlpha(ColorPalette.Gold, alpha));
     }
 
     private static void DrawEnemies(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -226,6 +252,11 @@ public sealed class GameRenderer
 
             if (enemy.Shield > 0)
                 p.Ring(batch, enemy.Position, enemy.Radius + 5, ColorPalette.Shield, 3);
+            if (enemy.StatusEffects.IsBurning)
+            {
+                var burnAlpha = (byte)(145 + (MathF.Sin(time * 7f + enemy.Id) + 1f) * 42f);
+                p.Ring(batch, enemy.Position, MathF.Max(5, enemy.Radius - 2), ColorPalette.WithAlpha(ColorPalette.Orange, burnAlpha), 2);
+            }
             if (enemy.StatusEffects.SlowFactor > 0)
                 p.DashedRing(batch, enemy.Position, enemy.Radius + 9, ColorPalette.Slow, 16, 2);
             if (enemy.StatusEffects.DamageMultiplier > 1f)

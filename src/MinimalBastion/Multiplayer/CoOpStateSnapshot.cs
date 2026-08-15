@@ -12,9 +12,11 @@ public sealed class CoOpStateSnapshot
     public long Tick { get; set; }
     public int ReadyMask { get; set; }
     public bool WaveStartQueued { get; set; }
+    public bool WaveEarlyBonusQueued { get; set; }
     public float Speed { get; set; } = 1f;
     public float OverdriveCooldownRemaining { get; set; }
     public int EmergencyInventory { get; set; }
+    public int EmergencyDirectPurchasesThisWave { get; set; }
     public int NextEnemyId { get; set; } = 1;
     public int NextTowerId { get; set; } = 1;
     public int NextEmergencyDefenseId { get; set; } = 1;
@@ -45,6 +47,7 @@ public sealed class WaveRuntimeState
     public float DelayRemaining { get; set; }
     public float IntermissionRemaining { get; set; }
     public bool IsFinalWaveCleared { get; set; }
+    public bool EndlessModeEnabled { get; set; }
     public int QueuedEnemies { get; set; }
 }
 
@@ -59,6 +62,7 @@ public sealed class EnemyRuntimeState
     public float Health { get; set; }
     public float Shield { get; set; }
     public float DamagePauseTimer { get; set; }
+    public float KnockbackGraceRemaining { get; set; }
     public bool IsDead { get; set; }
     public bool HasEscaped { get; set; }
     public bool BossPhaseActive { get; set; }

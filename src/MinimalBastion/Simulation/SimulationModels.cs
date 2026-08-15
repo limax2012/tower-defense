@@ -26,6 +26,7 @@ public sealed class SimulationOptions
     public float StepSeconds { get; init; } = 0.05f;
     public float MaximumSimulatedSeconds { get; init; } = 3_600f;
     public int MaximumWave { get; init; } = int.MaxValue;
+    public bool ContinueEndless { get; init; }
 }
 
 public sealed class SimulationRunResult

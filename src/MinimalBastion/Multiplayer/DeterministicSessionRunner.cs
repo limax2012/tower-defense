@@ -95,6 +95,7 @@ public static class SessionChecksum
         Add(ref hash, session.Economy.EscapedEnemies);
         Add(ref hash, session.Economy.EarlyStartCreditsEarned);
         Add(ref hash, session.EmergencyInventory);
+        Add(ref hash, session.EmergencyDirectPurchasesThisWave);
         Add(ref hash, session.OverdriveCooldownRemaining);
         Add(ref hash, session.Waves.QueuedEnemies);
         var wave = session.Waves.CaptureCoOpState();
@@ -105,6 +106,7 @@ public static class SessionChecksum
         Add(ref hash, wave.DelayRemaining);
         Add(ref hash, wave.IntermissionRemaining);
         Add(ref hash, wave.IsFinalWaveCleared ? 1 : 0);
+        Add(ref hash, wave.EndlessModeEnabled ? 1 : 0);
 
         foreach (var tower in session.Towers.OrderBy(x => x.Id))
         {
@@ -118,6 +120,8 @@ public static class SessionChecksum
             Add(ref hash, tower.CooldownRemaining);
             Add(ref hash, tower.OverdriveRemaining);
             Add(ref hash, (int)tower.TargetMode);
+            Add(ref hash, tower.LifetimeDamage);
+            Add(ref hash, tower.LifetimeKills);
         }
 
         foreach (var enemy in session.Enemies.OrderBy(x => x.Id))
@@ -130,6 +134,7 @@ public static class SessionChecksum
             Add(ref hash, enemy.Health);
             Add(ref hash, enemy.Shield);
             Add(ref hash, enemy.DamagePauseTimer);
+            Add(ref hash, enemy.KnockbackGraceRemaining);
             foreach (var status in enemy.StatusEffects.Active.OrderBy(x => x.Type).ThenBy(x => x.SourceId))
             {
                 Add(ref hash, (int)status.Type);

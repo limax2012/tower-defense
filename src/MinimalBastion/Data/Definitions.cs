@@ -24,16 +24,27 @@ public sealed class EmergencyDefenseDefinition
 {
     public string Id { get; set; } = "pulse_plate";
     public string DisplayName { get; set; } = "Pulse Plate";
-    public int PurchaseCost { get; set; } = 70;
+    public int PurchaseCost { get; set; } = 60;
+    public int DirectPurchaseCostIncrease { get; set; } = 15;
     public int StartingInventory { get; set; } = 1;
+    public int MaximumActive { get; set; } = 16;
     public int Charges { get; set; } = 2;
-    public float Damage { get; set; } = 32;
+    public float Damage { get; set; } = 38;
     public float BlastRadius { get; set; } = 52;
-    public float TriggerRadius { get; set; } = 20;
-    public float ArmTime { get; set; } = 0.35f;
-    public float TriggerCooldown { get; set; }
-    public float StunDuration { get; set; } = 0.3f;
+    public float TriggerRadius { get; set; } = 22;
+    public float ArmTime { get; set; } = 0.2f;
+    public float TriggerCooldown { get; set; } = 0.12f;
+    public float StunDuration { get; set; } = 0.35f;
+    public float SlowPercent { get; set; } = 0.30f;
+    public float SlowDuration { get; set; } = 1.5f;
+    public float KnockbackDistance { get; set; } = 28;
+    public float KnockbackGraceSeconds { get; set; } = 0.75f;
+    public float EliteKnockbackMultiplier { get; set; } = 0.60f;
+    public float BossKnockbackMultiplier { get; set; } = 0.25f;
     public float ArmorPierce { get; set; } = 2;
+    public float PlacementRoadTolerance { get; set; } = 4;
+    public float MinimumSpacing { get; set; } = 28;
+    public float EndpointClearance { get; set; } = 48;
     public TowerVisualData Visual { get; set; } = new() { Shape = "diamond", Primary = "#E8B637", Accent = "#EC5062", Radius = 13, Marks = 2, Ring = true };
 }
 
@@ -45,9 +56,9 @@ public sealed class GeneratorDefinition
     public TowerVisualData Visual { get; set; } = new() { Shape = "hexagon", Primary = "#2AC275", Accent = "#E8B637", Radius = 22, Marks = 3, Ring = true };
     public List<GeneratorLevelDefinition> Levels { get; set; } =
     [
-        new() { ProductionSeconds = 42, Capacity = 3, DefenseDamageBonus = 0, UpgradeCost = 210 },
-        new() { ProductionSeconds = 32, Capacity = 4, DefenseDamageBonus = 0.15f, UpgradeCost = 310 },
-        new() { ProductionSeconds = 24, Capacity = 5, DefenseDamageBonus = 0.30f }
+        new() { ProductionSeconds = 34, Capacity = 3, DefenseDamageBonus = 0, UpgradeCost = 180 },
+        new() { ProductionSeconds = 26, Capacity = 4, DefenseDamageBonus = 0.15f, UpgradeCost = 250 },
+        new() { ProductionSeconds = 20, Capacity = 5, DefenseDamageBonus = 0.30f }
     ];
 }
 

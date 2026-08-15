@@ -7,6 +7,7 @@ using MinimalBastion.Effects;
 using MinimalBastion.Enemies;
 using MinimalBastion.Maps;
 using MinimalBastion.Multiplayer;
+using MinimalBastion.Persistence;
 using MinimalBastion.Rendering;
 using MinimalBastion.Towers;
 using MinimalBastion.Tactics;
@@ -53,6 +54,7 @@ internal static class Program
             ("economy", EconomyRules),
             ("placement rules", PlacementRules),
             ("wave final group", WaveFinalGroup),
+            ("endless wave continuation", EndlessWaveContinuation),
             ("early wave call reward", EarlyWaveCallReward),
             ("mixed wave composition", MixedWaveComposition),
             ("arc relay chain", ArcRelayChain),
@@ -60,6 +62,7 @@ internal static class Program
             ("mortar predictive aim", MortarPredictiveAim),
             ("economy telemetry", EconomyTelemetry),
             ("run statistics", RunStatistics),
+            ("defeat field inspection", DefeatFieldInspection),
             ("co-op shared control commands", CoOpOwnershipCommands),
             ("network deterministic commands", NetworkDeterministicCommands),
             ("co-op active state snapshot", CoOpActiveStateSnapshot),
@@ -70,11 +73,13 @@ internal static class Program
             ("co-op incompatible build", CoOpIncompatibleBuild),
             ("online endpoint parsing", OnlineEndpointParsing),
             ("tower information", TowerInformation),
+            ("tower library reference", TowerLibraryReference),
             ("tower specializations", TowerSpecializations),
             ("tower overdrive", TowerOverdrive),
             ("emergency pulse plates", EmergencyPulsePlates),
             ("charge forge production", ChargeForgeProduction),
             ("checkpoint round trip", CheckpointRoundTrip),
+            ("independent solo and co-op save slots", IndependentSaveSlots),
             ("headless simulation deterministic", HeadlessSimulationDeterministic)
         };
 
@@ -111,9 +116,45 @@ internal static class Program
         Check.True(content.Enemies.Values.Select(x => x.Visual.Primary).Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 5, "enemy palette");
         Check.True(!content.Map.Background.Base.Equals("#FFFFFF", StringComparison.OrdinalIgnoreCase), "map palette");
         Check.Equal(2, content.Tactics.EmergencyDefense.Charges, "pulse plate charges");
+        Check.Equal(60, content.Tactics.EmergencyDefense.PurchaseCost, "pulse plate direct cost");
+        Check.Equal(15, content.Tactics.EmergencyDefense.DirectPurchaseCostIncrease, "pulse plate escalating direct cost");
+        Check.Equal(16, content.Tactics.EmergencyDefense.MaximumActive, "pulse plate field capacity");
+        Check.True(content.Tactics.EmergencyDefense.SlowPercent > 0, "pulse plate disruption slow");
+        Check.True(content.Tactics.EmergencyDefense.KnockbackDistance <= content.Tactics.EmergencyDefense.MinimumSpacing,
+            "pulse plate push cannot leap backward across a packed plate field");
+        Check.True(content.Tactics.EmergencyDefense.KnockbackGraceSeconds >= 0.5f,
+            "pulse plate anti-chain grace");
+        Check.True(content.Tactics.EmergencyDefense.BossKnockbackMultiplier < content.Tactics.EmergencyDefense.EliteKnockbackMultiplier,
+            "boss knockback resistance exceeds elite resistance");
         Check.Equal(3, content.Tactics.Generator.Levels.Count, "charge forge levels");
+        Check.True(content.Tactics.Generator.Levels.Select(x => x.ProductionSeconds).SequenceEqual(new[] { 34f, 26f, 20f }),
+            "charge forge production curve");
         Check.True(content.Towers["prism_beam"].Levels.Select(x => x.ArmorPierce).SequenceEqual(new[] { 3f, 5f, 8f }), "prism beam penetration curve");
         Check.Equal(8, content.Towers.Values.Sum(x => x.Specializations.Count), "specialization count");
+
+        var shard = content.Towers["shard_fan"];
+        var watchtower = content.Towers["watchtower"];
+        Check.True(TowerInfo.RawDps(shard.Levels[^1]) > TowerInfo.RawDps(watchtower.Levels[^1]),
+            "short-range swarm tower earns higher peak slot DPS than Watchtower");
+        Check.True(shard.Levels[^1].Range < watchtower.Levels[0].Range,
+            "Watchtower retains a distinct range advantage");
+        Check.True(shard.Levels.All(level => level.ArmorPierce > 0),
+            "Shard Fan retains a short-range payoff into mixed armored crowds");
+
+        var frost = content.Towers["frost_spire"];
+        var permafrost = frost.Specializations.Single(x => x.Id == "permafrost").Level;
+        var hail = frost.Specializations.Single(x => x.Id == "hail_lancer").Level;
+        Check.True(permafrost.SlowPercent >= hail.SlowPercent + 0.20f && permafrost.SlowDuration >= hail.SlowDuration + 1f,
+            "Permafrost owns sustained control");
+        Check.True(TowerInfo.RawDps(hail) >= TowerInfo.RawDps(permafrost) * 3f,
+            "Hail Lancer owns direct area damage");
+
+        var ember = content.Towers["ember_coil"];
+        var wildfire = ember.Specializations.Single(x => x.Id == "wildfire_matrix").Level;
+        var searing = ember.Specializations.Single(x => x.Id == "searing_brand").Level;
+        Check.True(wildfire.SplashRadius >= searing.SplashRadius + 40f, "Wildfire owns clustered burn");
+        Check.True(searing.BurnDamagePerSecond >= wildfire.BurnDamagePerSecond * 2f && searing.ArmorPierce > 0,
+            "Searing owns durable single-target burn");
         Check.True(new[] { "needle_turret", "frost_spire", "ember_coil", "breaker_cannon" }.All(id => content.Towers[id].Specializations.Count == 2), "branching tower roster");
     }
 
@@ -135,6 +176,18 @@ internal static class Program
         Check.Equal(new Color(244, 245, 248), ColorPalette.Paper, "soft off-white surface");
         Check.Equal(new Color(33, 146, 170), ColorPalette.Cyan, "controlled cyan accent");
         Check.Equal(new Color(42, 194, 117), ColorPalette.Green, "controlled green accent");
+        Check.True(ColorPalette.ContrastRatio(ColorPalette.Paper, ColorPalette.Berry) >= 4.5f,
+            "map-selector berry supports readable light text");
+        var paletteContent = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        foreach (var id in new[] { "breaker_cannon", "signal_beacon" })
+        {
+            var primary = paletteContent.Towers[id].Visual.PrimaryColor;
+            var readable = ColorPalette.ReadableAccent(primary, ColorPalette.PanelAlt);
+            Check.True(ColorPalette.ContrastRatio(readable, ColorPalette.PanelAlt) >= 4.49f,
+                $"{id} library accent text meets readable contrast");
+            Check.True(readable != ColorPalette.Ink,
+                $"{id} library accent text retains tower color identity");
+        }
         Check.Equal(new Color(232, 182, 55), ColorPalette.Gold, "controlled gold accent");
         Check.Equal(new Color(236, 80, 98), ColorPalette.Coral, "controlled coral accent");
         Check.Equal(new Color(124, 83, 218), ColorPalette.Violet, "controlled violet accent");
@@ -176,8 +229,8 @@ internal static class Program
         var nodes = session.Map.GetPowerNodes(position);
         Check.Equal(1, nodes.Count, "amplifier overlap count");
         Check.Equal("Amplifier Node", nodes[0].DisplayName, "specific overlapping node");
-        Check.Equal("DMG +15%", TowerInfo.PowerNodeBonus(nodes[0]), "node bonus label");
-        Check.Equal("DMG 8>9.2", TowerInfo.PowerNodeStatChange(content.Towers["needle_turret"], content.Towers["needle_turret"].Levels[0], session.Map.GetPowerBuff(position)), "node stat delta");
+        Check.Equal("DAMAGE +15%", TowerInfo.PowerNodeBonus(nodes[0]), "node bonus label");
+        Check.Equal("DAMAGE 8>9.2", TowerInfo.PowerNodeStatChange(content.Towers["needle_turret"], content.Towers["needle_turret"].Levels[0], session.Map.GetPowerBuff(position)), "node stat delta");
         Check.Equal("NO COMPATIBLE COMBAT STAT CHANGE", TowerInfo.PowerNodeStatChange(content.Towers["signal_beacon"], content.Towers["signal_beacon"].Levels[0], session.Map.GetPowerBuff(position)), "support compatibility warning");
     }
 
@@ -353,12 +406,18 @@ internal static class Program
         var session = Session();
         Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "stats tower placement");
         var tower = session.Towers[0];
+        Check.True(session.TryPlaceTower("tower", new Vector2(50, 90)), "second stats tower placement");
+        var idleTower = session.Towers[1];
         var target = new EnemyInstance(1, session.Content.Enemies["enemy"], session.Map.Path, 1, 1);
         session.DamageResolver.Apply(target, new DamagePayload { Damage = 120, SourceTowerId = tower.Id });
         var towerStats = session.Statistics.Towers.Single();
-        Check.Equal(1, towerStats.Purchases, "stats purchases");
+        Check.Equal(2, towerStats.Purchases, "stats purchases");
         Check.Equal(1, towerStats.Kills, "stats attributed kills");
         Check.Nearly(100, towerStats.Damage, "stats effective damage");
+        Check.Nearly(100, tower.LifetimeDamage, "source tower tracks its own effective damage");
+        Check.Equal(1, tower.LifetimeKills, "source tower tracks its own kill");
+        Check.Nearly(0, idleTower.LifetimeDamage, "other instances do not inherit aggregate damage");
+        Check.Equal(0, idleTower.LifetimeKills, "other instances do not inherit aggregate kills");
 
         var escaped = new EnemyInstance(2, session.Content.Enemies["armored"], session.Map.Path, 1, 1);
         session.OnEnemyEscaped(escaped);
@@ -366,6 +425,31 @@ internal static class Program
         Check.Equal(1, session.Statistics.GreatestLeakThreat.LivesLost, "stats lives lost");
         session.Update(0.05f);
         Check.Nearly(0.05f, session.Statistics.SimulatedSeconds, "stats defense time");
+    }
+
+    private static void DefeatFieldInspection()
+    {
+        var ui = new UIManager(null!);
+        Check.Equal(UiAction.ViewField,
+            ui.HandleResultInput(WorldInput(new Vector2(399, 603)) with { LeftPressed = true }, false),
+            "defeat results expose the field-inspection action");
+        Check.Equal(UiAction.ViewResults,
+            ui.HandleDefeatFieldInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),
+            "inspection escape returns to results");
+
+        var session = Session();
+        Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "inspection tower placement");
+        var tower = session.Towers.Single();
+        session.BeginPlacement("tower");
+
+        session.HandleInspectionInput(WorldInput(tower.Position) with { LeftPressed = true });
+
+        Check.True(session.PlacementTowerId is null, "inspection cancels placement tools");
+        Check.Equal(tower.Id, session.SelectedTower!.Id, "inspection can select a placed tower");
+        var credits = session.Economy.Credits;
+        session.HandleInspectionInput(WorldInput(tower.Position) with { RightPressed = true });
+        Check.True(session.SelectedTower is null, "inspection can clear tower selection");
+        Check.Equal(credits, session.Economy.Credits, "inspection never mutates economy");
     }
 
     private static void CoOpOwnershipCommands()
@@ -499,6 +583,9 @@ internal static class Program
         hostRunner.RunTicks(8);
         Check.True(host.Waves.IsActive && host.Enemies.Count > 0, "snapshot captured during active wave");
         host.Enemies[0].ApplyStatus(new StatusApplication { Type = StatusType.Slow, Duration = 2, Magnitude = 0.25f, SourceId = 1 });
+        Check.True(host.TryDeployEmergencyDefense(new Vector2(200, 30)), "snapshot stored plate deployment");
+        Check.True(host.TryDeployEmergencyDefense(new Vector2(300, 30)), "snapshot direct plate deployment");
+        Check.True(host.Enemies[0].TryApplyKnockback(4, 0.75f, host.Map.Path), "snapshot enemy knockback grace");
 
         var future = new GameCommand { Sequence = 3, ClientRequestId = 3, PlayerId = 2, Type = GameCommandType.SetSpeed, Speed = 2f };
         Check.True(hostRunner.Schedule(hostRunner.Tick + 3, future), "future command scheduled before snapshot");
@@ -513,6 +600,8 @@ internal static class Program
         Check.Equal(SessionChecksum.Compute(host, hostRunner.Tick), SessionChecksum.Compute(client, clientRunner.Tick), "snapshot checksum matches immediately");
         Check.Equal(2, client.Towers[0].OwnerPlayerId, "snapshot preserves original placer");
         Check.Equal(1, client.Enemies[0].StatusEffects.Active.Count, "snapshot restores status effects");
+        Check.Equal(1, client.EmergencyDirectPurchasesThisWave, "snapshot restores escalating plate purchase count");
+        Check.Nearly(host.Enemies[0].KnockbackGraceRemaining, client.Enemies[0].KnockbackGraceRemaining, "snapshot restores plate knockback grace");
         Check.Equal(1, clientRunner.CapturePendingCommands().Count, "snapshot restores future commands");
         hostRunner.RunTicks(20);
         clientRunner.RunTicks(20);
@@ -542,6 +631,10 @@ internal static class Program
         var receipt = await client.ReceiveAsync(timeout.Token);
         Check.True(receipt!.Receipt!.Value.Accepted, "client receives accepted receipt");
         Check.Equal(3L, receipt.Receipt.Value.Command.Sequence, "authoritative sequence survives transport");
+        await client.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.RestartRequest, PlayerId = 2 }, timeout.Token);
+        var restart = await server.ReceiveAsync(timeout.Token);
+        Check.Equal(CoOpMessageType.RestartRequest, restart!.Type, "client restart request survives transport");
+        Check.Equal(2, restart.PlayerId, "restart request preserves requesting player");
         var disconnect = server.ReceiveAsync(timeout.Token);
         await client.DisposeAsync();
         Check.True(await disconnect is null, "server observes graceful client disconnect");
@@ -579,15 +672,33 @@ internal static class Program
     private static void CoOpWaveReady()
     {
         var ready = new CoOpWaveReadyCoordinator();
-        Check.True(ready.RegisterReady(2, true), "player two can ready");
+        Check.True(ready.RegisterReady(2, true, true), "player two can ready");
         Check.True(ready.IsReady(2), "player two ready is visible");
         Check.True(!ready.StartQueued, "one player cannot start co-op wave");
-        Check.True(!ready.RegisterReady(2, true), "duplicate ready is ignored");
-        Check.True(ready.RegisterReady(1, true), "player one can ready");
+        Check.True(!ready.RegisterReady(2, true, true), "duplicate ready is ignored");
+        Check.True(ready.RegisterReady(1, true, true), "player one can ready");
         Check.True(ready.StartQueued, "both players queue the wave");
+        Check.True(ready.EarlyBonusQueued, "second ready locks an available early bonus");
+        Check.Equal("WAIT P2 | EARLY +20 | 8s",
+            UIManager.CoOpWaveButtonLabel(1, 1, 0b01, false, false, 7.1f),
+            "ready player retains the visible early timer");
+        Check.Equal("JOIN P1 | EARLY +20 | 8s",
+            UIManager.CoOpWaveButtonLabel(2, 1, 0b01, false, false, 7.1f),
+            "joining player sees the same early timer");
+        Check.Equal("P1 READY | P2 WAIT | EARLY +20 | 8s",
+            UIManager.CoOpReadyStatusLabel(1, 0b01, false, false, 7.1f),
+            "sidebar ready state retains the same early timer");
+        Check.Equal("STARTING | +20 LOCKED",
+            UIManager.CoOpWaveButtonLabel(1, 1, 0b11, true, true, 0),
+            "queued start communicates the locked reward");
         ready.Reset();
         Check.Equal(0, ready.ReadyMask, "ready state resets for next wave");
-        Check.True(!ready.RegisterReady(1, false), "ready is rejected outside preparation");
+        Check.True(!ready.EarlyBonusQueued, "early reward state resets for next wave");
+        Check.True(!ready.RegisterReady(1, false, true), "ready is rejected outside preparation");
+
+        Check.True(ready.RegisterReady(1, true, true), "first player can ready during early window");
+        Check.True(ready.RegisterReady(2, true, false), "second player can ready after early window");
+        Check.True(!ready.EarlyBonusQueued, "first ready alone cannot preserve an expired bonus");
     }
 
     private static void CoOpInvalidCode()
@@ -703,6 +814,58 @@ internal static class Program
         Check.Equal(1, session.Enemies.Count, "final group remains active");
     }
 
+    private static void EndlessWaveContinuation()
+    {
+        var session = SessionWithWave();
+        Check.True(session.StartNextWave(), "start campaign finale");
+        ResolveSingleEnemyWave(session);
+        Check.True(session.IsVictory, "authored campaign still ends in victory");
+        Check.True(!session.CanStartWave, "endless waves require an explicit continue choice");
+
+        var frozenTime = session.Statistics.SimulatedSeconds;
+        Check.True(session.BeginEndlessMode(), "victory can continue into endless mode");
+        Check.True(!session.IsVictory && session.IsEndlessMode, "continue resumes the live session");
+        Check.True(session.CanStartWave, "first endless wave is available during cooldown");
+        Check.Equal(2, session.Waves.NextWave!.Number, "endless numbering follows the authored campaign");
+        Check.True(session.Waves.NextWave.HealthMultiplier > 1f, "endless health pressure rises immediately");
+        session.Update(0.1f);
+        Check.True(session.Statistics.SimulatedSeconds > frozenTime, "battlefield simulation cools down after continuing");
+
+        var save = session.CaptureSaveGame();
+        Check.True(save.Waves.EndlessModeEnabled, "checkpoint records endless mode");
+        var restored = GameSession.RestoreSaveGame(session.Content, save);
+        Check.True(restored.IsEndlessMode && restored.CanStartWave, "checkpoint restores endless intermission");
+        Check.Equal(2, restored.Waves.NextWave!.Number, "restored checkpoint regenerates the same next wave");
+
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        var anchor = content.Waves.Waves[^1];
+        var wave21 = EndlessWaveGenerator.Create(21, 20, anchor);
+        var wave25 = EndlessWaveGenerator.Create(25, 20, anchor);
+        Check.True(wave25.HealthMultiplier > wave21.HealthMultiplier, "endless health scaling is monotonic");
+        Check.True(wave25.Groups.Any(group => group.Rank == "Boss"), "boss returns every fifth endless wave");
+        Check.True(wave21.Groups.All(group => group.Rank != "Boss"), "ordinary endless waves do not spam bosses");
+        Check.True(Enumerable.Range(96, 5).Select(number => EndlessWaveGenerator.Create(number, 20, anchor))
+            .Max(wave => wave.Groups.Sum(group => group.Count)) < 250, "endless roster growth remains performance bounded across every theme");
+        Check.Equal(JsonSerializer.Serialize(wave25), JsonSerializer.Serialize(EndlessWaveGenerator.Create(25, 20, anchor)),
+            "endless generation is deterministic");
+
+        var mirroredHost = SessionWithWave();
+        var mirroredClient = SessionWithWave();
+        Check.True(mirroredHost.StartNextWave() && mirroredClient.StartNextWave(), "start mirrored finales");
+        ResolveSingleEnemyWave(mirroredHost);
+        ResolveSingleEnemyWave(mirroredClient);
+        var command = new GameCommand { Sequence = 1, ClientRequestId = 1, PlayerId = 2, Type = GameCommandType.ContinueEndless };
+        var hostRunner = new DeterministicSessionRunner(mirroredHost);
+        var clientRunner = new DeterministicSessionRunner(mirroredClient);
+        Check.True(hostRunner.Schedule(0, command) && clientRunner.Schedule(0, command), "schedule mirrored co-op continuation");
+        hostRunner.RunTicks(1);
+        clientRunner.RunTicks(1);
+        Check.True(mirroredHost.IsEndlessMode && !mirroredHost.IsVictory, "co-op continuation command resumes the match");
+        Check.Equal(SessionChecksum.Compute(mirroredHost, hostRunner.Tick), SessionChecksum.Compute(mirroredClient, clientRunner.Tick),
+            "co-op endless continuation remains synchronized");
+    }
+
     private static void EarlyWaveCallReward()
     {
         var session = SessionWithWaves(3);
@@ -717,6 +880,28 @@ internal static class Program
         for (var index = 0; index < 101; index++) session.Update(0.1f);
         Check.True(session.StartNextWave(), "start third wave after waiting");
         Check.Equal(GameConstants.EarlyStartBonus, session.Economy.EarlyStartCreditsEarned, "waiting forfeits extra reward");
+
+        var lockedBonus = SessionWithWaves(2);
+        Check.True(lockedBonus.StartNextWave(), "start co-op bonus setup wave");
+        ResolveSingleEnemyWave(lockedBonus);
+        var lockedReady = new CoOpWaveReadyCoordinator();
+        Check.True(lockedReady.RegisterReady(1, true, true), "first co-op player readies during timer");
+        Check.True(lockedReady.RegisterReady(2, true, true), "second co-op player readies during timer");
+        for (var index = 0; index < 101; index++) lockedBonus.Update(0.1f);
+        Check.True(lockedBonus.StartNextWave(lockedReady.EarlyBonusQueued), "delayed network command starts locked early wave");
+        Check.Equal(GameConstants.EarlyStartBonus, lockedBonus.Economy.EarlyStartCreditsEarned,
+            "network input delay cannot erase a bonus locked by both ready players");
+
+        var expiredBonus = SessionWithWaves(2);
+        Check.True(expiredBonus.StartNextWave(), "start expired bonus setup wave");
+        ResolveSingleEnemyWave(expiredBonus);
+        var expiredReady = new CoOpWaveReadyCoordinator();
+        Check.True(expiredReady.RegisterReady(1, true, true), "first player readies before expiration");
+        for (var index = 0; index < 101; index++) expiredBonus.Update(0.1f);
+        Check.True(expiredReady.RegisterReady(2, true, false), "second player readies after expiration");
+        Check.True(expiredBonus.StartNextWave(expiredReady.EarlyBonusQueued), "late co-op readiness still starts wave");
+        Check.Equal(0, expiredBonus.Economy.EarlyStartCreditsEarned,
+            "one early ready cannot preserve the bonus after the second player waits too long");
     }
 
     private static void ResolveSingleEnemyWave(GameSession session)
@@ -879,38 +1064,172 @@ internal static class Program
         var pelletLevel = content.Towers["shard_fan"].Levels[0];
         Check.Nearly(pelletLevel.Damage * pelletLevel.AttacksPerSecond * pelletLevel.PelletCount,
             TowerInfo.RawDps(pelletLevel), "pellet DPS includes every projectile");
-        Check.True(TowerInfo.UpgradeSummary(content.Towers["needle_turret"], 0).Contains("DMG", StringComparison.Ordinal),
+        Check.True(TowerInfo.UpgradeSummary(content.Towers["needle_turret"], 0).Contains("DAMAGE", StringComparison.Ordinal),
             "upgrade summary exposes damage delta");
+
+        var needle = content.Towers["needle_turret"];
+        var beacon = content.Towers["signal_beacon"];
+        var recipient = new TowerInstance(1, needle, new Vector2(100, 100));
+        var source = new TowerInstance(2, beacon, new Vector2(140, 100));
+        var strongerSource = new TowerInstance(3, beacon, new Vector2(100, 140));
+        Check.True(strongerSource.TryUpgrade(), "stronger beacon reaches level two");
+        var buffs = new BuffSystem();
+        buffs.Update(new[] { recipient, source, strongerSource });
+        var signalBuff = buffs.Get(recipient);
+        Check.True(signalBuff.IsActive, "beacon aura reports an active tower buff");
+        Check.Nearly(beacon.Levels[1].AuraAttackSpeedBonus, signalBuff.AttackSpeedBonus, "overlapping beacons use strongest rate instead of stacking");
+        Check.Nearly(beacon.Levels[1].AuraRangeBonus, signalBuff.RangeBonus, "overlapping beacons use strongest range instead of stacking");
+        var signalSummary = TowerInfo.SignalBeaconStatChange(recipient.Level, signalBuff);
+        Check.True(signalSummary.Contains("SIGNAL BEACON", StringComparison.Ordinal), "beacon summary identifies its source");
+        Check.True(signalSummary.Contains("RATE 2>2.5/s", StringComparison.Ordinal), "beacon summary exposes exact strongest rate change");
+        Check.True(signalSummary.Contains("RANGE 125>145", StringComparison.Ordinal), "beacon summary exposes exact strongest range change");
+
+        var effectiveUpgrade = TowerInfo.UpgradeSummary(needle, 0, signalBuff, default);
+        Check.True(effectiveUpgrade.Contains("RATE 2.5>2.75", StringComparison.Ordinal), "upgrade comparison includes beacon rate");
+        Check.True(effectiveUpgrade.Contains("RANGE 145>157", StringComparison.Ordinal), "upgrade comparison includes beacon range");
+        var beaconUpgrade = TowerInfo.UpgradeSummary(beacon, 0);
+        Check.True(beaconUpgrade.Contains("AURA 145>165", StringComparison.Ordinal), "beacon upgrade compares aura radius");
+        Check.True(beaconUpgrade.Contains("RATE +15%>+25%", StringComparison.Ordinal), "beacon upgrade compares aura rate");
+    }
+
+    private static void TowerLibraryReference()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        var ui = new UIManager(null!);
+        ui.ConfigureTowerLibrary(content.Towers.Values);
+        Check.Equal(UiAction.TowerLibrary,
+            ui.HandleMainMenu(WorldInput(new Vector2(712, 442)) with { LeftPressed = true }),
+            "title screen opens tower library");
+        Check.Equal(UiAction.MainMenu,
+            ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { EscapePressed = true }),
+            "title library escape returns to title screen");
+        foreach (var definition in content.Towers.Values)
+        {
+            Check.Equal(definition.PurchaseCost, TowerInfo.TotalCostToLevel(definition, 0), $"{definition.Id} level one total");
+            if (definition.Levels.Count > 1)
+                Check.Equal(definition.PurchaseCost + definition.Levels[0].UpgradeCost!.Value,
+                    TowerInfo.TotalCostToLevel(definition, 1), $"{definition.Id} level two total");
+
+            foreach (var level in definition.Levels)
+            {
+                var lines = TowerInfo.LibraryStatLines(definition, level);
+                Check.True(lines.Count > 0, $"{definition.Id} level library stats");
+                Check.True(lines.All(line => line.All(character => character is >= ' ' and <= '~')),
+                    $"{definition.Id} library stats use compiled ASCII glyphs");
+            }
+
+            foreach (var specialization in definition.Specializations)
+            {
+                var expected = definition.PurchaseCost + definition.Levels[0].UpgradeCost!.Value + specialization.UpgradeCost;
+                Check.Equal(expected, TowerInfo.TotalCostToSpecialization(definition, specialization),
+                    $"{definition.Id} {specialization.Id} cumulative cost");
+                Check.True(TowerInfo.LibraryStatLines(definition, specialization.Level).Count > 0,
+                    $"{definition.Id} {specialization.Id} library stats");
+            }
+        }
+
+        Check.True(TowerInfo.LibraryStatLines(content.Towers["arc_relay"], content.Towers["arc_relay"].Levels[1])
+            .Any(line => line.Contains("MAX CHAIN DPS", StringComparison.Ordinal)), "library exposes maximum chain output");
+        Check.True(TowerInfo.LibraryStatLines(content.Towers["signal_beacon"], content.Towers["signal_beacon"].Levels[0])
+            .Any(line => line.Contains("ATTACK RATE", StringComparison.Ordinal)), "library exposes support aura strength");
     }
 
     private static void EmergencyPulsePlates()
     {
         var session = Session();
         var position = new Vector2(200, 30);
+        Check.True(UIManager.PulsePlateButtonLabel(session).Contains("FIELD 0/16", StringComparison.Ordinal),
+            "plate button always shows active field capacity");
         Check.Equal(PlacementFailure.None, session.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, position), "road placement");
+        Check.Equal(PlacementFailure.None, session.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(250, 61)), "visible road edge placement");
         Check.Equal(PlacementFailure.MustBeOnPath, session.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(200, 100)), "off-road rejection");
         Check.Equal(PlacementFailure.TooCloseToPathEndpoint, session.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(20, 30)), "endpoint rejection");
+
+        session.BeginEmergencyPlacement();
+        session.HandleWorldInput(WorldInput(new Vector2(200, 100)));
+        Check.Equal(PlacementFailure.MustBeOnPath, session.PlacementFailure, "invalid preview reports immediately");
+        session.HandleWorldInput(WorldInput(new Vector2(250, 61)));
+        Check.Equal(PlacementFailure.None, session.PlacementFailure, "valid preview clears prior failure immediately");
+        session.HandleWorldInput(WorldInput(new Vector2(20, 61)));
+        Check.Equal(PlacementFailure.None, session.PlacementFailure, "endpoint cursor snaps to legal clearance");
+        Check.Nearly(48, session.PlacementPreviewPosition.X, "endpoint preview uses first legal path position");
+        var deploymentCommands = new List<GameCommand>();
+        session.HandleWorldInput(WorldInput(new Vector2(20, 61)) with { LeftPressed = true }, deploymentCommands.Add);
+        Check.Equal(1, deploymentCommands.Count, "assisted plate click emits one command");
+        Check.Nearly(48, deploymentCommands[0].X, "network command uses the visible snapped position");
+
         Check.True(session.TryDeployEmergencyDefense(position), "deploy stored plate");
         Check.Equal(0, session.EmergencyInventory, "stored plate consumed");
         Check.Equal(300, session.Economy.Credits, "stored plate costs no credits");
+        var placementSession = Session();
+        placementSession.EmergencyDefenses.Add(new PulsePlateInstance(999, position, placementSession.Content.Tactics.EmergencyDefense));
+        Check.Equal(PlacementFailure.None, placementSession.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(229, 30)), "near-adjacent plate placement");
+        placementSession.BeginEmergencyPlacement();
+        placementSession.HandleWorldInput(WorldInput(new Vector2(205, 61)));
+        Check.Equal(PlacementFailure.None, placementSession.PlacementFailure, "occupied cursor snaps beside existing plate");
+        Check.True(Vector2.Distance(placementSession.PlacementPreviewPosition, position) >= placementSession.Content.Tactics.EmergencyDefense.MinimumSpacing,
+            "assisted placement respects plate spacing");
+        placementSession.CancelPlacement();
 
         session.SpawnEnemy("enemy", 1, 1);
         session.Enemies[0].UpdateMovement(20, session.Map.Path);
         var system = new TacticalDefenseSystem();
         system.Update(0.4f, session);
-        Check.Nearly(68, session.Enemies[0].Health, "first pulse damage");
+        Check.Nearly(62, session.Enemies[0].Health, "first pulse damage");
+        Check.Nearly(172, session.Enemies[0].DistanceAlongPath, "first pulse applies bounded knockback");
+        Check.Nearly(0.30f, session.Enemies[0].StatusEffects.SlowFactor, "first pulse slows enemy");
         Check.Equal(1, session.EmergencyDefenses[0].ChargesRemaining, "one pulse remains");
-        system.Update(0.9f, session);
-        Check.Nearly(68, session.Enemies[0].Health, "same enemy cannot waste second pulse");
-        session.Enemies[0].UpdateMovement(10, session.Map.Path);
-        session.SpawnEnemy("enemy", 1, 1);
-        session.Enemies[1].UpdateMovement(20, session.Map.Path);
         system.Update(0.01f, session);
-        Check.Nearly(68, session.Enemies[1].Health, "consecutive enemy reliably triggers second pulse");
+        session.Enemies[0].StatusEffects.Update(2f);
+        session.Enemies[0].UpdateMovement(4.8f, session.Map.Path);
+        system.Update(0.2f, session);
+        Check.Nearly(24, session.Enemies[0].Health, "durable enemy can trigger second pulse after re-crossing");
         Check.Equal(0, session.EmergencyDefenses.Count, "spent plate removed");
 
-        Check.True(session.TryDeployEmergencyDefense(new Vector2(300, 30)), "buy and deploy plate");
-        Check.Equal(230, session.Economy.Credits, "direct plate purchase cost");
+        Check.True(!session.TryDeployEmergencyDefense(new Vector2(300, 30)), "direct plate buying is unavailable between waves");
+
+        var directSession = SessionWithWaves(2);
+        Check.True(directSession.TryDeployEmergencyDefense(new Vector2(200, 30)), "deploy stored plate before wave");
+        Check.True(directSession.StartNextWave(), "start wave for direct buying");
+        Check.True(directSession.TryDeployEmergencyDefense(new Vector2(300, 30)), "first direct plate purchase");
+        Check.Equal(240, directSession.Economy.Credits, "first direct plate keeps accessible base cost");
+        Check.True(directSession.TryDeployEmergencyDefense(new Vector2(330, 30)), "second direct plate purchase");
+        Check.Equal(165, directSession.Economy.Credits, "second direct plate pays escalating cost");
+        Check.Equal(90, directSession.CurrentEmergencyDirectPurchaseCost, "next direct plate price is visible and deterministic");
+        ResolveSingleEnemyWave(directSession);
+        Check.True(directSession.StartNextWave(), "start next wave for direct-price reset");
+        Check.Equal(60, directSession.CurrentEmergencyDirectPurchaseCost, "every wave starts at the same direct plate price");
+
+        var chainSession = Session();
+        var plateDefinition = chainSession.Content.Tactics.EmergencyDefense;
+        chainSession.EmergencyDefenses.Add(new PulsePlateInstance(1, new Vector2(200, 30), plateDefinition));
+        chainSession.EmergencyDefenses.Add(new PulsePlateInstance(2, new Vector2(172, 30), plateDefinition));
+        chainSession.SpawnEnemy("enemy", 1, 1);
+        chainSession.Enemies[0].UpdateMovement(20, chainSession.Map.Path);
+        system.Update(0.4f, chainSession);
+        Check.Nearly(172, chainSession.Enemies[0].DistanceAlongPath, "adjacent plate cannot chain a second knockback in the same moment");
+        Check.Nearly(24, chainSession.Enemies[0].Health, "anti-chain plate still applies its damage and control");
+        Check.True(chainSession.Enemies[0].KnockbackGraceRemaining > 0, "enemy receives a temporary knockback grace period");
+
+        var bossSession = Session();
+        Check.True(bossSession.TryDeployEmergencyDefense(new Vector2(200, 30)), "deploy boss test plate");
+        bossSession.SpawnEnemy("enemy", 1, 1, "Boss");
+        bossSession.Enemies[0].UpdateMovement(200f / bossSession.Enemies[0].CurrentSpeed, bossSession.Map.Path);
+        system.Update(0.4f, bossSession);
+        Check.Nearly(193, bossSession.Enemies[0].DistanceAlongPath, "boss receives only one quarter of standard plate knockback");
+
+        var capSession = SessionWithWave();
+        capSession.Content.Tactics.EmergencyDefense.MaximumActive = 3;
+        capSession.Economy.AddCredits(1000);
+        Check.True(capSession.StartNextWave(), "start wave for field-cap test");
+        Check.True(capSession.TryDeployEmergencyDefense(new Vector2(100, 30)), "field plate one");
+        Check.True(capSession.TryDeployEmergencyDefense(new Vector2(130, 30)), "field plate two");
+        Check.True(capSession.TryDeployEmergencyDefense(new Vector2(160, 30)), "field plate three");
+        Check.Equal(PlacementFailure.DefenseCapacityReached,
+            capSession.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(190, 30)), "active plate field cap");
+        Check.True(UIManager.PulsePlateButtonLabel(capSession).Contains("FIELD 3/3", StringComparison.Ordinal),
+            "full plate button retains active field count");
     }
 
     private static void ChargeForgeProduction()
@@ -922,6 +1241,9 @@ internal static class Program
         Check.True(session.TryPlaceGenerator(position), "place forge");
         Check.Equal(80, session.Economy.Credits, "forge purchase cost");
         Check.Equal(1, session.EmergencyInventory, "initial inventory retained");
+        Check.True(UIManager.PulsePlateButtonLabel(session).Contains("STORED 1/3", StringComparison.Ordinal) &&
+            UIManager.PulsePlateButtonLabel(session).Contains("FIELD 0/16", StringComparison.Ordinal),
+            "plate button distinguishes forge storage from active field capacity");
 
         var system = new TacticalDefenseSystem();
         var initialTimer = session.Generator!.ProductionRemaining;
@@ -929,7 +1251,7 @@ internal static class Program
         Check.Nearly(initialTimer, session.Generator.ProductionRemaining, "forge pauses between waves");
         Check.Equal(1, session.EmergencyInventory, "downtime cannot generate plates");
         Check.True(session.StartNextWave(), "start wave for forge production");
-        system.Update(42.1f, session);
+        system.Update(34.1f, session);
         Check.Equal(2, session.EmergencyInventory, "forge produces to capacity");
         session.Economy.AddCredits(210);
         Check.True(session.TryUpgradeGenerator(), "upgrade forge");
@@ -946,6 +1268,8 @@ internal static class Program
         Check.True(session.TrySetTargetMode(tower.Id, TargetMode.Armored), "checkpoint target mode");
         Check.True(session.StartNextWave(), "start wave before checkpoint");
         ResolveSingleEnemyWave(session);
+        var telemetryTarget = new EnemyInstance(99, session.Content.Enemies["enemy"], session.Map.Path, 1, 1);
+        session.DamageResolver.Apply(telemetryTarget, new DamagePayload { Damage = 120, SourceTowerId = tower.Id });
         Check.True(session.CanSaveCheckpoint, "checkpoint is available between waves");
 
         var restored = GameSession.RestoreSaveGame(session.Content, session.CaptureSaveGame());
@@ -955,8 +1279,82 @@ internal static class Program
         Check.Equal(1, restored.Towers.Count, "saved tower restored");
         Check.Equal(1, restored.Towers[0].LevelIndex, "saved tower level restored");
         Check.Equal(TargetMode.Armored, restored.Towers[0].TargetMode, "saved targeting restored");
+        Check.Nearly(tower.LifetimeDamage, restored.Towers[0].LifetimeDamage, "saved per-tower damage restored");
+        Check.Equal(tower.LifetimeKills, restored.Towers[0].LifetimeKills, "saved per-tower kills restored");
         Check.Equal(1, restored.Statistics.Towers.Single().Purchases, "saved statistics restored");
         Check.True(restored.CanSaveCheckpoint, "restored state remains checkpoint-safe");
+    }
+
+    private static void IndependentSaveSlots()
+    {
+        var testRoot = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        var legacyRoot = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var solo = SessionWithWaves(2);
+            Check.True(solo.StartNextWave(), "start solo slot wave");
+            ResolveSingleEnemyWave(solo);
+
+            var coOp = SessionWithWaves(2);
+            coOp.ConfigureCoOp(1);
+            Check.True(coOp.TryPlaceTower("tower", new Vector2(50, 200), 2), "place player-two tower before co-op save");
+            Check.True(coOp.StartNextWave(), "start co-op slot wave");
+            ResolveSingleEnemyWave(coOp);
+            Check.True(coOp.CanSaveCheckpoint, "co-op host can save at a safe intermission");
+
+            var repository = new SaveSlotRepository(testRoot);
+            repository.Save(solo, 2);
+            repository.Save(coOp, 4);
+            var slots = repository.GetSlots();
+            Check.Equal(3, slots.Count, "occupied saves plus the next available slot are enumerated");
+            Check.True(slots.Single(slot => slot.Slot == 2).IsOccupied, "solo slot is occupied");
+            Check.True(!slots.Single(slot => slot.Slot == 2).IsCoOp, "solo metadata remains solo");
+            Check.True(slots.Single(slot => slot.Slot == 4).IsCoOp, "co-op metadata is identified");
+            Check.Equal(1, repository.FindFirstEmptySlot()!.Value, "new runs claim an empty slot instead of overwriting");
+
+            foreach (var slot in new[] { 1, 3, 5, 6, 7, 8 })
+                repository.Save(slot % 2 == 0 ? coOp : solo, slot);
+            slots = repository.GetSlots();
+            Check.Equal(9, slots.Count, "dynamic save list expands beyond the old five-slot limit");
+            Check.Equal(9, repository.FindFirstEmptySlot()!.Value, "full initial pages allocate a new slot instead of overwriting");
+            Check.True(slots.Take(8).All(slot => slot.IsOccupied), "all existing saves remain occupied after expansion");
+
+            var slotUi = new UIManager(null!);
+            slotUi.ConfigureSaveSlots(slots, false);
+            Check.Equal(UiAction.None,
+                slotUi.HandleSaveSlots(WorldInput(new Vector2(870, 600)) with { LeftPressed = true }),
+                "next-page control changes pages without loading");
+            Check.Equal(6, slotUi.SelectedSaveSlot, "second save page selects its first entry");
+            Check.Equal(UiAction.None,
+                slotUi.HandleSaveSlots(WorldInput(new Vector2(845, 543)) with { LeftPressed = true }),
+                "first delete click arms confirmation");
+            Check.Equal(UiAction.DeleteSaveSlot,
+                slotUi.HandleSaveSlots(WorldInput(new Vector2(845, 543)) with { LeftPressed = true }),
+                "second delete click confirms the selected save");
+
+            Check.True(repository.Delete(6), "occupied dynamic slot can be deleted");
+            Check.True(!File.Exists(repository.GetSlotPath(6)), "deleted save file is removed");
+            Check.Equal(6, repository.FindFirstEmptySlot()!.Value, "deleted gap is reused before allocating a higher slot");
+            Check.True(!repository.Delete(6), "deleting an already empty slot is harmless");
+
+            var restoredSolo = repository.Load(solo.Content, 2);
+            var restoredCoOp = repository.Load(coOp.Content, 4);
+            Check.True(!restoredSolo.IsCoOp, "solo slot restores as solo");
+            Check.True(restoredCoOp.IsCoOp, "co-op slot restores as a hosted co-op session");
+            Check.Equal(2, restoredCoOp.Towers.Single().OwnerPlayerId, "co-op tower ownership survives slot restore");
+
+            Directory.CreateDirectory(legacyRoot);
+            var legacyRepository = new SaveSlotRepository(legacyRoot);
+            File.WriteAllText(legacyRepository.LegacySavePath, JsonSerializer.Serialize(solo.CaptureSaveGame()));
+            var migrated = legacyRepository.GetSlots();
+            Check.True(migrated[0].IsOccupied, "legacy checkpoint migrates into slot one");
+            Check.True(File.Exists(legacyRepository.LegacySavePath), "legacy checkpoint remains untouched after migration");
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot)) Directory.Delete(testRoot, true);
+            if (Directory.Exists(legacyRoot)) Directory.Delete(legacyRoot, true);
+        }
     }
 
     private static void TowerSpecializations()
@@ -1060,6 +1458,29 @@ internal static class Program
     };
 
     private static PointData Point(float x, float y) => new() { X = x, Y = y };
+
+    private static InputSnapshot WorldInput(Vector2 position) => new(
+        MousePosition: position,
+        LeftPressed: false,
+        LeftReleased: false,
+        RightPressed: false,
+        PingPressed: false,
+        EscapePressed: false,
+        PausePressed: false,
+        DebugKeyPressed: false,
+        IsMouseOverLogicalCanvas: true,
+        TowerHotkey: 0,
+        UpgradePressed: false,
+        SellPressed: false,
+        TargetPressed: false,
+        StartWavePressed: false,
+        SpeedPressed: false,
+        EmergencyPressed: false,
+        GeneratorPressed: false,
+        OverdrivePressed: false,
+        TextEntered: "",
+        BackspacePressed: false,
+        EnterPressed: false);
 
 }
 

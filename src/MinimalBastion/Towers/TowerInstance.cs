@@ -5,7 +5,10 @@ using Microsoft.Xna.Framework;
 
 namespace MinimalBastion.Towers;
 
-public readonly record struct TowerBuff(float AttackSpeedBonus, float RangeBonus);
+public readonly record struct TowerBuff(float AttackSpeedBonus, float RangeBonus)
+{
+    public bool IsActive => AttackSpeedBonus > 0 || RangeBonus > 0;
+}
 
 public sealed class TowerInstance
 {
@@ -23,6 +26,8 @@ public sealed class TowerInstance
     public float DeployAnimationRemaining { get; private set; } = DeployAnimationDuration;
     public float RecoilAnimationRemaining { get; private set; }
     public float OverdriveRemaining { get; private set; }
+    public float LifetimeDamage { get; private set; }
+    public int LifetimeKills { get; private set; }
     public bool IsOverdriven => OverdriveRemaining > 0;
     public bool IsSupport => Definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase);
     public TowerSpecializationDefinition? Specialization => SpecializationId is null
@@ -90,6 +95,12 @@ public sealed class TowerInstance
     public void OnFired() => RecoilAnimationRemaining = RecoilAnimationDuration;
     public void ActivateOverdrive() => OverdriveRemaining = GameConstants.OverdriveDurationSeconds;
 
+    internal void RecordCombat(float appliedDamage, bool killed)
+    {
+        LifetimeDamage += MathF.Max(0, appliedDamage);
+        if (killed) LifetimeKills++;
+    }
+
     public TowerSaveData CaptureSaveData() => new()
     {
         Id = Id,
@@ -102,7 +113,9 @@ public sealed class TowerInstance
         CooldownRemaining = CooldownRemaining,
         TargetMode = TargetMode,
         InvestedCredits = InvestedCredits,
-        OverdriveRemaining = OverdriveRemaining
+        OverdriveRemaining = OverdriveRemaining,
+        LifetimeDamage = LifetimeDamage,
+        LifetimeKills = LifetimeKills
     };
 
     public static TowerInstance RestoreSaveData(TowerSaveData data, TowerDefinition definition)
@@ -122,7 +135,9 @@ public sealed class TowerInstance
             InvestedCredits = Math.Max(definition.PurchaseCost, data.InvestedCredits),
             DeployAnimationRemaining = 0,
             RecoilAnimationRemaining = 0,
-            OverdriveRemaining = MathF.Max(0, data.OverdriveRemaining)
+            OverdriveRemaining = MathF.Max(0, data.OverdriveRemaining),
+            LifetimeDamage = MathF.Max(0, data.LifetimeDamage),
+            LifetimeKills = Math.Max(0, data.LifetimeKills)
         };
         return tower;
     }

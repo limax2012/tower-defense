@@ -1,11 +1,66 @@
 using MinimalBastion.Data;
 using MinimalBastion.Maps;
+using MinimalBastion.Towers;
 
 namespace MinimalBastion.UI;
 
 public static class TowerInfo
 {
     public static float RawDps(TowerLevelDefinition level) => level.Damage * level.AttacksPerSecond * Math.Max(1, level.PelletCount);
+
+    public static int TotalCostToLevel(TowerDefinition definition, int levelIndex)
+    {
+        var clampedLevel = Math.Clamp(levelIndex, 0, Math.Max(0, definition.Levels.Count - 1));
+        var total = definition.PurchaseCost;
+        for (var index = 0; index < clampedLevel; index++)
+            total += definition.Levels[index].UpgradeCost ?? 0;
+        return total;
+    }
+
+    public static int TotalCostToSpecialization(TowerDefinition definition, TowerSpecializationDefinition specialization) =>
+        definition.PurchaseCost + (definition.Levels.FirstOrDefault()?.UpgradeCost ?? 0) + specialization.UpgradeCost;
+
+    public static IReadOnlyList<string> LibraryStatLines(TowerDefinition definition, TowerLevelDefinition level)
+    {
+        var lines = new List<string>();
+        if (definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase))
+        {
+            lines.Add($"AURA RANGE  {level.AuraRange:0}");
+            lines.Add($"ATTACK RATE  +{level.AuraAttackSpeedBonus:P0}");
+            lines.Add($"TOWER RANGE  +{level.AuraRangeBonus:P0}");
+            lines.Add("AURAS USE THE STRONGEST BEACON");
+            return lines;
+        }
+
+        lines.Add($"DAMAGE  {level.Damage:0.#}    RATE  {level.AttacksPerSecond:0.##}/s");
+        var outputLabel = definition.Behavior.Equals("pellet_burst", StringComparison.OrdinalIgnoreCase)
+            ? "BURST DPS"
+            : definition.Behavior.Equals("chain", StringComparison.OrdinalIgnoreCase)
+                ? "PRIMARY DPS"
+                : "DIRECT DPS";
+        lines.Add($"{outputLabel}  {RawDps(level):0.#}    RANGE  {level.Range:0}");
+        if (level.ProjectileSpeed > 0) lines.Add($"PROJECTILE SPEED  {level.ProjectileSpeed:0}");
+        if (level.PelletCount > 1) lines.Add($"PROJECTILES  {level.PelletCount}    SPREAD  {level.PelletSpreadDegrees:0.#} deg");
+        if (level.SplashRadius > 0) lines.Add($"SPLASH RADIUS  {level.SplashRadius:0.#}");
+        if (level.SlowPercent > 0) lines.Add($"SLOW  {level.SlowPercent:P0} FOR {level.SlowDuration:0.#}s");
+        if (level.BurnDamagePerSecond > 0)
+        {
+            lines.Add($"BURN  {level.BurnDamagePerSecond:0.#}/s FOR {level.BurnDuration:0.#}s");
+            lines.Add("BURNING REDUCES ARMOR BY 2");
+        }
+        if (level.ChainCount > 0)
+        {
+            var maximumDps = (level.Damage + level.ChainCount * level.ChainDamage) * level.AttacksPerSecond;
+            lines.Add($"CHAINS  {level.ChainCount}    DAMAGE  {level.ChainDamage:0.#}    REACH  {level.ChainRange:0}");
+            lines.Add($"MAX CHAIN DPS  {maximumDps:0.#}    SLOWED +35%");
+        }
+        if (level.ArmorPierce > 0) lines.Add($"ARMOR PIERCE  {level.ArmorPierce:0.#}");
+        if (level.ArmorReduction > 0) lines.Add($"ARMOR BREAK  {level.ArmorReduction:0.#} FOR {level.ArmorReductionDuration:0.#}s");
+        if (level.ExposePercent > 0) lines.Add($"EXPOSE  +{level.ExposePercent:P0} FOR {level.ExposeDuration:0.#}s");
+        if (level.StunDuration > 0) lines.Add($"STUN  {level.StunDuration:0.##}s");
+        if (level.IgnoreShield) lines.Add("IGNORES SHIELDS");
+        return lines;
+    }
 
     public static string ShortRole(TowerDefinition definition) => definition.Behavior.ToLowerInvariant() switch
     {
@@ -26,9 +81,13 @@ public static class TowerInfo
     {
         return definition.Behavior.ToLowerInvariant() switch
         {
-            "pellet_burst" => $"{level.PelletCount} projectiles per burst",
+            "pellet_burst" => level.ArmorPierce > 0
+                ? $"{level.PelletCount} projectiles per burst; pierce {level.ArmorPierce:0}"
+                : $"{level.PelletCount} projectiles per burst",
             "slow_projectile" => $"AoE {level.SplashRadius:0}; slow {level.SlowPercent:P0} for {level.SlowDuration:0.#}s",
-            "burn_projectile" => $"Burn {level.BurnDamagePerSecond:0.#}/s; scorched armor -2",
+            "burn_projectile" => level.SplashRadius > 0
+                ? $"Burn {level.BurnDamagePerSecond:0.#}/s; AoE {level.SplashRadius:0}; scorched armor -2"
+                : $"Burn {level.BurnDamagePerSecond:0.#}/s; scorched armor -2",
             "armor_projectile" => level.ArmorReduction > 0 ? $"Pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0}" : $"Armor pierce {level.ArmorPierce:0}",
             "chain" => $"Chain {level.ChainCount}; +35% damage to slowed",
             "splash_projectile" => $"Splash radius {level.SplashRadius:0}",
@@ -64,28 +123,53 @@ public static class TowerInfo
         "chain" => "Limit: weak against isolated enemies",
         "splash_projectile" => "Limit: expensive; weak against spread targets",
         "beam" => "Limit: expensive and armor-sensitive",
-        "aura" => "Limit: no damage without nearby towers",
+        "aura" => "Limit: overlapping Beacons do not stack",
         _ => "Limit: no specialized counter"
     };
 
-    public static string UpgradeSummary(TowerDefinition definition, int levelIndex)
+    public static string UpgradeSummary(TowerDefinition definition, int levelIndex) =>
+        UpgradeSummary(definition, levelIndex, default, default);
+
+    public static string UpgradeSummary(
+        TowerDefinition definition,
+        int levelIndex,
+        TowerBuff supportBuff,
+        MapPowerBuff powerBuff)
     {
         if (levelIndex >= definition.Levels.Count - 1) return "Maximum level reached";
         var current = definition.Levels[levelIndex];
         var next = definition.Levels[levelIndex + 1];
         var changes = new List<string>();
-        Add("DMG", current.Damage, next.Damage, "0.#");
-        Add("RATE", current.AttacksPerSecond, next.AttacksPerSecond, "0.##");
-        Add("RNG", current.Range, next.Range, "0");
+
+        if (definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase))
+        {
+            Add("AURA", current.AuraRange, next.AuraRange, "0");
+            AddPercent("RATE", current.AuraAttackSpeedBonus, next.AuraAttackSpeedBonus);
+            AddPercent("RANGE", current.AuraRangeBonus, next.AuraRangeBonus);
+            return string.Join("  ", changes.Take(3));
+        }
+
+        var damageMultiplier = 1f + powerBuff.DamageBonus;
+        var attackSpeedMultiplier = 1f + supportBuff.AttackSpeedBonus + powerBuff.AttackSpeedBonus;
+        var rangeMultiplier = 1f + supportBuff.RangeBonus + powerBuff.RangeBonus;
+        Add("DAMAGE", current.Damage * damageMultiplier, next.Damage * damageMultiplier, "0.#");
+        Add("RATE", current.AttacksPerSecond * attackSpeedMultiplier, next.AttacksPerSecond * attackSpeedMultiplier, "0.##");
+        Add("RANGE", current.Range * rangeMultiplier, next.Range * rangeMultiplier, "0");
         if (next.PelletCount != current.PelletCount) changes.Add($"SHOT {current.PelletCount}>{next.PelletCount}");
         if (next.SlowPercent != current.SlowPercent) changes.Add($"SLOW {current.SlowPercent:P0}>{next.SlowPercent:P0}");
-        if (next.ArmorPierce != current.ArmorPierce) changes.Add($"PIERCE {current.ArmorPierce:0}>{next.ArmorPierce:0}");
+        if (next.ArmorPierce != current.ArmorPierce)
+            changes.Add($"PIERCE {current.ArmorPierce + powerBuff.ArmorPierceBonus:0.#}>{next.ArmorPierce + powerBuff.ArmorPierceBonus:0.#}");
         if (next.ChainCount != current.ChainCount) changes.Add($"CHAIN {current.ChainCount}>{next.ChainCount}");
         return string.Join("  ", changes.Take(3));
 
         void Add(string label, float before, float after, string format)
         {
             if (MathF.Abs(after - before) > 0.001f) changes.Add($"{label} {before.ToString(format)}>{after.ToString(format)}");
+        }
+
+        void AddPercent(string label, float before, float after)
+        {
+            if (MathF.Abs(after - before) > 0.001f) changes.Add($"{label} +{before:P0}>+{after:P0}");
         }
     }
 
@@ -97,7 +181,7 @@ public static class TowerInfo
         if (next.SplashRadius > 0) changes.Add($"SPLASH {next.SplashRadius:0}");
         if (next.SlowPercent > current.SlowPercent) changes.Add($"SLOW {next.SlowPercent:P0}");
         if (next.ArmorPierce > current.ArmorPierce) changes.Add($"PIERCE {next.ArmorPierce:0}");
-        if (MathF.Abs(next.Damage - current.Damage) > 0.001f) changes.Add($"DMG {next.Damage:0.#}");
+        if (MathF.Abs(next.Damage - current.Damage) > 0.001f) changes.Add($"DAMAGE {next.Damage:0.#}");
         if (MathF.Abs(next.AttacksPerSecond - current.AttacksPerSecond) > 0.001f) changes.Add($"RATE {next.AttacksPerSecond:0.##}");
         return $"{specialization.Summary}: {string.Join("  ", changes.Take(2))}";
     }
@@ -106,8 +190,8 @@ public static class TowerInfo
     {
         var bonuses = new List<string>();
         if (node.AttackSpeedBonus > 0) bonuses.Add($"RATE +{node.AttackSpeedBonus:P0}");
-        if (node.RangeBonus > 0) bonuses.Add($"RNG +{node.RangeBonus:P0}");
-        if (node.DamageBonus > 0) bonuses.Add($"DMG +{node.DamageBonus:P0}");
+        if (node.RangeBonus > 0) bonuses.Add($"RANGE +{node.RangeBonus:P0}");
+        if (node.DamageBonus > 0) bonuses.Add($"DAMAGE +{node.DamageBonus:P0}");
         if (node.ArmorPierceBonus > 0) bonuses.Add($"PIERCE +{node.ArmorPierceBonus:0.#}");
         return string.Join("  ", bonuses);
     }
@@ -119,13 +203,25 @@ public static class TowerInfo
 
         var changes = new List<string>();
         if (power.DamageBonus > 0 && level.Damage > 0)
-            changes.Add($"DMG {level.Damage:0.#}>{level.Damage * (1 + power.DamageBonus):0.#}");
+            changes.Add($"DAMAGE {level.Damage:0.#}>{level.Damage * (1 + power.DamageBonus):0.#}");
         if (power.AttackSpeedBonus > 0 && level.AttacksPerSecond > 0)
             changes.Add($"RATE {level.AttacksPerSecond:0.##}>{level.AttacksPerSecond * (1 + power.AttackSpeedBonus):0.##}/s");
         if (power.RangeBonus > 0 && level.Range > 0)
-            changes.Add($"RNG {level.Range:0}>{level.Range * (1 + power.RangeBonus):0}");
+            changes.Add($"RANGE {level.Range:0}>{level.Range * (1 + power.RangeBonus):0}");
         if (power.ArmorPierceBonus > 0)
             changes.Add($"PIERCE {level.ArmorPierce:0.#}>{level.ArmorPierce + power.ArmorPierceBonus:0.#}");
         return changes.Count == 0 ? "NO COMPATIBLE COMBAT STAT CHANGE" : string.Join("  ", changes);
+    }
+
+    public static string SignalBeaconStatChange(TowerLevelDefinition level, TowerBuff buff)
+    {
+        if (!buff.IsActive) return "NO SIGNAL BEACON";
+
+        var changes = new List<string>();
+        if (buff.AttackSpeedBonus > 0 && level.AttacksPerSecond > 0)
+            changes.Add($"RATE {level.AttacksPerSecond:0.##}>{level.AttacksPerSecond * (1 + buff.AttackSpeedBonus):0.##}/s (+{buff.AttackSpeedBonus:P0})");
+        if (buff.RangeBonus > 0 && level.Range > 0)
+            changes.Add($"RANGE {level.Range:0}>{level.Range * (1 + buff.RangeBonus):0} (+{buff.RangeBonus:P0})");
+        return changes.Count == 0 ? "NO COMPATIBLE COMBAT STAT CHANGE" : $"SIGNAL BEACON  {string.Join("  ", changes)}";
     }
 }

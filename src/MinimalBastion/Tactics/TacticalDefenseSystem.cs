@@ -15,17 +15,22 @@ public sealed class TacticalDefenseSystem
         foreach (var plate in session.EmergencyDefenses)
         {
             plate.Tick(deltaSeconds);
-            var triggeringEnemy = session.Enemies
-                .Where(x => !x.IsDead && !x.HasEscaped && plate.CanTrigger(x.Id))
+            var enemiesOnPlate = session.Enemies
+                .Where(x => !x.IsDead && !x.HasEscaped && Vector2.DistanceSquared(x.Position, plate.Position) <=
+                    plate.Definition.TriggerRadius * plate.Definition.TriggerRadius)
+                .ToArray();
+            plate.RetainHandledEnemies(enemiesOnPlate.Select(x => x.Id));
+            var triggeringEnemy = enemiesOnPlate
+                .Where(x => plate.CanTrigger(x.Id))
                 .OrderByDescending(x => x.DistanceAlongPath)
-                .FirstOrDefault(x => Vector2.DistanceSquared(x.Position, plate.Position) <=
-                                     plate.Definition.TriggerRadius * plate.Definition.TriggerRadius);
+                .FirstOrDefault();
             if (triggeringEnemy is null) continue;
 
             var hitCount = 0;
             var damage = plate.Definition.Damage * (1f + (forge?.Level.DefenseDamageBonus ?? 0));
             var affectedEnemies = session.Enemies.Where(x => !x.IsDead && !x.HasEscaped &&
                 Vector2.DistanceSquared(x.Position, plate.Position) <= plate.Definition.BlastRadius * plate.Definition.BlastRadius).ToArray();
+            plate.Trigger(triggeringEnemy.Id);
             foreach (var enemy in affectedEnemies)
             {
                 session.DamageResolver.Apply(enemy, new DamagePayload
@@ -41,10 +46,28 @@ public sealed class TacticalDefenseSystem
                         SourceId = plate.DamageSourceId
                     }
                 });
+                if (plate.Definition.SlowPercent > 0 && plate.Definition.SlowDuration > 0)
+                {
+                    enemy.ApplyStatus(new StatusApplication
+                    {
+                        Type = StatusType.Slow,
+                        Duration = plate.Definition.SlowDuration,
+                        Magnitude = plate.Definition.SlowPercent,
+                        SourceId = plate.DamageSourceId
+                    });
+                }
                 hitCount++;
             }
 
-            plate.Trigger(triggeringEnemy.Id, affectedEnemies.Select(x => x.Id));
+            var knockbackMultiplier = triggeringEnemy.IsBoss
+                ? plate.Definition.BossKnockbackMultiplier
+                : triggeringEnemy.IsElite
+                    ? plate.Definition.EliteKnockbackMultiplier
+                    : 1f;
+            triggeringEnemy.TryApplyKnockback(
+                plate.Definition.KnockbackDistance * knockbackMultiplier,
+                plate.Definition.KnockbackGraceSeconds,
+                session.Map.Path);
             session.Effects.AddFlash(plate.Position, plate.Definition.Visual.PrimaryColor, 0.28f, plate.Definition.BlastRadius);
             session.OnEmergencyDefenseTriggered(plate, hitCount);
         }

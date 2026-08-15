@@ -562,7 +562,7 @@ public sealed class AutoPlayer
             var directLimit = 2;
             var directPurchaseAllowed = session.Economy.Lives <= session.Economy.StartingLives / 2;
             if (_directEmergencyPurchasesThisWave >= directLimit) return;
-            if (!directPurchaseAllowed || session.Economy.Credits < session.Content.Tactics.EmergencyDefense.PurchaseCost + ReserveCredits(session, true)) return;
+            if (!directPurchaseAllowed || session.Economy.Credits < session.CurrentEmergencyDirectPurchaseCost + ReserveCredits(session, true)) return;
         }
 
         var total = session.Map.Path.TotalLength;

@@ -16,6 +16,7 @@ public static class ColorPalette
     public static readonly Color Navy = new(21, 43, 70);
     public static readonly Color Cobalt = new(44, 122, 231);
     public static readonly Color Cyan = new(33, 146, 170);
+    public static readonly Color Berry = new(188, 47, 138);
     public static readonly Color Violet = new(124, 83, 218);
     public static readonly Color Coral = new(236, 80, 98);
     public static readonly Color Orange = new(229, 138, 50);
@@ -42,6 +43,46 @@ public static class ColorPalette
     public static Color Tint(Color color, float amount)
     {
         return Color.Lerp(color, Paper, MathHelper.Clamp(amount, 0, 1));
+    }
+
+    public static Color ReadableAccent(Color accent, Color background, float minimumContrast = 4.5f)
+    {
+        if (ContrastRatio(accent, background) >= minimumContrast) return accent;
+        var darkTargetContrast = ContrastRatio(Ink, background);
+        var lightTargetContrast = ContrastRatio(Paper, background);
+        var target = darkTargetContrast >= lightTargetContrast ? Ink : Paper;
+        if (MathF.Max(darkTargetContrast, lightTargetContrast) < minimumContrast) return target;
+
+        var unreadableAmount = 0f;
+        var readableAmount = 1f;
+        for (var iteration = 0; iteration < 12; iteration++)
+        {
+            var amount = (unreadableAmount + readableAmount) * 0.5f;
+            var candidate = Color.Lerp(accent, target, amount);
+            if (ContrastRatio(candidate, background) >= minimumContrast) readableAmount = amount;
+            else unreadableAmount = amount;
+        }
+        return Color.Lerp(accent, target, readableAmount);
+    }
+
+    public static float ContrastRatio(Color first, Color second)
+    {
+        var lighter = MathF.Max(RelativeLuminance(first), RelativeLuminance(second));
+        var darker = MathF.Min(RelativeLuminance(first), RelativeLuminance(second));
+        return (lighter + 0.05f) / (darker + 0.05f);
+    }
+
+    private static float RelativeLuminance(Color color) =>
+        0.2126f * LinearChannel(color.R) +
+        0.7152f * LinearChannel(color.G) +
+        0.0722f * LinearChannel(color.B);
+
+    private static float LinearChannel(byte value)
+    {
+        var channel = value / 255f;
+        return channel <= 0.04045f
+            ? channel / 12.92f
+            : MathF.Pow((channel + 0.055f) / 1.055f, 2.4f);
     }
 
     public static Color WithAlpha(Color color, byte alpha) => new(color.R, color.G, color.B, alpha);

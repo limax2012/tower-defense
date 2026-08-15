@@ -37,13 +37,17 @@ public sealed class PulsePlateInstance
     public bool CanTrigger(int enemyId) =>
         !IsExpired && ArmRemaining <= 0 && CooldownRemaining <= 0 && !_handledEnemyIds.Contains(enemyId);
 
-    public void Trigger(int triggeringEnemyId, IEnumerable<int> affectedEnemyIds)
+    public void RetainHandledEnemies(IEnumerable<int> enemyIdsStillOnPlate)
+    {
+        _handledEnemyIds.IntersectWith(enemyIdsStillOnPlate);
+    }
+
+    public void Trigger(int triggeringEnemyId)
     {
         if (!CanTrigger(triggeringEnemyId)) return;
         ChargesRemaining--;
         CooldownRemaining = Definition.TriggerCooldown;
         _handledEnemyIds.Add(triggeringEnemyId);
-        foreach (var enemyId in affectedEnemyIds) _handledEnemyIds.Add(enemyId);
     }
 
     public PulsePlateSaveData CaptureSaveData() => new()

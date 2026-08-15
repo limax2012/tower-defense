@@ -30,14 +30,16 @@ public static class GameConstants
 public enum GameState
 {
     MainMenu,
+    TowerLibrary,
+    SaveSlots,
     CoOpMenu,
     CoOpLobby,
     CoOpReconnect,
     Playing,
     Paused,
-    BattlefieldReview,
     Victory,
-    Defeat
+    Defeat,
+    DefeatField
 }
 
 public enum TargetMode
@@ -71,7 +73,8 @@ public enum PlacementFailure
     TooCloseToPathEndpoint,
     OverlapsDefense,
     GeneratorAlreadyBuilt,
-    NoDefenseAvailable
+    NoDefenseAvailable,
+    DefenseCapacityReached
 }
 
 public enum TacticalPlacementKind
@@ -102,7 +105,8 @@ public readonly record struct InputSnapshot(
     bool OverdrivePressed,
     string TextEntered,
     bool BackspacePressed,
-    bool EnterPressed);
+    bool EnterPressed,
+    bool CopyPressed = false);
 
 public sealed class ViewportTransform
 {
@@ -143,6 +147,7 @@ public sealed class InputRouter
     private MouseState _previousMouse;
     private readonly Queue<char> _textInput = new();
     private readonly ViewportTransform _transform;
+    private long _nextBackspaceRepeatTimestamp;
 
     public InputRouter(ViewportTransform transform) => _transform = transform;
 
@@ -157,6 +162,11 @@ public sealed class InputRouter
         var keyboard = Microsoft.Xna.Framework.Input.Keyboard.GetState();
         var mouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
         var logical = _transform.ScreenToLogical(new Point(mouse.X, mouse.Y));
+        var controlDown = keyboard.IsKeyDown(Keys.LeftControl) || keyboard.IsKeyDown(Keys.RightControl);
+        var textEntered = DrainTextInput();
+        if (controlDown) textEntered = "";
+        if (controlDown && IsPressed(keyboard, _previousKeyboard, Keys.V))
+            textEntered = ClipboardService.TryGetText() ?? "";
         var snapshot = new InputSnapshot(
             logical,
             mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed && _previousMouse.LeftButton != Microsoft.Xna.Framework.Input.ButtonState.Pressed,
@@ -176,9 +186,10 @@ public sealed class InputRouter
             IsPressed(keyboard, _previousKeyboard, Microsoft.Xna.Framework.Input.Keys.Q),
             IsPressed(keyboard, _previousKeyboard, Microsoft.Xna.Framework.Input.Keys.G),
             IsPressed(keyboard, _previousKeyboard, Microsoft.Xna.Framework.Input.Keys.E),
-            DrainTextInput(),
-            IsPressed(keyboard, _previousKeyboard, Microsoft.Xna.Framework.Input.Keys.Back),
-            IsPressed(keyboard, _previousKeyboard, Microsoft.Xna.Framework.Input.Keys.Enter));
+            textEntered,
+            ShouldBackspace(keyboard),
+            IsPressed(keyboard, _previousKeyboard, Microsoft.Xna.Framework.Input.Keys.Enter),
+            controlDown && IsPressed(keyboard, _previousKeyboard, Keys.C));
         _previousKeyboard = keyboard;
         _previousMouse = mouse;
         return snapshot;
@@ -186,6 +197,25 @@ public sealed class InputRouter
 
     private static bool IsPressed(KeyboardState current, KeyboardState previous, Microsoft.Xna.Framework.Input.Keys key)
         => current.IsKeyDown(key) && !previous.IsKeyDown(key);
+
+    private bool ShouldBackspace(KeyboardState keyboard)
+    {
+        if (!keyboard.IsKeyDown(Keys.Back))
+        {
+            _nextBackspaceRepeatTimestamp = 0;
+            return false;
+        }
+
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (!_previousKeyboard.IsKeyDown(Keys.Back))
+        {
+            _nextBackspaceRepeatTimestamp = now + (long)(System.Diagnostics.Stopwatch.Frequency * 0.34);
+            return true;
+        }
+        if (_nextBackspaceRepeatTimestamp <= 0 || now < _nextBackspaceRepeatTimestamp) return false;
+        _nextBackspaceRepeatTimestamp = now + (long)(System.Diagnostics.Stopwatch.Frequency * 0.045);
+        return true;
+    }
 
     private static int GetTowerHotkey(KeyboardState current, KeyboardState previous)
     {

@@ -2,6 +2,7 @@ using MinimalBastion.Core;
 using MinimalBastion.Analytics;
 using MinimalBastion.Data;
 using MinimalBastion.Multiplayer;
+using MinimalBastion.Persistence;
 using MinimalBastion.Rendering;
 using MinimalBastion.Towers;
 using MinimalBastion.Tactics;
@@ -15,6 +16,7 @@ public enum UiAction
 {
     None,
     Play,
+    TowerLibrary,
     CoOp,
     HostCoOp,
     JoinCoOp,
@@ -22,8 +24,12 @@ public enum UiAction
     Resume,
     SaveGame,
     LoadGame,
+    ConfirmSaveSlot,
+    DeleteSaveSlot,
+    CloseSaveSlots,
     Restart,
-    ViewBattlefield,
+    ContinueEndless,
+    ViewField,
     ViewResults,
     MainMenu,
     Exit
@@ -55,29 +61,55 @@ public sealed class UIManager
     private bool _editingJoinCode;
     private int _coOpWaveReadyMask;
     private bool _coOpWaveStartQueued;
+    private bool _coOpEarlyBonusQueued;
     private bool _coOpPeerConnected;
     private bool _coOpResyncing;
     private bool _saveAvailable;
-    private string _persistenceStatus = "Progress checkpoints are stored between waves.";
+    private string _persistenceStatus = "Progress is stored in independent save slots between waves.";
+    private IReadOnlyList<SaveSlotInfo> _saveSlots = Array.Empty<SaveSlotInfo>();
+    private bool _saveSlotWriteMode;
+    private int _selectedSaveSlot = 1;
+    private int _saveSlotPage;
+    private bool _saveSlotDeleteArmed;
+    private bool _readOnlyInspection;
+    private bool _towerLibraryOpen;
+    private int _towerLibraryIndex;
+    private IReadOnlyList<TowerDefinition> _libraryTowers = Array.Empty<TowerDefinition>();
     private readonly Rectangle _mapButton = new(500, 370, 280, 40);
-    private readonly Rectangle _continueButton = new(500, 420, 280, 44);
+    private readonly Rectangle _continueButton = new(500, 420, 135, 44);
+    private readonly Rectangle _mainMenuLibraryButton = new(645, 420, 135, 44);
     private readonly Rectangle _playButton = new(500, 474, 280, 44);
     private readonly Rectangle _coOpButton = new(500, 528, 280, 44);
     private readonly Rectangle _quitButton = new(500, 582, 280, 40);
+    private readonly Rectangle[] _saveSlotRows =
+    {
+        new(330, 130, 620, 66),
+        new(330, 206, 620, 66),
+        new(330, 282, 620, 66),
+        new(330, 358, 620, 66),
+        new(330, 434, 620, 66)
+    };
+    private readonly Rectangle _saveSlotConfirmButton = new(330, 520, 400, 46);
+    private readonly Rectangle _saveSlotDeleteButton = new(740, 520, 210, 46);
+    private readonly Rectangle _saveSlotPreviousButton = new(330, 582, 160, 44);
+    private readonly Rectangle _saveSlotBackButton = new(500, 582, 280, 44);
+    private readonly Rectangle _saveSlotNextButton = new(790, 582, 160, 44);
     private readonly Rectangle _joinHostField = new(500, 264, 280, 46);
     private readonly Rectangle _joinCodeField = new(500, 330, 280, 46);
     private readonly Rectangle _hostCoOpButton = new(500, 396, 280, 46);
     private readonly Rectangle _joinCoOpButton = new(500, 452, 280, 46);
     private readonly Rectangle _backButton = new(500, 518, 280, 44);
-    private readonly Rectangle _resumeButton = new(500, 270, 280, 46);
-    private readonly Rectangle _saveButton = new(500, 326, 280, 46);
-    private readonly Rectangle _loadButton = new(500, 382, 280, 46);
-    private readonly Rectangle _restartButton = new(500, 438, 280, 46);
-    private readonly Rectangle _mainMenuButton = new(500, 494, 280, 46);
-    private readonly Rectangle _resultReviewButton = new(296, 580, 206, 46);
+    private readonly Rectangle _resumeButton = new(500, 236, 280, 46);
+    private readonly Rectangle _towerLibraryButton = new(500, 288, 280, 46);
+    private readonly Rectangle _saveButton = new(500, 340, 280, 46);
+    private readonly Rectangle _loadButton = new(500, 392, 280, 46);
+    private readonly Rectangle _restartButton = new(500, 444, 280, 46);
+    private readonly Rectangle _mainMenuButton = new(500, 496, 280, 46);
+    private readonly Rectangle _towerLibraryCloseButton = new(1080, 48, 130, 38);
+    private readonly Rectangle _resultContinueButton = new(296, 580, 206, 46);
     private readonly Rectangle _resultRestartButton = new(518, 580, 206, 46);
     private readonly Rectangle _resultMenuButton = new(740, 580, 206, 46);
-    private readonly Rectangle _reviewResultsButton = new(450, 9, 170, 38);
+    private readonly Rectangle _fieldResultsButton = new(630, 9, 176, 38);
 
     public string JoinHostInput => _joinHostInput;
     public string JoinCodeInput => _joinCodeInput;
@@ -86,10 +118,61 @@ public sealed class UIManager
     public string CoOpLobbyCode { get; private set; } = "";
     public string SelectedMapId => _maps.Count == 0 ? "foundry_loop" : _maps[_selectedMapIndex].Id;
     public string SelectedMapName => _maps.Count == 0 ? "Foundry Loop" : _maps[_selectedMapIndex].Name;
+    public int SelectedSaveSlot => _selectedSaveSlot;
 
     public static string PauseCheckpointStatus(bool canSave) => canSave
-        ? "Between waves - checkpoint ready."
+        ? "Between waves - save slots are available."
         : "Active wave - saving unlocks after it clears.";
+
+    public static string CoOpWaveButtonLabel(int localPlayerId, int currentWave, int readyMask,
+        bool startQueued, bool earlyBonusQueued, float intermissionRemaining)
+    {
+        if (startQueued) return earlyBonusQueued ? $"STARTING | +{GameConstants.EarlyStartBonus} LOCKED" : "STARTING | NO BONUS";
+        var otherPlayer = localPlayerId == 1 ? 2 : 1;
+        var localReady = localPlayerId is 1 or 2 && (readyMask & (1 << (localPlayerId - 1))) != 0;
+        var otherReady = (readyMask & (1 << (otherPlayer - 1))) != 0;
+        var action = localReady ? $"WAIT P{otherPlayer}" : otherReady ? $"JOIN P{otherPlayer}" : "READY";
+        var earlyStatus = EarlyCallStatus(currentWave, intermissionRemaining);
+        return string.IsNullOrEmpty(earlyStatus)
+            ? action == "READY" ? "READY WAVE" : action
+            : $"{action} | {earlyStatus}";
+    }
+
+    public static string CoOpReadyStatusLabel(int currentWave, int readyMask, bool startQueued,
+        bool earlyBonusQueued, float intermissionRemaining)
+    {
+        var p1 = (readyMask & 0b01) != 0 ? "READY" : "WAIT";
+        var p2 = (readyMask & 0b10) != 0 ? "READY" : "WAIT";
+        var earlyStatus = startQueued
+            ? earlyBonusQueued ? $"+{GameConstants.EarlyStartBonus} LOCKED" : "NO BONUS"
+            : EarlyCallStatus(currentWave, intermissionRemaining);
+        return string.IsNullOrEmpty(earlyStatus)
+            ? $"P1 {p1} | P2 {p2}"
+            : $"P1 {p1} | P2 {p2} | {earlyStatus}";
+    }
+
+    public static string PulsePlateButtonLabel(MinimalBastion.GameSession session)
+    {
+        var definition = session.Content.Tactics.EmergencyDefense;
+        var field = $"FIELD {session.EmergencyDefenses.Count}/{definition.MaximumActive}";
+        if (session.EmergencyDefenses.Count >= definition.MaximumActive)
+            return $"[Q] {field} | FULL";
+        if (session.EmergencyInventory > 0)
+        {
+            var stored = session.Generator is { } forge
+                ? $"STORED {session.EmergencyInventory}/{forge.Level.Capacity}"
+                : $"STORED {session.EmergencyInventory}";
+            return $"[Q] {stored} | {field} | PLACE";
+        }
+        if (session.Waves.IsActive)
+            return $"[Q] {field} | BUY {session.CurrentEmergencyDirectPurchaseCost}";
+        return $"[Q] {field} | WAVE ONLY";
+    }
+
+    private static string EarlyCallStatus(int currentWave, float intermissionRemaining) =>
+        currentWave <= 0 ? "" : intermissionRemaining > 0
+            ? $"EARLY +{GameConstants.EarlyStartBonus} | {MathF.Ceiling(intermissionRemaining):0}s"
+            : "BONUS EXPIRED";
 
     public UIManager(SpriteFont font) => _font = font;
 
@@ -99,12 +182,36 @@ public sealed class UIManager
         if (!string.IsNullOrWhiteSpace(status)) _persistenceStatus = status;
     }
 
+    public void ConfigureSaveSlots(IReadOnlyList<SaveSlotInfo> slots, bool writeMode, int? activeSlot = null)
+    {
+        _saveSlots = slots.OrderBy(slot => slot.Slot).ToArray();
+        _saveSlotWriteMode = writeMode;
+        _saveSlotDeleteArmed = false;
+        int? preferred = activeSlot is { } requested && _saveSlots.Any(slot => slot.Slot == requested)
+            ? requested
+            : null;
+        if (preferred is null)
+            preferred = writeMode
+                ? _saveSlots.FirstOrDefault(slot => !slot.IsOccupied)?.Slot
+                : _saveSlots.FirstOrDefault(slot => slot.IsOccupied && slot.Error is null)?.Slot;
+        preferred ??= _saveSlots.FirstOrDefault()?.Slot ?? 1;
+        _selectedSaveSlot = preferred.Value;
+        var selectedIndex = Math.Max(0, _saveSlots.ToList().FindIndex(slot => slot.Slot == _selectedSaveSlot));
+        _saveSlotPage = selectedIndex / _saveSlotRows.Length;
+    }
+
     public void ConfigureMaps(IEnumerable<MapDefinition> maps)
     {
         _maps.Clear();
         _maps.AddRange(maps.OrderBy(x => x.Id.Equals("foundry_loop", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
             .ThenBy(x => x.DisplayName).Select(x => (x.Id, x.DisplayName, x.PowerNodes.Count)));
         _selectedMapIndex = Math.Clamp(_selectedMapIndex, 0, Math.Max(0, _maps.Count - 1));
+    }
+
+    public void ConfigureTowerLibrary(IEnumerable<TowerDefinition> towers)
+    {
+        _libraryTowers = towers.OrderBy(x => x.PurchaseCost).ThenBy(x => x.Id).ToArray();
+        _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, Math.Max(0, _libraryTowers.Count - 1));
     }
 
     public UiAction HandleMainMenu(InputSnapshot input)
@@ -117,9 +224,65 @@ public sealed class UIManager
             return UiAction.None;
         }
         if (_continueButton.Contains(point) && _saveAvailable) return UiAction.LoadGame;
+        if (_mainMenuLibraryButton.Contains(point)) return UiAction.TowerLibrary;
         if (_playButton.Contains(point)) return UiAction.Play;
         if (_coOpButton.Contains(point)) return UiAction.CoOp;
         if (_quitButton.Contains(point)) return UiAction.Exit;
+        return UiAction.None;
+    }
+
+    public UiAction HandleSaveSlots(InputSnapshot input)
+    {
+        if (input.EscapePressed)
+        {
+            if (_saveSlotDeleteArmed)
+            {
+                _saveSlotDeleteArmed = false;
+                return UiAction.None;
+            }
+            return UiAction.CloseSaveSlots;
+        }
+        if (!input.LeftPressed) return UiAction.None;
+        var point = input.MousePosition.ToPoint();
+        var pageCount = Math.Max(1, (_saveSlots.Count + _saveSlotRows.Length - 1) / _saveSlotRows.Length);
+        var pageSlots = _saveSlots.Skip(_saveSlotPage * _saveSlotRows.Length).Take(_saveSlotRows.Length).ToArray();
+        for (var index = 0; index < _saveSlotRows.Length; index++)
+        {
+            if (!_saveSlotRows[index].Contains(point) || index >= pageSlots.Length) continue;
+            _selectedSaveSlot = pageSlots[index].Slot;
+            _saveSlotDeleteArmed = false;
+            return UiAction.None;
+        }
+
+        if (_saveSlotPreviousButton.Contains(point) && _saveSlotPage > 0)
+        {
+            _saveSlotPage--;
+            _selectedSaveSlot = _saveSlots[_saveSlotPage * _saveSlotRows.Length].Slot;
+            _saveSlotDeleteArmed = false;
+            return UiAction.None;
+        }
+        if (_saveSlotNextButton.Contains(point) && _saveSlotPage + 1 < pageCount)
+        {
+            _saveSlotPage++;
+            _selectedSaveSlot = _saveSlots[_saveSlotPage * _saveSlotRows.Length].Slot;
+            _saveSlotDeleteArmed = false;
+            return UiAction.None;
+        }
+
+        var selected = _saveSlots.FirstOrDefault(slot => slot.Slot == _selectedSaveSlot);
+        var canConfirm = _saveSlotWriteMode || selected is { IsOccupied: true, Error: null };
+        if (_saveSlotConfirmButton.Contains(point) && canConfirm) return UiAction.ConfirmSaveSlot;
+        if (_saveSlotDeleteButton.Contains(point) && selected is { IsOccupied: true })
+        {
+            if (_saveSlotDeleteArmed)
+            {
+                _saveSlotDeleteArmed = false;
+                return UiAction.DeleteSaveSlot;
+            }
+            _saveSlotDeleteArmed = true;
+            return UiAction.None;
+        }
+        if (_saveSlotBackButton.Contains(point)) return UiAction.CloseSaveSlots;
         return UiAction.None;
     }
 
@@ -131,6 +294,9 @@ public sealed class UIManager
             if (_joinHostField.Contains(clicked)) _editingJoinCode = false;
             else if (_joinCodeField.Contains(clicked)) _editingJoinCode = true;
         }
+
+        if (input.CopyPressed)
+            ClipboardService.TrySetText(_editingJoinCode ? _joinCodeInput : _joinHostInput);
 
         if (!string.IsNullOrEmpty(input.TextEntered))
         {
@@ -169,10 +335,11 @@ public sealed class UIManager
         CoOpLobbyCode = code;
     }
 
-    public void SetCoOpWaveReadyState(int readyMask, bool startQueued)
+    public void SetCoOpWaveReadyState(int readyMask, bool startQueued, bool earlyBonusQueued = false)
     {
         _coOpWaveReadyMask = readyMask & 0b11;
         _coOpWaveStartQueued = startQueued;
+        _coOpEarlyBonusQueued = startQueued && earlyBonusQueued;
     }
 
     public void SetCoOpConnectionState(bool connected, bool resyncing = false)
@@ -341,10 +508,22 @@ public sealed class UIManager
 
     public UiAction HandlePausedInput(InputSnapshot input, MinimalBastion.GameSession session)
     {
+        if (_towerLibraryOpen)
+        {
+            if (HandleTowerLibraryInput(input)) _towerLibraryOpen = false;
+            return UiAction.None;
+        }
+
         if (input.EscapePressed || input.PausePressed) return UiAction.Resume;
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
         if (_resumeButton.Contains(point)) return UiAction.Resume;
+        if (_towerLibraryButton.Contains(point))
+        {
+            _towerLibraryOpen = true;
+            _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, Math.Max(0, _libraryTowers.Count - 1));
+            return UiAction.None;
+        }
         if (_saveButton.Contains(point) && session.CanSaveCheckpoint) return UiAction.SaveGame;
         if (_loadButton.Contains(point) && _saveAvailable) return UiAction.LoadGame;
         if (_restartButton.Contains(point)) return UiAction.Restart;
@@ -352,33 +531,61 @@ public sealed class UIManager
         return UiAction.None;
     }
 
-    public UiAction HandleResultInput(InputSnapshot input)
+    public UiAction HandleTitleTowerLibrary(InputSnapshot input) =>
+        HandleTowerLibraryInput(input) ? UiAction.MainMenu : UiAction.None;
+
+    private bool HandleTowerLibraryInput(InputSnapshot input)
+    {
+        _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, Math.Max(0, _libraryTowers.Count - 1));
+        if (input.EscapePressed || input.PausePressed || input.RightPressed) return true;
+        if (input.TowerHotkey > 0 && input.TowerHotkey <= _libraryTowers.Count)
+            _towerLibraryIndex = input.TowerHotkey - 1;
+        if (!input.LeftPressed) return false;
+        var point = input.MousePosition.ToPoint();
+        if (_towerLibraryCloseButton.Contains(point)) return true;
+        for (var index = 0; index < _libraryTowers.Count; index++)
+        {
+            if (!TowerLibraryRow(index).Contains(point)) continue;
+            _towerLibraryIndex = index;
+            break;
+        }
+        return false;
+    }
+
+    public UiAction HandleResultInput(InputSnapshot input, bool victory)
     {
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
-        if (_resultReviewButton.Contains(point)) return UiAction.ViewBattlefield;
+        if (_resultContinueButton.Contains(point)) return victory ? UiAction.ContinueEndless : UiAction.ViewField;
         if (_resultRestartButton.Contains(point)) return UiAction.Restart;
         if (_resultMenuButton.Contains(point)) return UiAction.MainMenu;
         return UiAction.None;
     }
 
-    public UiAction HandleBattlefieldReviewInput(InputSnapshot input, MinimalBastion.GameSession session)
+    public UiAction HandleDefeatFieldInput(InputSnapshot input)
     {
-        _hoveredTowerCardId = null;
-        _hoveredTacticalPlacement = TacticalPlacementKind.None;
-        _hoveredPowerNode = session.Map.Definition.PowerNodes.FirstOrDefault(node =>
-            Vector2.DistanceSquared(node.Position.ToVector2(), input.MousePosition) <= node.Radius * node.Radius);
         if (input.EscapePressed) return UiAction.ViewResults;
-        return input.LeftPressed && _reviewResultsButton.Contains(input.MousePosition.ToPoint())
+        return input.LeftPressed && _fieldResultsButton.Contains(input.MousePosition.ToPoint())
             ? UiAction.ViewResults
             : UiAction.None;
     }
 
     public void Draw(SpriteBatch batch, PrimitiveRenderer p, GameState state, MinimalBastion.GameSession? session)
     {
+        _readOnlyInspection = state == GameState.DefeatField;
         if (state == GameState.MainMenu)
         {
             DrawMainMenu(batch, p);
+            return;
+        }
+        if (state == GameState.TowerLibrary)
+        {
+            DrawTowerLibrary(batch, p, "title screen");
+            return;
+        }
+        if (state == GameState.SaveSlots)
+        {
+            DrawSaveSlots(batch, p);
             return;
         }
         if (state == GameState.CoOpMenu)
@@ -401,9 +608,9 @@ public sealed class UIManager
 
         if (state == GameState.Paused) DrawPauseOverlay(batch, p, session);
         else if (state == GameState.CoOpReconnect) DrawCoOpReconnectOverlay(batch, p);
-        else if (state == GameState.BattlefieldReview) DrawBattlefieldReviewBanner(batch, p);
         else if (state == GameState.Victory) DrawResultOverlay(batch, p, session, true);
         else if (state == GameState.Defeat) DrawResultOverlay(batch, p, session, false);
+        else if (state == GameState.DefeatField) DrawDefeatFieldControls(batch, p);
     }
 
     private void DrawHud(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -414,8 +621,8 @@ public sealed class UIManager
         DrawText(batch, $"{session.Economy.Lives}/{session.Economy.StartingLives}", new Vector2(18, 26), ColorPalette.Paper, 1f);
         DrawText(batch, "CREDITS", new Vector2(115, 8), ColorPalette.Gold, 0.75f);
         DrawText(batch, session.Economy.Credits.ToString(), new Vector2(115, 26), ColorPalette.Paper, 1f);
-        DrawText(batch, "WAVE", new Vector2(225, 8), ColorPalette.Cyan, 0.75f);
-        DrawText(batch, $"{session.CurrentWave}/{session.TotalWaves}", new Vector2(225, 26), ColorPalette.Paper, 1f);
+        DrawText(batch, session.IsEndlessMode ? "ENDLESS" : "WAVE", new Vector2(225, 8), ColorPalette.Cyan, 0.75f);
+        DrawText(batch, session.IsEndlessMode ? session.CurrentWave.ToString() : $"{session.CurrentWave}/{session.TotalWaves}", new Vector2(225, 26), ColorPalette.Paper, 1f);
         DrawText(batch, "ENEMIES", new Vector2(335, 8), ColorPalette.Lime, 0.75f);
         DrawText(batch, session.EnemiesRemaining.ToString(), new Vector2(335, 26), ColorPalette.Paper, 1f);
 
@@ -437,13 +644,9 @@ public sealed class UIManager
         if (session.IsCoOp && session.CanStartWave)
         {
             var localBit = 1 << (session.LocalPlayerId - 1);
-            var otherPlayer = session.LocalPlayerId == 1 ? 2 : 1;
             var localReady = (_coOpWaveReadyMask & localBit) != 0;
-            var otherReady = (_coOpWaveReadyMask & (1 << (otherPlayer - 1))) != 0;
-            var readyLabel = session.IntermissionRemaining > 0 ? $"READY +{GameConstants.EarlyStartBonus}" : "READY WAVE";
-            startWaveLabel = _coOpWaveStartQueued ? "STARTING..." :
-                localReady ? $"WAITING P{otherPlayer}" :
-                otherReady ? $"JOIN P{otherPlayer}" : readyLabel;
+            startWaveLabel = CoOpWaveButtonLabel(session.LocalPlayerId, session.CurrentWave,
+                _coOpWaveReadyMask, _coOpWaveStartQueued, _coOpEarlyBonusQueued, session.IntermissionRemaining);
             startWaveEnabled = !_coOpWaveStartQueued && !localReady;
         }
         DrawButton(batch, p, _startWaveButton, startWaveLabel, startWaveEnabled, ColorPalette.Green);
@@ -471,36 +674,30 @@ public sealed class UIManager
         _generatorButton = new Rectangle(972, 132, 296, 28);
         _overdriveButton = new Rectangle(972, 166, 296, 28);
         var defense = session.Content.Tactics.EmergencyDefense;
-        var emergencyReady = session.EmergencyInventory > 0 || session.Economy.CanAfford(defense.PurchaseCost);
-        var forge = session.Generator;
-        var emergencyLabel = forge is null
-            ? session.EmergencyInventory > 0
-                ? $"[Q] PLATES {session.EmergencyInventory}   |   PLACE STORED"
-                : $"[Q] BUY PULSE PLATE   {defense.PurchaseCost}"
-            : session.EmergencyInventory > 0
-                ? $"[Q] PLATES {session.EmergencyInventory}/{forge.Level.Capacity}   |   PLACE STORED"
-                : $"[Q] PLATES 0/{forge.Level.Capacity}   |   BUY {defense.PurchaseCost}";
+        var plateFieldFull = session.EmergencyDefenses.Count >= defense.MaximumActive;
+        var emergencyReady = !plateFieldFull && (session.EmergencyInventory > 0 || session.CanDirectPurchaseEmergencyDefense);
+        var emergencyLabel = PulsePlateButtonLabel(session);
         DrawButton(batch, p, _emergencyButton, emergencyLabel, emergencyReady, ColorPalette.Gold);
 
         var generator = session.Content.Tactics.Generator;
         var generatorReady = session.Generator is not null || session.Economy.CanAfford(generator.PurchaseCost);
         var generatorLabel = session.Generator is { } active
             ? session.EmergencyInventory >= active.Level.Capacity
-                ? $"[G] FORGE L{active.LevelIndex + 1}   |   STORAGE FULL"
+                ? $"[G] FORGE L{active.LevelIndex + 1} | FULL"
                 : session.Waves.IsActive
-                    ? $"[G] FORGE L{active.LevelIndex + 1}   |   +1 IN {active.ProductionRemaining:0}s"
-                    : $"[G] FORGE L{active.LevelIndex + 1}   |   PAUSED {active.ProductionRemaining:0}s"
-            : $"[G] CHARGE FORGE   {generator.PurchaseCost}   |   WAVE-POWERED";
+                    ? $"[G] FORGE L{active.LevelIndex + 1} | +1 IN {active.ProductionRemaining:0}s"
+                    : $"[G] FORGE L{active.LevelIndex + 1} | PAUSED {active.ProductionRemaining:0}s"
+            : $"[G] FORGE {generator.PurchaseCost} | ACTIVE WAVES";
         DrawButton(batch, p, _generatorButton, generatorLabel, generatorReady, ColorPalette.Green);
 
         var selected = session.SelectedTower;
         var activeOverdrive = session.Towers.FirstOrDefault(x => x.IsOverdriven);
         var overdriveReady = selected is { IsSupport: false } && session.OverdriveCooldownRemaining <= 0 && !selected.IsOverdriven;
-        var overdriveLabel = activeOverdrive is not null ? $"[E] OVERDRIVE ACTIVE   |   {activeOverdrive.OverdriveRemaining:0.0}s" :
-            session.OverdriveCooldownRemaining > 0 ? $"[E] OVERDRIVE COOLDOWN   |   {session.OverdriveCooldownRemaining:0.0}s" :
-            selected is null ? "[E] OVERDRIVE READY   |   SELECT A TOWER" :
-            selected.IsSupport ? "[E] OVERDRIVE   COMBAT TOWERS ONLY" :
-            $"[E] OVERDRIVE   {selected.Definition.DisplayName.ToUpperInvariant()}";
+        var overdriveLabel = activeOverdrive is not null ? $"[E] OVERDRIVE | ACTIVE {activeOverdrive.OverdriveRemaining:0.0}s" :
+            session.OverdriveCooldownRemaining > 0 ? $"[E] OVERDRIVE | COOLDOWN {session.OverdriveCooldownRemaining:0.0}s" :
+            selected is null ? "[E] OVERDRIVE | SELECT TOWER" :
+            selected.IsSupport ? "[E] OVERDRIVE | COMBAT ONLY" :
+            $"[E] OVERDRIVE | {selected.Definition.DisplayName.ToUpperInvariant()}";
         DrawButton(batch, p, _overdriveButton, overdriveLabel, overdriveReady, ColorPalette.Coral);
     }
 
@@ -513,9 +710,11 @@ public sealed class UIManager
         if (session.IsCoOp)
         {
             DrawText(batch, _coOpPeerConnected ? "P1 + P2 ONLINE" : "WAITING FOR P2", new Vector2(1210, 69), _coOpPeerConnected ? ColorPalette.Green : ColorPalette.Coral, 0.43f, true);
-            var p1Ready = (_coOpWaveReadyMask & 0b01) != 0 ? "READY" : "WAIT";
-            var p2Ready = (_coOpWaveReadyMask & 0b10) != 0 ? "READY" : "WAIT";
-            DrawText(batch, session.CanStartWave ? $"P1 {p1Ready}  |  P2 {p2Ready}" : "SHARED WAVE IN PROGRESS", new Vector2(1210, 82), ColorPalette.Gold, 0.35f, true);
+            var readyStatus = session.CanStartWave
+                ? CoOpReadyStatusLabel(session.CurrentWave, _coOpWaveReadyMask, _coOpWaveStartQueued,
+                    _coOpEarlyBonusQueued, session.IntermissionRemaining)
+                : "SHARED WAVE IN PROGRESS";
+            DrawFittedCenteredText(batch, readyStatus, new Vector2(1120, 82), ColorPalette.Gold, 0.35f, 280);
         }
         p.FillRect(batch, new Rectangle(972, 90, 296, 3), ColorPalette.Gold);
 
@@ -538,8 +737,8 @@ public sealed class UIManager
             p.FillRect(batch, rect, cardFill);
             p.DrawRect(batch, rect, cardOutline, selected ? 2 : 1);
             p.DrawShape(batch, new Vector2(rect.X + 17, rect.Center.Y), 10, definition.Visual.Shape, definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
-            DrawText(batch, index == 9 ? "0" : (index + 1).ToString(), new Vector2(rect.Right - 10, rect.Y + 4), selected ? definition.Visual.AccentColor : ColorPalette.Muted, 0.43f, true);
-            DrawText(batch, definition.DisplayName, new Vector2(rect.X + 38, rect.Y + 5), ColorPalette.Ink, 0.53f);
+            DrawText(batch, index == 9 ? "0" : (index + 1).ToString(), new Vector2(rect.Right - 14, rect.Y + 7), selected ? definition.Visual.AccentColor : ColorPalette.Muted, 0.39f, true);
+            DrawFittedText(batch, definition.DisplayName, new Vector2(rect.X + 38, rect.Y + 5), ColorPalette.Ink, 0.53f, 80);
             DrawText(batch, $"{definition.PurchaseCost}  {TowerInfo.ShortRole(definition)}", new Vector2(rect.X + 38, rect.Y + 21), affordable ? ColorPalette.Muted : ColorPalette.Coral, 0.44f);
         }
 
@@ -591,8 +790,9 @@ public sealed class UIManager
             return;
         }
 
-        p.FillRect(batch, new Rectangle(972, 474, 296, 156), ColorPalette.PanelAlt);
-        p.DrawRect(batch, new Rectangle(972, 474, 296, 156), tower.Definition.Visual.PrimaryColor, 1);
+        var intelCard = new Rectangle(972, 474, 296, 168);
+        p.FillRect(batch, intelCard, ColorPalette.PanelAlt);
+        p.DrawRect(batch, intelCard, tower.Definition.Visual.PrimaryColor, 1);
         p.DrawShape(batch, new Vector2(1000, 512), tower.Definition.Visual.Radius, tower.Definition.Visual.Shape,
             tower.Definition.Visual.PrimaryColor, tower.Definition.Visual.AccentColor, tower.LevelIndex + 1, true, levelMarks: true);
         DrawText(batch, tower.Definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f);
@@ -602,45 +802,62 @@ public sealed class UIManager
         var effectiveDamage = session.GetEffectiveDamage(tower, tower.Level.Damage);
         var effectiveRate = session.GetEffectiveAttacksPerSecond(tower);
         var effectiveDps = effectiveDamage * effectiveRate * Math.Max(1, tower.Level.PelletCount);
-        DrawText(batch, tower.IsSupport
-            ? $"Aura {tower.Level.AuraRange:0}   Rate +{tower.Level.AuraAttackSpeedBonus:P0}"
-            : $"ACTIVE  DMG {effectiveDamage:0.#}   DPS {effectiveDps:0.#}   RNG {session.GetEffectiveRange(tower):0}", new Vector2(980, 552), ColorPalette.Ink, 0.58f);
-        DrawText(batch, TowerInfo.Special(tower.Definition, tower.Level), new Vector2(980, 573), ColorPalette.Ink, 0.58f);
+        DrawFittedText(batch, tower.IsSupport
+            ? $"AURA {tower.Level.AuraRange:0}   RATE +{tower.Level.AuraAttackSpeedBonus:P0}"
+            : $"ACTIVE  DAMAGE {effectiveDamage:0.#}   DPS {effectiveDps:0.#}   RANGE {session.GetEffectiveRange(tower):0}",
+            new Vector2(980, 540), ColorPalette.Ink, 0.56f, 280);
+        DrawText(batch, TowerInfo.Special(tower.Definition, tower.Level), new Vector2(980, 559), ColorPalette.Ink, 0.56f);
+        DrawFittedText(batch, $"THIS TOWER  |  {tower.LifetimeDamage:0} DAMAGE  |  {tower.LifetimeKills} KILLS",
+            new Vector2(980, 578), ColorPalette.Cobalt, 0.50f, 280);
         var power = session.Map.GetPowerBuff(tower.Position);
         var powerNodes = session.Map.GetPowerNodes(tower.Position);
         var powerHint = powerNodes.Count > 0
             ? $"{PowerNodeNames(powerNodes)}  {string.Join("  ", powerNodes.Select(TowerInfo.PowerNodeBonus))}  |  {TowerInfo.PowerNodeStatChange(tower.Definition, tower.Level, power)}"
             : null;
+        var supportBuff = session.GetSupportBuff(tower);
+        var beaconHint = supportBuff.IsActive ? TowerInfo.SignalBeaconStatChange(tower.Level, supportBuff) : null;
         var overdriveHint = tower.IsOverdriven ? $"OVERDRIVE ACTIVE  {tower.OverdriveRemaining:0.0}s  RATE +{GameConstants.OverdriveAttackSpeedBonus:P0}" : null;
-        var contextualHint = powerHint ?? overdriveHint ?? TowerInfo.Strength(tower.Definition);
-        DrawText(batch, contextualHint, new Vector2(980, 594), powerHint is not null ? powerNodes[0].NodeColor : overdriveHint is not null ? ColorPalette.Coral : ColorPalette.Muted, powerHint is not null ? 0.45f : 0.55f);
+        var primaryHint = beaconHint ?? TowerInfo.Strength(tower.Definition);
+        var secondaryHint = powerHint ?? overdriveHint ?? (beaconHint is not null ? TowerInfo.Strength(tower.Definition) : TowerInfo.Limitation(tower.Definition));
+        DrawFittedText(batch, primaryHint, new Vector2(980, 597),
+            beaconHint is not null ? ColorPalette.Gold : ColorPalette.Muted,
+            beaconHint is not null ? 0.48f : 0.53f, 280);
+        DrawFittedText(batch, secondaryHint, new Vector2(980, 615),
+            powerHint is not null ? powerNodes[0].NodeColor : overdriveHint is not null ? ColorPalette.Coral : ColorPalette.Muted,
+            powerHint is not null ? 0.44f : 0.50f, 280);
         var upgradeLine = _specializationHint ?? (tower.RequiresSpecialization
             ? "CHOOSE A FINAL SPECIALIZATION"
-            : tower.CanUpgrade ? $"NEXT {tower.UpgradeCost}: {TowerInfo.UpgradeSummary(tower.Definition, tower.LevelIndex)}" : "MAXIMUM LEVEL");
-        DrawText(batch, upgradeLine, new Vector2(980, 615), _specializationHint is not null ? ColorPalette.Cobalt : tower.RequiresSpecialization || tower.CanUpgrade ? ColorPalette.Violet : ColorPalette.Muted, 0.52f);
+            : tower.CanUpgrade
+                ? $"NEXT {tower.UpgradeCost}: {TowerInfo.UpgradeSummary(tower.Definition, tower.LevelIndex, supportBuff, power)}"
+                : "MAXIMUM LEVEL");
+        DrawFittedText(batch, upgradeLine, new Vector2(980, 633),
+            _specializationHint is not null ? ColorPalette.Cobalt : tower.RequiresSpecialization || tower.CanUpgrade ? ColorPalette.Violet : ColorPalette.Muted,
+            0.52f, 280);
 
-        _targetButton = new Rectangle(980, 646, 88, 30);
-        _upgradeButton = new Rectangle(1074, 646, 92, 30);
-        _sellButton = new Rectangle(1172, 646, 94, 30);
+        _targetButton = new Rectangle(980, 670, 88, 30);
+        _upgradeButton = new Rectangle(1074, 670, 92, 30);
+        _sellButton = new Rectangle(1172, 670, 94, 30);
         _specializationAButton = Rectangle.Empty;
         _specializationBButton = Rectangle.Empty;
-        const bool canManage = true;
+        var canManage = !_readOnlyInspection;
         if (tower.RequiresSpecialization)
         {
             _upgradeButton = Rectangle.Empty;
-            _targetButton = new Rectangle(980, 646, 88, 30);
-            _specializationAButton = new Rectangle(1074, 628, 118, 28);
-            _specializationBButton = new Rectangle(1074, 660, 118, 28);
-            _sellButton = new Rectangle(1198, 646, 68, 30);
+            // Keep the first branch in the normal upgrade position and place the
+            // alternate directly beneath it, with a clear gutter below intel.
+            _targetButton = new Rectangle(980, 650, 88, 28);
+            _specializationAButton = new Rectangle(1074, 650, 118, 28);
+            _specializationBButton = new Rectangle(1074, 686, 118, 28);
+            _sellButton = new Rectangle(1198, 650, 68, 28);
             var first = tower.Definition.Specializations[0];
             var second = tower.Definition.Specializations[1];
-            DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), true, ColorPalette.Cyan);
+            DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), canManage, ColorPalette.Cyan);
             DrawButton(batch, p, _specializationAButton, $"{first.ShortLabel.ToUpperInvariant()} {first.UpgradeCost}", canManage && session.Economy.CanAfford(first.UpgradeCost), tower.Definition.Visual.PrimaryColor);
             DrawButton(batch, p, _specializationBButton, $"{second.ShortLabel.ToUpperInvariant()} {second.UpgradeCost}", canManage && session.Economy.CanAfford(second.UpgradeCost), ColorPalette.Violet);
             DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange);
             return;
         }
-        if (!tower.IsSupport) DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), true, ColorPalette.Cyan);
+        if (!tower.IsSupport) DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), canManage, ColorPalette.Cyan);
         DrawButton(batch, p, _upgradeButton, tower.CanUpgrade ? $"UP {tower.UpgradeCost}" : "MAX", canManage && tower.CanUpgrade && session.Economy.CanAfford(tower.UpgradeCost), ColorPalette.Violet);
         DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange);
     }
@@ -654,23 +871,27 @@ public sealed class UIManager
             definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
         DrawText(batch, definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f);
         DrawText(batch, $"{definition.PurchaseCost} CREDITS   {TowerInfo.ShortRole(definition)}", new Vector2(1036, 508), ColorPalette.Muted, 0.60f);
-        DrawText(batch, definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase)
-            ? $"AURA {level.AuraRange:0}   RATE +{level.AuraAttackSpeedBonus:P0}   RNG +{level.AuraRangeBonus:P0}"
-            : $"DMG {level.Damage:0.#}   DPS {TowerInfo.RawDps(level):0.#}   RATE {level.AttacksPerSecond:0.##}/s   RNG {level.Range:0}", new Vector2(980, 542), ColorPalette.Ink, 0.57f);
+        DrawFittedText(batch, definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase)
+            ? $"AURA {level.AuraRange:0}   RATE +{level.AuraAttackSpeedBonus:P0}   RANGE +{level.AuraRangeBonus:P0}"
+            : $"DAMAGE {level.Damage:0.#}   DPS {TowerInfo.RawDps(level):0.#}   RATE {level.AttacksPerSecond:0.##}/s   RANGE {level.Range:0}",
+            new Vector2(980, 542), ColorPalette.Ink, 0.57f, 280);
         DrawText(batch, TowerInfo.Special(definition, level), new Vector2(980, 565), ColorPalette.Ink, 0.57f);
         var powerNodes = placing ? session.Map.GetPowerNodes(session.PlacementPosition) : Array.Empty<PowerNodeData>();
         if (powerNodes.Count > 0)
         {
             var power = session.Map.GetPowerBuff(session.PlacementPosition);
-            DrawText(batch, $"ON {PowerNodeNames(powerNodes)}  {string.Join("  ", powerNodes.Select(TowerInfo.PowerNodeBonus))}", new Vector2(980, 590), powerNodes[0].NodeColor, 0.49f);
-            DrawText(batch, TowerInfo.PowerNodeStatChange(definition, level, power), new Vector2(980, 612), ColorPalette.Cobalt, 0.52f);
+            DrawFittedText(batch, $"ON {PowerNodeNames(powerNodes)}  {string.Join("  ", powerNodes.Select(TowerInfo.PowerNodeBonus))}",
+                new Vector2(980, 590), powerNodes[0].NodeColor, 0.49f, 280);
+            DrawFittedText(batch, TowerInfo.PowerNodeStatChange(definition, level, power),
+                new Vector2(980, 612), ColorPalette.Cobalt, 0.52f, 280);
         }
         else
         {
             DrawText(batch, TowerInfo.Strength(definition), new Vector2(980, 590), ColorPalette.Muted, 0.54f);
             DrawText(batch, TowerInfo.Limitation(definition), new Vector2(980, 612), ColorPalette.Muted, 0.54f);
         }
-        DrawText(batch, $"L2 {level.UpgradeCost}: {TowerInfo.UpgradeSummary(definition, 0)}", new Vector2(980, 638), ColorPalette.Violet, 0.51f);
+        DrawFittedText(batch, $"L2 {level.UpgradeCost}: {TowerInfo.UpgradeSummary(definition, 0)}",
+            new Vector2(980, 638), ColorPalette.Violet, 0.51f, 280);
         DrawText(batch, placing ? "CLICK MAP TO DEPLOY   |   ESC TO CANCEL" : "CLICK CARD TO PREPARE PLACEMENT", new Vector2(980, 658), placing ? ColorPalette.Green : ColorPalette.Cobalt, 0.50f);
     }
 
@@ -689,13 +910,18 @@ public sealed class UIManager
         p.DrawShape(batch, new Vector2(1000, 512), definition.Visual.Radius + 2, definition.Visual.Shape,
             definition.Visual.PrimaryColor, definition.Visual.AccentColor, definition.Charges, true);
         DrawText(batch, definition.DisplayName, new Vector2(1028, 486), ColorPalette.Ink, 0.86f);
-        DrawText(batch, $"STORED {session.EmergencyInventory}   DIRECT {definition.PurchaseCost}", new Vector2(1028, 508), ColorPalette.Muted, 0.60f);
+        DrawText(batch, $"STORED {session.EmergencyInventory}   FIELD {session.EmergencyDefenses.Count}/{definition.MaximumActive}", new Vector2(1028, 508), ColorPalette.Muted, 0.60f);
         var bonus = session.Generator?.Level.DefenseDamageBonus ?? 0;
-        DrawText(batch, $"{definition.Charges} PULSES   DMG {definition.Damage * (1 + bonus):0.#}   BLAST {definition.BlastRadius:0}", new Vector2(980, 542), ColorPalette.Ink, 0.59f);
-        DrawText(batch, $"Stuns {definition.StunDuration:0.#}s   Armor pierce {definition.ArmorPierce:0}", new Vector2(980, 565), ColorPalette.Ink, 0.57f);
-        DrawText(batch, "Strength: catches clustered leaks instantly", new Vector2(980, 590), ColorPalette.Muted, 0.54f);
-        DrawText(batch, "Limit: consumed after two pulses; weak economy", new Vector2(980, 612), ColorPalette.Muted, 0.52f);
-        DrawText(batch, session.Generator is null ? "A Charge Forge replenishes stored plates." : $"Forge boost: +{bonus:P0} plate damage", new Vector2(980, 638), ColorPalette.Green, 0.53f);
+        DrawFittedText(batch, $"{definition.Charges} PULSES   DAMAGE {definition.Damage * (1 + bonus):0.#}   BLAST {definition.BlastRadius:0}",
+            new Vector2(980, 542), ColorPalette.Ink, 0.59f, 280);
+        DrawText(batch, $"PUSH {definition.KnockbackDistance:0}   SLOW {definition.SlowPercent:P0} / {definition.SlowDuration:0.#}s", new Vector2(980, 565), ColorPalette.Ink, 0.55f);
+        DrawText(batch, $"Stun {definition.StunDuration:0.##}s   Armor pierce {definition.ArmorPierce:0}", new Vector2(980, 590), ColorPalette.Muted, 0.54f);
+        DrawFittedText(batch, $"Push: elite {definition.EliteKnockbackMultiplier:P0}   boss {definition.BossKnockbackMultiplier:P0}   grace {definition.KnockbackGraceSeconds:0.##}s",
+            new Vector2(980, 612), ColorPalette.Muted, 0.47f, 280);
+        var directIntel = session.Waves.IsActive
+            ? $"Direct {session.CurrentEmergencyDirectPurchaseCost}   +{definition.DirectPurchaseCostIncrease} extra   resets next wave"
+            : $"Direct buying activates in waves   Base {definition.PurchaseCost}";
+        DrawFittedText(batch, directIntel, new Vector2(980, 638), session.Waves.IsActive ? ColorPalette.Gold : ColorPalette.Green, 0.49f, 280);
         DrawText(batch, session.TacticalPlacement == TacticalPlacementKind.PulsePlate ? "CLICK THE ROAD TO DEPLOY   |   ESC TO CANCEL" : "Q OR CLICK ABOVE TO PREPARE", new Vector2(980, 658), ColorPalette.Cobalt, 0.49f);
     }
 
@@ -736,7 +962,8 @@ public sealed class UIManager
         var generatorOwner = active is not null && session.IsCoOp ? $"   PLACED P{active.OwnerPlayerId}" : "";
         DrawText(batch, active is null ? $"{definition.PurchaseCost} CREDITS   GENERATOR" : $"LEVEL {active.LevelIndex + 1}   GENERATOR{generatorOwner}", new Vector2(1028, 508), ColorPalette.Muted, 0.60f);
         DrawText(batch, $"Produces 1 plate every {level.ProductionSeconds:0}s", new Vector2(980, 548), ColorPalette.Ink, 0.59f);
-        DrawText(batch, $"Storage {session.EmergencyInventory}/{level.Capacity}   Plate DMG +{level.DefenseDamageBonus:P0}", new Vector2(980, 571), ColorPalette.Ink, 0.57f);
+        DrawFittedText(batch, $"Storage {session.EmergencyInventory}/{level.Capacity}   Plate DAMAGE +{level.DefenseDamageBonus:P0}",
+            new Vector2(980, 571), ColorPalette.Ink, 0.57f, 280);
         DrawText(batch, "Strength: renewable emergency reserves", new Vector2(980, 594), ColorPalette.Muted, 0.54f);
 
         if (active is null)
@@ -745,17 +972,18 @@ public sealed class UIManager
             _sellButton = Rectangle.Empty;
             DrawText(batch, "Limit: high cost; produces no direct damage", new Vector2(980, 616), ColorPalette.Muted, 0.52f);
             var next = definition.Levels[1];
-            DrawText(batch, $"L2 {level.UpgradeCost}: {next.ProductionSeconds:0}s   CAP {next.Capacity}   DMG +{next.DefenseDamageBonus:P0}", new Vector2(980, 638), ColorPalette.Violet, 0.52f);
+            DrawFittedText(batch, $"L2 {level.UpgradeCost}: {next.ProductionSeconds:0}s   CAP {next.Capacity}   DAMAGE +{next.DefenseDamageBonus:P0}",
+                new Vector2(980, 638), ColorPalette.Violet, 0.52f, 280);
             DrawText(batch, session.TacticalPlacement == TacticalPlacementKind.ChargeForge ? "CLICK A BUILD ZONE   |   ESC TO CANCEL" : "G OR CLICK ABOVE TO PREPARE", new Vector2(980, 658), ColorPalette.Cobalt, 0.49f);
             return;
         }
 
-        DrawText(batch, active.CanUpgrade
-            ? $"NEXT {active.UpgradeCost}: {definition.Levels[active.LevelIndex + 1].ProductionSeconds:0}s   CAP {definition.Levels[active.LevelIndex + 1].Capacity}   DMG +{definition.Levels[active.LevelIndex + 1].DefenseDamageBonus:P0}"
-            : "MAXIMUM LEVEL", new Vector2(980, 615), active.CanUpgrade ? ColorPalette.Violet : ColorPalette.Muted, 0.49f);
+        DrawFittedText(batch, active.CanUpgrade
+            ? $"NEXT {active.UpgradeCost}: {definition.Levels[active.LevelIndex + 1].ProductionSeconds:0}s   CAP {definition.Levels[active.LevelIndex + 1].Capacity}   DAMAGE +{definition.Levels[active.LevelIndex + 1].DefenseDamageBonus:P0}"
+            : "MAXIMUM LEVEL", new Vector2(980, 615), active.CanUpgrade ? ColorPalette.Violet : ColorPalette.Muted, 0.49f, 280);
         _upgradeButton = new Rectangle(1074, 646, 92, 30);
         _sellButton = new Rectangle(1172, 646, 94, 30);
-        const bool canManage = true;
+        var canManage = !_readOnlyInspection;
         DrawButton(batch, p, _upgradeButton, active.CanUpgrade ? $"UP {active.UpgradeCost}" : "MAX", canManage && active.CanUpgrade && session.Economy.CanAfford(active.UpgradeCost), ColorPalette.Violet);
         DrawButton(batch, p, _sellButton, $"SELL {active.SellValue}", canManage, ColorPalette.Orange);
     }
@@ -771,11 +999,11 @@ public sealed class UIManager
         var validMessage = session.TacticalPlacement switch
         {
             TacticalPlacementKind.PulsePlate when session.EmergencyInventory > 0 => "VALID - DEPLOY STORED PLATE",
-            TacticalPlacementKind.PulsePlate => $"VALID - BUY & DEPLOY {session.Content.Tactics.EmergencyDefense.PurchaseCost}",
+            TacticalPlacementKind.PulsePlate => $"VALID - BUY & DEPLOY {session.CurrentEmergencyDirectPurchaseCost}",
             TacticalPlacementKind.ChargeForge => "VALID - BUILD CHARGE FORGE",
             _ => "VALID - CLICK TO DEPLOY"
         };
-        var message = !pointerOnMap ? "MOVE CURSOR ONTO MAP" : valid ? validMessage : PlacementMessage(session.PlacementFailure);
+        var message = !pointerOnMap ? "MOVE CURSOR ONTO MAP" : valid ? validMessage : PlacementMessage(session, session.PlacementFailure);
         DrawText(batch, message, new Vector2(rect.Center.X, rect.Center.Y), ColorPalette.Paper, 0.58f, true);
     }
 
@@ -783,18 +1011,21 @@ public sealed class UIManager
         position.X >= 0 && position.X < GameConstants.MapWidth &&
         position.Y >= GameConstants.TopBarHeight && position.Y < GameConstants.LogicalHeight;
 
-    private static string PlacementMessage(PlacementFailure failure) => failure switch
+    private static string PlacementMessage(MinimalBastion.GameSession session, PlacementFailure failure) => failure switch
     {
         PlacementFailure.OutsideBuildableRegion => "MOVE INTO A BUILD ZONE",
         PlacementFailure.BlocksPath => "TOO CLOSE TO THE ROAD",
         PlacementFailure.OverlapsTower => "TOO CLOSE TO ANOTHER TOWER",
         PlacementFailure.TooCloseToEdge => "TOO CLOSE TO THE MAP EDGE",
         PlacementFailure.InsufficientCredits => "INSUFFICIENT CREDITS",
-        PlacementFailure.MustBeOnPath => "PULSE PLATES DEPLOY ON THE ROAD",
+        PlacementFailure.MustBeOnPath => "MOVE NEAR THE ROAD TO SNAP A PLATE",
         PlacementFailure.TooCloseToPathEndpoint => "MOVE AWAY FROM ENTRY OR EXIT",
-        PlacementFailure.OverlapsDefense => "TOO CLOSE TO ANOTHER PLATE",
+        PlacementFailure.OverlapsDefense => "NO OPEN PLATE POSITION NEARBY",
+        PlacementFailure.DefenseCapacityReached => $"PLATE FIELD FULL - {session.Content.Tactics.EmergencyDefense.MaximumActive} ACTIVE MAX",
         PlacementFailure.GeneratorAlreadyBuilt => "ONLY ONE CHARGE FORGE IS ALLOWED",
-        PlacementFailure.NoDefenseAvailable => "NO STORED PLATE - NEED 70 CREDITS",
+        PlacementFailure.NoDefenseAvailable => !session.Waves.IsActive && session.EmergencyInventory <= 0
+            ? "NO STORED PLATE - DIRECT BUYING ACTIVATES IN WAVES"
+            : $"NO STORED PLATE - NEED {session.CurrentEmergencyDirectPurchaseCost} CREDITS",
         _ => "INVALID PLACEMENT"
     };
 
@@ -817,13 +1048,79 @@ public sealed class UIManager
         DrawText(batch, "A colorful geometric tower-defense game", new Vector2(640, 345), ColorPalette.Muted, 0.9f, true);
         var map = _maps.Count == 0 ? (Id: "foundry_loop", Name: "Foundry Loop", PowerNodes: 0) : _maps[_selectedMapIndex];
         var mapSuffix = map.PowerNodes > 0 ? $"{map.PowerNodes} SURGE NODES" : "CLASSIC";
-        DrawButton(batch, p, _mapButton, $"{_selectedMapIndex + 1}/{Math.Max(1, _maps.Count)}  {map.Name.ToUpperInvariant()}  •  {mapSuffix}", true, ColorPalette.Violet);
-        DrawButton(batch, p, _continueButton, "CONTINUE CHECKPOINT", _saveAvailable, ColorPalette.Green);
+        DrawButton(batch, p, _mapButton, $"{_selectedMapIndex + 1}/{Math.Max(1, _maps.Count)}  {map.Name.ToUpperInvariant()}  •  {mapSuffix}", true, ColorPalette.Berry);
+        DrawButton(batch, p, _continueButton, "LOAD SAVES", _saveAvailable, ColorPalette.Violet);
+        DrawButton(batch, p, _mainMenuLibraryButton, "TOWER LIBRARY", true, ColorPalette.Cyan);
         DrawButton(batch, p, _playButton, "NEW GAME", true, ColorPalette.Cobalt);
         DrawButton(batch, p, _coOpButton, "ONLINE CO-OP", true, ColorPalette.Green);
         DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
         DrawText(batch, "Click the map selector to change arenas", new Vector2(640, 646), ColorPalette.Muted, 0.54f, true);
         DrawText(batch, "Left click places/selects   \u2022   Right click cancels   \u2022   Escape pauses", new Vector2(640, 670), ColorPalette.Navy, 0.61f, true);
+    }
+
+    private void DrawSaveSlots(SpriteBatch batch, PrimitiveRenderer p)
+    {
+        DrawMenuFrame(batch, p);
+        DrawText(batch, _saveSlotWriteMode ? "SAVE GAME" : "LOAD SAVES", new Vector2(640, 62), ColorPalette.Ink, 1.75f, true);
+        DrawText(batch,
+            _saveSlotWriteMode
+                ? "Choose a slot. Overwriting occurs only after pressing the confirmation button."
+                : "Solo saves resume immediately. Co-op saves reopen as a hosted game for your friend.",
+            new Vector2(640, 102), ColorPalette.Muted, 0.58f, true);
+
+        var pageCount = Math.Max(1, (_saveSlots.Count + _saveSlotRows.Length - 1) / _saveSlotRows.Length);
+        var pageSlots = _saveSlots.Skip(_saveSlotPage * _saveSlotRows.Length).Take(_saveSlotRows.Length).ToArray();
+        for (var index = 0; index < pageSlots.Length; index++)
+        {
+            var rect = _saveSlotRows[index];
+            var slot = pageSlots[index];
+            var selected = slot.Slot == _selectedSaveSlot;
+            p.FillRect(batch, rect, selected ? ColorPalette.Panel : ColorPalette.PanelAlt);
+            p.DrawRect(batch, rect, selected ? ColorPalette.Cobalt : ColorPalette.CardOutline, selected ? 3 : 1);
+            p.FillRect(batch, new Rectangle(rect.X, rect.Y, 8, rect.Height),
+                !slot.IsOccupied ? ColorPalette.Disabled : slot.IsCoOp ? ColorPalette.Violet : ColorPalette.Cyan);
+            DrawText(batch, $"SLOT {slot.Slot}", new Vector2(rect.X + 22, rect.Y + 13), ColorPalette.Navy, 0.68f);
+
+            if (!slot.IsOccupied)
+            {
+                DrawText(batch, "EMPTY", new Vector2(rect.X + 150, rect.Center.Y), ColorPalette.Muted, 0.62f, true);
+                continue;
+            }
+            if (slot.Error is not null)
+            {
+                DrawText(batch, "UNREADABLE SAVE", new Vector2(rect.X + 150, rect.Y + 13), ColorPalette.Coral, 0.58f);
+                DrawText(batch, slot.Error, new Vector2(rect.X + 150, rect.Y + 39), ColorPalette.Muted, 0.42f);
+                continue;
+            }
+
+            var mapName = _maps.FirstOrDefault(map => map.Id.Equals(slot.MapId, StringComparison.OrdinalIgnoreCase)).Name;
+            if (string.IsNullOrWhiteSpace(mapName)) mapName = slot.MapId.Replace('_', ' ');
+            var progress = slot.IsEndless ? $"ENDLESS {slot.CurrentWave}" : $"WAVE {slot.CurrentWave}/20";
+            DrawText(batch, $"{(slot.IsCoOp ? "CO-OP" : "SOLO")}  |  {mapName.ToUpperInvariant()}  |  {progress}",
+                new Vector2(rect.X + 150, rect.Y + 12), ColorPalette.Ink, 0.58f);
+            var localTime = slot.SavedAtUtc.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(slot.SavedAtUtc, DateTimeKind.Utc).ToLocalTime()
+                : slot.SavedAtUtc.ToLocalTime();
+            DrawText(batch, $"{localTime:g}  |  LIVES {slot.Lives}  |  CREDITS {slot.Credits}",
+                new Vector2(rect.X + 150, rect.Y + 39), ColorPalette.Muted, 0.48f);
+        }
+
+        var selectedSlot = _saveSlots.FirstOrDefault(slot => slot.Slot == _selectedSaveSlot);
+        var canConfirm = _saveSlotWriteMode || selectedSlot is { IsOccupied: true, Error: null };
+        var confirmLabel = _saveSlotWriteMode
+            ? selectedSlot is { IsOccupied: true } ? $"OVERWRITE SLOT {_selectedSaveSlot}" : $"SAVE TO SLOT {_selectedSaveSlot}"
+            : $"LOAD SLOT {_selectedSaveSlot}";
+        DrawButton(batch, p, _saveSlotConfirmButton, confirmLabel, canConfirm,
+            _saveSlotWriteMode && selectedSlot is { IsOccupied: true } ? ColorPalette.Orange : ColorPalette.Green);
+        var canDelete = selectedSlot is { IsOccupied: true };
+        DrawButton(batch, p, _saveSlotDeleteButton,
+            _saveSlotDeleteArmed ? $"CONFIRM DELETE {_selectedSaveSlot}" : $"DELETE SLOT {_selectedSaveSlot}",
+            canDelete, _saveSlotDeleteArmed ? ColorPalette.Coral : ColorPalette.Orange);
+        DrawText(batch, $"PAGE {_saveSlotPage + 1}/{pageCount}", new Vector2(640, 574), ColorPalette.Muted, 0.48f, true);
+        DrawButton(batch, p, _saveSlotPreviousButton, "PREVIOUS", _saveSlotPage > 0, ColorPalette.Cyan);
+        DrawButton(batch, p, _saveSlotBackButton, "BACK", true, ColorPalette.Violet);
+        DrawButton(batch, p, _saveSlotNextButton, "NEXT", _saveSlotPage + 1 < pageCount, ColorPalette.Cyan);
+        DrawText(batch, _persistenceStatus, new Vector2(640, 654), ColorPalette.Muted, 0.52f, true);
     }
 
     private void DrawCoOpMenu(SpriteBatch batch, PrimitiveRenderer p)
@@ -848,7 +1145,7 @@ public sealed class UIManager
         DrawButton(batch, p, _joinCoOpButton, "JOIN ONLINE GAME", CanJoinOnline, ColorPalette.Green);
         DrawButton(batch, p, _backButton, "BACK", true, ColorPalette.Violet);
         DrawText(batch, "Shared credits, lives, and tower control; placement is still marked P1/P2.", new Vector2(640, 590), ColorPalette.Muted, 0.56f, true);
-        DrawText(batch, "Both players ready waves. Middle-click the battlefield to ping.", new Vector2(640, 613), ColorPalette.Muted, 0.54f, true);
+        DrawText(batch, "Ctrl+V pastes an address; hold Backspace to erase. Middle-click the battlefield to ping.", new Vector2(640, 613), ColorPalette.Muted, 0.52f, true);
     }
 
     private void DrawCoOpLobby(SpriteBatch batch, PrimitiveRenderer p)
@@ -900,9 +1197,9 @@ public sealed class UIManager
         p.DrawRect(batch, new Rectangle(260, 64, 760, 584), ColorPalette.Ink, 2);
 
         DrawText(batch, victory ? "BASTION SECURED" : "BASTION BREACHED", new Vector2(640, 105), ColorPalette.Ink, 1.55f, true);
-        DrawText(batch, victory ? "All twenty waves neutralized." : $"Defense collapsed during wave {session.CurrentWave}.", new Vector2(640, 142), ColorPalette.Muted, 0.72f, true);
+        DrawText(batch, victory ? "Campaign secured. Continue into escalating endless defense." : $"Defense collapsed during wave {session.CurrentWave}.", new Vector2(640, 142), ColorPalette.Muted, 0.72f, true);
 
-        DrawResultStatCard(batch, p, new Rectangle(296, 172, 158, 58), "WAVE", $"{session.CurrentWave}/{session.TotalWaves}", ColorPalette.Cyan);
+        DrawResultStatCard(batch, p, new Rectangle(296, 172, 158, 58), "WAVE", session.IsEndlessMode ? $"{session.CurrentWave}+" : $"{session.CurrentWave}/{session.TotalWaves}", ColorPalette.Cyan);
         DrawResultStatCard(batch, p, new Rectangle(472, 172, 158, 58), "LIVES", $"{session.Economy.Lives}/{session.Economy.StartingLives}", ColorPalette.Coral);
         DrawResultStatCard(batch, p, new Rectangle(648, 172, 158, 58), "KILLS", session.Economy.TotalKills.ToString(), ColorPalette.Green);
         DrawResultStatCard(batch, p, new Rectangle(824, 172, 158, 58), "LEAKS", session.Economy.EscapedEnemies.ToString(), ColorPalette.Orange);
@@ -910,9 +1207,27 @@ public sealed class UIManager
         DrawTowerContribution(batch, p, session.Statistics, new Rectangle(296, 250, 410, 298));
         DrawRunSummary(batch, p, session, new Rectangle(724, 250, 258, 298));
 
-        DrawButton(batch, p, _resultReviewButton, "VIEW FINAL FIELD", true, ColorPalette.Cobalt);
-        DrawButton(batch, p, _resultRestartButton, session.IsCoOp ? "END SESSION" : "RESTART", true, victory ? ColorPalette.Green : ColorPalette.Cobalt);
-        DrawButton(batch, p, _resultMenuButton, "MAIN MENU", true, ColorPalette.Violet);
+        if (victory)
+        {
+            DrawButton(batch, p, _resultContinueButton, "CONTINUE ENDLESS", true, ColorPalette.Green);
+            DrawButton(batch, p, _resultRestartButton, session.IsCoOp ? "RESTART CO-OP" : "RESTART", true, ColorPalette.Cobalt);
+            DrawButton(batch, p, _resultMenuButton, "MAIN MENU", true, ColorPalette.Violet);
+        }
+        else
+        {
+            DrawButton(batch, p, _resultContinueButton, "VIEW FIELD", true, ColorPalette.Cyan);
+            DrawButton(batch, p, _resultRestartButton, session.IsCoOp ? "RESTART CO-OP" : "RESTART", true, ColorPalette.Cobalt);
+            DrawButton(batch, p, _resultMenuButton, "MAIN MENU", true, ColorPalette.Violet);
+        }
+    }
+
+    private void DrawDefeatFieldControls(SpriteBatch batch, PrimitiveRenderer p)
+    {
+        var label = new Rectangle(450, 9, 170, 38);
+        p.FillRect(batch, label, ColorPalette.Coral);
+        p.DrawRect(batch, label, ColorPalette.Ink, 2);
+        DrawText(batch, "DEFEATED FIELD", new Vector2(label.Center.X, label.Center.Y), ColorPalette.Paper, 0.58f, true);
+        DrawButton(batch, p, _fieldResultsButton, "VIEW RESULTS", true, ColorPalette.Cobalt);
     }
 
     private void DrawResultStatCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string label, string value, Color accent)
@@ -949,14 +1264,14 @@ public sealed class UIManager
                 _ => ColorPalette.Orange
             };
             DrawText(batch, tower.DisplayName.ToUpperInvariant(), new Vector2(rect.X + 14, y), ColorPalette.Ink, 0.58f);
-            DrawTextRight(batch, $"{tower.Damage:0} DMG   {tower.Kills} KILLS", new Vector2(rect.Right - 14, y), ColorPalette.Muted, 0.50f);
+            DrawTextRight(batch, $"{tower.Damage:0} DAMAGE   {tower.Kills} KILLS", new Vector2(rect.Right - 14, y), ColorPalette.Muted, 0.50f);
             var bar = new Rectangle(rect.X + 14, y + 24, rect.Width - 28, 9);
             p.FillRect(batch, bar, ColorPalette.Disabled);
             p.FillRect(batch, new Rectangle(bar.X, bar.Y, Math.Max(2, (int)(bar.Width * tower.Damage / maximum)), bar.Height), color);
         }
 
         var strongest = leaders[0];
-        DrawText(batch, $"TOP UNIT  {strongest.DisplayName}   |   {strongest.DamagePerCredit:0.0} DMG / CREDIT", new Vector2(rect.X + 14, rect.Bottom - 30), ColorPalette.Violet, 0.52f);
+        DrawText(batch, $"TOP UNIT  {strongest.DisplayName}   |   {strongest.DamagePerCredit:0.0} DAMAGE / CREDIT", new Vector2(rect.X + 14, rect.Bottom - 30), ColorPalette.Violet, 0.52f);
     }
 
     private void DrawRunSummary(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session, Rectangle rect)
@@ -999,30 +1314,152 @@ public sealed class UIManager
         DrawButton(batch, p, _mainMenuButton, title == "PAUSED" ? "MAIN MENU" : "", title == "PAUSED", ColorPalette.Coral);
     }
 
-    private void DrawBattlefieldReviewBanner(SpriteBatch batch, PrimitiveRenderer p)
-    {
-        DrawButton(batch, p, _reviewResultsButton, "VIEW RESULTS", true, ColorPalette.Cobalt);
-        var rect = new Rectangle(326, 64, 308, 28);
-        p.FillRect(batch, rect, ColorPalette.WithAlpha(ColorPalette.Navy, 226));
-        p.DrawRect(batch, rect, ColorPalette.Green, 2);
-        DrawText(batch, "FINAL FIELD  •  SIMULATION FROZEN", new Vector2(rect.Center.X, rect.Center.Y), ColorPalette.Paper, 0.53f, true);
-    }
-
     private void DrawPauseOverlay(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
+        if (_towerLibraryOpen)
+        {
+            DrawTowerLibrary(batch, p, "pause");
+            return;
+        }
+
         p.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight), ColorPalette.WithAlpha(ColorPalette.Navy, 220));
-        p.FillRect(batch, new Rectangle(360, 130, 560, 470), ColorPalette.Paper);
-        p.FillRect(batch, new Rectangle(360, 130, 560, 10), ColorPalette.Cobalt);
-        p.DrawRect(batch, new Rectangle(360, 130, 560, 470), ColorPalette.Ink, 2);
-        DrawText(batch, "PAUSED", new Vector2(640, 190), ColorPalette.Ink, 1.8f, true);
-        DrawText(batch, PauseCheckpointStatus(session.CanSaveCheckpoint), new Vector2(640, 230), ColorPalette.Muted, 0.70f, true);
+        var panel = new Rectangle(360, 90, 560, 540);
+        p.FillRect(batch, panel, ColorPalette.Paper);
+        p.FillRect(batch, new Rectangle(panel.X, panel.Y, panel.Width, 10), ColorPalette.Cobalt);
+        p.DrawRect(batch, panel, ColorPalette.Ink, 2);
+        DrawText(batch, "PAUSED", new Vector2(640, 145), ColorPalette.Ink, 1.8f, true);
+        DrawText(batch, PauseCheckpointStatus(session.CanSaveCheckpoint), new Vector2(640, 184), ColorPalette.Muted, 0.66f, true);
+        DrawFittedCenteredText(batch, _persistenceStatus, new Vector2(640, 211), ColorPalette.Muted, 0.50f, 510);
         DrawButton(batch, p, _resumeButton, "RESUME", true, ColorPalette.Cobalt);
-        DrawButton(batch, p, _saveButton, session.CanSaveCheckpoint ? "SAVE CHECKPOINT" : "SAVE BETWEEN WAVES", session.CanSaveCheckpoint, ColorPalette.Green);
-        DrawButton(batch, p, _loadButton, "LOAD CHECKPOINT", _saveAvailable, ColorPalette.Violet);
+        DrawButton(batch, p, _towerLibraryButton, "TOWER LIBRARY", true, ColorPalette.Cyan);
+        DrawButton(batch, p, _saveButton, session.CanSaveCheckpoint ? "SAVE TO SLOT" : "SAVE BETWEEN WAVES", session.CanSaveCheckpoint, ColorPalette.Green);
+        DrawButton(batch, p, _loadButton, "LOAD SAVES", _saveAvailable, ColorPalette.Violet);
         DrawButton(batch, p, _restartButton, "RESTART", true, ColorPalette.Orange);
         DrawButton(batch, p, _mainMenuButton, "MAIN MENU", true, ColorPalette.Coral);
-        DrawText(batch, _persistenceStatus, new Vector2(640, 566), ColorPalette.Muted, 0.55f, true);
+        DrawText(batch, "Review exact costs, levels, and final branches before committing credits.", new Vector2(640, 580), ColorPalette.Muted, 0.50f, true);
     }
+
+    private void DrawTowerLibrary(SpriteBatch batch, PrimitiveRenderer p, string returnDestination)
+    {
+        p.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight), ColorPalette.WithAlpha(ColorPalette.Navy, 235));
+        var panel = new Rectangle(36, 24, 1208, 672);
+        p.FillRect(batch, panel, ColorPalette.Paper);
+        p.FillRect(batch, new Rectangle(panel.X, panel.Y, panel.Width, 7), ColorPalette.Cyan);
+        p.DrawRect(batch, panel, ColorPalette.Ink, 2);
+
+        DrawText(batch, "TOWER LIBRARY", new Vector2(62, 48), ColorPalette.Navy, 1.25f);
+        DrawText(batch, "Exact unbuffed values. Surge Nodes, Signal Beacon, and Overdrive are excluded.", new Vector2(62, 82), ColorPalette.Muted, 0.56f);
+        DrawButton(batch, p, _towerLibraryCloseButton, "BACK", true, ColorPalette.Violet);
+
+        var listPanel = new Rectangle(56, 112, 264, 540);
+        var detailPanel = new Rectangle(334, 112, 890, 540);
+        p.FillRect(batch, listPanel, ColorPalette.Panel);
+        p.DrawRect(batch, listPanel, ColorPalette.CardOutline, 1);
+        p.FillRect(batch, detailPanel, ColorPalette.Panel);
+        p.DrawRect(batch, detailPanel, ColorPalette.CardOutline, 1);
+        DrawText(batch, "SELECT TOWER", new Vector2(68, 122), ColorPalette.Navy, 0.63f);
+        DrawText(batch, "1-0", new Vector2(302, 122), ColorPalette.Muted, 0.48f, true);
+
+        var towers = _libraryTowers;
+        if (towers.Count == 0)
+        {
+            DrawText(batch, "NO TOWER DEFINITIONS AVAILABLE", new Vector2(detailPanel.Center.X, detailPanel.Center.Y), ColorPalette.Coral, 0.72f, true);
+            return;
+        }
+
+        _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, towers.Count - 1);
+        for (var index = 0; index < towers.Count; index++)
+        {
+            var definition = towers[index];
+            var row = TowerLibraryRow(index);
+            var selected = index == _towerLibraryIndex;
+            p.FillRect(batch, row, selected ? ColorPalette.Tint(definition.Visual.PrimaryColor, 0.78f) : ColorPalette.PanelAlt);
+            p.DrawRect(batch, row, selected ? definition.Visual.PrimaryColor : ColorPalette.CardOutline, selected ? 2 : 1);
+            p.DrawShape(batch, new Vector2(row.X + 22, row.Center.Y), 12, definition.Visual.Shape,
+                definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
+            DrawFittedText(batch, definition.DisplayName, new Vector2(row.X + 44, row.Y + 7), ColorPalette.Ink, 0.56f, 142);
+            DrawText(batch, $"{definition.PurchaseCost}  {TowerInfo.ShortRole(definition)}", new Vector2(row.X + 44, row.Y + 24), ColorPalette.Muted, 0.43f);
+            var hotkeyColor = selected
+                ? ColorPalette.ReadableAccent(definition.Visual.PrimaryColor, ColorPalette.Tint(definition.Visual.PrimaryColor, 0.78f))
+                : ColorPalette.Muted;
+            DrawTextRight(batch, index == 9 ? "0" : (index + 1).ToString(), new Vector2(row.Right - 9, row.Y + 8), hotkeyColor, 0.43f);
+        }
+
+        DrawTowerLibraryDetails(batch, p, towers[_towerLibraryIndex], detailPanel);
+        DrawText(batch, $"Click a tower or press 1-0.  ESC, right-click, or BACK returns to {returnDestination}.", new Vector2(640, 674), ColorPalette.Muted, 0.49f, true);
+    }
+
+    private void DrawTowerLibraryDetails(SpriteBatch batch, PrimitiveRenderer p, TowerDefinition definition, Rectangle panel)
+    {
+        p.DrawShape(batch, new Vector2(panel.X + 36, panel.Y + 42), 20, definition.Visual.Shape,
+            definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
+        DrawText(batch, definition.DisplayName.ToUpperInvariant(), new Vector2(panel.X + 72, panel.Y + 16), ColorPalette.Ink, 0.94f);
+        DrawText(batch, $"{TowerInfo.ShortRole(definition).ToUpperInvariant()}  |  BUILD {definition.PurchaseCost}  |  DEFAULT TARGET {definition.DefaultTargetMode.ToUpperInvariant()}",
+            new Vector2(panel.X + 72, panel.Y + 43), ColorPalette.Muted, 0.53f);
+        DrawFittedText(batch, $"{TowerInfo.Strength(definition)}  |  {TowerInfo.Limitation(definition)}",
+            new Vector2(panel.X + 18, panel.Y + 76), ColorPalette.ReadableAccent(definition.Visual.PrimaryColor, ColorPalette.Panel), 0.49f, panel.Width - 36);
+        p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 99, panel.Width - 36, 2), definition.Visual.PrimaryColor);
+
+        var levelOne = definition.Levels[0];
+        var levelTwo = definition.Levels.Count > 1 ? definition.Levels[1] : levelOne;
+        if (definition.Specializations.Count > 0)
+        {
+            var topWidth = 418;
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, panel.Y + 112, topWidth, 180), definition,
+                levelOne, "LEVEL 1", $"BUILD {definition.PurchaseCost}  |  TOTAL {definition.PurchaseCost}", definition.Visual.PrimaryColor);
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 454, panel.Y + 112, topWidth, 180), definition,
+                levelTwo, "LEVEL 2", $"UPGRADE {levelOne.UpgradeCost ?? 0}  |  TOTAL {TowerInfo.TotalCostToLevel(definition, 1)}", ColorPalette.Cyan);
+
+            for (var index = 0; index < Math.Min(2, definition.Specializations.Count); index++)
+            {
+                var specialization = definition.Specializations[index];
+                var accent = index == 0 ? definition.Visual.PrimaryColor : ColorPalette.Violet;
+                DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 308, topWidth, 216), definition,
+                    specialization.Level, specialization.DisplayName.ToUpperInvariant(),
+                    $"FINAL {specialization.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToSpecialization(definition, specialization)}",
+                    accent, specialization.Summary);
+            }
+            return;
+        }
+
+        const int cardWidth = 276;
+        for (var index = 0; index < Math.Min(3, definition.Levels.Count); index++)
+        {
+            var level = definition.Levels[index];
+            var incrementalCost = index == 0 ? definition.PurchaseCost : definition.Levels[index - 1].UpgradeCost ?? 0;
+            var costKind = index == 0 ? "BUILD" : "UPGRADE";
+            var accent = index switch { 0 => definition.Visual.PrimaryColor, 1 => ColorPalette.Cyan, _ => ColorPalette.Violet };
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 290, panel.Y + 112, cardWidth, 412), definition,
+                level, $"LEVEL {index + 1}", $"{costKind} {incrementalCost}  |  TOTAL {TowerInfo.TotalCostToLevel(definition, index)}", accent);
+        }
+    }
+
+    private void DrawTowerLibraryCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, TowerDefinition definition,
+        TowerLevelDefinition level, string title, string cost, Color accent, string? summary = null)
+    {
+        p.FillRect(batch, rect, ColorPalette.PanelAlt);
+        p.FillRect(batch, new Rectangle(rect.X, rect.Y, rect.Width, 5), accent);
+        p.DrawRect(batch, rect, ColorPalette.CardOutline, 1);
+        DrawFittedText(batch, title, new Vector2(rect.X + 12, rect.Y + 14), ColorPalette.Navy, 0.66f, rect.Width - 24);
+        DrawFittedText(batch, cost, new Vector2(rect.X + 12, rect.Y + 38),
+            ColorPalette.ReadableAccent(accent, ColorPalette.PanelAlt), 0.48f, rect.Width - 24);
+        var dividerY = rect.Y + 62;
+        if (!string.IsNullOrWhiteSpace(summary))
+        {
+            DrawFittedText(batch, summary, new Vector2(rect.X + 12, rect.Y + 59), ColorPalette.Muted, 0.44f, rect.Width - 24);
+            dividerY = rect.Y + 82;
+        }
+        p.FillRect(batch, new Rectangle(rect.X + 12, dividerY, rect.Width - 24, 1), ColorPalette.CardOutline);
+        var y = dividerY + 12;
+        foreach (var line in TowerInfo.LibraryStatLines(definition, level))
+        {
+            if (y + 15 > rect.Bottom - 6) break;
+            DrawFittedText(batch, line, new Vector2(rect.X + 12, y), ColorPalette.Ink, 0.46f, rect.Width - 24);
+            y += 18;
+        }
+    }
+
+    private static Rectangle TowerLibraryRow(int index) => new(66, 148 + index * 49, 244, 44);
 
     private void DrawButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string text, bool enabled, Color fillColor)
     {
@@ -1055,6 +1492,22 @@ public sealed class UIManager
     {
         var origin = centered ? _font.MeasureString(text) * 0.5f : Vector2.Zero;
         batch.DrawString(_font, text, position, color, 0, origin, scale * GameConstants.FontDrawScale, SpriteEffects.None, 0);
+    }
+
+    private void DrawFittedText(SpriteBatch batch, string text, Vector2 position, Color color, float scale, float maximumWidth)
+    {
+        var measuredWidth = _font.MeasureString(text).X * scale * GameConstants.FontDrawScale;
+        if (measuredWidth > maximumWidth)
+            scale *= maximumWidth / measuredWidth;
+        DrawText(batch, text, position, color, MathF.Max(0.36f, scale));
+    }
+
+    private void DrawFittedCenteredText(SpriteBatch batch, string text, Vector2 position, Color color, float scale, float maximumWidth)
+    {
+        var measuredWidth = _font.MeasureString(text).X * scale * GameConstants.FontDrawScale;
+        if (measuredWidth > maximumWidth)
+            scale *= maximumWidth / measuredWidth;
+        DrawText(batch, text, position, color, MathF.Max(0.30f, scale), true);
     }
 
     private void DrawTextRight(SpriteBatch batch, string text, Vector2 position, Color color, float scale)

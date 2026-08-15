@@ -16,6 +16,7 @@ public enum GameCommandType
     UpgradeGenerator,
     SellGenerator,
     StartWave,
+    ContinueEndless,
     SetSpeed
 }
 
@@ -32,6 +33,7 @@ public sealed record GameCommand
     public float Y { get; init; }
     public TargetMode TargetMode { get; init; }
     public float Speed { get; init; } = 1f;
+    public bool? EarlyStartEligible { get; init; }
     public Vector2 Position => new(X, Y);
 }
 
@@ -58,7 +60,8 @@ public static class GameCommandProcessor
             GameCommandType.PlaceGenerator => session.TryPlaceGenerator(command.Position, command.PlayerId, false),
             GameCommandType.UpgradeGenerator => session.TryUpgradeGenerator(command.PlayerId),
             GameCommandType.SellGenerator => session.TrySellGenerator(command.PlayerId),
-            GameCommandType.StartWave => session.StartNextWave(),
+            GameCommandType.StartWave => session.StartNextWave(command.EarlyStartEligible),
+            GameCommandType.ContinueEndless => session.BeginEndlessMode(),
             GameCommandType.SetSpeed => SetSpeed(session, command.Speed),
             _ => false
         };

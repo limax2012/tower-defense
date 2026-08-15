@@ -99,8 +99,16 @@ public static class DataValidator
             throw new InvalidDataException($"Invalid power node in map: {map.Id}");
         RequireUnique(map.PowerNodes.Select(x => x.Id), "power node");
         if (waves.Waves.Count != 20) throw new InvalidDataException("Version 1 requires exactly 20 waves.");
-        if (tactics.EmergencyDefense.PurchaseCost <= 0 || tactics.EmergencyDefense.Charges <= 0 ||
-            tactics.EmergencyDefense.Damage <= 0 || tactics.EmergencyDefense.BlastRadius <= tactics.EmergencyDefense.TriggerRadius)
+        if (tactics.EmergencyDefense.PurchaseCost <= 0 || tactics.EmergencyDefense.DirectPurchaseCostIncrease < 0 ||
+            tactics.EmergencyDefense.MaximumActive <= 0 || tactics.EmergencyDefense.Charges <= 0 ||
+            tactics.EmergencyDefense.Damage <= 0 || tactics.EmergencyDefense.BlastRadius <= tactics.EmergencyDefense.TriggerRadius ||
+            tactics.EmergencyDefense.SlowPercent < 0 || tactics.EmergencyDefense.SlowPercent >= 1 ||
+            tactics.EmergencyDefense.SlowDuration < 0 || tactics.EmergencyDefense.KnockbackDistance < 0 ||
+            tactics.EmergencyDefense.KnockbackGraceSeconds < 0 ||
+            tactics.EmergencyDefense.EliteKnockbackMultiplier is < 0 or > 1 ||
+            tactics.EmergencyDefense.BossKnockbackMultiplier is < 0 or > 1 ||
+            tactics.EmergencyDefense.PlacementRoadTolerance < 0 || tactics.EmergencyDefense.MinimumSpacing < 0 ||
+            tactics.EmergencyDefense.EndpointClearance < 0)
             throw new InvalidDataException("Invalid emergency-defense definition.");
         if (tactics.Generator.PurchaseCost <= 0 || tactics.Generator.Levels.Count != 3 ||
             tactics.Generator.Levels.Any(x => x.ProductionSeconds <= 0 || x.Capacity <= 0 || x.DefenseDamageBonus < 0))

@@ -50,6 +50,9 @@ public sealed class Game1 : Game
     private string _joinCode = "";
     private float _reconnectRetryRemaining;
     private int _lastAutosavedWave = -1;
+    private int? _activeSaveSlot;
+    private GameState _saveSlotReturnState = GameState.MainMenu;
+    private bool _saveSlotWriteMode;
 
     public Game1()
     {
@@ -99,6 +102,7 @@ public sealed class Game1 : Game
             var font = Content.Load<SpriteFont>("Fonts/Interface");
             _ui = new UIManager(font);
             _ui.ConfigureMaps(_content.Maps.Values);
+            _ui.ConfigureTowerLibrary(_content.Towers.Values);
             _ui.SetSaveState(SaveGameStore.Exists);
             _debug = new DebugOverlay(font);
         }
@@ -129,6 +133,12 @@ public sealed class Game1 : Game
             case GameState.MainMenu:
                 HandleMenuAction(_ui.HandleMainMenu(input));
                 break;
+            case GameState.TowerLibrary:
+                HandleMenuAction(_ui.HandleTitleTowerLibrary(input));
+                break;
+            case GameState.SaveSlots:
+                HandleSaveSlotAction(_ui.HandleSaveSlots(input));
+                break;
             case GameState.CoOpMenu:
                 HandleCoOpMenuAction(_ui.HandleCoOpMenu(input));
                 break;
@@ -144,27 +154,41 @@ public sealed class Game1 : Game
             case GameState.Paused:
                 if (_session is not null) HandlePauseAction(_ui.HandlePausedInput(input, _session));
                 break;
-            case GameState.BattlefieldReview:
-                if (_session is not null)
-                {
-                    if (_networkRunner is not null) PollNetwork();
-                    if (_state != GameState.BattlefieldReview) break;
-                    var reviewAction = _ui.HandleBattlefieldReviewInput(input, _session);
-                    _session.HandleWorldInput(input);
-                    if (reviewAction == UiAction.ViewResults)
-                        _state = _session.IsVictory ? GameState.Victory : GameState.Defeat;
-                }
-                break;
             case GameState.Victory:
             case GameState.Defeat:
                 var resultState = _state;
                 if (_networkRunner is not null) PollNetwork();
                 if (_state != resultState) break;
-                HandleResultAction(_ui.HandleResultInput(input));
+                HandleResultAction(_ui.HandleResultInput(input, resultState == GameState.Victory));
+                if (_networkRunner is not null && _session is not null && _state == resultState)
+                {
+                    _networkRunner.Advance((float)gameTime.ElapsedGameTime.TotalSeconds);
+                    if (!_session.IsVictory && !_session.IsDefeat) _state = GameState.Playing;
+                }
+                break;
+            case GameState.DefeatField:
+                UpdateDefeatField(input, gameTime);
                 break;
         }
 
         base.Update(gameTime);
+    }
+
+    private void UpdateDefeatField(InputSnapshot input, GameTime gameTime)
+    {
+        if (_session is null) return;
+        if (_networkRunner is not null)
+        {
+            PollNetwork();
+            if (_state != GameState.DefeatField || _session is null) return;
+            _networkRunner.Advance((float)gameTime.ElapsedGameTime.TotalSeconds);
+        }
+        if (_ui.HandleDefeatFieldInput(input) == UiAction.ViewResults)
+        {
+            _state = GameState.Defeat;
+            return;
+        }
+        _session.HandleInspectionInput(input);
     }
 
     private void UpdatePlaying(InputSnapshot input, GameTime gameTime)
@@ -192,7 +216,7 @@ public sealed class Game1 : Game
         }
         if (_session.IsVictory) _state = GameState.Victory;
         else if (_session.IsDefeat) _state = GameState.Defeat;
-        else if (_networkRunner is null && _session.CanSaveCheckpoint && _session.CurrentWave > 0 && _session.CurrentWave != _lastAutosavedWave)
+        else if ((_networkRunner is null || _isNetworkHost) && _session.CanSaveCheckpoint && _session.CurrentWave > 0 && _session.CurrentWave != _lastAutosavedWave)
             SaveCheckpoint(true);
     }
 
@@ -202,9 +226,12 @@ public sealed class Game1 : Game
         {
             _session = new GameSession(_content, _ui.SelectedMapId);
             _lastAutosavedWave = -1;
+            _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
             _state = GameState.Playing;
         }
-        else if (action == UiAction.LoadGame) LoadCheckpoint();
+        else if (action == UiAction.TowerLibrary) _state = GameState.TowerLibrary;
+        else if (action == UiAction.LoadGame) OpenSaveSlots(false, GameState.MainMenu);
+        else if (action == UiAction.MainMenu) _state = GameState.MainMenu;
         else if (action == UiAction.CoOp) _state = GameState.CoOpMenu;
         else if (action == UiAction.Exit) Exit();
     }
@@ -226,11 +253,14 @@ public sealed class Game1 : Game
         }
     }
 
-    private void BeginHostingCoOp()
+    private void BeginHostingCoOp(GameSession? restoredSession = null, int? saveSlot = null)
     {
         CleanupNetwork();
         try
         {
+            _session = restoredSession;
+            _activeSaveSlot = saveSlot ?? SaveGameStore.FindFirstEmptySlot();
+            _lastAutosavedWave = restoredSession?.CurrentWave ?? -1;
             _networkCancellation = new CancellationTokenSource();
             _coOpHost = new LanCoOpHost(OnlineCoOpPort, buildFingerprint: _contentFingerprint);
             _coOpHost.Start();
@@ -239,7 +269,11 @@ public sealed class Game1 : Game
             _authoritativeCommands = new AuthoritativeCommandHost();
             _ui.SetCoOpConnectionState(false);
             _connectionTask = _coOpHost.AcceptPlayerAsync(_networkCancellation.Token);
-            _ui.SetCoOpLobbyStatus("HOSTING ONLINE CO-OP", $"Share this code and your public IP. Forward TCP {OnlineCoOpPort} to this PC.", _coOpHost.JoinCode);
+            _ui.SetCoOpLobbyStatus(restoredSession is null ? "HOSTING ONLINE CO-OP" : "HOSTING SAVED CO-OP",
+                restoredSession is null
+                    ? $"Share this code and your public IP. Forward TCP {OnlineCoOpPort} to this PC."
+                    : $"Saved wave {restoredSession.CurrentWave} is ready. Share this code; the restored match begins when your friend joins.",
+                _coOpHost.JoinCode);
             _state = GameState.CoOpLobby;
         }
         catch (Exception exception)
@@ -355,8 +389,13 @@ public sealed class Game1 : Game
 
     private void InitializeHostSession()
     {
-        _session = new GameSession(_content, _ui.SelectedMapId);
-        _session.ConfigureCoOp(1);
+        if (_session is null)
+        {
+            _session = new GameSession(_content, _ui.SelectedMapId);
+            _session.ConfigureCoOp(1);
+        }
+        else if (!_session.IsCoOp)
+            _session.ConfigureCoOp(1);
         ResetCoOpWaveReadyState(false);
         _networkRunner = new DeterministicSessionRunner(_session);
         AttachNetworkRunner();
@@ -371,8 +410,8 @@ public sealed class Game1 : Game
         _networkRunner = new DeterministicSessionRunner(_session, snapshot.Tick);
         _networkRunner.RestorePendingCommands(snapshot.PendingCommands);
         AttachNetworkRunner();
-        _coOpWaveReady.ApplyState(snapshot.ReadyMask, snapshot.WaveStartQueued);
-        _ui.SetCoOpWaveReadyState(_coOpWaveReady.ReadyMask, _coOpWaveReady.StartQueued);
+        _coOpWaveReady.ApplyState(snapshot.ReadyMask, snapshot.WaveStartQueued, snapshot.WaveEarlyBonusQueued);
+        _ui.SetCoOpWaveReadyState(_coOpWaveReady.ReadyMask, _coOpWaveReady.StartQueued, _coOpWaveReady.EarlyBonusQueued);
         _lastSyncTick = snapshot.Tick - 1;
         _networkResyncing = false;
         _networkStarted = false;
@@ -444,8 +483,8 @@ public sealed class Game1 : Game
                 RegisterCoOpWaveReady(2);
                 break;
             case CoOpMessageType.WaveReady when !_isNetworkHost && envelope.PlayerId == 1:
-                _coOpWaveReady.ApplyState(envelope.ReadyMask, envelope.Ready);
-                _ui.SetCoOpWaveReadyState(_coOpWaveReady.ReadyMask, _coOpWaveReady.StartQueued);
+                _coOpWaveReady.ApplyState(envelope.ReadyMask, envelope.Ready, envelope.EarlyBonus);
+                _ui.SetCoOpWaveReadyState(_coOpWaveReady.ReadyMask, _coOpWaveReady.StartQueued, _coOpWaveReady.EarlyBonusQueued);
                 break;
             case CoOpMessageType.Ping when envelope.PlayerId != _localPlayerId:
                 ShowCoOpPing(new Vector2(envelope.X, envelope.Y), envelope.PlayerId);
@@ -464,6 +503,9 @@ public sealed class Game1 : Game
                 break;
             case CoOpMessageType.ResyncRequest when _isNetworkHost:
                 SendAuthoritativeSnapshot(string.IsNullOrWhiteSpace(envelope.Message) ? "Client resynchronization" : envelope.Message);
+                break;
+            case CoOpMessageType.RestartRequest when _isNetworkHost && envelope.PlayerId == 2 && _networkStarted:
+                RestartCoOpAsHost();
                 break;
             case CoOpMessageType.Rejected:
                 SetNetworkFailure("CONNECTION REJECTED", envelope.Message);
@@ -489,8 +531,8 @@ public sealed class Game1 : Game
 
     private void RegisterCoOpWaveReady(int playerId)
     {
-        if (_session is null || !_coOpWaveReady.RegisterReady(playerId, _session.CanStartWave)) return;
-        _ui.SetCoOpWaveReadyState(_coOpWaveReady.ReadyMask, _coOpWaveReady.StartQueued);
+        if (_session is null || !_coOpWaveReady.RegisterReady(playerId, _session.CanStartWave, IsEarlyCallAvailable(_session))) return;
+        _ui.SetCoOpWaveReadyState(_coOpWaveReady.ReadyMask, _coOpWaveReady.StartQueued, _coOpWaveReady.EarlyBonusQueued);
 
         if (!_isNetworkHost)
         {
@@ -504,7 +546,8 @@ public sealed class Game1 : Game
             {
                 PlayerId = 1,
                 ClientRequestId = _nextClientRequestId++,
-                Type = GameCommandType.StartWave
+                Type = GameCommandType.StartWave,
+                EarlyStartEligible = _coOpWaveReady.EarlyBonusQueued
             });
         }
         BroadcastCoOpWaveReadyState();
@@ -518,14 +561,18 @@ public sealed class Game1 : Game
             Type = CoOpMessageType.WaveReady,
             PlayerId = 1,
             ReadyMask = _coOpWaveReady.ReadyMask,
-            Ready = _coOpWaveReady.StartQueued
+            Ready = _coOpWaveReady.StartQueued,
+            EarlyBonus = _coOpWaveReady.EarlyBonusQueued
         });
     }
+
+    private static bool IsEarlyCallAvailable(GameSession session) =>
+        session.CurrentWave > 0 && session.IntermissionRemaining > 0;
 
     private void ResetCoOpWaveReadyState(bool broadcast)
     {
         _coOpWaveReady.Reset();
-        _ui.SetCoOpWaveReadyState(0, false);
+        _ui.SetCoOpWaveReadyState(0, false, false);
         if (broadcast) BroadcastCoOpWaveReadyState();
     }
 
@@ -632,7 +679,8 @@ public sealed class Game1 : Game
         _remoteNetworkChecksums.Clear();
         _repliedChecksumTicks.Clear();
         _networkChecksums[_networkRunner.Tick] = SessionChecksum.Compute(_session, _networkRunner.Tick);
-        var snapshot = _session.CaptureCoOpState(_networkRunner.Tick, _coOpWaveReady.ReadyMask, _coOpWaveReady.StartQueued);
+        var snapshot = _session.CaptureCoOpState(_networkRunner.Tick, _coOpWaveReady.ReadyMask,
+            _coOpWaveReady.StartQueued, _coOpWaveReady.EarlyBonusQueued);
         snapshot.PendingCommands = _networkRunner.CapturePendingCommands();
         QueueSend(new CoOpEnvelope
         {
@@ -739,6 +787,7 @@ public sealed class Game1 : Game
         _joinCode = "";
         _reconnectRetryRemaining = 0;
         _session = null;
+        _activeSaveSlot = null;
     }
 
     private void HandlePauseAction(UiAction action)
@@ -746,8 +795,8 @@ public sealed class Game1 : Game
         switch (action)
         {
             case UiAction.Resume: _state = GameState.Playing; break;
-            case UiAction.SaveGame: SaveCheckpoint(false); break;
-            case UiAction.LoadGame: LoadCheckpoint(); break;
+            case UiAction.SaveGame: OpenSaveSlots(true, GameState.Paused); break;
+            case UiAction.LoadGame: OpenSaveSlots(false, GameState.Paused); break;
             case UiAction.Restart: Restart(); break;
             case UiAction.MainMenu: CleanupNetwork(); _state = GameState.MainMenu; break;
         }
@@ -757,7 +806,18 @@ public sealed class Game1 : Game
     {
         switch (action)
         {
-            case UiAction.ViewBattlefield: _state = GameState.BattlefieldReview; break;
+            case UiAction.ContinueEndless:
+                if (_session is null) break;
+                if (_networkRunner is null)
+                {
+                    if (_session.BeginEndlessMode()) _state = GameState.Playing;
+                }
+                else
+                    SubmitLocalNetworkCommand(new GameCommand { PlayerId = _localPlayerId, Type = GameCommandType.ContinueEndless });
+                break;
+            case UiAction.ViewField:
+                if (_session?.IsDefeat == true) _state = GameState.DefeatField;
+                break;
             case UiAction.Restart: Restart(); break;
             case UiAction.MainMenu: CleanupNetwork(); _state = GameState.MainMenu; break;
         }
@@ -767,24 +827,128 @@ public sealed class Game1 : Game
     {
         if (_networkRunner is not null)
         {
-            CleanupNetwork();
-            _state = GameState.MainMenu;
+            RequestCoOpRestart();
             return;
         }
         var mapId = _session?.Map.Definition.Id ?? _ui.SelectedMapId;
         _session = new GameSession(_content, mapId);
         _lastAutosavedWave = -1;
+        _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
         _state = GameState.Playing;
     }
 
-    private void SaveCheckpoint(bool automatic)
+    private void RequestCoOpRestart()
+    {
+        if (_session is null || _networkRunner is null || !_networkStarted) return;
+        if (_isNetworkHost)
+        {
+            RestartCoOpAsHost();
+            return;
+        }
+
+        _networkStarted = false;
+        _networkResyncing = true;
+        _ui.SetCoOpConnectionState(true, true);
+        _ui.SetCoOpLobbyStatus("RESTART REQUESTED", "Waiting for the host to initialize a fresh shared defense...", _joinCode);
+        _state = GameState.CoOpReconnect;
+        QueueSend(new CoOpEnvelope { Type = CoOpMessageType.RestartRequest, PlayerId = 2 });
+    }
+
+    private void RestartCoOpAsHost()
+    {
+        if (!_isNetworkHost || _session is null || _coOpConnection is null) return;
+        var mapId = _session.Map.Definition.Id;
+        _session = new GameSession(_content, mapId);
+        _session.ConfigureCoOp(1);
+        _activeSaveSlot = SaveGameStore.FindFirstEmptySlot();
+        _lastAutosavedWave = -1;
+        _authoritativeCommands = new AuthoritativeCommandHost();
+        _networkRunner = new DeterministicSessionRunner(_session);
+        AttachNetworkRunner();
+        ResetCoOpWaveReadyState(false);
+        _lastSyncTick = -1;
+        _networkStarted = true;
+        _networkResyncing = false;
+        _ui.SetCoOpLobbyStatus("RESTARTING CO-OP", "Sending both players a fresh defense on the same map...", _coOpHost?.JoinCode ?? "");
+        _state = GameState.CoOpReconnect;
+        SendAuthoritativeSnapshot("Host-authoritative co-op restart");
+    }
+
+    private void OpenSaveSlots(bool writeMode, GameState returnState)
+    {
+        _saveSlotWriteMode = writeMode;
+        _saveSlotReturnState = returnState;
+        var slots = SaveGameStore.GetSlots();
+        _ui.ConfigureSaveSlots(slots, writeMode, _activeSaveSlot);
+        _ui.SetSaveState(slots.Any(slot => slot.IsOccupied));
+        _state = GameState.SaveSlots;
+    }
+
+    private void HandleSaveSlotAction(UiAction action)
+    {
+        if (action == UiAction.CloseSaveSlots)
+        {
+            _state = _saveSlotReturnState;
+            return;
+        }
+        if (action == UiAction.DeleteSaveSlot)
+        {
+            DeleteSaveSlot(_ui.SelectedSaveSlot);
+            return;
+        }
+        if (action != UiAction.ConfirmSaveSlot) return;
+
+        var slot = _ui.SelectedSaveSlot;
+        if (_saveSlotWriteMode)
+        {
+            SaveCheckpoint(false, slot);
+            _state = _saveSlotReturnState;
+        }
+        else
+            LoadSaveSlot(slot);
+    }
+
+    private void DeleteSaveSlot(int slot)
+    {
+        try
+        {
+            if (!SaveGameStore.Delete(slot))
+            {
+                _ui.SetSaveState(SaveGameStore.Exists, $"Slot {slot} is already empty.");
+                return;
+            }
+
+            if (_activeSaveSlot == slot) _activeSaveSlot = null;
+            var slots = SaveGameStore.GetSlots();
+            var preferred = slots.FirstOrDefault(candidate => candidate.Slot >= slot)?.Slot
+                ?? slots.LastOrDefault()?.Slot;
+            _ui.ConfigureSaveSlots(slots, _saveSlotWriteMode, preferred);
+            _ui.SetSaveState(slots.Any(candidate => candidate.IsOccupied), $"Deleted save slot {slot}.");
+        }
+        catch (Exception exception)
+        {
+            _ui.SetSaveState(SaveGameStore.Exists, $"Delete failed: {exception.GetBaseException().Message}");
+        }
+    }
+
+    private void SaveCheckpoint(bool automatic, int? requestedSlot = null)
     {
         if (_session is null || !_session.CanSaveCheckpoint) return;
         try
         {
-            SaveGameStore.Save(_session);
+            var slot = requestedSlot ?? _activeSaveSlot ?? SaveGameStore.FindFirstEmptySlot();
+            if (slot is null)
+            {
+                _lastAutosavedWave = _session.CurrentWave;
+                _ui.SetSaveState(true, "Save index capacity is exhausted; delete an old save before continuing.");
+                return;
+            }
+            SaveGameStore.Save(_session, slot.Value);
+            _activeSaveSlot = slot;
             _lastAutosavedWave = _session.CurrentWave;
-            var label = automatic ? $"Autosaved after wave {_session.CurrentWave}." : $"Checkpoint saved after wave {_session.CurrentWave}.";
+            var label = automatic
+                ? $"Autosaved wave {_session.CurrentWave} to slot {slot}."
+                : $"Saved wave {_session.CurrentWave} to slot {slot}.";
             _ui.SetSaveState(true, label);
         }
         catch (Exception exception)
@@ -793,20 +957,29 @@ public sealed class Game1 : Game
         }
     }
 
-    private void LoadCheckpoint()
+    private void LoadSaveSlot(int slot)
     {
         try
         {
+            var restored = SaveGameStore.Load(_content, slot);
+            if (restored.IsCoOp)
+            {
+                _ui.SetSaveState(true, $"Loaded co-op slot {slot}; waiting for player 2.");
+                BeginHostingCoOp(restored, slot);
+                return;
+            }
+
             CleanupNetwork();
-            _session = SaveGameStore.Load(_content);
+            _session = restored;
+            _activeSaveSlot = slot;
             _lastAutosavedWave = _session.CurrentWave;
-            _ui.SetSaveState(true, $"Checkpoint loaded after wave {_session.CurrentWave}.");
+            _ui.SetSaveState(true, $"Loaded solo slot {slot} after wave {_session.CurrentWave}.");
             _state = GameState.Playing;
         }
         catch (Exception exception)
         {
             _ui.SetSaveState(SaveGameStore.Exists, $"Load failed: {exception.GetBaseException().Message}");
-            _state = GameState.MainMenu;
+            OpenSaveSlots(_saveSlotWriteMode, _saveSlotReturnState);
         }
     }
 

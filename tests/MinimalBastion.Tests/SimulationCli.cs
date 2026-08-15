@@ -21,6 +21,9 @@ internal static class SimulationCli
         var maps = selectedMap is not null && content.Maps.ContainsKey(selectedMap)
             ? new[] { selectedMap }
             : deep ? content.Maps.Keys.OrderBy(x => x).ToArray() : new[] { content.Map.Id };
+        var maximumWave = int.TryParse(ReadValue(args, "--max-wave"), out var parsedMaximumWave)
+            ? Math.Max(1, parsedMaximumWave)
+            : int.MaxValue;
 
         var runs = new List<SimulationRunResult>();
         foreach (var mapId in maps)
@@ -29,7 +32,14 @@ internal static class SimulationCli
                 for (var index = 0; index < runsPerStrategy; index++)
                 {
                     var seed = baseSeed + index * 7919;
-                    var result = HeadlessSimulation.Run(content, new SimulationOptions { Strategy = strategy, Seed = seed, MapId = mapId });
+                    var result = HeadlessSimulation.Run(content, new SimulationOptions
+                    {
+                        Strategy = strategy,
+                        Seed = seed,
+                        MapId = mapId,
+                        MaximumWave = maximumWave,
+                        ContinueEndless = maximumWave > content.Waves.Waves.Count
+                    });
                     runs.Add(result);
                     Console.WriteLine($"{mapId,-15} {strategy,-16} seed {seed,7}  {result.Result,-7}  wave {result.WaveReached,2}  lives {result.LivesRemaining,2}  spent {result.CreditsSpent,5}  towers {result.Towers.Values.Sum(x => x.Purchases),2}  plates {result.EmergencyDeployments,2}");
                 }
@@ -87,7 +97,7 @@ internal static class SimulationCli
             })
             .OrderByDescending(x => x.Damage);
         foreach (var row in towerRows)
-            Console.WriteLine($"{row.Id,-20} picks {row.Picks,3}  upgrades {row.Upgrades,3}  damage {row.Damage,10:0}  dmg/credit {(row.Spent == 0 ? 0 : row.Damage / row.Spent),6:0.0}");
+            Console.WriteLine($"{row.Id,-20} picks {row.Picks,3}  upgrades {row.Upgrades,3}  damage {row.Damage,10:0}  damage/credit {(row.Spent == 0 ? 0 : row.Damage / row.Spent),6:0.0}");
     }
 
     private static string? ReadValue(string[] args, string name)

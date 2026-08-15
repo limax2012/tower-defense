@@ -27,6 +27,7 @@ public sealed class EnemyInstance
     public float ControlResistance { get; }
     public string DisplayName => IsBoss ? "Bastion Core" : IsElite ? $"Elite {Definition.DisplayName}" : Definition.DisplayName;
     public float DamagePauseTimer { get; set; }
+    public float KnockbackGraceRemaining { get; private set; }
     public bool IsDead { get; private set; }
     public bool HasEscaped { get; private set; }
     public float Radius => Definition.Visual.Radius + (IsBoss ? 8 : IsElite ? 3 : 0);
@@ -78,13 +79,27 @@ public sealed class EnemyInstance
         PathProgress = path.GetProgress(DistanceAlongPath);
     }
 
+    public bool TryApplyKnockback(float distance, float graceSeconds, PathRuntime path)
+    {
+        if (distance <= 0 || KnockbackGraceRemaining > 0 || IsDead || HasEscaped) return false;
+        DistanceAlongPath = MathF.Max(0, DistanceAlongPath - distance);
+        Position = path.GetPosition(DistanceAlongPath);
+        PathProgress = path.GetProgress(DistanceAlongPath);
+        KnockbackGraceRemaining = MathF.Max(0, graceSeconds);
+        return true;
+    }
+
     public void Regenerate(float deltaSeconds)
     {
         if (IsDead || HasEscaped || Definition.RegenerationPerSecond <= 0 || DamagePauseTimer > 0) return;
         Health = MathF.Min(MaxHealth, Health + Definition.RegenerationPerSecond * deltaSeconds);
     }
 
-    public void TickDamagePause(float deltaSeconds) => DamagePauseTimer = MathF.Max(0, DamagePauseTimer - deltaSeconds);
+    public void TickRuntimeTimers(float deltaSeconds)
+    {
+        DamagePauseTimer = MathF.Max(0, DamagePauseTimer - deltaSeconds);
+        KnockbackGraceRemaining = MathF.Max(0, KnockbackGraceRemaining - deltaSeconds);
+    }
 
     public void ApplyHealthDamage(float amount)
     {
@@ -143,6 +158,7 @@ public sealed class EnemyInstance
         Health = Health,
         Shield = Shield,
         DamagePauseTimer = DamagePauseTimer,
+        KnockbackGraceRemaining = KnockbackGraceRemaining,
         IsDead = IsDead,
         HasEscaped = HasEscaped,
         BossPhaseActive = BossPhaseActive,
@@ -165,6 +181,7 @@ public sealed class EnemyInstance
                 (data.Rank == EnemyRank.Elite ? 1.85f : data.Rank == EnemyRank.Boss ? 4.5f : 1f)),
             Shield = MathF.Max(0, data.Shield),
             DamagePauseTimer = MathF.Max(0, data.DamagePauseTimer),
+            KnockbackGraceRemaining = MathF.Max(0, data.KnockbackGraceRemaining),
             IsDead = data.IsDead,
             HasEscaped = data.HasEscaped,
             BossPhaseActive = data.BossPhaseActive,

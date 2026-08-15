@@ -1,5 +1,14 @@
 # Overnight Changelog
 
+## Range, branch, and menu harmony pass
+
+- Reduced Watchtower direct damage while retaining its defining 250-290 range; seeded LongRange results moved from 10/10 perfect dominance to 8/10 viable finishes.
+- Extended Foundry's remote lower-left build region toward the road and gave Shard Fan modest range plus 1/1/2 armor pierce, creating a clearer payoff for occupying close slots.
+- Rebuilt Hail Lancer as the direct area-damage Frost branch while Permafrost remains the maximum-control branch.
+- Rebuilt Searing Brand as a long-range, armor-piercing boss-burn branch while Wildfire remains the crowded-route branch.
+- Kept Mortar unchanged after current telemetry placed it in the middle of the roster rather than among the dominant towers.
+- Restored Online Co-op to green and moved Continue Checkpoint to cyan, keeping every main-menu action distinct without the disliked blue co-op treatment.
+
 Date: 2026-08-14
 
 ## Two-player reliability pass
@@ -31,7 +40,8 @@ Date: 2026-08-14
 - Strengthened tower identities through targeting, armor/status interactions, support auras, branching behavior, and map placement bonuses.
 - Removed Watchtower armor pierce so Watchtower and Breaker/Rail branches retain distinct jobs.
 - Made Charge Forge production wave-powered only, eliminating wait-to-generate exploitation.
-- Replaced Pulse Plate's hidden 0.8-second lockout with per-enemy crossing memory. One enemy cannot consume both charges; consecutive enemies no longer slide across an unavailable second trigger.
+- Replaced Pulse Plate's hidden lockout with per-crossing memory. The trigger pushes an enemy behind the plate, allowing a durable leak to cross again and consume the second charge, while consecutive enemies can still trigger independently.
+- Closed the late-game Pulse Plate carpet exploit without reverting its useful damage and slow: push 48 -> 28, elite push 60%, boss push 25%, 0.75-second per-enemy knockback grace, 16 active-plate cap, and active-wave-only direct purchases escalating by 15 credits from a 60-credit base.
 
 ## Simulation results
 
@@ -54,6 +64,7 @@ Date: 2026-08-14
 - Renamed map power-field terminology from Relay to Surge Zone.
 - Added Surge Zone hover intel with exact bonus, radius, placement rule, and stacking behavior.
 - Standardized every tower icon with an outer ring and integrated radial level marks: top at level 1, then 120/240-degree spokes for levels 2/3. Removed the separate badges to avoid battlefield obstruction.
+- Added a compact gold broadcast marker to towers affected by Signal Beacon and exact Beacon-only rate/range deltas to Tower Intel without hiding Surge Node context.
 - Increased the workshop and tower-intel icon/text gutter so rings no longer crowd tower names or cost/role labels.
 - Added clearer ownership, branch, elite/boss, powered/surged, Overdrive, recoil, impact, beam, and ring feedback.
 - Added a fixed 2560x1440 supersampled scene, double-density interface font and primitive masks, and linear final downsampling for smoother fullscreen presentation.
@@ -71,6 +82,8 @@ Date: 2026-08-14
 
 ## Quality-of-life changes
 
+- Replaced the frozen post-victory Final Field with **Continue Endless**. It resumes the same battlefield for wave-21 preparation and lets attack visuals cool off under normal simulation.
+- Added deterministic endless scaling, rotating pressure themes, recurring five-wave bosses, performance-bounded roster growth, solo checkpoint persistence, co-op continuation commands, reconnect state, and endless HUD labeling.
 - The Plates button now reports only stored inventory or direct-purchase cost. The Charge Forge button exclusively owns the production timer, paused state, and storage-full state, avoiding duplicate countdowns.
 - Sidebar always displays Overdrive active time or cooldown.
 - Forge timer explicitly changes from `PAUSED` to `RUNNING` when a wave starts.
@@ -88,7 +101,7 @@ Date: 2026-08-14
 
 ## Tests added
 
-- Expanded deterministic suite from the original baseline to 39 passing checks.
+- Expanded deterministic suite from the original baseline to 40 passing checks.
 - Coverage includes content counts, both map openings, Surge Zone buffs/checksum, pathing, targeting, armor/DOT/status, elites/boss, economy, placement, final group, early calls, mixed waves, Arc chain, telemetry, shared co-op controls, mirrored network commands/checksum, active-wave snapshots, reconnect transport, build mismatch rejection, wave ready, endpoint parsing, tower intel/branches/Overdrive, Pulse Plate reliability, wave-only forge production, high-resolution viewport composition, tactical palette constants, and headless determinism.
 - Release build and self-contained publish complete with 0 warnings and 0 errors.
 
