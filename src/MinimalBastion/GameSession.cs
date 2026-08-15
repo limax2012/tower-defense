@@ -812,7 +812,7 @@ public sealed class GameSession
     {
         if (!_resolvedOutcomes.Add(enemy.Id)) return;
         Economy.AwardKill(enemy.Reward);
-        Effects.AddFlash(enemy.Position, enemy.Definition.Visual.AccentColor, 0.16f, enemy.Radius + 8);
+        Effects.AddShatter(enemy.Position, enemy.Definition.Visual.PrimaryColor, enemy.Radius + 8);
         EnemyKilled?.Invoke(enemy);
     }
 

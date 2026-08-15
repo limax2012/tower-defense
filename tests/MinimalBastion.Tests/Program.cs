@@ -838,6 +838,13 @@ internal static class Program
 
     private static void EffectBudget()
     {
+        var deathEffects = new EffectSystem();
+        deathEffects.AddShatter(new Vector2(12, 12), Color.Cyan, 18);
+        Check.Equal(1, deathEffects.Effects.Count(effect => effect.Kind == EffectKind.Shatter),
+            "enemy defeat receives one bounded geometric shatter");
+        deathEffects.Update(0.2f);
+        Check.Equal(0, deathEffects.Effects.Count, "defeat shatter expires promptly");
+
         var effects = new EffectSystem();
         effects.AddPing(new Vector2(10, 10), Color.Cyan);
         for (var index = 0; index < EffectSystem.MaximumEffects * 2; index++)
@@ -857,6 +864,9 @@ internal static class Program
         effects.AddImpact(new Vector2(22, 20), Color.Coral);
         Check.Equal(impactCount, effects.Effects.Count(effect => effect.Kind == EffectKind.Impact),
             "minor impact cues yield instead of displacing major effects at capacity");
+        effects.AddShatter(new Vector2(23, 20), Color.Cyan, 18);
+        Check.Equal(0, effects.Effects.Count(effect => effect.Kind == EffectKind.Shatter),
+            "defeat shatters yield instead of displacing major effects at capacity");
 
         for (var index = 0; index < EffectSystem.MaximumPings * 2; index++)
             effects.AddPing(new Vector2(index, index), Color.Cyan);

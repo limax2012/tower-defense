@@ -8,6 +8,7 @@ public enum EffectKind
     Beam,
     Impact,
     Splash,
+    Shatter,
     Ping
 }
 
@@ -74,6 +75,22 @@ public sealed class EffectSystem
         });
     }
 
+    public void AddShatter(Vector2 position, Color color, float radius)
+    {
+        const float duration = 0.18f;
+        if (!ReserveTransientSlot(EffectKind.Shatter)) return;
+        _effects.Add(new EffectInstance
+        {
+            Kind = EffectKind.Shatter,
+            Start = position,
+            End = position,
+            Color = color,
+            Duration = duration,
+            Remaining = duration,
+            Radius = MathF.Max(7, radius)
+        });
+    }
+
     public void AddPing(Vector2 position, Color color)
     {
         const float duration = 1.4f;
@@ -93,12 +110,12 @@ public sealed class EffectSystem
     private bool ReserveTransientSlot(EffectKind incomingKind)
     {
         if (_effects.Count < MaximumEffects) return true;
-        if (incomingKind is EffectKind.Beam or EffectKind.Impact) return false;
+        if (incomingKind is EffectKind.Beam or EffectKind.Impact or EffectKind.Shatter) return false;
 
-        var oldestImpact = _effects.FindIndex(effect => effect.Kind == EffectKind.Impact);
-        if (oldestImpact >= 0)
+        var oldestMinor = _effects.FindIndex(effect => effect.Kind is EffectKind.Impact or EffectKind.Shatter);
+        if (oldestMinor >= 0)
         {
-            _effects.RemoveAt(oldestImpact);
+            _effects.RemoveAt(oldestMinor);
             return true;
         }
 

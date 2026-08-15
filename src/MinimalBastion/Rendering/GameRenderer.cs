@@ -566,6 +566,24 @@ public sealed class GameRenderer
                     }
                 }
             }
+            else if (effect.Kind == EffectKind.Shatter)
+            {
+                var age = 1f - progress;
+                var radius = effect.Radius * (0.72f + age * 0.36f);
+                p.Ring(batch, effect.Start, MathF.Max(3, radius), effectColor, 2);
+                if (!ReducedEffects)
+                {
+                    for (var index = 0; index < 6; index++)
+                    {
+                        var angle = index * MathHelper.TwoPi / 6f + age * 0.22f;
+                        var direction = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+                        p.Line(batch,
+                            effect.Start + direction * (radius * (0.34f + age * 0.18f)),
+                            effect.Start + direction * (radius + 3 + age * 5),
+                            effectColor, 2);
+                    }
+                }
+            }
             else
             {
                 var radius = effect.Radius * (1.2f - progress * 0.2f);
