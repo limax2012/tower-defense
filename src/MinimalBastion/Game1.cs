@@ -1110,10 +1110,12 @@ public sealed class Game1 : Game
         if (_session is null || (!_session.IsVictory && !_session.IsDefeat)) return;
         var resultKey = $"{_session.RunId}:{_session.IsVictory}:{_session.IsDefeat}:{_session.CurrentWave}:{_session.Economy.TotalKills}:{_session.Economy.Lives}";
         if (resultKey == _lastRecordedResultKey) return;
+        // Mark the terminal state before touching disk. If local history storage is
+        // unavailable, a result screen must not retry the same failed write every frame.
+        _lastRecordedResultKey = resultKey;
         try
         {
             RunHistoryStore.Upsert(RunHistoryEntry.FromSession(_session));
-            _lastRecordedResultKey = resultKey;
             RefreshRunHistoryCache();
         }
         catch
