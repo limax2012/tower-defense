@@ -217,6 +217,7 @@ public static class SessionChecksum
             Add(ref hash, projectile.Speed);
             Add(ref hash, projectile.SplashRadius);
             Add(ref hash, projectile.SplashTargetLimit);
+            Add(ref hash, projectile.Payload.PriorityDamageMultiplier);
             Add(ref hash, projectile.Payload.ArmorPierce);
             Add(ref hash, projectile.Payload.IgnoreShield ? 1 : 0);
             Add(ref hash, projectile.Payload.IsDamageOverTime ? 1 : 0);

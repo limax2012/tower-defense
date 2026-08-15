@@ -14,7 +14,10 @@ public sealed class DamageResolver
     public void Apply(EnemyInstance enemy, DamagePayload payload)
     {
         if (enemy.IsDead || enemy.HasEscaped) return;
-        var rawDamage = MathF.Max(0, payload.Damage);
+        var priorityMultiplier = enemy.BaseArmor >= 4 || enemy.IsElite || enemy.IsBoss
+            ? MathF.Max(1, payload.PriorityDamageMultiplier)
+            : 1f;
+        var rawDamage = MathF.Max(0, payload.Damage * priorityMultiplier);
         var expose = enemy.StatusEffects.Active.Where(status => status.Type == StatusType.Exposed)
             .OrderByDescending(status => status.Magnitude).ThenBy(status => status.SourceId).FirstOrDefault();
         var armorBreak = enemy.StatusEffects.Active.Where(status => status.Type == StatusType.ArmorBreak)

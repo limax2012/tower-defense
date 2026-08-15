@@ -99,7 +99,8 @@ internal static class CoOpSnapshotValidator
             projectile.TargetEnemyId < 0 ||
             !Enum.IsDefined(typeof(ProjectileKind), projectile.Kind) || !IsNonnegativeFinite(projectile.Speed) ||
             !IsNonnegativeFinite(projectile.SplashRadius) || projectile.SplashTargetLimit < 0 ||
-            !IsNonnegativeFinite(projectile.Damage) || !IsNonnegativeFinite(projectile.ArmorPierce) ||
+            !IsNonnegativeFinite(projectile.Damage) || !IsPositiveFinite(projectile.PriorityDamageMultiplier) ||
+            projectile.PriorityDamageMultiplier > 3 || !IsNonnegativeFinite(projectile.ArmorPierce) ||
             !IsNonnegativeFinite(projectile.Radius) || !IsValidStatus(projectile.Status)))
             throw new InvalidDataException("Co-op snapshot projectile state is structurally invalid.");
         if (projectiles.Any(projectile => projectile.Kind == (int)ProjectileKind.Homing &&

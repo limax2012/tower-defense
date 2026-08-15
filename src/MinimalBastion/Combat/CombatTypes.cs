@@ -15,6 +15,7 @@ public enum ProjectileKind
 public sealed class DamagePayload
 {
     public float Damage { get; init; }
+    public float PriorityDamageMultiplier { get; init; } = 1f;
     public float ArmorPierce { get; init; }
     public bool IgnoreShield { get; init; }
     public bool IsDamageOverTime { get; init; }
@@ -102,6 +103,7 @@ public sealed class ProjectileInstance
         SplashRadius = SplashRadius,
         SplashTargetLimit = SplashTargetLimit,
         Damage = Payload.Damage,
+        PriorityDamageMultiplier = Payload.PriorityDamageMultiplier,
         ArmorPierce = Payload.ArmorPierce,
         IgnoreShield = Payload.IgnoreShield,
         IsDamageOverTime = Payload.IsDamageOverTime,
@@ -126,6 +128,7 @@ public sealed class ProjectileInstance
             new DamagePayload
             {
                 Damage = MathF.Max(0, data.Damage),
+                PriorityDamageMultiplier = MathF.Max(1, data.PriorityDamageMultiplier),
                 ArmorPierce = MathF.Max(0, data.ArmorPierce),
                 IgnoreShield = data.IgnoreShield,
                 IsDamageOverTime = data.IsDamageOverTime,

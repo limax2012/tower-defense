@@ -8,7 +8,7 @@ Updated: 2026-08-15
 - Deterministic regression suite: 65/65 passing.
 - Self-contained Windows x64 publish: `.build/publish/MinimalBastion.exe`.
 - Content: 4 maps with independently authored campaigns, 10 towers with 20 tier-two doctrines and 20 final specializations, 10 distinct Protocols, 5 enemy bases plus elite/boss ranks, difficulty/directive profiles, tactical reserves, and endless continuation.
-- Canonical five-seed Hard matrix: 140/240 wins (58.3%); every doctrine and final role appears in winning runs, with Surge Divide remaining the hardest arena. A fresh three-seed audit on the current executable produced 79/144 wins (54.9%) and the same map/strategy ordering.
+- Canonical five-seed Hard matrix: 140/240 wins (58.3%). A fresh three-seed audit on the current executable produced 73/144 wins (50.7%), with every final Breaker role appearing in winning runs and Surge Divide remaining the hardest arena.
 - Native visual QA covers title/settings/co-op flows, all map treatments, tactical sidebar states, Surge Node overlap intel, Protocol/Beacon markers, Pulse Plates/Forge, high-resolution and wide-aspect rendering, result/field inspection, and the complete Tower/Threat/Campaign library. The latest 1920-wide pass reconfirmed title and doctrine-card spacing plus Breaker/Beacon contrast.
 - Git history is maintained on `agent/overnight-arena-progression` and mirrored to `origin`; tested feature units are committed incrementally while `main` remains untouched during the active overnight run.
 
@@ -36,6 +36,7 @@ Updated: 2026-08-15
 - Added two mutually exclusive Tier-2 doctrines and two final specializations to all ten towers. Planning UI shows exact current, next, and completed-path stats before spending.
 - Replaced the generic Overdrive payload with ten thematic Protocols: each tower has its own duration, cooldown, stat package, burst/status effect, animation/audio feedback, synchronized command, telemetry, and optional pressure-aware automatic activation.
 - Removed Watchtower's latent level-3 armor pierce after fixing generic projectile behavior; long range and anti-armor now retain distinct jobs.
+- Rebalanced Breaker Cannon's final roles with matched Hard simulations: Breach Round deals 1.5x damage to armored, elite, and boss targets, while Shatter Shell applies its area hit and armor break to at most four targets. Both doctrine pairings now have clear use cases instead of Shatter retaining unbounded crowd scaling.
 - Replaced the separate level badges with integrated radial level marks: one top spoke at level 1, then fixed 120/240-degree spokes for levels 2/3. Every tower also uses the same outer ring.
 
 ### Tactical defenses and economy integrity
@@ -99,6 +100,12 @@ Updated: 2026-08-15
   - `.build/balance/overnight-endless60-easy-1x.json`
   - `.build/balance/overnight-endless60-normal-1x.json`
   - `.build/balance/overnight-endless60-hard-1x.json`
+  - `.build/balance/breaker-heavy-bored.json`
+  - `.build/balance/breaker-heavy-repeat.json`
+  - `.build/balance/overnight-audit-hard-breaker-cap4-3x.json`
+  - `.build/balance/overnight-audit-easy-breaker-cap4-3x.json`
+  - `.build/balance/overnight-audit-normal-breaker-cap4-3x.json`
+  - `.build/balance/overnight-audit-bastion-breaker-cap4-3x.json`
 
 ### Current difficulty audit
 
@@ -106,12 +113,12 @@ The current executable was rerun for three seeds across 12 strategies and all fo
 
 | Difficulty | Wins | Win rate | Average wave | Average lives |
 |---|---:|---:|---:|---:|
-| Easy | 120/144 | 83.3% | 19.4 | 24.5 |
-| Normal | 109/144 | 75.7% | 18.8 | 16.8 |
-| Hard | 79/144 | 54.9% | 17.1 | 9.7 |
-| Bastion | 21/144 | 14.6% | 12.9 | 1.7 |
+| Easy | 116/144 | 80.6% | 19.3 | 23.4 |
+| Normal | 106/144 | 73.6% | 18.7 | 16.5 |
+| Hard | 73/144 | 50.7% | 16.9 | 8.8 |
+| Bastion | 16/144 | 11.1% | 13.0 | 1.2 |
 
-The clean separation supports preserving the current multipliers. On Hard, Surge clears 14/36 versus 20-23/36 elsewhere; on Bastion it clears 2/36. Easy remains broadly forgiving while the intentionally dysfunctional Economy and indiscriminate level-1 Spam policies still fail, so it does not collapse into an automatic win.
+The clean separation supports preserving the current multipliers. On Hard, Surge clears 12/36 versus 17-26/36 elsewhere; on Bastion it clears 1/36. Easy remains broadly forgiving while the intentionally dysfunctional Economy and indiscriminate level-1 Spam policies still fail, so it does not collapse into an automatic win.
 
 ## Significant decisions and rejected designs
 

@@ -244,6 +244,11 @@ internal static class Program
         Check.True(mortar.Levels.Select(level => level.SplashTargetLimit).SequenceEqual(new[] { 6, 7, 8 }) &&
             salvo.SplashTargetLimit == 7 && quake.SplashTargetLimit == 10,
             "Mortar impact caps bound extreme crowd scaling while Quake owns wider control");
+        var breaker = content.Towers["breaker_cannon"];
+        Check.Nearly(1.5f, breaker.Specializations.Single(x => x.Id == "breach_round").Level.PriorityDamageMultiplier,
+            "Breach Round has an explicit armored, elite, and boss role");
+        Check.Equal(4, breaker.Specializations.Single(x => x.Id == "shatter_shell").Level.SplashTargetLimit,
+            "Shatter Shell crowd throughput is bounded");
         var beacon = content.Towers["signal_beacon"];
         Check.True(beacon.Specializations.Any(x => x.Level.AuraAttackSpeedBonus >= 0.45f) &&
             beacon.Specializations.Any(x => x.Level.AuraRangeBonus >= 0.35f),
@@ -635,6 +640,15 @@ internal static class Program
         Check.Nearly(84, enemy.Health, "armor damage");
         session.DamageResolver.Apply(enemy, new DamagePayload { Damage = 10, ArmorPierce = 4 });
         Check.Nearly(74, enemy.Health, "pierced damage");
+        var priority = new EnemyInstance(4, Enemy("priority", 100, 10, 1, 0, 0), path, 1, 1, "Elite");
+        session.DamageResolver.Apply(priority, new DamagePayload { Damage = 10, ArmorPierce = 2, PriorityDamageMultiplier = 1.5f });
+        Check.Nearly(170, priority.Health, "priority multiplier boosts direct damage against elites");
+        var heavy = new EnemyInstance(6, Enemy("heavy", 100, 10, 1, 4, 0), path, 1, 1);
+        session.DamageResolver.Apply(heavy, new DamagePayload { Damage = 10, ArmorPierce = 4, PriorityDamageMultiplier = 1.5f });
+        Check.Nearly(85, heavy.Health, "priority multiplier boosts direct damage against armored standards");
+        var ordinary = new EnemyInstance(5, Enemy("ordinary", 100, 10, 1, 0, 0), path, 1, 1);
+        session.DamageResolver.Apply(ordinary, new DamagePayload { Damage = 10, ArmorPierce = 2, PriorityDamageMultiplier = 1.5f });
+        Check.Nearly(90, ordinary.Health, "priority multiplier does not alter ordinary targets");
         var shielded = new EnemyInstance(2, Enemy("shielded", 100, 10, 1, 0, 20), path, 1, 1);
         session.DamageResolver.Apply(shielded, new DamagePayload { Damage = 12 });
         Check.Nearly(100, shielded.Health, "shield prevents health damage");
@@ -2498,6 +2512,46 @@ internal static class Program
         Check.Equal(3, crowded.Count(enemy => enemy.Health < enemy.MaxHealth), "mortar damages only its nearest capped targets");
         Check.True(crowded.Take(3).All(enemy => enemy.Health < enemy.MaxHealth) && crowded.Skip(3).All(enemy => enemy.Health == enemy.MaxHealth),
             "equal-distance mortar cap resolves deterministically by enemy id");
+
+        var breakerSession = Session();
+        var breakerDefinition = new TowerDefinition
+        {
+            Id = "capped_breaker",
+            DisplayName = "Capped Breaker",
+            Behavior = "armor_projectile",
+            PurchaseCost = 1,
+            Levels = new List<TowerLevelDefinition>
+            {
+                new()
+                {
+                    Range = 300,
+                    Damage = 40,
+                    AttacksPerSecond = 1,
+                    ProjectileSpeed = 10_000,
+                    SplashRadius = 45,
+                    SplashTargetLimit = 3,
+                    PriorityDamageMultiplier = 1.5f
+                }
+            }
+        };
+        var breakerTower = new TowerInstance(18, breakerDefinition, new Vector2(100, 150));
+        var breakerCrowd = Enumerable.Range(0, 5)
+            .Select(index => new EnemyInstance(40 + index, breakerSession.Content.Enemies["enemy"], breakerSession.Map.Path, 1, 1))
+            .ToArray();
+        breakerSession.Enemies.AddRange(breakerCrowd);
+        TowerBehaviorRegistry.Create("armor_projectile").Attack(new TowerInstanceContext
+        {
+            Tower = breakerTower,
+            Target = breakerCrowd[0],
+            Session = breakerSession
+        });
+        var breakerShell = breakerSession.Projectiles.Projectiles.Single();
+        Check.Equal(3, breakerShell.CaptureCoOpState().SplashTargetLimit, "armor projectile forwards its target cap");
+        Check.Nearly(1.5f, breakerShell.CaptureCoOpState().PriorityDamageMultiplier,
+            "priority damage survives active-projectile snapshots");
+        breakerSession.Projectiles.Update(1, breakerSession);
+        Check.Equal(3, breakerCrowd.Count(enemy => enemy.Health < enemy.MaxHealth),
+            "Shatter-style armor projectiles obey their crowd cap");
     }
 
     private static void TowerInformation()

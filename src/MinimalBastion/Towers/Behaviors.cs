@@ -51,6 +51,7 @@ internal static class BehaviorHelpers
         return new DamagePayload
         {
             Damage = context.Session.GetEffectiveDamage(context.Tower, damage),
+            PriorityDamageMultiplier = level.PriorityDamageMultiplier,
             ArmorPierce = context.Session.GetEffectiveArmorPierce(context.Tower, armorPierce),
             IgnoreShield = ignoreShield,
             Status = status,
@@ -127,7 +128,8 @@ public sealed class ArmorProjectileBehavior : ITowerBehavior
         var status = BehaviorHelpers.Status(context, StatusType.ArmorBreak, level.ArmorReductionDuration, level.ArmorReduction);
         BehaviorHelpers.Projectile(context, context.Target, level.SplashRadius > 0 ? ProjectileKind.ImpactPoint : ProjectileKind.Homing,
             context.Target.Position, level.SplashRadius,
-            BehaviorHelpers.Payload(context, level, level.Damage, status, false, level.ArmorPierce), level.ProjectileSpeed, context.Tower.Definition.Visual.PrimaryColor);
+            BehaviorHelpers.Payload(context, level, level.Damage, status, false, level.ArmorPierce), level.ProjectileSpeed,
+            context.Tower.Definition.Visual.PrimaryColor, splashTargetLimit: level.SplashTargetLimit);
     }
 }
 

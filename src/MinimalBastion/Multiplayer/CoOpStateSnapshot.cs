@@ -6,7 +6,7 @@ namespace MinimalBastion.Multiplayer;
 
 public sealed class CoOpStateSnapshot
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public string RunId { get; set; } = "";
     public string MapId { get; set; } = "";
@@ -88,6 +88,7 @@ public sealed class ProjectileRuntimeState
     public float SplashRadius { get; set; }
     public int SplashTargetLimit { get; set; }
     public float Damage { get; set; }
+    public float PriorityDamageMultiplier { get; set; } = 1f;
     public float ArmorPierce { get; set; }
     public bool IgnoreShield { get; set; }
     public bool IsDamageOverTime { get; set; }

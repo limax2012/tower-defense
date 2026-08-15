@@ -81,6 +81,8 @@ public static class TowerInfo
                 ? "PRIMARY DPS"
                 : "DIRECT DPS";
         lines.Add($"{outputLabel}  {RawDps(level):0.#}    RANGE  {level.Range:0}");
+        if (level.PriorityDamageMultiplier > 1f)
+            lines.Add($"HEAVY TARGET DAMAGE  x{level.PriorityDamageMultiplier:0.##}");
         if (level.ProjectileSpeed > 0) lines.Add($"PROJECTILE SPEED  {level.ProjectileSpeed:0}");
         if (level.PelletCount > 1) lines.Add($"PROJECTILES  {level.PelletCount}    SPREAD  {level.PelletSpreadDegrees:0.#} deg");
         if (level.SplashRadius > 0) lines.Add($"SPLASH RADIUS  {level.SplashRadius:0.#}");
@@ -131,7 +133,11 @@ public static class TowerInfo
             "burn_projectile" => level.SplashRadius > 0
                 ? $"Burn {level.BurnDamagePerSecond:0.#}/s; AoE {level.SplashRadius:0}; scorched armor -2"
                 : $"Burn {level.BurnDamagePerSecond:0.#}/s; scorched armor -2",
-            "armor_projectile" => level.ArmorReduction > 0 ? $"Pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0}" : $"Armor pierce {level.ArmorPierce:0}",
+            "armor_projectile" => level.PriorityDamageMultiplier > 1f
+                ? $"Heavy targets x{level.PriorityDamageMultiplier:0.##}; pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0}"
+                : level.ArmorReduction > 0
+                    ? $"Pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0}"
+                    : $"Armor pierce {level.ArmorPierce:0}",
             "chain" => $"Chain {level.ChainCount}; +35% damage to slowed",
             "splash_projectile" => level.SplashTargetLimit > 0
                 ? $"Splash radius {level.SplashRadius:0}; up to {level.SplashTargetLimit} targets"
@@ -238,6 +244,8 @@ public static class TowerInfo
         if (MathF.Abs(next.BurnDamagePerSecond - current.BurnDamagePerSecond) > 0.001f) changes.Add($"BURN {next.BurnDamagePerSecond:0.#}/s");
         if (next.SplashRadius > 0) changes.Add($"SPLASH {next.SplashRadius:0}");
         if (next.SplashTargetLimit > 0) changes.Add($"CAP {next.SplashTargetLimit}");
+        if (next.PriorityDamageMultiplier > current.PriorityDamageMultiplier)
+            changes.Add($"HEAVY x{next.PriorityDamageMultiplier:0.##}");
         if (next.SlowPercent > current.SlowPercent) changes.Add($"SLOW {next.SlowPercent:P0}");
         if (next.ArmorPierce > current.ArmorPierce)
             changes.Add($"PIERCE {current.ArmorPierce + powerBuff.ArmorPierceBonus:0.#}>{next.ArmorPierce + powerBuff.ArmorPierceBonus:0.#}");

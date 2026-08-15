@@ -227,6 +227,7 @@ public sealed class TowerLevelDefinition
     public float ArmorPierce { get; set; }
     public float ArmorReduction { get; set; }
     public float ArmorReductionDuration { get; set; }
+    public float PriorityDamageMultiplier { get; set; } = 1f;
     public float ExposePercent { get; set; }
     public float ExposeDuration { get; set; }
     public float StunDuration { get; set; }
@@ -264,6 +265,7 @@ public sealed class TowerLevelDefinition
             ArmorPierce = ArmorPierce * utility,
             ArmorReduction = ArmorReduction * utility,
             ArmorReductionDuration = ArmorReductionDuration * utility,
+            PriorityDamageMultiplier = PriorityDamageMultiplier,
             ExposePercent = ExposePercent * utility,
             ExposeDuration = ExposeDuration * utility,
             StunDuration = StunDuration * utility,
