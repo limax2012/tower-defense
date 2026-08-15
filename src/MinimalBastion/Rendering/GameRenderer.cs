@@ -746,14 +746,17 @@ public sealed class GameRenderer
         Vector2 direction, float pathWidth, PathVisualData visual)
     {
         var normal = new Vector2(-direction.Y, direction.X);
-        var plaqueCenter = ClampMarkerToField(center - normal * (pathWidth * 0.5f + 13f), 20f);
-        var plaque = new Rectangle((int)plaqueCenter.X - 17, (int)plaqueCenter.Y - 9, 34, 18);
+        // Entrance paths currently enter from the left, so the positive normal
+        // consistently places this below the conduit: away from the HUD on
+        // Foundry and away from Prism's nearby build zone.
+        var plaqueCenter = ClampMarkerToField(center + normal * (pathWidth * 0.5f + 9f), 14f);
+        var plaque = new Rectangle((int)plaqueCenter.X - 12, (int)plaqueCenter.Y - 6, 24, 12);
         p.FillRect(batch, plaque, visual.SecondaryColor);
         p.DrawRect(batch, plaque, Color.Lerp(visual.SecondaryColor, visual.AccentColor, 0.42f), 1);
-        for (var offset = -6f; offset <= 6f; offset += 6f)
+        for (var offset = -4f; offset <= 4f; offset += 4f)
         {
             var barCenter = plaqueCenter + direction * offset;
-            p.Line(batch, barCenter - normal * 3f, barCenter + normal * 3f,
+            p.Line(batch, barCenter - normal * 2f, barCenter + normal * 2f,
                 Color.Lerp(visual.SecondaryColor, visual.AccentColor, 0.62f), 1);
         }
     }
