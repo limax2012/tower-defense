@@ -1,5 +1,9 @@
 # Overnight Changelog
 
+- Added profile-specific personal bests to the title arena summary, live effective HP/speed scaling to the threat HUD, and explicit restart copy confirming that existing checkpoints remain saved.
+- Tightened the Plate control to action-first wording with permanent field capacity and high-contrast dark text on gold.
+- Extended true-radius area bursts to Pulse Plates and radius Protocols, and replaced generic kill flashes with low-priority six-segment shatters that yield under dense-wave visual pressure.
+- Made the procedural music bed crossfade smoothly with live on-field pressure and boss presence while remaining restrained during downtime.
 - Separated splash readability from generic flashes: Mortar and other area projectiles now resolve with a crisp expanding geometric burst, while Reduced Effects retains a single restrained ring and the existing global effect budget remains hard-capped.
 - Added restrained synthesized confirm, back, and delete cues across title, library, settings, save/history, co-op, pause, result, and field-inspection actions. They obey the persisted SFX volume and remain outside deterministic session state.
 - Added restrained geometric motion streaks to live projectiles at full effect density. The short source-colored lines make direct shots, shards, control bolts, and shells easier to follow without particles; Reduced Effects keeps the original shape-only rendering.
