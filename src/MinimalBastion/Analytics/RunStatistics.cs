@@ -48,30 +48,34 @@ public sealed class RunStatistics
         _session = session;
         session.TowerPlaced += OnTowerPlaced;
         session.TowerUpgraded += OnTowerUpgraded;
-        session.TowerOverdriven += tower => GetTower(tower.Definition.Id, tower.Definition.DisplayName).Overdrives++;
+        session.TowerOverdriven += tower =>
+        {
+            var metrics = GetTower(tower.Definition.Id, tower.Definition.DisplayName);
+            metrics.Overdrives = MetricMath.Add(metrics.Overdrives);
+        };
         session.TowerSold += OnTowerSold;
         session.EnemyKilled += OnEnemyKilled;
         session.EnemyEscaped += OnEnemyEscaped;
         session.DamageResolver.DamageApplied += OnDamage;
         session.EmergencyDefenseDeployed += (_, purchased) =>
         {
-            EmergencyDeployments++;
-            if (purchased) EmergencyDirectPurchases++;
+            EmergencyDeployments = MetricMath.Add(EmergencyDeployments);
+            if (purchased) EmergencyDirectPurchases = MetricMath.Add(EmergencyDirectPurchases);
         };
         session.EmergencyDefenseTriggered += (_, hits) =>
         {
-            EmergencyTriggers++;
-            EmergencyHits += hits;
+            EmergencyTriggers = MetricMath.Add(EmergencyTriggers);
+            EmergencyHits = MetricMath.Add(EmergencyHits, hits);
         };
-        session.GeneratorPlaced += _ => GeneratorPurchases++;
-        session.GeneratorUpgraded += (_, _) => GeneratorUpgrades++;
-        session.EmergencyChargeProduced += () => GeneratedCharges++;
+        session.GeneratorPlaced += _ => GeneratorPurchases = MetricMath.Add(GeneratorPurchases);
+        session.GeneratorUpgraded += (_, _) => GeneratorUpgrades = MetricMath.Add(GeneratorUpgrades);
+        session.EmergencyChargeProduced += () => GeneratedCharges = MetricMath.Add(GeneratedCharges);
     }
 
     public void Advance(float deltaSeconds)
     {
-        deltaSeconds = MathF.Max(0, deltaSeconds);
-        SimulatedSeconds += deltaSeconds;
+        deltaSeconds = MetricMath.Normalize(deltaSeconds);
+        SimulatedSeconds = MetricMath.Add(SimulatedSeconds, deltaSeconds);
         if (deltaSeconds <= 0) return;
 
         foreach (var enemy in _session.Enemies)
@@ -79,9 +83,9 @@ public sealed class RunStatistics
         {
             if (status.Type == StatusType.Burn || !_towerByInstance.TryGetValue(status.SourceId, out var metrics)) continue;
             var activeSeconds = MathF.Min(deltaSeconds, MathF.Max(0, status.RemainingSeconds));
-            if (status.Type is StatusType.Slow or StatusType.Stun) metrics.ControlSeconds += activeSeconds;
-            else if (status.Type == StatusType.Exposed) metrics.ExposeSeconds += activeSeconds;
-            else if (status.Type == StatusType.ArmorBreak) metrics.ArmorBreakSeconds += activeSeconds;
+            if (status.Type is StatusType.Slow or StatusType.Stun) metrics.ControlSeconds = MetricMath.Add(metrics.ControlSeconds, activeSeconds);
+            else if (status.Type == StatusType.Exposed) metrics.ExposeSeconds = MetricMath.Add(metrics.ExposeSeconds, activeSeconds);
+            else if (status.Type == StatusType.ArmorBreak) metrics.ArmorBreakSeconds = MetricMath.Add(metrics.ArmorBreakSeconds, activeSeconds);
             if (_towerInstances.TryGetValue(status.SourceId, out var sourceTower))
                 sourceTower.RecordStatusUptime(status.Type, activeSeconds);
         }
@@ -146,13 +150,13 @@ public sealed class RunStatistics
 
     public void RestoreSaveData(RunStatisticsSaveData data, IEnumerable<TowerInstance> activeTowers)
     {
-        SimulatedSeconds = MathF.Max(0, data.SimulatedSeconds);
+        SimulatedSeconds = MetricMath.Normalize(data.SimulatedSeconds);
         EmergencyDeployments = Math.Max(0, data.EmergencyDeployments);
         EmergencyDirectPurchases = Math.Max(0, data.EmergencyDirectPurchases);
         EmergencyTriggers = Math.Max(0, data.EmergencyTriggers);
         EmergencyHits = Math.Max(0, data.EmergencyHits);
         EmergencyKills = Math.Max(0, data.EmergencyKills);
-        EmergencyDamage = MathF.Max(0, data.EmergencyDamage);
+        EmergencyDamage = MetricMath.Normalize(data.EmergencyDamage);
         GeneratedCharges = Math.Max(0, data.GeneratedCharges);
         GeneratorPurchases = Math.Max(0, data.GeneratorPurchases);
         GeneratorUpgrades = Math.Max(0, data.GeneratorUpgrades);
@@ -175,15 +179,15 @@ public sealed class RunStatistics
                 Hits = Math.Max(0, saved.Hits),
                 Kills = Math.Max(0, saved.Kills),
                 Overdrives = Math.Max(0, saved.Overdrives),
-                Damage = MathF.Max(0, saved.Damage),
-                SupportDamageEquivalent = MathF.Max(0, saved.SupportDamageEquivalent),
-                ExposeDamageEquivalent = MathF.Max(0, saved.ExposeDamageEquivalent),
-                ArmorBreakDamageEquivalent = MathF.Max(0, saved.ArmorBreakDamageEquivalent),
-                ControlSeconds = MathF.Max(0, saved.ControlSeconds),
-                ExposeSeconds = MathF.Max(0, saved.ExposeSeconds),
-                ArmorBreakSeconds = MathF.Max(0, saved.ArmorBreakSeconds),
-                ArmorAbsorbed = MathF.Max(0, saved.ArmorAbsorbed),
-                Overkill = MathF.Max(0, saved.Overkill)
+                Damage = MetricMath.Normalize(saved.Damage),
+                SupportDamageEquivalent = MetricMath.Normalize(saved.SupportDamageEquivalent),
+                ExposeDamageEquivalent = MetricMath.Normalize(saved.ExposeDamageEquivalent),
+                ArmorBreakDamageEquivalent = MetricMath.Normalize(saved.ArmorBreakDamageEquivalent),
+                ControlSeconds = MetricMath.Normalize(saved.ControlSeconds),
+                ExposeSeconds = MetricMath.Normalize(saved.ExposeSeconds),
+                ArmorBreakSeconds = MetricMath.Normalize(saved.ArmorBreakSeconds),
+                ArmorAbsorbed = MetricMath.Normalize(saved.ArmorAbsorbed),
+                Overkill = MetricMath.Normalize(saved.Overkill)
             };
             foreach (var specialization in saved.Specializations)
                 metrics.Specializations[specialization.Key] = Math.Max(0, specialization.Value);
@@ -216,8 +220,8 @@ public sealed class RunStatistics
     private void OnTowerPlaced(TowerInstance tower)
     {
         var metrics = GetTower(tower.Definition.Id, tower.Definition.DisplayName);
-        metrics.Purchases++;
-        metrics.CreditsSpent += tower.Definition.PurchaseCost;
+        metrics.Purchases = MetricMath.Add(metrics.Purchases);
+        metrics.CreditsSpent = MetricMath.Add(metrics.CreditsSpent, tower.Definition.PurchaseCost);
         _towerByInstance[tower.Id] = metrics;
         _towerDefinitionByInstance[tower.Id] = tower.Definition.Id;
         _towerInstances[tower.Id] = tower;
@@ -226,20 +230,20 @@ public sealed class RunStatistics
     private void OnTowerUpgraded(TowerInstance tower, int cost)
     {
         var metrics = GetTower(tower.Definition.Id, tower.Definition.DisplayName);
-        metrics.Upgrades++;
-        metrics.CreditsSpent += cost;
+        metrics.Upgrades = MetricMath.Add(metrics.Upgrades);
+        metrics.CreditsSpent = MetricMath.Add(metrics.CreditsSpent, cost);
         if (tower.SpecializationId is { } specializationId)
-            metrics.Specializations[specializationId] = metrics.Specializations.GetValueOrDefault(specializationId) + 1;
+            metrics.Specializations[specializationId] = MetricMath.Add(metrics.Specializations.GetValueOrDefault(specializationId));
         else if (tower.DoctrineId is { } doctrineId)
-            metrics.Specializations[$"doctrine:{doctrineId}"] = metrics.Specializations.GetValueOrDefault($"doctrine:{doctrineId}") + 1;
+            metrics.Specializations[$"doctrine:{doctrineId}"] = MetricMath.Add(metrics.Specializations.GetValueOrDefault($"doctrine:{doctrineId}"));
         _towerByInstance[tower.Id] = metrics;
     }
 
     private void OnTowerSold(TowerInstance tower, int value)
     {
         var metrics = GetTower(tower.Definition.Id, tower.Definition.DisplayName);
-        metrics.Sales++;
-        metrics.CreditsRecovered += value;
+        metrics.Sales = MetricMath.Add(metrics.Sales);
+        metrics.CreditsRecovered = MetricMath.Add(metrics.CreditsRecovered, value);
         _towerInstances.Remove(tower.Id);
     }
 
@@ -263,14 +267,15 @@ public sealed class RunStatistics
 
     private void OnEnemyKilled(EnemyInstance enemy)
     {
-        GetEnemy(enemy).Kills++;
+        var metrics = GetEnemy(enemy);
+        metrics.Kills = MetricMath.Add(metrics.Kills);
     }
 
     private void OnEnemyEscaped(EnemyInstance enemy)
     {
         var metrics = GetEnemy(enemy);
-        metrics.Escapes++;
-        metrics.LivesLost += enemy.LivesLost;
+        metrics.Escapes = MetricMath.Add(metrics.Escapes);
+        metrics.LivesLost = MetricMath.Add(metrics.LivesLost, enemy.LivesLost);
     }
 
     private void OnDamage(DamageReport report)
@@ -278,26 +283,26 @@ public sealed class RunStatistics
         var appliedDamage = report.HealthDamage + report.ShieldDamage;
         if (report.SourceTowerId <= -100_000)
         {
-            EmergencyDamage += appliedDamage;
-            if (report.Killed) EmergencyKills++;
+            EmergencyDamage = MetricMath.Add(EmergencyDamage, appliedDamage);
+            if (report.Killed) EmergencyKills = MetricMath.Add(EmergencyKills);
             return;
         }
 
         if (!_towerByInstance.TryGetValue(report.SourceTowerId, out var metrics)) return;
-        metrics.Hits++;
-        metrics.Damage += appliedDamage;
-        metrics.ArmorAbsorbed += report.ArmorAbsorbed;
-        metrics.Overkill += report.Overkill;
-        if (report.Killed) metrics.Kills++;
+        metrics.Hits = MetricMath.Add(metrics.Hits);
+        metrics.Damage = MetricMath.Add(metrics.Damage, appliedDamage);
+        metrics.ArmorAbsorbed = MetricMath.Add(metrics.ArmorAbsorbed, report.ArmorAbsorbed);
+        metrics.Overkill = MetricMath.Add(metrics.Overkill, report.Overkill);
+        if (report.Killed) metrics.Kills = MetricMath.Add(metrics.Kills);
         if (report.ExposeDamageEquivalent > 0 && _towerByInstance.TryGetValue(report.ExposeSourceTowerId, out var exposeMetrics))
         {
-            exposeMetrics.ExposeDamageEquivalent += report.ExposeDamageEquivalent;
+            exposeMetrics.ExposeDamageEquivalent = MetricMath.Add(exposeMetrics.ExposeDamageEquivalent, report.ExposeDamageEquivalent);
             if (_towerInstances.TryGetValue(report.ExposeSourceTowerId, out var exposeTower))
                 exposeTower.RecordExposeAssist(report.ExposeDamageEquivalent);
         }
         if (report.ArmorBreakDamageEquivalent > 0 && _towerByInstance.TryGetValue(report.ArmorBreakSourceTowerId, out var breakMetrics))
         {
-            breakMetrics.ArmorBreakDamageEquivalent += report.ArmorBreakDamageEquivalent;
+            breakMetrics.ArmorBreakDamageEquivalent = MetricMath.Add(breakMetrics.ArmorBreakDamageEquivalent, report.ArmorBreakDamageEquivalent);
             if (_towerInstances.TryGetValue(report.ArmorBreakSourceTowerId, out var breakTower))
                 breakTower.RecordArmorBreakAssist(report.ArmorBreakDamageEquivalent);
         }
@@ -311,7 +316,7 @@ public sealed class RunStatistics
                 var protocol = tower.IsOverdriven ? tower.Protocol.AttackSpeedBonus : 0f;
                 var totalRateMultiplier = 1f + support.AttackSpeedBonus + power.AttackSpeedBonus + protocol;
                 var supportContribution = appliedDamage * support.AttackSpeedBonus / MathF.Max(1f, totalRateMultiplier);
-                supportMetrics.SupportDamageEquivalent += supportContribution;
+                supportMetrics.SupportDamageEquivalent = MetricMath.Add(supportMetrics.SupportDamageEquivalent, supportContribution);
                 if (_towerInstances.TryGetValue(support.AttackSpeedSourceTowerId, out var supportTower))
                     supportTower.RecordSupport(supportContribution);
             }
@@ -356,8 +361,8 @@ public sealed class RunTowerStatistics
     public float ArmorAbsorbed { get; internal set; }
     public float Overkill { get; internal set; }
     public Dictionary<string, int> Specializations { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public float AssistDamageEquivalent => SupportDamageEquivalent + ExposeDamageEquivalent + ArmorBreakDamageEquivalent;
-    public float ContributionDamage => Damage + AssistDamageEquivalent;
+    public float AssistDamageEquivalent => MetricMath.Add(MetricMath.Add(SupportDamageEquivalent, ExposeDamageEquivalent), ArmorBreakDamageEquivalent);
+    public float ContributionDamage => MetricMath.Add(Damage, AssistDamageEquivalent);
     public float DamagePerCredit => CreditsSpent <= 0 ? 0 : ContributionDamage / CreditsSpent;
 
     public RunTowerStatistics(string towerId, string displayName)

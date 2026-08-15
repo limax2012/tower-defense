@@ -128,25 +128,25 @@ public sealed class TowerInstance
 
     internal void RecordCombat(float appliedDamage, bool killed)
     {
-        LifetimeDamage += MathF.Max(0, appliedDamage);
-        if (killed) LifetimeKills++;
+        LifetimeDamage = MetricMath.Add(LifetimeDamage, appliedDamage);
+        if (killed) LifetimeKills = MetricMath.Add(LifetimeKills);
     }
 
     internal void RecordSupport(float damageEquivalent) =>
-        LifetimeSupportDamageEquivalent += MathF.Max(0, damageEquivalent);
+        LifetimeSupportDamageEquivalent = MetricMath.Add(LifetimeSupportDamageEquivalent, damageEquivalent);
 
     internal void RecordExposeAssist(float damageEquivalent) =>
-        LifetimeExposeDamageEquivalent += MathF.Max(0, damageEquivalent);
+        LifetimeExposeDamageEquivalent = MetricMath.Add(LifetimeExposeDamageEquivalent, damageEquivalent);
 
     internal void RecordArmorBreakAssist(float damageEquivalent) =>
-        LifetimeArmorBreakDamageEquivalent += MathF.Max(0, damageEquivalent);
+        LifetimeArmorBreakDamageEquivalent = MetricMath.Add(LifetimeArmorBreakDamageEquivalent, damageEquivalent);
 
     internal void RecordStatusUptime(Effects.StatusType type, float activeSeconds)
     {
-        activeSeconds = MathF.Max(0, activeSeconds);
-        if (type is Effects.StatusType.Slow or Effects.StatusType.Stun) LifetimeControlSeconds += activeSeconds;
-        else if (type == Effects.StatusType.Exposed) LifetimeExposeSeconds += activeSeconds;
-        else if (type == Effects.StatusType.ArmorBreak) LifetimeArmorBreakSeconds += activeSeconds;
+        activeSeconds = MetricMath.Normalize(activeSeconds);
+        if (type is Effects.StatusType.Slow or Effects.StatusType.Stun) LifetimeControlSeconds = MetricMath.Add(LifetimeControlSeconds, activeSeconds);
+        else if (type == Effects.StatusType.Exposed) LifetimeExposeSeconds = MetricMath.Add(LifetimeExposeSeconds, activeSeconds);
+        else if (type == Effects.StatusType.ArmorBreak) LifetimeArmorBreakSeconds = MetricMath.Add(LifetimeArmorBreakSeconds, activeSeconds);
     }
 
     public TowerSaveData CaptureSaveData() => new()
@@ -195,14 +195,14 @@ public sealed class TowerInstance
             DeployAnimationRemaining = 0,
             RecoilAnimationRemaining = 0,
             OverdriveRemaining = MathF.Max(0, data.OverdriveRemaining),
-            LifetimeDamage = MathF.Max(0, data.LifetimeDamage),
+            LifetimeDamage = MetricMath.Normalize(data.LifetimeDamage),
             LifetimeKills = Math.Max(0, data.LifetimeKills),
-            LifetimeSupportDamageEquivalent = MathF.Max(0, data.LifetimeSupportDamageEquivalent),
-            LifetimeExposeDamageEquivalent = MathF.Max(0, data.LifetimeExposeDamageEquivalent),
-            LifetimeArmorBreakDamageEquivalent = MathF.Max(0, data.LifetimeArmorBreakDamageEquivalent),
-            LifetimeControlSeconds = MathF.Max(0, data.LifetimeControlSeconds),
-            LifetimeExposeSeconds = MathF.Max(0, data.LifetimeExposeSeconds),
-            LifetimeArmorBreakSeconds = MathF.Max(0, data.LifetimeArmorBreakSeconds)
+            LifetimeSupportDamageEquivalent = MetricMath.Normalize(data.LifetimeSupportDamageEquivalent),
+            LifetimeExposeDamageEquivalent = MetricMath.Normalize(data.LifetimeExposeDamageEquivalent),
+            LifetimeArmorBreakDamageEquivalent = MetricMath.Normalize(data.LifetimeArmorBreakDamageEquivalent),
+            LifetimeControlSeconds = MetricMath.Normalize(data.LifetimeControlSeconds),
+            LifetimeExposeSeconds = MetricMath.Normalize(data.LifetimeExposeSeconds),
+            LifetimeArmorBreakSeconds = MetricMath.Normalize(data.LifetimeArmorBreakSeconds)
         };
         return tower;
     }

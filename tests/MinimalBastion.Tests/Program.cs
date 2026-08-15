@@ -69,6 +69,7 @@ internal static class Program
             ("mortar predictive aim", MortarPredictiveAim),
             ("economy telemetry", EconomyTelemetry),
             ("run statistics", RunStatistics),
+            ("deep-run telemetry saturation", DeepRunTelemetrySaturation),
             ("sold tower utility persistence", SoldTowerUtilityPersistence),
             ("defeat field inspection", DefeatFieldInspection),
             ("co-op shared control commands", CoOpOwnershipCommands),
@@ -766,6 +767,95 @@ internal static class Program
         Check.Equal(1, session.Statistics.GreatestLeakThreat.LivesLost, "stats lives lost");
         session.Update(0.05f);
         Check.Nearly(0.26f, session.Statistics.SimulatedSeconds, "stats defense time");
+    }
+
+    private static void DeepRunTelemetrySaturation()
+    {
+        var session = Session();
+        session.Statistics.RestoreSaveData(new RunStatisticsSaveData
+        {
+            SimulatedSeconds = float.MaxValue,
+            EmergencyDeployments = int.MaxValue,
+            EmergencyDirectPurchases = int.MaxValue,
+            EmergencyTriggers = int.MaxValue,
+            EmergencyHits = int.MaxValue,
+            EmergencyKills = int.MaxValue,
+            EmergencyDamage = float.MaxValue,
+            GeneratedCharges = int.MaxValue,
+            GeneratorPurchases = int.MaxValue,
+            GeneratorUpgrades = int.MaxValue,
+            Towers = new List<RunTowerStatisticsSaveData>
+            {
+                new()
+                {
+                    TowerId = "tower",
+                    DisplayName = "Tower",
+                    Purchases = int.MaxValue,
+                    Upgrades = int.MaxValue,
+                    Sales = int.MaxValue,
+                    CreditsSpent = int.MaxValue,
+                    CreditsRecovered = int.MaxValue,
+                    Hits = int.MaxValue,
+                    Kills = int.MaxValue,
+                    Overdrives = int.MaxValue,
+                    Damage = float.MaxValue,
+                    SupportDamageEquivalent = float.MaxValue,
+                    ExposeDamageEquivalent = float.MaxValue,
+                    ArmorBreakDamageEquivalent = float.MaxValue,
+                    ControlSeconds = float.MaxValue,
+                    ExposeSeconds = float.MaxValue,
+                    ArmorBreakSeconds = float.MaxValue,
+                    ArmorAbsorbed = float.MaxValue,
+                    Overkill = float.MaxValue,
+                    Specializations = new Dictionary<string, int> { ["test"] = int.MaxValue }
+                }
+            },
+            Enemies = new List<RunEnemyStatisticsSaveData>
+            {
+                new() { EnemyId = "enemy", DisplayName = "Enemy", Kills = int.MaxValue, Escapes = int.MaxValue, LivesLost = int.MaxValue }
+            }
+        }, Array.Empty<TowerInstance>());
+
+        Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "deep-run telemetry source placement");
+        var tower = session.Towers.Single();
+        var target = new EnemyInstance(1, session.Content.Enemies["enemy"], session.Map.Path, 1, 1);
+        session.DamageResolver.Apply(target, new DamagePayload { Damage = 120, SourceTowerId = tower.Id });
+        session.OnEnemyEscaped(new EnemyInstance(2, session.Content.Enemies["enemy"], session.Map.Path, 1, 1));
+        session.OnEmergencyDefenseTriggered(null!, int.MaxValue);
+        session.OnEmergencyChargeProduced();
+        session.Statistics.Advance(1);
+
+        var towerMetrics = session.Statistics.Towers.Single(metrics => metrics.TowerId == "tower");
+        var enemyMetrics = session.Statistics.Enemies.Single(metrics => metrics.EnemyId == "enemy");
+        Check.Equal(int.MaxValue, towerMetrics.Purchases, "tower purchases saturate");
+        Check.Equal(int.MaxValue, towerMetrics.Hits, "tower hits saturate");
+        Check.Equal(int.MaxValue, towerMetrics.Kills, "tower kills saturate");
+        Check.Equal(int.MaxValue, towerMetrics.CreditsSpent, "tower spending telemetry saturates");
+        Check.True(float.IsFinite(towerMetrics.ContributionDamage) && towerMetrics.ContributionDamage == float.MaxValue,
+            "tower contribution remains finite when all assist channels are saturated");
+        Check.Equal(int.MaxValue, enemyMetrics.Kills, "enemy kills saturate");
+        Check.Equal(int.MaxValue, enemyMetrics.Escapes, "enemy escapes saturate");
+        Check.Equal(int.MaxValue, enemyMetrics.LivesLost, "enemy leak damage saturates");
+        Check.Equal(int.MaxValue, session.Statistics.EmergencyTriggers, "plate trigger telemetry saturates");
+        Check.Equal(int.MaxValue, session.Statistics.EmergencyHits, "plate hit telemetry saturates");
+        Check.Equal(int.MaxValue, session.Statistics.GeneratedCharges, "forge output telemetry saturates");
+        Check.True(float.IsFinite(session.Statistics.SimulatedSeconds) && session.Statistics.SimulatedSeconds == float.MaxValue,
+            "defense time remains finite at its telemetry limit");
+
+        var save = session.CaptureSaveGame();
+        var savedTower = save.Towers.Single();
+        savedTower.LifetimeDamage = float.MaxValue;
+        savedTower.LifetimeKills = int.MaxValue;
+        savedTower.LifetimeSupportDamageEquivalent = float.MaxValue;
+        var restored = GameSession.RestoreSaveGame(session.Content, save);
+        var restoredTower = restored.Towers.Single();
+        var restoredTarget = new EnemyInstance(3, restored.Content.Enemies["enemy"], restored.Map.Path, 1, 1);
+        restored.DamageResolver.Apply(restoredTarget, new DamagePayload { Damage = 120, SourceTowerId = restoredTower.Id });
+        Check.Equal(int.MaxValue, restoredTower.LifetimeKills, "individual tower kills saturate");
+        Check.True(float.IsFinite(restoredTower.LifetimeDamage) && restoredTower.LifetimeDamage == float.MaxValue,
+            "individual tower damage remains finite");
+        Check.True(float.IsFinite(restoredTower.LifetimeSupportDamageEquivalent) && restoredTower.LifetimeSupportDamageEquivalent == float.MaxValue,
+            "individual tower assist remains finite");
     }
 
     private static void SoldTowerUtilityPersistence()
