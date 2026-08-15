@@ -153,6 +153,19 @@ public sealed class GameRenderer
             return;
         }
 
+        if (visual.Style.Equals("surge", StringComparison.OrdinalIgnoreCase))
+        {
+            // Surge Divide uses a powered rail rather than another road: one
+            // seamless slate tube, a narrow cyan energy core, and restrained
+            // gold packets that move through it while simulation time runs.
+            DrawContinuousPath(batch, p, points, visual.BaseColor, roadWidth);
+            DrawContinuousPath(batch, p, points, visual.SecondaryColor, Math.Max(7, roadWidth / 7));
+            var phase = session.Statistics.SimulatedSeconds * 24f;
+            for (var i = 0; i < points.Length - 1; i++)
+                DrawDashedLine(batch, p, points[i], points[i + 1], visual.AccentColor, 4, 9, 25, phase);
+            return;
+        }
+
         DrawContinuousPath(batch, p, points, visual.BaseColor, roadWidth);
         for (var i = 0; i < points.Length - 1; i++)
             DrawDashedLine(batch, p, points[i], points[i + 1], visual.AccentColor, 4, 18, 16);
@@ -165,16 +178,21 @@ public sealed class GameRenderer
             p.FillRect(batch, new Rectangle((int)(point.X - width / 2f), (int)(point.Y - width / 2f), width, width), color);
     }
 
-    private static void DrawDashedLine(SpriteBatch batch, PrimitiveRenderer p, Vector2 start, Vector2 end, Color color, float thickness, float dashLength, float gapLength)
+    private static void DrawDashedLine(SpriteBatch batch, PrimitiveRenderer p, Vector2 start, Vector2 end, Color color,
+        float thickness, float dashLength, float gapLength, float phase = 0)
     {
         var delta = end - start;
         var length = delta.Length();
         if (length <= 0.01f) return;
         var direction = delta / length;
-        for (var distance = 0f; distance < length; distance += dashLength + gapLength)
+        var period = dashLength + gapLength;
+        var normalizedPhase = ((phase % period) + period) % period;
+        for (var distance = -normalizedPhase; distance < length; distance += period)
         {
+            var dashStart = MathF.Max(0, distance);
             var dashEnd = MathF.Min(distance + dashLength, length);
-            p.Line(batch, start + direction * distance, start + direction * dashEnd, color, thickness);
+            if (dashEnd > dashStart)
+                p.Line(batch, start + direction * dashStart, start + direction * dashEnd, color, thickness);
         }
     }
 

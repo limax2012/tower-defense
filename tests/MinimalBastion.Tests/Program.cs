@@ -474,10 +474,13 @@ internal static class Program
         var crosswind = content.Maps["crosswind_basin"];
         Check.Equal(4, content.Maps.Values.Select(map => map.Background.Motif).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             "each arena has a distinct background motif");
+        Check.Equal(4, content.Maps.Values.Select(map => map.PathVisual.Style).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+            "each arena has a distinct route treatment");
         Check.True(content.Maps.Values.All(map => !map.Background.Motif.Equals("none", StringComparison.OrdinalIgnoreCase)),
             "every arena opts into a visual identity motif");
         Check.Equal("conduit", prism.PathVisual.Style, "Prism uses a distinct conduit path");
         Check.Equal("channel", crosswind.PathVisual.Style, "Crosswind uses a distinct channel path");
+        Check.Equal("surge", relay.PathVisual.Style, "Surge uses a distinct powered rail path");
         Check.Equal(0, crosswind.PowerNodes.Count, "Crosswind relies on crossfire geometry rather than power nodes");
         Check.Equal("crosswind_waves", crosswind.WaveSet, "Crosswind has its own campaign");
         Check.True(content.WaveSets[crosswind.WaveSet].Waves[1].Groups.Any(x => x.EnemyId == "t2_runner"),

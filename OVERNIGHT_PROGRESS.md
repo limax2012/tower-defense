@@ -56,6 +56,7 @@ Updated: 2026-08-15
 - Replaced grid/debug-looking build regions with quiet tinted fields and exact corner brackets.
 - Trimmed every build-zone boundary to the real tower-center road/edge clearance and added geometric content validation, so cyan fields never advertise an invalid strip beside a route or screen edge.
 - Added Surge Divide (internal ID `relay_divide`) with nine compact, non-stacking Surge Nodes for rate, range, damage, or armor-pierce placement decisions. Its independently authored wave roster is deliberately harder to compensate for that positional upside.
+- Gave Surge Divide a unique powered-rail route treatment: a continuous slate tube, slim cyan energy core, and low-clutter moving gold packets. Foundry road, Crosswind channel, Prism conduit, and Surge rail now have four distinct route identities without changing collision geometry.
 - Added Crosswind Basin and Prism Circuit, each with distinct route geometry, visual treatment, starting economy, and independently authored 20-wave campaign.
 - Calibrated directive economy across 144-run Hard audits: Close Quarters remains matched at 48.6%, No Reserves now uses a 5% opening cushion and lands at 50.0%, while Core Six is explicitly presented as an advanced roster puzzle with a 30% fixed opening cushion.
 - Renamed player-facing relay terminology to Surge Node and added placement/hover/selected-tower intel with exact radius, active bonus, and resulting stat deltas.
