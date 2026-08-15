@@ -73,6 +73,7 @@ internal static class Program
             ("defeat field inspection", DefeatFieldInspection),
             ("co-op shared control commands", CoOpOwnershipCommands),
             ("network deterministic commands", NetworkDeterministicCommands),
+            ("co-op command history bounds", CoOpCommandHistoryBounds),
             ("co-op buffered jitter commands", CoOpBufferedJitterCommands),
             ("co-op active state snapshot", CoOpActiveStateSnapshot),
             ("co-op checksum coverage", CoOpChecksumCoverage),
@@ -932,6 +933,64 @@ internal static class Program
         Check.True(first.Towers[0].IsOverdriven, "mirrored active ability state");
         Check.True(first.OverdriveCooldownRemaining > 0, "mirrored cooldown state");
         Check.Equal(1, first.AutoOverdriveTowerId, "mirrored auto protocol state");
+    }
+
+    private static void CoOpCommandHistoryBounds()
+    {
+        var authority = new AuthoritativeCommandHost();
+        for (var requestId = 1; requestId <= AuthoritativeCommandHost.ReceiptHistoryLimit + 300; requestId++)
+            Check.True(authority.Sequence(new GameCommand { PlayerId = 1, ClientRequestId = requestId, Type = GameCommandType.SetSpeed }).Accepted,
+                "sequential authoritative request accepted");
+        Check.True(authority.ReceiptHistoryCount <= AuthoritativeCommandHost.ReceiptHistoryLimit,
+            "authoritative receipt cache remains bounded");
+        Check.True(authority.AcceptedCommands.Count <= AuthoritativeCommandHost.AcceptedCommandHistoryLimit,
+            "accepted-command diagnostics remain bounded");
+        var expired = authority.Sequence(new GameCommand { PlayerId = 1, ClientRequestId = 1, Type = GameCommandType.SetSpeed });
+        Check.True(expired.Duplicate && !expired.Accepted, "evicted request IDs remain protected from replay");
+        var recentId = AuthoritativeCommandHost.ReceiptHistoryLimit + 300L;
+        var recent = authority.Sequence(new GameCommand { PlayerId = 1, ClientRequestId = recentId, Type = GameCommandType.SetSpeed });
+        Check.True(recent.Duplicate && recent.Accepted, "recent duplicate returns its original receipt");
+
+        var capacityRunner = new DeterministicSessionRunner(Session());
+        for (var sequence = 1L; sequence <= DeterministicSessionRunner.MaximumPendingCommands; sequence++)
+            Check.True(capacityRunner.Schedule(0,
+                new GameCommand { Sequence = sequence, PlayerId = 1, Type = GameCommandType.SetSpeed, Speed = 1 }),
+                "pending command fits bounded authority window");
+        Check.Equal(DeterministicSessionRunner.MaximumPendingCommands, capacityRunner.PendingCommandCount,
+            "pending-command count reaches but does not exceed its bound");
+        Check.True(!capacityRunner.Schedule(0, new GameCommand
+        {
+            Sequence = DeterministicSessionRunner.MaximumPendingCommands + 1L,
+            PlayerId = 1,
+            Type = GameCommandType.SetSpeed,
+            Speed = 1
+        }), "pending command overflow is rejected");
+
+        var session = Session();
+        var runner = new DeterministicSessionRunner(session);
+        Check.True(!runner.Schedule(DeterministicSessionRunner.MaximumFutureTicks + 1,
+            new GameCommand { Sequence = 1, PlayerId = 1, Type = GameCommandType.SetSpeed, Speed = 2 }),
+            "commands beyond the repair window are rejected");
+        Check.True(runner.Schedule(0, new GameCommand { Sequence = 1, PlayerId = 1, Type = GameCommandType.SetSpeed, Speed = 2 }),
+            "near-term command schedules");
+        Check.True(!runner.Schedule(1, new GameCommand { Sequence = 1, PlayerId = 1, Type = GameCommandType.SetSpeed, Speed = 1 }),
+            "pending duplicate sequence is rejected across ticks");
+        runner.RunTicks(1);
+        Check.True(!runner.Schedule(1, new GameCommand { Sequence = 1, PlayerId = 1, Type = GameCommandType.SetSpeed, Speed = 1 }),
+            "applied duplicate sequence is rejected");
+
+        for (var sequence = 2L; sequence <= DeterministicSessionRunner.AppliedSequenceHistoryLimit + 300L; sequence++)
+        {
+            Check.True(runner.Schedule(runner.Tick,
+                new GameCommand { Sequence = sequence, PlayerId = 1, Type = GameCommandType.SetSpeed, Speed = sequence % 2 == 0 ? 1 : 2 }),
+                "rolling sequence command schedules");
+            runner.RunTicks(1);
+        }
+        Check.True(runner.AppliedSequenceHistoryCount <= DeterministicSessionRunner.AppliedSequenceHistoryLimit,
+            "applied sequence history remains bounded");
+        Check.True(runner.ExpiredAppliedSequenceFloor > 0 &&
+            !runner.Schedule(runner.Tick, new GameCommand { Sequence = 1, PlayerId = 1, Type = GameCommandType.SetSpeed, Speed = 1 }),
+            "compacted sequence floor still rejects ancient replay");
     }
 
     private static void CoOpBufferedJitterCommands()

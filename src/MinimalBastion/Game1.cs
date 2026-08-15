@@ -15,6 +15,7 @@ public sealed class Game1 : Game
 {
     private const int OnlineCoOpPort = 28741;
     private const int NetworkInputDelayTicks = 6;
+    private const int MaximumPendingNetworkSends = 256;
     private readonly GraphicsDeviceManager _graphics;
     private readonly UserSettings _settings;
     private readonly ViewportTransform _viewportTransform = new();
@@ -649,6 +650,11 @@ public sealed class Game1 : Game
     private void QueueSend(CoOpEnvelope envelope)
     {
         if (_coOpConnection is null) return;
+        if (_pendingNetworkSends.Count >= MaximumPendingNetworkSends)
+        {
+            HandleConnectionLoss("CONNECTION STALLED", "Outbound co-op traffic stopped draining; the match was paused for reconnection.");
+            return;
+        }
         _pendingNetworkSends.Add(_coOpConnection.SendAsync(envelope, _networkCancellation?.Token ?? CancellationToken.None));
     }
 

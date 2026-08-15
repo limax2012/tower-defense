@@ -5,12 +5,21 @@ namespace MinimalBastion.Multiplayer;
 public sealed class DeterministicSessionRunner
 {
     public const float FixedStepSeconds = 0.05f;
+    public const int MaximumFutureTicks = 240;
+    public const int MaximumPendingCommands = 512;
+    public const int AppliedSequenceHistoryLimit = 4096;
     private readonly GameSession _session;
     private readonly SortedDictionary<long, List<GameCommand>> _scheduled = new();
+    private readonly HashSet<long> _pendingSequences = new();
     private readonly HashSet<long> _appliedSequences = new();
+    private readonly Queue<long> _appliedSequenceOrder = new();
+    private long _expiredAppliedSequenceFloor;
     private float _accumulator;
 
     public long Tick { get; private set; }
+    public int PendingCommandCount => _pendingSequences.Count;
+    public int AppliedSequenceHistoryCount => _appliedSequences.Count;
+    public long ExpiredAppliedSequenceFloor => _expiredAppliedSequenceFloor;
     public event Action<long>? TickCompleted;
 
     public DeterministicSessionRunner(GameSession session, long initialTick = 0)
@@ -21,11 +30,13 @@ public sealed class DeterministicSessionRunner
 
     public bool Schedule(long tick, GameCommand command)
     {
-        if (tick < Tick || command.Sequence <= 0 || _appliedSequences.Contains(command.Sequence)) return false;
+        if (tick < Tick || tick > Tick + MaximumFutureTicks || command.Sequence <= 0 ||
+            command.Sequence <= _expiredAppliedSequenceFloor || _appliedSequences.Contains(command.Sequence) ||
+            _pendingSequences.Contains(command.Sequence) || _pendingSequences.Count >= MaximumPendingCommands) return false;
         if (!_scheduled.TryGetValue(tick, out var commands))
             _scheduled[tick] = commands = new List<GameCommand>();
-        if (commands.Any(x => x.Sequence == command.Sequence)) return false;
         commands.Add(command);
+        _pendingSequences.Add(command.Sequence);
         return true;
     }
 
@@ -56,7 +67,8 @@ public sealed class DeterministicSessionRunner
     public void RestorePendingCommands(IEnumerable<ScheduledCommandState> commands)
     {
         foreach (var item in commands.OrderBy(item => item.Tick).ThenBy(item => item.Command.Sequence))
-            Schedule(item.Tick, item.Command);
+            if (!Schedule(item.Tick, item.Command))
+                throw new InvalidDataException($"Invalid pending co-op command {item.Command.Sequence} at tick {item.Tick}.");
     }
 
     private void Step()
@@ -65,13 +77,26 @@ public sealed class DeterministicSessionRunner
         {
             foreach (var command in commands.OrderBy(x => x.Sequence))
             {
-                if (!_appliedSequences.Add(command.Sequence)) continue;
+                _pendingSequences.Remove(command.Sequence);
+                if (command.Sequence <= _expiredAppliedSequenceFloor || !_appliedSequences.Add(command.Sequence)) continue;
+                _appliedSequenceOrder.Enqueue(command.Sequence);
+                CompactAppliedSequenceHistory();
                 GameCommandProcessor.Apply(_session, command);
             }
         }
         _session.Update(FixedStepSeconds);
         Tick++;
         TickCompleted?.Invoke(Tick);
+    }
+
+    private void CompactAppliedSequenceHistory()
+    {
+        while (_appliedSequenceOrder.Count > AppliedSequenceHistoryLimit)
+        {
+            var expired = _appliedSequenceOrder.Dequeue();
+            _appliedSequences.Remove(expired);
+            _expiredAppliedSequenceFloor = Math.Max(_expiredAppliedSequenceFloor, expired);
+        }
     }
 }
 

@@ -41,6 +41,7 @@ Date: 2026-08-15
 - Added compact procedural sound cues for placement, upgrades, sales, Protocols, kills, leaks, waves, Pulse Plates, and the Charge Forge. Audio initialization fails safely to silent play on systems without a usable device.
 - Completed the procedural audio event language with distinct boss-phase, victory, and defeat cues, plus Plate deployment and Forge sale feedback. Attack-by-attack sounds remain intentionally omitted to preserve clarity during dense late-game fire.
 - Added a deterministic two-player jitter regression that delivers authoritative shared-control commands 0-5 ticks late across placement, upgrades, targeting, Protocols, speed, and sales. Both peers must retain an identical checksum, while commands that miss the six-tick authority window are rejected for repair.
+- Bounded deep-endless co-op bookkeeping: request receipts and applied-sequence replay protection now compact into rolling histories, pending/far-future commands are capped and validated during snapshots, and a stalled outbound queue pauses for reconnection instead of growing indefinitely.
 - Hardened periodic co-op checksums around transitional combat state: enemy death/escape cleanup, pending boss-phase feedback, active-wave identity, and projectile color/radius now trigger authoritative repair if peers differ.
 - Hardened pre-match compatibility around authored content: the build fingerprint now refuses missing/empty content roots and has recursive JSON sensitivity coverage, while the loader rejects duplicate map/wave identities, campaigns bound to the wrong arena, unknown schemas, malformed build regions/routes, and invalid wave scaling instead of accepting ambiguous or partially defaulted data.
 - Revalidated current endless progression over 144 Hard runs: 83 reached the campaign end, survivors averaged wave 26.5, Control averaged 34.2 and peaked at 39, and none reached 40. Campaign intel now explains final-roster inheritance and bounded scaling, while a regression proves every arena generates a distinct wave 21.
@@ -54,7 +55,7 @@ Date: 2026-08-15
 - Gave every tower protocol its own restrained geometric signature and audio pitch while active. Reduced-effects mode keeps only the essential native-color protocol ring.
 - Re-ran 180 deterministic campaign agents per key difficulty after the map, branch, protocol, Mortar, and support changes. Normal cleared 137/180 (76.1%), Hard 106/180 (58.9%), and Bastion 35/180 (19.4%); on Hard, Foundry cleared 41/60, Prism 38/60, and Surge 27/60, confirming the intended arena ordering.
 - Added source-aware utility telemetry: Signal Beacon damage-equivalent and recipient-seconds plus Slow, Stun, Exposed, and Armor Break enemy-seconds. End-run contribution bars now include Beacon-assisted output while keeping direct damage visibly separate.
-- Current verification: 59/59 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
+- Current verification: 60/60 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
 
 ## Range, branch, and menu harmony pass
 

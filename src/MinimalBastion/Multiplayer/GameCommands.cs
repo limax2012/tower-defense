@@ -84,11 +84,16 @@ public readonly record struct CommandReceipt(GameCommand Command, bool Accepted,
 
 public sealed class AuthoritativeCommandHost
 {
+    public const int ReceiptHistoryLimit = 2048;
+    public const int AcceptedCommandHistoryLimit = 2048;
     private readonly Dictionary<(int PlayerId, long RequestId), CommandReceipt> _receipts = new();
+    private readonly Queue<(int PlayerId, long RequestId)> _receiptOrder = new();
+    private readonly long[] _expiredRequestFloor = new long[3];
     private readonly List<GameCommand> _acceptedCommands = new();
     private long _nextSequence = 1;
 
     public long LastSequence => _nextSequence - 1;
+    public int ReceiptHistoryCount => _receipts.Count;
     public IReadOnlyList<GameCommand> AcceptedCommands => _acceptedCommands;
 
     public CommandReceipt Submit(GameSession session, GameCommand request)
@@ -98,12 +103,14 @@ public sealed class AuthoritativeCommandHost
         var key = (request.PlayerId, request.ClientRequestId);
         if (_receipts.TryGetValue(key, out var previous))
             return previous with { Duplicate = true };
+        if (request.PlayerId is >= 1 and <= 2 && request.ClientRequestId <= _expiredRequestFloor[request.PlayerId])
+            return new CommandReceipt(request, false, "Expired duplicate request", true);
 
         var result = GameCommandProcessor.Apply(session, request);
         var authoritative = result.Accepted ? request with { Sequence = _nextSequence++ } : request;
         var receipt = new CommandReceipt(authoritative, result.Accepted, result.Reason, false);
-        _receipts[key] = receipt;
-        if (result.Accepted) _acceptedCommands.Add(authoritative);
+        RememberReceipt(key, receipt);
+        if (result.Accepted) RememberAccepted(authoritative);
         return receipt;
     }
 
@@ -116,11 +123,33 @@ public sealed class AuthoritativeCommandHost
         var key = (request.PlayerId, request.ClientRequestId);
         if (_receipts.TryGetValue(key, out var previous))
             return previous with { Duplicate = true };
+        if (request.ClientRequestId <= _expiredRequestFloor[request.PlayerId])
+            return new CommandReceipt(request, false, "Expired duplicate request", true);
 
         var authoritative = request with { Sequence = _nextSequence++ };
         var receipt = new CommandReceipt(authoritative, true, "Queued", false);
-        _receipts[key] = receipt;
-        _acceptedCommands.Add(authoritative);
+        RememberReceipt(key, receipt);
+        RememberAccepted(authoritative);
         return receipt;
+    }
+
+    private void RememberReceipt((int PlayerId, long RequestId) key, CommandReceipt receipt)
+    {
+        _receipts[key] = receipt;
+        _receiptOrder.Enqueue(key);
+        while (_receiptOrder.Count > ReceiptHistoryLimit)
+        {
+            var expired = _receiptOrder.Dequeue();
+            _receipts.Remove(expired);
+            if (expired.PlayerId is >= 1 and <= 2)
+                _expiredRequestFloor[expired.PlayerId] = Math.Max(_expiredRequestFloor[expired.PlayerId], expired.RequestId);
+        }
+    }
+
+    private void RememberAccepted(GameCommand command)
+    {
+        _acceptedCommands.Add(command);
+        if (_acceptedCommands.Count > AcceptedCommandHistoryLimit)
+            _acceptedCommands.RemoveRange(0, _acceptedCommands.Count - AcceptedCommandHistoryLimit);
     }
 }
