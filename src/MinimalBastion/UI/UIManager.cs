@@ -30,6 +30,7 @@ public enum UiAction
     SaveGame,
     LoadGame,
     ConfirmSaveSlot,
+    DuplicateSaveSlot,
     DeleteSaveSlot,
     CloseSaveSlots,
     RunHistory,
@@ -140,8 +141,11 @@ public sealed class UIManager
         new(330, 358, 620, 66),
         new(330, 434, 620, 66)
     };
-    private readonly Rectangle _saveSlotConfirmButton = new(330, 520, 400, 46);
-    private readonly Rectangle _saveSlotDeleteButton = new(740, 520, 210, 46);
+    private readonly Rectangle _saveSlotConfirmButton = new(330, 520, 260, 46);
+    private readonly Rectangle _saveSlotDuplicateButton = new(600, 520, 170, 46);
+    private readonly Rectangle _saveSlotDeleteButton = new(780, 520, 170, 46);
+    private readonly Rectangle _saveSlotWriteConfirmButton = new(330, 520, 400, 46);
+    private readonly Rectangle _saveSlotWriteDeleteButton = new(740, 520, 210, 46);
     private readonly Rectangle _saveSlotPreviousButton = new(330, 582, 160, 44);
     private readonly Rectangle _saveSlotBackButton = new(500, 582, 280, 44);
     private readonly Rectangle _saveSlotNextButton = new(790, 582, 160, 44);
@@ -630,8 +634,12 @@ public sealed class UIManager
 
         var selected = _saveSlots.FirstOrDefault(slot => slot.Slot == _selectedSaveSlot);
         var canConfirm = _saveSlotWriteMode || selected is { IsOccupied: true, Error: null };
-        if (_saveSlotConfirmButton.Contains(point) && canConfirm) return UiAction.ConfirmSaveSlot;
-        if (_saveSlotDeleteButton.Contains(point) && selected is { IsOccupied: true })
+        var confirmButton = _saveSlotWriteMode ? _saveSlotWriteConfirmButton : _saveSlotConfirmButton;
+        var deleteButton = _saveSlotWriteMode ? _saveSlotWriteDeleteButton : _saveSlotDeleteButton;
+        if (confirmButton.Contains(point) && canConfirm) return UiAction.ConfirmSaveSlot;
+        if (!_saveSlotWriteMode && _saveSlotDuplicateButton.Contains(point) && selected is { IsOccupied: true, Error: null })
+            return UiAction.DuplicateSaveSlot;
+        if (deleteButton.Contains(point) && selected is { IsOccupied: true })
         {
             if (_saveSlotDeleteArmed)
             {
@@ -2231,7 +2239,7 @@ public sealed class UIManager
         DrawText(batch,
             _saveSlotWriteMode
                 ? "Choose a slot. Overwriting occurs only after pressing the confirmation button."
-                : "One autosave is replaced each wave. Numbered slots are protected manual saves.",
+                : "Select any readable save. Autosave can be duplicated into a protected numbered slot.",
             new Vector2(640, 102), ColorPalette.Muted, 0.58f, true);
         DrawButton(batch, p, _saveSlotHistoryButton, "RUN HISTORY", true, ColorPalette.Cyan);
 
@@ -2282,10 +2290,15 @@ public sealed class UIManager
         var confirmLabel = _saveSlotWriteMode
             ? selectedSlot is { IsOccupied: true } ? $"OVERWRITE SLOT {_selectedSaveSlot}" : $"SAVE TO SLOT {_selectedSaveSlot}"
             : $"LOAD {selectedLabel}";
-        DrawButton(batch, p, _saveSlotConfirmButton, confirmLabel, canConfirm,
+        var confirmButton = _saveSlotWriteMode ? _saveSlotWriteConfirmButton : _saveSlotConfirmButton;
+        var deleteButton = _saveSlotWriteMode ? _saveSlotWriteDeleteButton : _saveSlotDeleteButton;
+        DrawButton(batch, p, confirmButton, confirmLabel, canConfirm,
             _saveSlotWriteMode && selectedSlot is { IsOccupied: true } ? ColorPalette.Orange : ColorPalette.Green);
         var canDelete = selectedSlot is { IsOccupied: true };
-        DrawButton(batch, p, _saveSlotDeleteButton,
+        if (!_saveSlotWriteMode)
+            DrawButton(batch, p, _saveSlotDuplicateButton, "DUPLICATE",
+                selectedSlot is { IsOccupied: true, Error: null }, ColorPalette.Cobalt);
+        DrawButton(batch, p, deleteButton,
             _saveSlotDeleteArmed ? $"CONFIRM DELETE {selectedLabel}" : $"DELETE {selectedLabel}",
             canDelete, _saveSlotDeleteArmed ? ColorPalette.Coral : ColorPalette.Orange);
         DrawText(batch, $"PAGE {_saveSlotPage + 1}/{pageCount}", new Vector2(640, 574), ColorPalette.Muted, 0.48f, true);

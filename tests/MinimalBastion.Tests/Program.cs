@@ -3770,8 +3770,30 @@ internal static class Program
             Check.True(repository.GetSlots().Single(slot => slot.Slot == 2).IsOccupied,
                 "autosave updates do not overwrite manual slots");
 
+            var duplicateSlot = repository.Duplicate(SaveSlotRepository.AutosaveSlot);
+            Check.Equal(9, duplicateSlot, "autosave duplication claims the first empty numbered slot");
+            Check.Equal(repository.LoadData(SaveSlotRepository.AutosaveSlot).Economy.Credits,
+                repository.LoadData(duplicateSlot).Economy.Credits,
+                "autosave duplication preserves the full checkpoint state");
+            Check.True(repository.GetSlots().Single(slot => slot.Slot == SaveSlotRepository.AutosaveSlot).IsOccupied,
+                "duplicating autosave leaves the rolling source intact");
+            Check.True(repository.GetSlots().Single(slot => slot.Slot == duplicateSlot).IsOccupied,
+                "autosave duplicate is exposed as a protected manual slot");
+            var coOpDuplicateSlot = repository.Duplicate(4);
+            Check.Equal(10, coOpDuplicateSlot, "manual duplication continues into the next empty numbered slot");
+            Check.True(repository.GetSlots().Single(slot => slot.Slot == coOpDuplicateSlot).IsCoOp,
+                "duplicating a co-op save preserves its hosted-match identity");
+            Check.Equal(2, repository.Load(coOp.Content, coOpDuplicateSlot).Towers.Single().OwnerPlayerId,
+                "co-op duplication preserves complete shared-defense state");
+            slots = repository.GetSlots();
+
             var slotUi = new UIManager(null!);
             slotUi.ConfigureSaveSlots(slots, false);
+            Check.Equal(UiAction.DuplicateSaveSlot,
+                slotUi.HandleSaveSlots(WorldInput(new Vector2(680, 543)) with { LeftPressed = true }),
+                "load browser offers duplication for the selected autosave");
+            slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
+            Check.Equal(1, slotUi.SelectedSaveSlot, "save browser Down moves from autosave to the first manual slot");
             slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
             Check.Equal(2, slotUi.SelectedSaveSlot, "save browser Down selects the next slot");
             slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { NavigateRightPressed = true });

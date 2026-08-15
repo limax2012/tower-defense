@@ -1076,6 +1076,11 @@ public sealed class Game1 : Game
             DeleteSaveSlot(_ui.SelectedSaveSlot);
             return;
         }
+        if (action == UiAction.DuplicateSaveSlot)
+        {
+            DuplicateSaveSlot(_ui.SelectedSaveSlot);
+            return;
+        }
         if (action != UiAction.ConfirmSaveSlot) return;
 
         var slot = _ui.SelectedSaveSlot;
@@ -1172,6 +1177,22 @@ public sealed class Game1 : Game
         catch (Exception exception)
         {
             _ui.SetSaveState(SaveSlotsExistSafely(), $"Delete failed: {exception.GetBaseException().Message}");
+        }
+    }
+
+    private void DuplicateSaveSlot(int sourceSlot)
+    {
+        try
+        {
+            var destinationSlot = SaveGameStore.Duplicate(sourceSlot);
+            var slots = SaveGameStore.GetSlots();
+            _ui.ConfigureSaveSlots(slots, false, destinationSlot);
+            _ui.SetSaveState(true,
+                $"Duplicated {SaveSlotLabel(sourceSlot).ToLowerInvariant()} to slot {destinationSlot}. Source unchanged.");
+        }
+        catch (Exception exception)
+        {
+            _ui.SetSaveState(SaveSlotsExistSafely(), $"Duplicate failed: {exception.GetBaseException().Message}");
         }
     }
 

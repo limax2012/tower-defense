@@ -113,6 +113,16 @@ public sealed class SaveSlotRepository
         return LoadDataCore(slot);
     }
 
+    public int Duplicate(int sourceSlot)
+    {
+        ValidateSlot(sourceSlot);
+        var data = LoadDataCore(sourceSlot);
+        var destinationSlot = FindFirstEmptySlot()
+            ?? throw new InvalidOperationException("Save index capacity is exhausted; delete an old save before duplicating.");
+        WriteAtomically(GetSlotPath(destinationSlot), data);
+        return destinationSlot;
+    }
+
     private SaveGameData LoadDataCore(int slot)
     {
         var path = GetSlotPath(slot);
@@ -380,5 +390,6 @@ public static class SaveGameStore
     public static void Save(GameSession session, int slot = 1) => DefaultRepository.Save(session, slot);
     public static GameSession Load(GameContent content, int slot = 1) => DefaultRepository.Load(content, slot);
     public static SaveGameData LoadData(int slot) => DefaultRepository.LoadData(slot);
+    public static int Duplicate(int sourceSlot) => DefaultRepository.Duplicate(sourceSlot);
     public static bool Delete(int slot) => DefaultRepository.Delete(slot);
 }
