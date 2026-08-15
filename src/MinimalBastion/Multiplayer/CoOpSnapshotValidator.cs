@@ -59,6 +59,7 @@ internal static class CoOpSnapshotValidator
         if (towers.Any(tower => tower is null) || towers.Select(tower => tower.Id).Distinct().Count() != towers.Count ||
             towers.Any(tower => tower.Id <= 0 || tower.OwnerPlayerId is < 1 or > 2 ||
                 string.IsNullOrWhiteSpace(tower.DefinitionId) || tower.DefinitionId.Length > 128 ||
+                tower.DoctrineId is { Length: > 128 } || tower.SpecializationId is { Length: > 128 } ||
                 !float.IsFinite(tower.X) || !float.IsFinite(tower.Y) || tower.LevelIndex < 0 ||
                 !Enum.IsDefined(tower.TargetMode) || tower.InvestedCredits < 0 || !float.IsFinite(tower.CooldownRemaining) ||
                 !IsNonnegativeFinite(tower.OverdriveRemaining) || !IsNonnegativeFinite(tower.LifetimeDamage) ||

@@ -183,9 +183,13 @@ public sealed class TowerInstance
         if (data.DoctrineId is not null &&
             !definition.Tier2Doctrines.Any(x => x.Id.Equals(data.DoctrineId, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidDataException($"Saved doctrine is invalid for {definition.Id}.");
+        if (data.DoctrineId is not null && data.LevelIndex == 0)
+            throw new InvalidDataException($"Saved doctrine progression is invalid for {definition.Id}.");
         if (data.SpecializationId is not null &&
             !definition.Specializations.Any(x => x.Id.Equals(data.SpecializationId, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidDataException($"Saved specialization is invalid for {definition.Id}.");
+        if (data.SpecializationId is not null && data.LevelIndex != definition.Levels.Count - 1)
+            throw new InvalidDataException($"Saved specialization progression is invalid for {definition.Id}.");
 
         var tower = new TowerInstance(data.Id, definition, new Vector2(data.X, data.Y), data.OwnerPlayerId)
         {

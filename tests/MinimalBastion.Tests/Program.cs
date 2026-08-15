@@ -1690,6 +1690,19 @@ internal static class Program
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, missingCollection, 2),
             "missing snapshot collections fail with a data error");
 
+        var impossibleBranchSession = Session();
+        Check.True(impossibleBranchSession.TryPlaceTower("tower", new Vector2(50, 200)),
+            "place tower for malformed branch test");
+        var impossibleBranch = impossibleBranchSession.CaptureCoOpState(0, 0, false);
+        impossibleBranch.Towers[0].SpecializationId = "alpha";
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, impossibleBranch, 2),
+            "a final specialization cannot restore onto a level-one tower");
+
+        var oversizedBranch = impossibleBranchSession.CaptureCoOpState(0, 0, false);
+        oversizedBranch.Towers[0].DoctrineId = new string('X', 129);
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, oversizedBranch, 2),
+            "oversized branch identity is rejected at the snapshot boundary");
+
         var duplicateEnemies = session.CaptureCoOpState(0, 0, false);
         duplicateEnemies.Enemies.Add(new EnemyRuntimeState { Id = 7, DefinitionId = "enemy" });
         duplicateEnemies.Enemies.Add(new EnemyRuntimeState { Id = 7, DefinitionId = "enemy" });
