@@ -1,6 +1,6 @@
 # Minimal Bastion Balance Pass
 
-> Historical isolated-combat pass. The current full-game, two-map baseline is documented in `AUTONOMOUS_BALANCE.md`; the final 120-run report is `.build/balance/matrix-online-ui-surge-5x-20260814.json`.
+> Historical isolated-combat pass. The current four-map doctrine/Protocol baseline is documented in `AUTONOMOUS_BALANCE.md`; canonical reports are listed there and supersede this early two-map snapshot.
 
 ## Scope
 

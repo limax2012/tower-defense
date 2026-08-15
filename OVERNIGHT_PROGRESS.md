@@ -1,16 +1,16 @@
 # Overnight Progress
 
-Updated: 2026-08-14
+Updated: 2026-08-15
 
 ## Verified checkpoint
 
 - Release build: 0 warnings, 0 errors with the workspace-local .NET 10 SDK.
-- Deterministic regression suite: 31/31 passing.
+- Deterministic regression suite: 65/65 passing.
 - Self-contained Windows x64 publish: `.build/publish/MinimalBastion.exe`.
-- Content: 2 maps, 10 towers, 8 final specializations across 4 towers, 5 enemy bases plus elite/boss ranks, 20 waves, and 1,090 authored spawns.
-- Final 120-run matrix: 53 wins (44.2%), average wave 16.1, average lives 7.1.
-- Native visual QA completed for main menu, online co-op menu, Surge Divide, tactical sidebar, Surge Zone hover, level 1/2 badges, Overdrive active/cooldown, forge paused/running timers, high-resolution rendering, wide-aspect letterbox clipping, and restored muted palette/contrast.
-- No Git repository/history exists. Runnable publishes, reports, and these documents are the project checkpoints.
+- Content: 4 maps with independently authored campaigns, 10 towers with 20 tier-two doctrines and 20 final specializations, 10 distinct Protocols, 5 enemy bases plus elite/boss ranks, difficulty/directive profiles, tactical reserves, and endless continuation.
+- Canonical five-seed Hard matrix: 140/240 wins (58.3%); every doctrine and final role appears in winning runs, with Surge Divide remaining the hardest arena. A fresh three-seed audit on the current executable produced 79/144 wins (54.9%) and the same map/strategy ordering.
+- Native visual QA covers title/settings/co-op flows, all map treatments, tactical sidebar states, Surge Node overlap intel, Protocol/Beacon markers, Pulse Plates/Forge, high-resolution and wide-aspect rendering, result/field inspection, and the complete Tower/Threat/Campaign library. The latest 1920-wide pass reconfirmed title and doctrine-card spacing plus Breaker/Beacon contrast.
+- Git history is maintained on `agent/overnight-arena-progression` and mirrored to `origin`; tested feature units are committed incrementally while `main` remains untouched during the active overnight run.
 
 ## Completed work
 
