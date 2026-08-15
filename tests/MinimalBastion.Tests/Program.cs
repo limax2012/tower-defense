@@ -1713,7 +1713,7 @@ internal static class Program
         var acceptTask = host.AcceptPlayerAsync(timeout.Token);
         var client = await LanCoOpClient.ConnectAsync("localhost", host.Port, "test42", timeout.Token);
         await using var server = await acceptTask;
-        var request = new GameCommand { ClientRequestId = 7, PlayerId = 2, Type = GameCommandType.StartWave };
+        var request = new GameCommand { ClientRequestId = 7, PlayerId = 2, Type = GameCommandType.SetSpeed, Speed = 2f };
         await client.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.CommandRequest, PlayerId = 2, Command = request }, timeout.Token);
         var received = await server.ReceiveAsync(timeout.Token);
         Check.Equal(CoOpMessageType.CommandRequest, received!.Type, "server receives command envelope");
@@ -1795,6 +1795,37 @@ internal static class Program
             PlayerId = 2,
             Message = new string('X', CoOpEnvelopeValidator.MaximumMessageLength + 1)
         }), "oversized semantic fields are rejected inside bounded frames");
+        Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.CommandRequest,
+            PlayerId = 2,
+            Command = new GameCommand
+            {
+                ClientRequestId = 1,
+                PlayerId = 2,
+                Type = GameCommandType.StartWave
+            }
+        }), "player 2 cannot bypass the both-ready coordinator with a raw start command");
+        Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.WaveReady,
+            PlayerId = 2,
+            Ready = false
+        }), "player 2 readiness intent must be explicit");
+        Check.True(CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.WaveReady,
+            PlayerId = 1,
+            ReadyMask = 0b01,
+            Ready = false
+        }), "host may broadcast a partial ready mask");
+        Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.WaveReady,
+            PlayerId = 1,
+            ReadyMask = 0b01,
+            Ready = true
+        }), "host ready flag cannot contradict the authoritative mask");
         Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
         {
             Type = CoOpMessageType.CommandRequest,

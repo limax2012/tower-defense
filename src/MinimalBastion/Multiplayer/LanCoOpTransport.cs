@@ -83,7 +83,7 @@ public static class CoOpEnvelopeValidator
             CoOpMessageType.Ready => envelope.PlayerId is 1 or 2 && envelope.Ready,
             CoOpMessageType.AuthoritativeCommand => envelope.PlayerId is 1 or 2 && envelope.Tick > 0 &&
                 IsAuthoritativeCommand(envelope.Command, envelope.PlayerId),
-            CoOpMessageType.WaveReady => envelope.PlayerId is 1 or 2,
+            CoOpMessageType.WaveReady => IsWaveReady(envelope),
             CoOpMessageType.Ping => envelope.PlayerId is 1 or 2 && IsReasonablePosition(envelope),
             CoOpMessageType.StateSnapshot => envelope.PlayerId == 1 && envelope.State is not null &&
                 envelope.Tick == envelope.State.Tick && IsValidSnapshot(envelope.State),
@@ -109,7 +109,19 @@ public static class CoOpEnvelopeValidator
 
     private static bool IsCommandRequest(GameCommand? command, int playerId) =>
         command is { Sequence: 0, ClientRequestId: > 0 } && command.PlayerId == playerId &&
+        command.Type != GameCommandType.StartWave &&
         GameCommandValidator.IsStructurallyValid(command);
+
+    private static bool IsWaveReady(CoOpEnvelope envelope) => envelope.PlayerId switch
+    {
+        // Player 2 sends intent only. Authoritative readiness masks and early
+        // reward state are produced exclusively by the host.
+        2 => envelope.Ready && envelope.ReadyMask == 0 && !envelope.EarlyBonus,
+        // Player 1 broadcasts the complete coordinator state. StartQueued is
+        // true exactly when both readiness bits are present.
+        1 => envelope.Ready == (envelope.ReadyMask == 0b11) && (!envelope.EarlyBonus || envelope.Ready),
+        _ => false
+    };
 
     private static bool IsAuthoritativeCommand(GameCommand? command, int playerId) =>
         command is { Sequence: > 0, ClientRequestId: > 0 } && command.PlayerId == playerId &&
