@@ -70,6 +70,7 @@ public sealed class UIManager
     private string _joinHostInput = "";
     private string _joinCodeInput = "";
     private bool _editingJoinCode;
+    private int _coOpMenuSelection;
     private string _coOpLobbyCopyStatus = "CLICK CODE OR CTRL+C TO COPY";
     private int _coOpWaveReadyMask;
     private bool _coOpWaveStartQueued;
@@ -625,12 +626,29 @@ public sealed class UIManager
 
     public UiAction HandleCoOpMenu(InputSnapshot input)
     {
-        if (input.TabPressed) _editingJoinCode = !_editingJoinCode;
+        if (input.NavigateUpPressed || input.NavigateDownPressed)
+        {
+            MoveCoOpMenuSelection(input.NavigateUpPressed ? -1 : 1);
+            return UiAction.None;
+        }
+        if (input.TabPressed)
+        {
+            _editingJoinCode = !_editingJoinCode;
+            _coOpMenuSelection = 1;
+        }
         if (input.LeftPressed)
         {
             var clicked = input.MousePosition.ToPoint();
-            if (_joinHostField.Contains(clicked)) _editingJoinCode = false;
-            else if (_joinCodeField.Contains(clicked)) _editingJoinCode = true;
+            if (_joinHostField.Contains(clicked))
+            {
+                _editingJoinCode = false;
+                _coOpMenuSelection = 1;
+            }
+            else if (_joinCodeField.Contains(clicked))
+            {
+                _editingJoinCode = true;
+                _coOpMenuSelection = 1;
+            }
         }
 
         if (input.CopyPressed)
@@ -638,6 +656,7 @@ public sealed class UIManager
 
         if (!string.IsNullOrEmpty(input.TextEntered))
         {
+            _coOpMenuSelection = 1;
             if (_editingJoinCode && _joinCodeInput.Length < 6)
                 _joinCodeInput += new string(input.TextEntered.Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).Take(6 - _joinCodeInput.Length).ToArray());
             else if (!_editingJoinCode && _joinHostInput.Length < 64)
@@ -649,14 +668,51 @@ public sealed class UIManager
             else if (!_editingJoinCode && _joinHostInput.Length > 0) _joinHostInput = _joinHostInput[..^1];
         }
         if (input.EscapePressed) return UiAction.MainMenu;
-        if (input.EnterPressed && CanJoinOnline) return UiAction.JoinCoOp;
+        if (input.EnterPressed) return ActivateCoOpMenuSelection();
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
-        if (_hostCoOpButton.Contains(point)) return UiAction.HostCoOp;
-        if (_joinCoOpButton.Contains(point) && CanJoinOnline) return UiAction.JoinCoOp;
-        if (_backButton.Contains(point)) return UiAction.MainMenu;
+        if (_hostCoOpButton.Contains(point))
+        {
+            _coOpMenuSelection = 0;
+            return UiAction.HostCoOp;
+        }
+        if (_joinCoOpButton.Contains(point))
+        {
+            _coOpMenuSelection = 1;
+            return CanJoinOnline ? UiAction.JoinCoOp : UiAction.None;
+        }
+        if (_backButton.Contains(point))
+        {
+            _coOpMenuSelection = 2;
+            return UiAction.MainMenu;
+        }
         return UiAction.None;
     }
+
+    private void MoveCoOpMenuSelection(int direction)
+    {
+        for (var attempts = 0; attempts < 3; attempts++)
+        {
+            _coOpMenuSelection = (_coOpMenuSelection + direction + 3) % 3;
+            if (_coOpMenuSelection != 1 || CanJoinOnline) return;
+        }
+    }
+
+    private UiAction ActivateCoOpMenuSelection() => _coOpMenuSelection switch
+    {
+        0 => UiAction.HostCoOp,
+        1 when CanJoinOnline => UiAction.JoinCoOp,
+        2 => UiAction.MainMenu,
+        _ => UiAction.None
+    };
+
+    private Rectangle CoOpMenuActionRectangle(int selection) => selection switch
+    {
+        0 => _hostCoOpButton,
+        1 => _joinCoOpButton,
+        2 => _backButton,
+        _ => Rectangle.Empty
+    };
 
     private bool CanJoinOnline => !string.IsNullOrWhiteSpace(_joinHostInput) && _joinCodeInput.Length == 6;
 
@@ -1930,8 +1986,12 @@ public sealed class UIManager
         DrawButton(batch, p, _hostCoOpButton, "HOST ONLINE GAME", true, ColorPalette.Cobalt);
         DrawButton(batch, p, _joinCoOpButton, "JOIN ONLINE GAME", CanJoinOnline, ColorPalette.Green);
         DrawButton(batch, p, _backButton, "BACK", true, ColorPalette.Violet);
+        var focus = CoOpMenuActionRectangle(Math.Clamp(_coOpMenuSelection, 0, 2));
+        focus.Inflate(3, 3);
+        p.DrawRect(batch, focus, ColorPalette.Ink, 2);
         DrawText(batch, "Shared credits, lives, and tower control; placement is still marked P1/P2.", new Vector2(640, 590), ColorPalette.Muted, 0.56f, true);
-        DrawText(batch, "TAB switches fields; Ctrl+V pastes; hold Backspace to erase. Middle-click the field to ping.", new Vector2(640, 613), ColorPalette.Muted, 0.50f, true);
+        DrawFittedCenteredText(batch, "UP/DOWN SELECTS ACTIONS; ENTER ACTIVATES. TAB SWITCHES FIELDS; CTRL+V PASTES; HOLD BACKSPACE ERASES.",
+            new Vector2(640, 613), ColorPalette.Muted, 0.46f, 900);
     }
 
     private void DrawCoOpLobby(SpriteBatch batch, PrimitiveRenderer p)

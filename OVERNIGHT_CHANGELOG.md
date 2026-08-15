@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Added visible keyboard focus to the online co-op entry screen. Up/Down selects Host, available Join, or Back; Enter activates; typing or choosing either connection field naturally returns focus to Join.
 - Added deterministic shared co-op pause. Either player can use Esc, P, or the HUD button; both peers freeze combat on the same fixed tick, reconnect snapshots preserve the pause, and defense planning remains available until either player resumes.
 - Added a visible title-menu keyboard focus. Arrow keys or Tab traverse every enabled selector/action, Left/Right adjusts the focused arena/difficulty/directive, and Enter activates it while New Game remains the safe default.
 - Made the preserved-session rejoin code clickable and Ctrl+C-copyable, with clear reconnect-overlay feedback so a host can resend it without abandoning the match.

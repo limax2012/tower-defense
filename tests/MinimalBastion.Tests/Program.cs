@@ -1559,6 +1559,17 @@ internal static class Program
         Check.Nearly(321, cursor.X, "remote cursor x survives transport");
         Check.Nearly(222, cursor.Y, "remote cursor y survives transport");
         Check.Equal(9, cursor.EntityId, "remote tower selection survives presence transport");
+        var pause = new GameCommand
+        {
+            ClientRequestId = 8,
+            PlayerId = 2,
+            Type = GameCommandType.SetPaused,
+            Paused = true
+        };
+        await client.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.CommandRequest, PlayerId = 2, Command = pause }, timeout.Token);
+        var receivedPause = await server.ReceiveAsync(timeout.Token);
+        Check.True(receivedPause?.Command is { Type: GameCommandType.SetPaused, Paused: true },
+            "shared pause intent survives the real loopback transport");
         await client.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.RestartRequest, PlayerId = 2 }, timeout.Token);
         var restart = await server.ReceiveAsync(timeout.Token);
         Check.Equal(CoOpMessageType.RestartRequest, restart!.Type, "client restart request survives transport");
@@ -1723,6 +1734,14 @@ internal static class Program
         var ipv6 = OnlineHostEndpoint.Parse("[2001:db8::1]:28742", 28741);
         Check.Equal("2001:db8::1", ipv6.Host, "IPv6 host parsed");
         Check.Equal(28742, ipv6.Port, "IPv6 port parsed");
+
+        var hostUi = new UIManager(null!);
+        Check.Equal(UiAction.HostCoOp, hostUi.HandleCoOpMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+            "online menu defaults keyboard focus to hosting");
+        var backUi = new UIManager(null!);
+        backUi.HandleCoOpMenu(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
+        Check.Equal(UiAction.MainMenu, backUi.HandleCoOpMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+            "online menu arrows skip an unavailable Join action and reach Back");
 
         var ui = new UIManager(null!);
         ui.HandleCoOpMenu(WorldInput(Vector2.Zero) with { TextEntered = "friend.example" });

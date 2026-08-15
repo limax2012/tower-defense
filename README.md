@@ -70,6 +70,7 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 
 - **Tower Library** is available from both the title screen and pause menu. Click either tier-two doctrine to preview its exact stats, cumulative cost, and interaction with both final roles before starting or while planning a run.
 - `Enter`: activate the focused action on the title screen, settings, pause/results screens, or selected save slot. Arrow keys or `Tab` navigate title actions; Left/Right adjusts a focused arena, difficulty, or directive. Arrow keys also navigate save slots, run history, Settings, and Tactical Library entries. `Tab` cycles Tactical Library pages and switches between the co-op address/code fields.
+- Online co-op: Up/Down selects Host, Join, or Back; Enter activates the focused action. Typing or selecting either connection field focuses Join, Ctrl+V pastes, Ctrl+C copies displayed host/rejoin codes, and held Backspace erases continuously.
 - In Settings, Up/Down moves the visible focus, Left/Right adjusts the selected option, and Enter activates it.
 - Left click: select, place, or activate a UI control.
 - Right click or Escape: cancel placement; Escape pauses in solo play.
