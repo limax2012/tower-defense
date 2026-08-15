@@ -21,6 +21,8 @@ internal static class CoOpSnapshotValidator
             string.IsNullOrWhiteSpace(snapshot.DifficultyId) || snapshot.DifficultyId.Length > 128 ||
             string.IsNullOrWhiteSpace(snapshot.ChallengeId) || snapshot.ChallengeId.Length > 128 ||
             snapshot.Tick < 0 || (snapshot.ReadyMask & ~0b11) != 0 ||
+            snapshot.IsPaused && snapshot.PausedByPlayerId is not (1 or 2) ||
+            !snapshot.IsPaused && snapshot.PausedByPlayerId != 0 ||
             !IsPositiveFinite(snapshot.Speed) || !IsNonnegativeFinite(snapshot.OverdriveCooldownRemaining) ||
             !IsNonnegativeFinite(snapshot.AnnouncementRemaining) || snapshot.EmergencyInventory < 0 ||
             snapshot.EmergencyDirectPurchasesThisWave < 0 || snapshot.NextEnemyId <= 0 ||

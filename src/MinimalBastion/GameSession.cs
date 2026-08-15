@@ -77,6 +77,7 @@ public sealed class GameSession
     public bool IsDefeat { get; private set; }
     public bool IsCoOp { get; private set; }
     public bool IsCoOpPaused { get; private set; }
+    public int CoOpPausePlayerId { get; private set; }
     public int LocalPlayerId { get; private set; } = 1;
     public string? AnnouncementTitle { get; private set; }
     public string? AnnouncementSubtitle { get; private set; }
@@ -692,10 +693,11 @@ public sealed class GameSession
     public bool StartNextWave(bool? earlyStartEligible = null) => Waves.TryStartNextWave(this, earlyStartEligible);
     public void SetSpeed(float speed) => Speed = speed >= 1.5f ? 2f : 1f;
 
-    public bool SetCoOpPaused(bool paused)
+    public bool SetCoOpPaused(bool paused, int playerId = 1)
     {
-        if (!IsCoOp) return false;
+        if (!IsCoOp || playerId is < 1 or > 2) return false;
         IsCoOpPaused = paused;
+        CoOpPausePlayerId = paused ? playerId : 0;
         return true;
     }
 
@@ -856,6 +858,7 @@ public sealed class GameSession
         WaveStartQueued = waveStartQueued,
         WaveEarlyBonusQueued = waveEarlyBonusQueued,
         IsPaused = IsCoOpPaused,
+        PausedByPlayerId = CoOpPausePlayerId,
         Speed = Speed,
         OverdriveCooldownRemaining = OverdriveCooldownRemaining,
         AutoOverdriveTowerId = AutoOverdriveTowerId,
@@ -891,6 +894,7 @@ public sealed class GameSession
         session.RunId = NormalizeRunId(data.RunId, session.RunId);
         session.ConfigureCoOp(localPlayerId);
         session.IsCoOpPaused = data.IsPaused;
+        session.CoOpPausePlayerId = data.IsPaused ? data.PausedByPlayerId : 0;
         session.Economy.RestoreSaveData(data.Economy);
         session.Waves.RestoreCoOpState(data.Waves);
         session.Speed = data.Speed >= 1.5f ? 2f : 1f;

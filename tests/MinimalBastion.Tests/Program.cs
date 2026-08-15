@@ -1169,6 +1169,7 @@ internal static class Program
         }), "remote shared pause schedules authoritatively");
         pausedRunner.RunTicks(20);
         Check.True(paused.IsCoOpPaused, "shared pause remains active on both-player simulation state");
+        Check.Equal(2, paused.CoOpPausePlayerId, "shared pause identifies the requesting player");
         Check.Nearly(0, paused.Statistics.SimulatedSeconds, "fixed ticks continue while shared gameplay time is frozen");
         Check.True(pausedRunner.Schedule(pausedRunner.Tick, new GameCommand
         {
@@ -1180,6 +1181,7 @@ internal static class Program
         pausedRunner.RunTicks(1);
         Check.True(!paused.IsCoOpPaused && paused.Statistics.SimulatedSeconds > 0,
             "resuming restarts deterministic gameplay time on the command tick");
+        Check.Equal(0, paused.CoOpPausePlayerId, "resuming clears stale pause attribution");
     }
 
     private static void CoOpCommandHistoryBounds()
@@ -1329,6 +1331,7 @@ internal static class Program
         Check.Equal(2, client.Towers[0].OwnerPlayerId, "snapshot preserves original placer");
         Check.Equal(host.Towers[0].Id, client.AutoOverdriveTowerId, "snapshot restores automatic protocol tower");
         Check.True(client.IsCoOpPaused, "snapshot restores synchronized pause state");
+        Check.Equal(1, client.CoOpPausePlayerId, "snapshot restores the host's pause attribution");
         Check.Equal(1, client.Enemies[0].StatusEffects.Active.Count, "snapshot restores status effects");
         Check.Equal(1, client.EmergencyDirectPurchasesThisWave, "snapshot restores escalating plate purchase count");
         Check.Nearly(host.Enemies[0].KnockbackGraceRemaining, client.Enemies[0].KnockbackGraceRemaining, "snapshot restores plate knockback grace");

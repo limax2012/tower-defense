@@ -70,7 +70,7 @@ public static class GameCommandProcessor
             GameCommandType.StartWave => session.StartNextWave(command.EarlyStartEligible),
             GameCommandType.ContinueEndless => session.BeginEndlessMode(),
             GameCommandType.SetSpeed => SetSpeed(session, command.Speed),
-            GameCommandType.SetPaused => session.SetCoOpPaused(command.Paused),
+            GameCommandType.SetPaused => session.SetCoOpPaused(command.Paused, command.PlayerId),
             _ => false
         };
         return accepted ? GameCommandResult.Success : GameCommandResult.Reject("Command rejected by game rules");

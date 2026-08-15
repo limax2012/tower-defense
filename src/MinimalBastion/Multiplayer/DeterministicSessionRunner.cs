@@ -115,6 +115,7 @@ public static class SessionChecksum
         Add(ref hash, session.CurrentWave);
         Add(ref hash, session.Speed);
         Add(ref hash, session.IsCoOpPaused ? 1 : 0);
+        Add(ref hash, session.CoOpPausePlayerId);
         Add(ref hash, session.IsVictory ? 1 : 0);
         Add(ref hash, session.IsDefeat ? 1 : 0);
         Add(ref hash, session.Economy.Credits);

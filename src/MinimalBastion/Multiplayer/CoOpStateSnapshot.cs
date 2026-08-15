@@ -6,7 +6,7 @@ namespace MinimalBastion.Multiplayer;
 
 public sealed class CoOpStateSnapshot
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public string RunId { get; set; } = "";
     public string MapId { get; set; } = "";
@@ -17,6 +17,7 @@ public sealed class CoOpStateSnapshot
     public bool WaveStartQueued { get; set; }
     public bool WaveEarlyBonusQueued { get; set; }
     public bool IsPaused { get; set; }
+    public int PausedByPlayerId { get; set; }
     public float Speed { get; set; } = 1f;
     public float OverdriveCooldownRemaining { get; set; }
     public int AutoOverdriveTowerId { get; set; }
