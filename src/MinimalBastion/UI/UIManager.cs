@@ -86,6 +86,7 @@ public sealed class UIManager
     private int _selectedSaveSlot = 1;
     private int _saveSlotPage;
     private bool _saveSlotDeleteArmed;
+    private bool _restartArmed;
     private IReadOnlyList<RunHistoryEntry> _runHistory = Array.Empty<RunHistoryEntry>();
     private string? _selectedRunHistoryId;
     private int _runHistoryPage;
@@ -861,9 +862,24 @@ public sealed class UIManager
             return UiAction.None;
         }
 
-        if (input.EscapePressed || input.PausePressed || input.EnterPressed) return UiAction.Resume;
+        if (input.EscapePressed || input.PausePressed || input.EnterPressed)
+        {
+            _restartArmed = false;
+            return UiAction.Resume;
+        }
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
+        if (_restartButton.Contains(point))
+        {
+            if (_restartArmed)
+            {
+                _restartArmed = false;
+                return UiAction.Restart;
+            }
+            _restartArmed = true;
+            return UiAction.None;
+        }
+        _restartArmed = false;
         if (_resumeButton.Contains(point)) return UiAction.Resume;
         if (_towerLibraryButton.Contains(point))
         {
@@ -874,7 +890,6 @@ public sealed class UIManager
         if (_pauseSettingsButton.Contains(point)) return UiAction.Settings;
         if (_saveButton.Contains(point) && session.CanSaveCheckpoint) return UiAction.SaveGame;
         if (_loadButton.Contains(point) && _saveAvailable) return UiAction.LoadGame;
-        if (_restartButton.Contains(point)) return UiAction.Restart;
         if (_mainMenuButton.Contains(point)) return UiAction.MainMenu;
         return UiAction.None;
     }
@@ -1038,11 +1053,25 @@ public sealed class UIManager
 
     public UiAction HandleResultInput(InputSnapshot input, bool victory)
     {
-        if (input.EnterPressed) return victory ? UiAction.ContinueEndless : UiAction.ViewField;
+        if (input.EnterPressed)
+        {
+            _restartArmed = false;
+            return victory ? UiAction.ContinueEndless : UiAction.ViewField;
+        }
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
+        if (_resultRestartButton.Contains(point))
+        {
+            if (_restartArmed)
+            {
+                _restartArmed = false;
+                return UiAction.Restart;
+            }
+            _restartArmed = true;
+            return UiAction.None;
+        }
+        _restartArmed = false;
         if (_resultContinueButton.Contains(point)) return victory ? UiAction.ContinueEndless : UiAction.ViewField;
-        if (_resultRestartButton.Contains(point)) return UiAction.Restart;
         if (_resultMenuButton.Contains(point)) return UiAction.MainMenu;
         return UiAction.None;
     }
@@ -1874,13 +1903,17 @@ public sealed class UIManager
         if (victory)
         {
             DrawButton(batch, p, _resultContinueButton, "CONTINUE ENDLESS", true, ColorPalette.Green);
-            DrawButton(batch, p, _resultRestartButton, session.IsCoOp ? "RESTART CO-OP" : "RESTART", true, ColorPalette.Cobalt);
+            DrawButton(batch, p, _resultRestartButton,
+                _restartArmed ? "CONFIRM RESTART" : session.IsCoOp ? "RESTART CO-OP" : "RESTART", true,
+                _restartArmed ? ColorPalette.Coral : ColorPalette.Cobalt);
             DrawButton(batch, p, _resultMenuButton, "MAIN MENU", true, ColorPalette.Violet);
         }
         else
         {
             DrawButton(batch, p, _resultContinueButton, "VIEW FIELD", true, ColorPalette.Cyan);
-            DrawButton(batch, p, _resultRestartButton, session.IsCoOp ? "RESTART CO-OP" : "RESTART", true, ColorPalette.Cobalt);
+            DrawButton(batch, p, _resultRestartButton,
+                _restartArmed ? "CONFIRM RESTART" : session.IsCoOp ? "RESTART CO-OP" : "RESTART", true,
+                _restartArmed ? ColorPalette.Coral : ColorPalette.Cobalt);
             DrawButton(batch, p, _resultMenuButton, "MAIN MENU", true, ColorPalette.Violet);
         }
     }
@@ -2002,7 +2035,8 @@ public sealed class UIManager
         DrawButton(batch, p, _pauseSettingsButton, "SETTINGS", true, ColorPalette.Orange, ColorPalette.Ink);
         DrawButton(batch, p, _saveButton, session.CanSaveCheckpoint ? "SAVE TO SLOT" : "SAVE BETWEEN WAVES", session.CanSaveCheckpoint, ColorPalette.Green);
         DrawButton(batch, p, _loadButton, "LOAD SAVES", _saveAvailable, ColorPalette.Violet);
-        DrawButton(batch, p, _restartButton, "RESTART", true, ColorPalette.Orange);
+        DrawButton(batch, p, _restartButton, _restartArmed ? "CONFIRM RESTART" : "RESTART", true,
+            _restartArmed ? ColorPalette.Coral : ColorPalette.Orange);
         DrawButton(batch, p, _mainMenuButton, "MAIN MENU", true, ColorPalette.Coral);
         DrawFittedCenteredText(batch,
             $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",

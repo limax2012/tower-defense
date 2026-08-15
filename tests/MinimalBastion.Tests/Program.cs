@@ -512,6 +512,13 @@ internal static class Program
         Check.Equal(UiAction.Resume,
             new UIManager(null!).HandlePausedInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, Session()),
             "pause Enter resumes the match");
+        var restartUi = new UIManager(null!);
+        Check.Equal(UiAction.None,
+            restartUi.HandlePausedInput(WorldInput(new Vector2(640, 467)) with { LeftPressed = true }, Session()),
+            "first pause-menu restart click arms confirmation");
+        Check.Equal(UiAction.Restart,
+            restartUi.HandlePausedInput(WorldInput(new Vector2(640, 467)) with { LeftPressed = true }, Session()),
+            "second pause-menu restart click confirms the reset");
     }
 
     private static void OpeningWaveBalance()
@@ -959,6 +966,12 @@ internal static class Program
         Check.Equal(UiAction.ViewField,
             ui.HandleResultInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, false),
             "defeat Enter opens read-only field inspection");
+        Check.Equal(UiAction.None,
+            ui.HandleResultInput(WorldInput(new Vector2(621, 603)) with { LeftPressed = true }, false),
+            "first result restart click arms confirmation");
+        Check.Equal(UiAction.Restart,
+            ui.HandleResultInput(WorldInput(new Vector2(621, 603)) with { LeftPressed = true }, false),
+            "second result restart click confirms the reset");
         Check.Equal(UiAction.ViewResults,
             ui.HandleDefeatFieldInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),
             "inspection escape returns to results");
