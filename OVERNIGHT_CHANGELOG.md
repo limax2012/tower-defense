@@ -15,6 +15,7 @@ Date: 2026-08-15
 - Added one-generation recovery backups for every overwritten save slot. Missing/corrupt primaries load and enumerate through the backup, while slot deletion removes both generations.
 - Protected known-good save and run-history backups from being overwritten by a corrupt primary during a later autosave/update; repeated-corruption recovery now has dedicated regressions.
 - Extended recovery validation beyond JSON syntax: parseable but structurally empty checkpoints and history records are now rejected before they can be loaded or rotated over a known-good recovery generation.
+- Added a bounded local top-level crash report with build/runtime/OS context and the full exception. It deliberately excludes save and connection data and replaces only `%LocalAppData%\MinimalBastion\Logs\latest-crash.log`.
 - Added persistent paginated Run History inside Load Saves. Terminal solo/co-op summaries survive independently of checkpoints, endless continuation updates the original campaign entry through a shared run ID, and records support confirmed deletion plus one-generation recovery.
 - Added four independently selectable challenge directives: Standard, Close Quarters, Core Six, and No Reserves. Restrictions are authoritative across UI, hotkeys, and co-op; fixed opening compensation and directive identity persist through saves, reconnects, results, history, and checksums.
 - Measured 432 Hard directive runs: Close Quarters 53.5%, Core Six 34.7%, and No Reserves 61.1%. A separate 144-run Hard endless matrix produced zero wave-40 survivors; Control peaked at wave 38 and heavy Plate strategies still failed.
@@ -53,7 +54,7 @@ Date: 2026-08-15
 - Gave every tower protocol its own restrained geometric signature and audio pitch while active. Reduced-effects mode keeps only the essential native-color protocol ring.
 - Re-ran 180 deterministic campaign agents per key difficulty after the map, branch, protocol, Mortar, and support changes. Normal cleared 137/180 (76.1%), Hard 106/180 (58.9%), and Bastion 35/180 (19.4%); on Hard, Foundry cleared 41/60, Prism 38/60, and Surge 27/60, confirming the intended arena ordering.
 - Added source-aware utility telemetry: Signal Beacon damage-equivalent and recipient-seconds plus Slow, Stun, Exposed, and Armor Break enemy-seconds. End-run contribution bars now include Beacon-assisted output while keeping direct damage visibly separate.
-- Current verification: 58/58 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
+- Current verification: 59/59 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
 
 ## Range, branch, and menu harmony pass
 

@@ -2,6 +2,7 @@ using MinimalBastion;
 using MinimalBastion.Combat;
 using MinimalBastion.Core;
 using MinimalBastion.Data;
+using MinimalBastion.Diagnostics;
 using MinimalBastion.Economy;
 using MinimalBastion.Effects;
 using MinimalBastion.Enemies;
@@ -42,6 +43,7 @@ internal static class Program
             ("content counts", ContentCounts),
             ("high-resolution viewport", HighResolutionViewport),
             ("persistent display and audio settings", PersistentUserSettings),
+            ("crash report fallback", CrashReportFallback),
             ("tactical color palette", TacticalColorPalette),
             ("map roster and power nodes", MapRosterAndPowerNodes),
             ("difficulty profiles and persistence", DifficultyProfilesAndPersistence),
@@ -128,6 +130,26 @@ internal static class Program
         Check.Equal("siege_mortar", path!.TowerId, "forced build parser tower");
         Check.Equal("mortar_loader", path.DoctrineId, "forced build parser doctrine");
         Check.Equal("quake_shell", path.SpecializationId, "forced build parser final role");
+    }
+
+    private static void CrashReportFallback()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"MinimalBastionCrash-{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "latest-crash.log");
+        try
+        {
+            Check.Equal(path, CrashReporter.TryWrite(new InvalidOperationException("diagnostic sentinel"), path)!,
+                "crash reporter returns the written destination");
+            var report = File.ReadAllText(path);
+            Check.True(report.Contains("MINIMAL BASTION CRASH REPORT", StringComparison.Ordinal) &&
+                report.Contains("InvalidOperationException", StringComparison.Ordinal) &&
+                report.Contains("diagnostic sentinel", StringComparison.Ordinal),
+                "crash report contains build context and the complete exception");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
     }
 
     private static void BalanceBenchmarkDoctrineCoverage()
