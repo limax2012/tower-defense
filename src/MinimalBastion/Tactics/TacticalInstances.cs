@@ -1,4 +1,5 @@
 using MinimalBastion.Data;
+using MinimalBastion.Core;
 using MinimalBastion.Persistence;
 using Microsoft.Xna.Framework;
 
@@ -15,11 +16,13 @@ public sealed class PulsePlateInstance
     public float ArmRemaining { get; private set; }
     public float CooldownRemaining { get; private set; }
     public IReadOnlyCollection<int> HandledEnemyIds => _handledEnemyIds;
-    public int DamageSourceId => -100_000 - Id;
+    public int DamageSourceId => checked(-GameConstants.PulsePlateDamageSourceOffset - Id);
     public bool IsExpired => ChargesRemaining <= 0;
 
     public PulsePlateInstance(int id, Vector2 position, EmergencyDefenseDefinition definition, int ownerPlayerId = 1)
     {
+        if (id is <= 0 or > GameConstants.MaximumPulsePlateId)
+            throw new ArgumentOutOfRangeException(nameof(id), "Pulse Plate identity is outside its reserved damage-source namespace.");
         Id = id;
         OwnerPlayerId = ownerPlayerId;
         Position = position;

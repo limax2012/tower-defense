@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Reserved Pulse Plate damage attribution through the final safe runtime identity. Save and reconnect boundaries now reject later IDs before their negative source key can wrap into the tower namespace, while gameplay reports a clean identity-capacity limit.
 - Completed the in-flight sender when a socket write fails. A peer-side close can no longer leave the frame already removed from the channel waiting forever while only later queued sends receive the transport fault.
 - Rejected impossible restored tower branches and bounded doctrine/final-role identity at the co-op snapshot boundary. A reconnect can no longer attach final-role stats to a level-one silhouette or carry oversized branch labels into gameplay.
 - Cross-validated co-op wave snapshots against authored group progress. Active/current wave identity, spawned contacts, and queued contacts must now agree before a reconnect can resume, preventing semantically impossible wave states from entering another checksum-repair loop.

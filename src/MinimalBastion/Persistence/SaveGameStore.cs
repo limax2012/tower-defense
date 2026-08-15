@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MinimalBastion.Core;
 using MinimalBastion.Data;
 
 namespace MinimalBastion.Persistence;
@@ -290,6 +291,7 @@ public sealed class SaveSlotRepository
             data.Statistics.Towers.Count > MaximumStatisticsEntries || data.Statistics.Enemies.Count > MaximumStatisticsEntries ||
             data.Statistics.TowerDefinitionByInstance.Count > MaximumStatisticsEntries ||
             data.NextEnemyId <= 0 || data.NextTowerId <= 0 || data.NextEmergencyDefenseId <= 0 ||
+            data.NextEmergencyDefenseId > GameConstants.ExhaustedPulsePlateNextId ||
             !float.IsFinite(data.Speed) || data.Speed <= 0 || !IsNonnegativeFinite(data.OverdriveCooldownRemaining) ||
             data.EmergencyInventory < 0 || data.EmergencyDirectPurchasesThisWave < 0 || data.Waves.CurrentWaveNumber < 0 ||
             !IsNonnegativeFinite(data.Waves.IntermissionRemaining) || data.Economy.Credits < 0 || data.Economy.Lives < 0 ||
@@ -316,7 +318,8 @@ public sealed class SaveSlotRepository
 
         if (data.PulsePlates.Any(plate => plate is null) ||
             data.PulsePlates.Select(plate => plate.Id).Distinct().Count() != data.PulsePlates.Count ||
-            data.PulsePlates.Any(plate => plate.Id <= 0 || plate.OwnerPlayerId is < 1 or > 2 || plate.HandledEnemyIds is null ||
+            data.PulsePlates.Any(plate => plate.Id <= 0 || plate.Id > GameConstants.MaximumPulsePlateId ||
+                plate.OwnerPlayerId is < 1 or > 2 || plate.HandledEnemyIds is null ||
                 !float.IsFinite(plate.X) || !float.IsFinite(plate.Y) || plate.ChargesRemaining < 0 ||
                 !IsNonnegativeFinite(plate.ArmRemaining) || !IsNonnegativeFinite(plate.CooldownRemaining) ||
                 plate.HandledEnemyIds.Count > MaximumHandledEnemiesPerPlate || plate.HandledEnemyIds.Any(enemyId => enemyId <= 0)) ||

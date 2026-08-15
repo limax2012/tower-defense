@@ -391,7 +391,7 @@ public sealed class GameSession
         if (kind == TacticalPlacementKind.PulsePlate)
         {
             var definition = _content.Tactics.EmergencyDefense;
-            if (_nextEmergencyDefenseId >= int.MaxValue) return PlacementFailure.IdentityCapacityReached;
+            if (_nextEmergencyDefenseId > GameConstants.MaximumPulsePlateId) return PlacementFailure.IdentityCapacityReached;
             if (EmergencyDefenses.Count >= definition.MaximumActive) return PlacementFailure.DefenseCapacityReached;
             if (EmergencyInventory <= 0 && !CanDirectPurchaseEmergencyDefense) return PlacementFailure.NoDefenseAvailable;
             var projection = Map.Path.Project(position);

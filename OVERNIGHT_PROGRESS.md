@@ -9,7 +9,7 @@ Updated: 2026-08-15
 - Self-contained Windows x64 publish: `.build/publish/MinimalBastion.exe`.
 - Content: 4 maps with independently authored campaigns, 10 towers with 20 tier-two doctrines and 20 final specializations, 10 distinct Protocols, 5 enemy bases plus elite/boss ranks, difficulty/directive profiles, tactical reserves, and endless continuation.
 - Canonical five-seed Hard matrix: 140/240 wins (58.3%). A fresh three-seed audit on the current executable produced 83/144 wins (57.6%) after the bounded Rapid Array, Breach Round, and Razor Bloom role repairs; the game remains in its demanding target band and Surge Divide retains the lowest average surviving lives.
-- Native visual QA covers title/settings/co-op flows, all map treatments, tactical sidebar states, Surge Node overlap intel, Protocol/Beacon markers, Pulse Plates/Forge, high-resolution and wide-aspect rendering, result/field inspection, and the complete Tower/Threat/Campaign library. The latest 1920-wide pass reconfirmed title and doctrine-card spacing plus Breaker/Beacon contrast.
+- Native visual QA covers title/settings/co-op flows, all map treatments, tactical sidebar states, Surge Node overlap intel, Protocol/Beacon markers, Pulse Plates/Forge, high-resolution and wide-aspect rendering, result/field inspection, and the complete Tower/Threat/Campaign library. The latest isolated 1920-wide publish pass reconfirmed title layout, the opening battlefield, and a complete pause/resume round trip.
 - Git history is maintained on `agent/overnight-arena-progression` and mirrored to `origin`; tested feature units are committed incrementally while `main` remains untouched during the active overnight run.
 
 ## Completed work

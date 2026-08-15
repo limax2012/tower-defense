@@ -1174,7 +1174,7 @@ internal static class Program
         var identityState = session.CaptureSaveGame();
         identityState.NextEnemyId = int.MaxValue;
         identityState.NextTowerId = int.MaxValue;
-        identityState.NextEmergencyDefenseId = int.MaxValue;
+        identityState.NextEmergencyDefenseId = GameConstants.ExhaustedPulsePlateNextId;
         var exhausted = GameSession.RestoreSaveGame(session.Content, identityState);
         Check.Equal(PlacementFailure.IdentityCapacityReached,
             exhausted.ValidatePlacement("tower", new Vector2(110, 200)),
@@ -1187,6 +1187,21 @@ internal static class Program
             "exhausted enemy identity space cannot wrap into duplicate runtime IDs");
         Check.Equal(int.MaxValue, exhausted.NextEnemyId,
             "exhausted enemy identity remains saturated after a rejected spawn");
+
+        var lastSafePlate = new PulsePlateInstance(GameConstants.MaximumPulsePlateId, new Vector2(100, 30),
+            session.Content.Tactics.EmergencyDefense);
+        Check.Equal(int.MinValue, lastSafePlate.DamageSourceId,
+            "the final Pulse Plate identity remains in its reserved negative damage-source namespace");
+        Check.Throws<ArgumentOutOfRangeException>(() => new PulsePlateInstance(
+                GameConstants.MaximumPulsePlateId + 1, new Vector2(100, 30), session.Content.Tactics.EmergencyDefense),
+            "Pulse Plate construction rejects identities that could collide with tower attribution");
+
+        var overflowedPlateIdentity = session.CaptureSaveGame();
+        overflowedPlateIdentity.NextEmergencyDefenseId = GameConstants.ExhaustedPulsePlateNextId + 1;
+        var identityExhausted = GameSession.RestoreSaveGame(session.Content, overflowedPlateIdentity);
+        Check.Equal(PlacementFailure.IdentityCapacityReached,
+            identityExhausted.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(100, 30)),
+            "direct state restore cannot deploy a Pulse Plate whose source identity would wrap");
     }
 
     private static void SoldTowerUtilityPersistence()
@@ -1713,6 +1728,11 @@ internal static class Program
         staleIdentity.Enemies.Add(new EnemyRuntimeState { Id = staleIdentity.NextEnemyId, DefinitionId = "enemy" });
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, staleIdentity, 2),
             "stale next-entity identities are rejected instead of silently changing the client checksum");
+
+        var overflowedPlateIdentity = session.CaptureCoOpState(0, 0, false);
+        overflowedPlateIdentity.NextEmergencyDefenseId = GameConstants.ExhaustedPulsePlateNextId + 1;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, overflowedPlateIdentity, 2),
+            "reconnect rejects Pulse Plate identities outside the reserved damage-source namespace");
 
         var inconsistentWaveSession = SessionWithWave();
         Check.True(inconsistentWaveSession.StartNextWave(), "start active wave for malformed progress test");
@@ -3378,6 +3398,12 @@ internal static class Program
             repository.Save(session, 1);
             Check.Equal(nestedRecoveryGeneration, File.ReadAllText(repository.GetSlotBackupPath(1)),
                 "nested corruption cannot rotate over a valid checkpoint backup");
+
+            var overflowedPlateIdentity = session.CaptureSaveGame();
+            overflowedPlateIdentity.NextEmergencyDefenseId = GameConstants.ExhaustedPulsePlateNextId + 1;
+            File.WriteAllText(repository.GetSlotPath(1), JsonSerializer.Serialize(overflowedPlateIdentity));
+            Check.Equal(originalCredits, repository.LoadData(1).Economy.Credits,
+                "Pulse Plate source-identity overflow is rejected and falls back to recovery");
 
             var incompatiblePrimary = session.CaptureSaveGame();
             incompatiblePrimary.MapId = "missing_from_current_content";

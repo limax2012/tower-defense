@@ -1,4 +1,5 @@
 using MinimalBastion.Combat;
+using MinimalBastion.Core;
 using MinimalBastion.Effects;
 
 namespace MinimalBastion.Multiplayer;
@@ -33,6 +34,7 @@ internal static class CoOpSnapshotValidator
             !IsNonnegativeFinite(snapshot.AnnouncementRemaining) || snapshot.EmergencyInventory < 0 ||
             snapshot.EmergencyDirectPurchasesThisWave < 0 || snapshot.NextEnemyId <= 0 ||
             snapshot.NextTowerId <= 0 || snapshot.NextEmergencyDefenseId <= 0 ||
+            snapshot.NextEmergencyDefenseId > GameConstants.ExhaustedPulsePlateNextId ||
             snapshot.IsVictory && snapshot.IsDefeat)
             throw new InvalidDataException("Co-op snapshot header is structurally invalid.");
 
@@ -110,7 +112,8 @@ internal static class CoOpSnapshotValidator
 
         ValidateCount(plates.Count, MaximumPulsePlates, "Pulse Plate");
         if (plates.Any(plate => plate is null) || plates.Select(plate => plate.Id).Distinct().Count() != plates.Count ||
-            plates.Any(plate => plate.Id <= 0 || plate.OwnerPlayerId is < 1 or > 2 ||
+            plates.Any(plate => plate.Id <= 0 || plate.Id > GameConstants.MaximumPulsePlateId ||
+                plate.OwnerPlayerId is < 1 or > 2 ||
                 !float.IsFinite(plate.X) || !float.IsFinite(plate.Y) || plate.ChargesRemaining < 0 ||
                 !IsNonnegativeFinite(plate.ArmRemaining) || !IsNonnegativeFinite(plate.CooldownRemaining) ||
                 plate.HandledEnemyIds is null || plate.HandledEnemyIds.Count > MaximumEnemies ||
