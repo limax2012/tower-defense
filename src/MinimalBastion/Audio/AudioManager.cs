@@ -45,6 +45,9 @@ public sealed class AudioManager : IDisposable
             _sounds[Cue.BossPhase] = CreateTone(230, 105, 0.34f, WaveShape.Saw);
             _sounds[Cue.Victory] = CreateTriad(392, 523, 659, 0.48f);
             _sounds[Cue.Defeat] = CreateTone(190, 58, 0.48f, WaveShape.Saw);
+            _sounds[Cue.UiConfirm] = CreateTone(410, 620, 0.075f, WaveShape.Sine);
+            _sounds[Cue.UiBack] = CreateTone(430, 300, 0.075f, WaveShape.Triangle);
+            _sounds[Cue.UiDelete] = CreateTone(230, 150, 0.10f, WaveShape.Saw);
             TryStartMusic();
         }
         catch
@@ -108,6 +111,10 @@ public sealed class AudioManager : IDisposable
         _attachedSession = null;
         _musicPitch = 0;
     }
+
+    public void PlayUiConfirm() => Play(Cue.UiConfirm, 0.42f);
+    public void PlayUiBack() => Play(Cue.UiBack, 0.36f);
+    public void PlayUiDelete() => Play(Cue.UiDelete, 0.42f);
 
     private void PlayKill()
     {
@@ -317,6 +324,10 @@ public sealed class AudioManager : IDisposable
         _musicSound = null;
     }
 
-    private enum Cue { Place, Upgrade, Sell, Protocol, Kill, Leak, WaveStart, WaveClear, Plate, Forge, BossPhase, Victory, Defeat }
+    private enum Cue
+    {
+        Place, Upgrade, Sell, Protocol, Kill, Leak, WaveStart, WaveClear, Plate, Forge, BossPhase, Victory, Defeat,
+        UiConfirm, UiBack, UiDelete
+    }
     private enum WaveShape { Sine, Triangle, Square, Saw }
 }

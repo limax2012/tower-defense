@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Added restrained synthesized confirm, back, and delete cues across title, library, settings, save/history, co-op, pause, result, and field-inspection actions. They obey the persisted SFX volume and remain outside deterministic session state.
 - Added restrained geometric motion streaks to live projectiles at full effect density. The short source-colored lines make direct shots, shards, control bolts, and shells easier to follow without particles; Reduced Effects keeps the original shape-only rendering.
 - Raised Razor Bloom's fixed per-shard damage from 11 to 13 after an exact 384-run Hard A/B showed that its seven-way crowd fan was leaving rushes broadly wounded. Both Bloom doctrine paths now sit within six points of their unchanged Lance Fan counterparts while retaining shorter reach and markedly weaker armor performance.
 - Gave Needle Turret's Rapid Array a strict two-target micro-burst so its swarm-suppression role is an actual mechanic rather than a weaker single-target stat package. Rebalanced its per-shot damage and Cycler Feed interaction through matched forced-path and ordinary campaign audits; Hard remains at a measured 52.1% win rate.

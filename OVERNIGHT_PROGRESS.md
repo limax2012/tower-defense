@@ -70,6 +70,7 @@ Updated: 2026-08-15
 - Added auto-fitting button labels, colorful tower/enemy silhouettes, rank treatment, recoil/pulse/ring/impact feedback, polished menus, pause, and post-run analysis.
 - Added short geometric projectile motion streaks at full effect density, improving attack-direction readability without particle clutter; Reduced Effects preserves shape-only shots.
 - Added a seamless procedural tactical music bed with mild arena-specific tuning and an independent persisted volume control; it remains optional presentation state and requires no external audio assets.
+- Added compact synthesized confirm, back, and delete cues to the complete menu/pause/save/library flow. They share the persisted SFX control and never enter gameplay state, snapshots, or checksums.
 - Presentation-only settings now apply without resetting the graphics device, avoiding fullscreen flicker when changing effect density or audio volume.
 - Returning to the title now detaches the audio layer from the abandoned match, restoring neutral menu ambience and allowing the old session graph to be collected.
 - Fixed the original main-menu logo/title overlap and added intentional whitespace.

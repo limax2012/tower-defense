@@ -155,22 +155,22 @@ public sealed class Game1 : Game
         switch (_state)
         {
             case GameState.MainMenu:
-                HandleMenuAction(_ui.HandleMainMenu(input));
+                HandleMenuAction(WithUiAudio(_ui.HandleMainMenu(input)));
                 break;
             case GameState.TowerLibrary:
-                HandleMenuAction(_ui.HandleTitleTowerLibrary(input));
+                HandleMenuAction(WithUiAudio(_ui.HandleTitleTowerLibrary(input)));
                 break;
             case GameState.Settings:
-                HandleSettingsAction(_ui.HandleSettingsInput(input));
+                HandleSettingsAction(WithUiAudio(_ui.HandleSettingsInput(input)));
                 break;
             case GameState.SaveSlots:
-                HandleSaveSlotAction(_ui.HandleSaveSlots(input));
+                HandleSaveSlotAction(WithUiAudio(_ui.HandleSaveSlots(input)));
                 break;
             case GameState.RunHistory:
-                HandleRunHistoryAction(_ui.HandleRunHistory(input));
+                HandleRunHistoryAction(WithUiAudio(_ui.HandleRunHistory(input)));
                 break;
             case GameState.CoOpMenu:
-                HandleCoOpMenuAction(_ui.HandleCoOpMenu(input));
+                HandleCoOpMenuAction(WithUiAudio(_ui.HandleCoOpMenu(input)));
                 break;
             case GameState.CoOpLobby:
                 UpdateCoOpLobby(input);
@@ -182,14 +182,14 @@ public sealed class Game1 : Game
                 UpdatePlaying(input, gameTime);
                 break;
             case GameState.Paused:
-                if (_session is not null) HandlePauseAction(_ui.HandlePausedInput(input, _session));
+                if (_session is not null) HandlePauseAction(WithUiAudio(_ui.HandlePausedInput(input, _session)));
                 break;
             case GameState.Victory:
             case GameState.Defeat:
                 var resultState = _state;
                 if (_networkRunner is not null) PollNetwork();
                 if (_state != resultState) break;
-                HandleResultAction(_ui.HandleResultInput(input, resultState == GameState.Victory));
+                HandleResultAction(WithUiAudio(_ui.HandleResultInput(input, resultState == GameState.Victory)));
                 if (_networkRunner is not null && _session is not null && _state == resultState)
                 {
                     _networkRunner.Advance((float)gameTime.ElapsedGameTime.TotalSeconds);
@@ -220,7 +220,7 @@ public sealed class Game1 : Game
             if (_state != GameState.DefeatField || _session is null) return;
             _networkRunner.Advance((float)gameTime.ElapsedGameTime.TotalSeconds);
         }
-        if (_ui.HandleDefeatFieldInput(input) == UiAction.ViewResults)
+        if (WithUiAudio(_ui.HandleDefeatFieldInput(input)) == UiAction.ViewResults)
         {
             _ui.PrepareResultScreen();
             _state = GameState.Defeat;
@@ -249,7 +249,7 @@ public sealed class Game1 : Game
             });
         _debug.Update(input);
         Action<GameCommand>? commandSink = _networkRunner is null ? null : SubmitLocalNetworkCommand;
-        var action = _ui.HandleGameplayInput(input, _session, commandSink, _localPlayerId);
+        var action = WithUiAudio(_ui.HandleGameplayInput(input, _session, commandSink, _localPlayerId));
         if (_networkRunner is null && action == UiAction.Pause)
         {
             _ui.PreparePauseScreen();
@@ -298,6 +298,19 @@ public sealed class Game1 : Game
         else if (action == UiAction.MainMenu) _state = GameState.MainMenu;
         else if (action == UiAction.CoOp) _state = GameState.CoOpMenu;
         else if (action == UiAction.Exit) Exit();
+    }
+
+    private UiAction WithUiAudio(UiAction action)
+    {
+        if (action == UiAction.None || _audio is null) return action;
+        if (action is UiAction.DeleteSaveSlot or UiAction.DeleteRunHistory)
+            _audio.PlayUiDelete();
+        else if (action is UiAction.CloseSettings or UiAction.CloseSaveSlots or UiAction.CloseRunHistory or
+                 UiAction.MainMenu or UiAction.Exit)
+            _audio.PlayUiBack();
+        else
+            _audio.PlayUiConfirm();
+        return action;
     }
 
     private void HandleCoOpMenuAction(UiAction action)
@@ -374,7 +387,7 @@ public sealed class Game1 : Game
 
     private void UpdateCoOpLobby(InputSnapshot input)
     {
-        if (_ui.HandleCoOpLobby(input) == UiAction.MainMenu)
+        if (WithUiAudio(_ui.HandleCoOpLobby(input)) == UiAction.MainMenu)
         {
             CleanupNetwork();
             _state = GameState.CoOpMenu;
@@ -387,7 +400,7 @@ public sealed class Game1 : Game
 
     private void UpdateCoOpReconnect(InputSnapshot input, GameTime gameTime)
     {
-        if (_ui.HandleCoOpReconnect(input) == UiAction.MainMenu)
+        if (WithUiAudio(_ui.HandleCoOpReconnect(input)) == UiAction.MainMenu)
         {
             CleanupNetwork();
             _state = GameState.CoOpMenu;
