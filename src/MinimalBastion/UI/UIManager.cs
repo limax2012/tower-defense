@@ -1926,8 +1926,9 @@ public sealed class UIManager
             DrawCampaignWaveRow(batch, p, rect, waves[index]);
         }
 
-        DrawText(batch, $"Select an arena or press 1-{_maps.Count}.  Base wave multipliers are shown before difficulty.  ESC, right-click, or BACK returns to {returnDestination}.",
-            new Vector2(640, 674), ColorPalette.Muted, 0.45f, true);
+        DrawFittedCenteredText(batch,
+            $"W21+ inherits this arena's final roster; HP accelerates, density/cadence stay capped, and a boss returns every 5 waves.  ESC or BACK returns to {returnDestination}.",
+            new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
     }
 
     private void DrawCampaignWaveRow(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, CampaignWaveReference wave)

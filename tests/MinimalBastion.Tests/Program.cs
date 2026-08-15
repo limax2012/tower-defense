@@ -1298,6 +1298,22 @@ internal static class Program
         Check.Equal(JsonSerializer.Serialize(wave25), JsonSerializer.Serialize(EndlessWaveGenerator.Create(25, 20, anchor)),
             "endless generation is deterministic");
 
+        var mapEndlessSignatures = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var map in content.Maps.Values)
+        {
+            var mapWaves = content.WaveSets[map.WaveSet].Waves;
+            var mapAnchor = mapWaves[^1];
+            var generated = EndlessWaveGenerator.Create(mapWaves.Count + 1, mapWaves.Count, mapAnchor);
+            Check.True(generated.HealthMultiplier > mapAnchor.HealthMultiplier, $"{map.Id} endless health rises from its own finale");
+            Check.True(generated.Groups.Select(group => group.EnemyId).Distinct(StringComparer.OrdinalIgnoreCase)
+                .All(enemyId => mapAnchor.Groups.Any(group => group.EnemyId.Equals(enemyId, StringComparison.OrdinalIgnoreCase))),
+                $"{map.Id} endless roster inherits authored arena contacts");
+            mapEndlessSignatures.Add(string.Join('|', generated.Groups.Select(group =>
+                $"{group.EnemyId}:{group.Rank}:{group.Count}:{group.SpawnInterval:0.000}")));
+        }
+        Check.Equal(content.Maps.Count, mapEndlessSignatures.Count,
+            "each authored arena retains a distinct first endless formation");
+
         var mirroredHost = SessionWithWave();
         var mirroredClient = SessionWithWave();
         Check.True(mirroredHost.StartNextWave() && mirroredClient.StartNextWave(), "start mirrored finales");

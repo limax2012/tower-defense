@@ -62,7 +62,7 @@ Batch summaries derive win rate, average wave/lives, map/strategy outcomes, and 
 
 ## Test hierarchy
 
-- Fast: 54 deterministic mechanics, content, transport, command, persistence, history, directive, doctrine, and simulation regressions.
+- Fast: 55 deterministic mechanics, content, transport, command, persistence, history, directive, doctrine, and simulation regressions.
 - Medium: isolated `--balance` benchmark plus focused strategy/map batches.
 - Deep: `--simulate-full` across 12 strategies, all four maps, four difficulties, and multiple seeds.
 - Player-facing: self-contained native build inspection of menus, online setup, battlefield, workshop, tactical states, Surge Node hover, level marks, Protocols, forge timing, and result screens.
@@ -98,7 +98,7 @@ Reports: `.build/balance/four-map-hard-close_quarters-3x.json`, `.build/balance/
 
 ## Endless validation
 
-- A 144-run Hard matrix continued all 12 strategies across all four arenas toward wave 40. No defense reached the cap: average failure was wave 22.2, Control lasted longest at 30.8 on average and peaked at 38, and Tactical failed at 26.8 on average despite individual runs deploying up to 96 Plates. Report: `.build/balance/four-map-hard-endless40-3x.json`.
+- A doctrine/range-era 144-run Hard matrix continued all 12 strategies across all four arenas toward wave 40. No defense reached the cap. Across all campaigns, average failure was wave 20.9; among the 83 runs that reached wave 20, average depth was 26.5. Control survivors averaged 34.2 and peaked at 39. Map survivor averages were Crosswind 28.2, Prism 26.3, Foundry 26.1, and Surge 24.9. Report: `.build/balance/doctrine-range-hard-endless40-3x.json`.
 
 - Five Foundry Adaptive seeds targeted wave 30. One failed the authored campaign at wave 14; the four campaign-clearing runs reached waves 23, 24, 24, and 28 rather than encountering an artificial wave-21 wall.
 - A 12-strategy Surge Divide pass produced three wave-30 survivors: AntiSwarm and Control with 10 lives, and Tactical with 12. Adaptive reached 28 and LongRange reached 25.
