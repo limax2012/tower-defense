@@ -31,6 +31,8 @@ public sealed class EnemyInstance
     public bool IsDead { get; private set; }
     public bool HasEscaped { get; private set; }
     public float Radius => Definition.Visual.Radius + (IsBoss ? 8 : IsElite ? 3 : 0);
+    public float HealthScale => _healthMultiplier;
+    public float MovementSpeedScale => _speedMultiplier;
     public StatusEffectController StatusEffects { get; } = new();
 
     public float EffectiveArmor => MathF.Max(0, BaseArmor - StatusEffects.ArmorReduction - (StatusEffects.IsBurning ? 2f : 0f));

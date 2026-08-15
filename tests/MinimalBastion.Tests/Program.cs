@@ -68,6 +68,8 @@ internal static class Program
             ("co-op shared control commands", CoOpOwnershipCommands),
             ("network deterministic commands", NetworkDeterministicCommands),
             ("co-op active state snapshot", CoOpActiveStateSnapshot),
+            ("co-op checksum coverage", CoOpChecksumCoverage),
+            ("co-op reconnect combat soak", CoOpReconnectCombatSoak),
             ("co-op wave ready", CoOpWaveReady),
             ("online co-op transport", CoOpLoopbackTransport),
             ("online co-op reconnect transport", CoOpReconnectTransport),
@@ -822,6 +824,67 @@ internal static class Program
         clientRunner.RunTicks(20);
         Check.Equal(SessionChecksum.Compute(host, hostRunner.Tick), SessionChecksum.Compute(client, clientRunner.Tick), "restored sessions remain deterministic");
         Check.Nearly(2f, client.Speed, "restored future command executes");
+    }
+
+    private static void CoOpChecksumCoverage()
+    {
+        var host = SessionWithWave();
+        Check.True(host.StartNextWave(), "checksum coverage starts wave");
+        host.Update(0.05f);
+        Check.True(host.Enemies.Count > 0, "checksum coverage has active enemy");
+        var tick = 1L;
+        var baseline = SessionChecksum.Compute(host, tick);
+
+        var speedState = host.CaptureCoOpState(tick, 0, false);
+        speedState.Enemies[0].SpeedMultiplier += 0.05f;
+        var speedDrift = GameSession.RestoreCoOpState(host.Content, speedState, 2);
+        Check.True(baseline != SessionChecksum.Compute(speedDrift, tick),
+            "checksum detects hidden enemy speed-scale drift before positions diverge");
+
+        var statisticsState = host.CaptureCoOpState(tick, 0, false);
+        statisticsState.Statistics.GeneratedCharges++;
+        var statisticsDrift = GameSession.RestoreCoOpState(host.Content, statisticsState, 2);
+        Check.True(baseline != SessionChecksum.Compute(statisticsDrift, tick),
+            "checksum detects run-analysis drift before the results screen");
+    }
+
+    private static void CoOpReconnectCombatSoak()
+    {
+        var host = SessionWithWaves(3);
+        host.ConfigureCoOp(1);
+        host.Economy.AddCredits(1_000);
+        var hostRunner = new DeterministicSessionRunner(host);
+        var commands = new[]
+        {
+            (Tick: 0L, Command: new GameCommand { Sequence = 1, ClientRequestId = 1, PlayerId = 1, Type = GameCommandType.PlaceTower, TowerDefinitionId = "tower", X = 50, Y = 200 }),
+            (Tick: 1L, Command: new GameCommand { Sequence = 2, ClientRequestId = 2, PlayerId = 2, Type = GameCommandType.PlaceTower, TowerDefinitionId = "tower", X = 50, Y = 90 }),
+            (Tick: 2L, Command: new GameCommand { Sequence = 3, ClientRequestId = 3, PlayerId = 2, Type = GameCommandType.UpgradeTower, EntityId = 1 }),
+            (Tick: 3L, Command: new GameCommand { Sequence = 4, ClientRequestId = 4, PlayerId = 1, Type = GameCommandType.StartWave }),
+            (Tick: 12L, Command: new GameCommand { Sequence = 5, ClientRequestId = 5, PlayerId = 2, Type = GameCommandType.SetTargetMode, EntityId = 1, TargetMode = TargetMode.Strongest }),
+            (Tick: 14L, Command: new GameCommand { Sequence = 6, ClientRequestId = 6, PlayerId = 1, Type = GameCommandType.ToggleAutoProtocol, EntityId = 2 }),
+            (Tick: 90L, Command: new GameCommand { Sequence = 7, ClientRequestId = 7, PlayerId = 2, Type = GameCommandType.SetSpeed, Speed = 2f })
+        };
+        foreach (var scheduled in commands)
+            Check.True(hostRunner.Schedule(scheduled.Tick, scheduled.Command), "host schedules reconnect soak command");
+
+        hostRunner.RunTicks(35);
+        Check.True(host.Waves.IsActive && host.Enemies.Count > 0, "reconnect soak snapshots active combat");
+        var snapshot = host.CaptureCoOpState(hostRunner.Tick, 0b11, false);
+        snapshot.PendingCommands = hostRunner.CapturePendingCommands();
+        var transferred = JsonSerializer.Deserialize<CoOpStateSnapshot>(JsonSerializer.Serialize(snapshot))!;
+        var client = GameSession.RestoreCoOpState(host.Content, transferred, 2);
+        var clientRunner = new DeterministicSessionRunner(client, transferred.Tick);
+        clientRunner.RestorePendingCommands(transferred.PendingCommands);
+
+        Check.Equal(SessionChecksum.Compute(host, hostRunner.Tick), SessionChecksum.Compute(client, clientRunner.Tick),
+            "reconnect soak starts from identical authoritative state");
+        hostRunner.RunTicks(500);
+        clientRunner.RunTicks(500);
+        Check.Equal(SessionChecksum.Compute(host, hostRunner.Tick), SessionChecksum.Compute(client, clientRunner.Tick),
+            "reconnected peers remain identical through combat, kills, cooldowns, and a future command");
+        Check.Equal(host.Economy.TotalKills, client.Economy.TotalKills, "reconnect soak preserves shared kills");
+        Check.Equal(host.Statistics.Towers.Sum(value => value.Damage), client.Statistics.Towers.Sum(value => value.Damage),
+            "reconnect soak preserves final tower telemetry");
     }
 
     private static void CoOpLoopbackTransport()

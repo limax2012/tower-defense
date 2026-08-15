@@ -21,7 +21,7 @@ CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--ma
 ## Architecture
 
 - `HeadlessSimulation` creates a normal `GameSession` and advances it at a fixed 0.05-second step without rendering.
-- `AutoPlayer` uses the same validated placement, targeting, upgrade, specialization, Overdrive, sell, wave, Pulse Plate, and Charge Forge APIs as gameplay.
+- `AutoPlayer` uses the same validated placement, targeting, upgrade, specialization, Protocol, sell, wave, Pulse Plate, and Charge Forge APIs as gameplay.
 - Seeded randomness affects candidate tie-breaking and weighted policy choices; combat remains deterministic.
 - Runs stop on victory, defeat, selected wave limit, or timeout.
 - Runtime events plus `DamageResolver.DamageApplied` attribute damage, kills, spend, utility actions, and tactical outcomes.
@@ -42,7 +42,7 @@ CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--ma
 - Adaptive: reads upcoming armor, speed, swarm, shields, durability, elites, and bosses; may sell mismatched specialists.
 - Randomized: seeded weighted legal choices for unusual-strategy discovery.
 
-Agents sample continuous legal positions, route coverage, Surge Zones, support overlap, reserves, upgrades, branches, target modes, early calls, in-wave threats, plate locations, forge production, and deterministic Overdrive timing. They are comparative policies, not claims of optimal play.
+Agents sample continuous legal positions, route coverage, Surge Nodes, support overlap, reserves, upgrades, roles, target modes, early calls, in-wave threats, plate locations, forge production, and deterministic Protocol timing. They are comparative policies, not claims of optimal play.
 
 ## Metrics
 
@@ -55,16 +55,16 @@ Every JSON run includes:
 - per-wave archetype, duration, lives lost, kills, leaks, spending, and ending credits;
 - Pulse Plate deployments, direct purchases, triggers, hits, kills, and damage;
 - Charge Forge purchases, upgrades, and generated charges;
-- Overdrive activations.
+- Protocol activations and utility assists.
 
 Batch summaries derive win rate, average wave/lives, map/strategy outcomes, and tower-use efficiency tables.
 
 ## Test hierarchy
 
-- Fast: 46 deterministic mechanics, content, transport, command, and simulation regressions.
+- Fast: 48 deterministic mechanics, content, transport, command, and simulation regressions.
 - Medium: isolated `--balance` benchmark plus focused strategy/map batches.
 - Deep: `--simulate-full` across 12 strategies, all four maps, four difficulties, and multiple seeds.
-- Player-facing: self-contained native build inspection of menus, online setup, battlefield, workshop, tactical states, Surge Zone hover, level badges, Overdrive, forge timing, and result screens.
+- Player-facing: self-contained native build inspection of menus, online setup, battlefield, workshop, tactical states, Surge Node hover, level marks, Protocols, forge timing, and result screens.
 
 ## Current baseline
 
@@ -125,7 +125,7 @@ Hard cases are in `.build/balance/overnight-hard-5x.json`; the Bastion case is i
 - Do not add early-wave-only damage or alter tower damage to conceal economy, placement, or policy problems.
 - Permanent towers should dominate total damage; Pulse Plates should rescue mistakes or reward a forge investment.
 - Forge production must require active-wave risk; waiting is never income.
-- Active Overdrive should matter without becoming mandatory. Its measured increase from 35.0% to 40.8% was acceptable.
+- Active Protocols should matter without becoming mandatory; optional automation exists for players who prefer lower intervention.
 - A full strategy-matrix regression matters more than one favorable seed.
 
 ## All-tier economy pass (2026-08-14)
@@ -154,5 +154,5 @@ Final report: `.build/balance/all-tier-economy-final2-5x-20260814.json`.
 
 1. Human-playtest branch legibility, late-wave pacing, and direct-internet latency beyond loopback integration tests.
 2. Collect human Normal/Hard/Bastion outcomes before moving any global profile multiplier.
-3. Test a fourth arena only if its placement constraint creates a new strategy rather than duplicating existing route geometry.
+3. Add another arena only if its placement constraint creates a new strategy rather than duplicating existing route geometry.
 4. Evaluate hosted relay/NAT traversal separately from combat balance; do not couple networking services to deterministic simulation.

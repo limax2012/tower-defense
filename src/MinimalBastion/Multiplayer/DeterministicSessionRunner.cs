@@ -94,7 +94,11 @@ public static class SessionChecksum
         Add(ref hash, session.Economy.Lives);
         Add(ref hash, session.Economy.TotalKills);
         Add(ref hash, session.Economy.EscapedEnemies);
+        Add(ref hash, session.Economy.TotalCreditsSpent);
+        Add(ref hash, session.Economy.KillCreditsEarned);
+        Add(ref hash, session.Economy.WaveCreditsEarned);
         Add(ref hash, session.Economy.EarlyStartCreditsEarned);
+        Add(ref hash, session.Economy.SaleCreditsRecovered);
         Add(ref hash, session.EmergencyInventory);
         Add(ref hash, session.EmergencyDirectPurchasesThisWave);
         Add(ref hash, session.OverdriveCooldownRemaining);
@@ -138,6 +142,8 @@ public static class SessionChecksum
             Add(ref hash, enemy.Definition.Id);
             Add(ref hash, (int)enemy.Rank);
             Add(ref hash, enemy.BossPhaseActive ? 1 : 0);
+            Add(ref hash, enemy.HealthScale);
+            Add(ref hash, enemy.MovementSpeedScale);
             Add(ref hash, enemy.DistanceAlongPath);
             Add(ref hash, enemy.Health);
             Add(ref hash, enemy.Shield);
@@ -198,6 +204,51 @@ public static class SessionChecksum
             Add(ref hash, generator.Position.Y);
             Add(ref hash, generator.LevelIndex);
             Add(ref hash, generator.ProductionRemaining);
+        }
+
+        var statistics = session.Statistics;
+        Add(ref hash, statistics.SimulatedSeconds);
+        Add(ref hash, statistics.EmergencyDeployments);
+        Add(ref hash, statistics.EmergencyDirectPurchases);
+        Add(ref hash, statistics.EmergencyTriggers);
+        Add(ref hash, statistics.EmergencyHits);
+        Add(ref hash, statistics.EmergencyKills);
+        Add(ref hash, statistics.EmergencyDamage);
+        Add(ref hash, statistics.GeneratedCharges);
+        Add(ref hash, statistics.GeneratorPurchases);
+        Add(ref hash, statistics.GeneratorUpgrades);
+        foreach (var metrics in statistics.Towers.OrderBy(value => value.TowerId, StringComparer.Ordinal))
+        {
+            Add(ref hash, metrics.TowerId);
+            Add(ref hash, metrics.Purchases);
+            Add(ref hash, metrics.Upgrades);
+            Add(ref hash, metrics.Sales);
+            Add(ref hash, metrics.CreditsSpent);
+            Add(ref hash, metrics.CreditsRecovered);
+            Add(ref hash, metrics.Hits);
+            Add(ref hash, metrics.Kills);
+            Add(ref hash, metrics.Overdrives);
+            Add(ref hash, metrics.Damage);
+            Add(ref hash, metrics.SupportDamageEquivalent);
+            Add(ref hash, metrics.ExposeDamageEquivalent);
+            Add(ref hash, metrics.ArmorBreakDamageEquivalent);
+            Add(ref hash, metrics.ControlSeconds);
+            Add(ref hash, metrics.ExposeSeconds);
+            Add(ref hash, metrics.ArmorBreakSeconds);
+            Add(ref hash, metrics.ArmorAbsorbed);
+            Add(ref hash, metrics.Overkill);
+            foreach (var specialization in metrics.Specializations.OrderBy(value => value.Key, StringComparer.Ordinal))
+            {
+                Add(ref hash, specialization.Key);
+                Add(ref hash, specialization.Value);
+            }
+        }
+        foreach (var metrics in statistics.Enemies.OrderBy(value => value.EnemyId, StringComparer.Ordinal))
+        {
+            Add(ref hash, metrics.EnemyId);
+            Add(ref hash, metrics.Kills);
+            Add(ref hash, metrics.Escapes);
+            Add(ref hash, metrics.LivesLost);
         }
         return hash.ToString("X16");
     }

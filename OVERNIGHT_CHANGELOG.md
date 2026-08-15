@@ -25,7 +25,7 @@ Date: 2026-08-15
 - Gave every tower protocol its own restrained geometric signature and audio pitch while active. Reduced-effects mode keeps only the essential native-color protocol ring.
 - Re-ran 180 deterministic campaign agents per key difficulty after the map, branch, protocol, Mortar, and support changes. Normal cleared 137/180 (76.1%), Hard 106/180 (58.9%), and Bastion 35/180 (19.4%); on Hard, Foundry cleared 41/60, Prism 38/60, and Surge 27/60, confirming the intended arena ordering.
 - Added source-aware utility telemetry: Signal Beacon damage-equivalent and recipient-seconds plus Slow, Stun, Exposed, and Armor Break enemy-seconds. End-run contribution bars now include Beacon-assisted output while keeping direct damage visibly separate.
-- Current verification: 46/46 deterministic tests, clean Release build with zero warnings, and native visual QA of title, settings, gameplay, and pause layouts.
+- Current verification: 48/48 deterministic tests, clean Release build with zero warnings, native visual QA of title/settings/gameplay/pause layouts, and a 500-tick mid-combat reconnect soak.
 
 ## Range, branch, and menu harmony pass
 
@@ -128,8 +128,8 @@ Date: 2026-08-14
 
 ## Tests added
 
-- Expanded deterministic suite from the original baseline to 40 passing checks.
-- Coverage includes content counts, both map openings, Surge Zone buffs/checksum, pathing, targeting, armor/DOT/status, elites/boss, economy, placement, final group, early calls, mixed waves, Arc chain, telemetry, shared co-op controls, mirrored network commands/checksum, active-wave snapshots, reconnect transport, build mismatch rejection, wave ready, endpoint parsing, tower intel/branches/Overdrive, Pulse Plate reliability, wave-only forge production, high-resolution viewport composition, tactical palette constants, and headless determinism.
+- Expanded deterministic suite from the original baseline to 48 passing checks.
+- Coverage includes four authored campaigns, difficulty persistence, node buffs/checksum, pathing, targeting, armor/DOT/status, elites/boss, economy, placement, endless continuation, early calls, mixed waves, tower behavior, contribution telemetry, shared co-op controls, mirrored commands, hidden-scale/stat checksum coverage, a 500-tick mid-combat reconnect soak, loopback transport, build mismatch rejection, wave ready, endpoint parsing, tower intel/roles/Protocols, Pulse Plate reliability, wave-only forge production, saves, high-resolution composition, palette constants, and headless determinism.
 - Release build and self-contained publish complete with 0 warnings and 0 errors.
 
 ## Bugs resolved
@@ -170,4 +170,4 @@ Date: 2026-08-14
 1. Field-test direct online play and reconnect on two remote PCs and different consumer routers.
 2. Evaluate an optional authorized hosted rendezvous/relay if port forwarding remains too burdensome.
 3. Collect human results for all four difficulty profiles and adjust only statistically persistent outliers.
-4. Consider a fourth arena only if it introduces a genuinely different placement constraint rather than another route variant.
+4. Add another arena only when it introduces a genuinely different placement constraint or tactical system rather than another route variant.
