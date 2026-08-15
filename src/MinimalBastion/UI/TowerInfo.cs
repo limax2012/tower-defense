@@ -317,11 +317,5 @@ public static class TowerInfo
     }
 
     public static string ActiveAuraSummary(TowerInstance tower)
-    {
-        var protocol = tower.IsOverdriven ? tower.Protocol : null;
-        var auraRange = tower.Level.AuraRange * (1f + (protocol?.AuraRangeBonus ?? 0));
-        var attackSpeedBonus = tower.Level.AuraAttackSpeedBonus + (protocol?.AuraAttackSpeedBonus ?? 0);
-        var towerRangeBonus = tower.Level.AuraRangeBonus + (protocol?.AuraRangeBonus ?? 0);
-        return $"AURA {auraRange:0}   RATE +{attackSpeedBonus:P0}   RANGE +{towerRangeBonus:P0}";
-    }
+        => $"AURA {tower.EffectiveAuraRange:0}   RATE +{tower.EffectiveAuraAttackSpeedBonus:P0}   RANGE +{tower.EffectiveAuraTowerRangeBonus:P0}";
 }

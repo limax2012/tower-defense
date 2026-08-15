@@ -732,8 +732,7 @@ public sealed class GameSession
         return tower.Level.Range * (1f + support.RangeBonus + power.RangeBonus + protocol);
     }
 
-    public float GetEffectiveAuraRange(TowerInstance tower) => tower.Level.AuraRange *
-        (1f + (tower.IsOverdriven ? tower.Protocol.AuraRangeBonus : 0f));
+    public float GetEffectiveAuraRange(TowerInstance tower) => tower.EffectiveAuraRange;
 
     public float GetEffectiveAttacksPerSecond(TowerInstance tower)
     {

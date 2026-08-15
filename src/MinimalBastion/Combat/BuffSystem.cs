@@ -13,11 +13,9 @@ public sealed class BuffSystem
         foreach (var tower in towers)
         {
             if (!tower.IsSupport) continue;
-            var level = tower.Level;
-            var protocol = tower.IsOverdriven ? tower.Protocol : null;
-            var auraRange = level.AuraRange * (1f + (protocol?.AuraRangeBonus ?? 0));
-            var attackSpeedBonus = level.AuraAttackSpeedBonus + (protocol?.AuraAttackSpeedBonus ?? 0);
-            var rangeBonus = level.AuraRangeBonus + (protocol?.AuraRangeBonus ?? 0);
+            var auraRange = tower.EffectiveAuraRange;
+            var attackSpeedBonus = tower.EffectiveAuraAttackSpeedBonus;
+            var rangeBonus = tower.EffectiveAuraTowerRangeBonus;
             foreach (var recipient in towers)
             {
                 if (recipient.Id == tower.Id || recipient.IsSupport) continue;

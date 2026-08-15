@@ -43,6 +43,9 @@ public sealed class TowerInstance
     public bool IsOverdriven => OverdriveRemaining > 0;
     public TowerProtocolDefinition Protocol => Definition.Protocol;
     public bool IsSupport => Definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase);
+    public float EffectiveAuraRange => Level.AuraRange * (1f + (IsOverdriven ? Protocol.AuraRangeBonus : 0f));
+    public float EffectiveAuraAttackSpeedBonus => Level.AuraAttackSpeedBonus + (IsOverdriven ? Protocol.AuraAttackSpeedBonus : 0f);
+    public float EffectiveAuraTowerRangeBonus => Level.AuraRangeBonus + (IsOverdriven ? Protocol.AuraRangeBonus : 0f);
     public TowerSpecializationDefinition? Specialization => SpecializationId is null
         ? null
         : Definition.Specializations.FirstOrDefault(x => x.Id.Equals(SpecializationId, StringComparison.OrdinalIgnoreCase));
