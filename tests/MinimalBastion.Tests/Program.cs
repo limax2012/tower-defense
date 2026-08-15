@@ -2154,6 +2154,20 @@ internal static class Program
             rejected = exception.Message.Contains("structurally invalid", StringComparison.OrdinalIgnoreCase);
         }
         Check.True(rejected, "transport rejects a malformed envelope after consuming its bounded frame");
+
+        await validClient.DisposeAsync();
+        Check.True(await validServer.ReceiveAsync(timeout.Token) is null,
+            "server observes the peer close before the send-failure regression");
+        var closedPeerSend = validServer.SendAsync(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.Disconnect,
+            PlayerId = 1,
+            Message = new string('X', CoOpEnvelopeValidator.MaximumMessageLength)
+        }, timeout.Token);
+        var closedPeerCompletion = await Task.WhenAny(closedPeerSend, Task.Delay(TimeSpan.FromSeconds(1)));
+        Check.True(ReferenceEquals(closedPeerCompletion, closedPeerSend),
+            "an in-flight send completes or faults promptly after peer-side close");
+        try { await closedPeerSend; } catch (Exception exception) when (exception is IOException or OperationCanceledException) { }
     }
 
     private static async Task CoOpReconnectTransportAsync()

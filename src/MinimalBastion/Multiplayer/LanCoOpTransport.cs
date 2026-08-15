@@ -341,13 +341,28 @@ public sealed class LanCoOpConnection : IAsyncDisposable
         {
             await foreach (var pending in _sendQueue.Reader.ReadAllAsync())
             {
-                if (pending.CancellationToken.IsCancellationRequested)
+                try
+                {
+                    if (pending.CancellationToken.IsCancellationRequested)
+                    {
+                        pending.Completion.TrySetCanceled(pending.CancellationToken);
+                        continue;
+                    }
+                    await _stream.WriteAsync(pending.Frame, pending.CancellationToken);
+                    pending.Completion.TrySetResult();
+                }
+                catch (OperationCanceledException) when (pending.CancellationToken.IsCancellationRequested)
                 {
                     pending.Completion.TrySetCanceled(pending.CancellationToken);
-                    continue;
+                    throw;
                 }
-                await _stream.WriteAsync(pending.Frame, pending.CancellationToken);
-                pending.Completion.TrySetResult();
+                catch (Exception exception)
+                {
+                    // The frame currently being written is no longer in the channel,
+                    // so the outer drain cannot complete its waiter on our behalf.
+                    pending.Completion.TrySetException(exception);
+                    throw;
+                }
             }
         }
         catch (Exception exception)

@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Completed the in-flight sender when a socket write fails. A peer-side close can no longer leave the frame already removed from the channel waiting forever while only later queued sends receive the transport fault.
 - Rejected impossible restored tower branches and bounded doctrine/final-role identity at the co-op snapshot boundary. A reconnect can no longer attach final-role stats to a level-one silhouette or carry oversized branch labels into gameplay.
 - Cross-validated co-op wave snapshots against authored group progress. Active/current wave identity, spawned contacts, and queued contacts must now agree before a reconnect can resume, preventing semantically impossible wave states from entering another checksum-repair loop.
 - Bounded restored burn phase and rejected impossible co-op status phases. A corrupt authoritative snapshot can no longer turn one burn into an enormous tick-allocation loop immediately after resynchronization.
