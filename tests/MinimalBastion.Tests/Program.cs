@@ -1444,6 +1444,7 @@ internal static class Program
         Check.True(host.TryDeployEmergencyDefense(new Vector2(300, 30)), "snapshot direct plate deployment");
         Check.True(host.Enemies[0].TryApplyKnockback(4, 0.75f, host.Map.Path), "snapshot enemy knockback grace");
         Check.True(host.TryToggleAutoProtocol(host.Towers[0].Id, 2), "snapshot automatic protocol armed");
+        Check.True(host.TryOverdriveTower(host.Towers[0].Id, 2), "snapshot captures a remote-activated Protocol");
         Check.True(host.SetCoOpPaused(true), "snapshot captures a shared paused match");
 
         var future = new GameCommand { Sequence = 3, ClientRequestId = 3, PlayerId = 2, Type = GameCommandType.SetSpeed, Speed = 2f };
@@ -1459,6 +1460,11 @@ internal static class Program
         Check.Equal(SessionChecksum.Compute(host, hostRunner.Tick), SessionChecksum.Compute(client, clientRunner.Tick), "snapshot checksum matches immediately");
         Check.Equal(2, client.Towers[0].OwnerPlayerId, "snapshot preserves original placer");
         Check.Equal(host.Towers[0].Id, client.AutoOverdriveTowerId, "snapshot restores automatic protocol tower");
+        Check.True(client.Towers[0].IsOverdriven, "snapshot restores the remote Protocol animation state");
+        Check.Nearly(host.Towers[0].OverdriveRemaining, client.Towers[0].OverdriveRemaining,
+            "snapshot restores the exact Protocol animation timer");
+        Check.Nearly(host.GetEffectiveAttacksPerSecond(host.Towers[0]), client.GetEffectiveAttacksPerSecond(client.Towers[0]),
+            "snapshot restores the active Protocol stat package");
         Check.True(client.IsCoOpPaused, "snapshot restores synchronized pause state");
         Check.Equal(1, client.CoOpPausePlayerId, "snapshot restores the host's pause attribution");
         Check.Equal(1, client.Enemies[0].StatusEffects.Active.Count, "snapshot restores status effects");
