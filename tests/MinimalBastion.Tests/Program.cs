@@ -103,6 +103,7 @@ internal static class Program
             ("balance benchmark doctrine coverage", BalanceBenchmarkDoctrineCoverage),
             ("tower specializations", TowerSpecializations),
             ("tower overdrive", TowerOverdrive),
+            ("authored tower protocols", AuthoredTowerProtocols),
             ("emergency pulse plates", EmergencyPulsePlates),
             ("charge forge production", ChargeForgeProduction),
             ("checkpoint round trip", CheckpointRoundTrip),
@@ -4017,6 +4018,92 @@ internal static class Program
         Check.True(automatic.Enemies[0].Health < automatic.Enemies[0].MaxHealth, "protocol activation pulse applies damage");
         var protocolBurst = automatic.Effects.Effects.Single(effect => effect.Kind == EffectKind.Splash);
         Check.Nearly(250, protocolBurst.Radius, "area protocol communicates its exact affected radius");
+    }
+
+    private static void AuthoredTowerProtocols()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var authored = new ContentLoader(root).Load();
+        var fixture = Session();
+        var content = new GameContent
+        {
+            Towers = authored.Towers,
+            Enemies = fixture.Content.Enemies,
+            Map = fixture.Content.Map,
+            Waves = fixture.Content.Waves,
+            Tactics = authored.Tactics
+        };
+        var verified = 0;
+
+        foreach (var definition in authored.Towers.Values)
+        {
+            var session = new GameSession(content);
+            session.ConfigureCoOp(1);
+            session.Economy.AddCredits(2_000);
+            Check.True(session.TryPlaceTower(definition.Id, new Vector2(50, 90), 2, false),
+                $"place {definition.Id} for Protocol verification");
+            var tower = session.Towers.Single();
+            TowerInstance? recipient = null;
+            if (tower.IsSupport)
+            {
+                Check.True(session.TryPlaceTower("needle_turret", new Vector2(110, 90), 1, false),
+                    "place Signal Beacon Protocol recipient");
+                recipient = session.Towers.Single(candidate => candidate.Id != tower.Id);
+                session.Update(0);
+            }
+
+            session.SpawnEnemy("enemy", 1, 1);
+            var enemy = session.Enemies.Single();
+            enemy.UpdateMovement(5, session.Map.Path);
+            var baseRate = recipient is null
+                ? session.GetEffectiveAttacksPerSecond(tower)
+                : session.GetEffectiveAttacksPerSecond(recipient);
+            var baseRange = recipient is null
+                ? session.GetEffectiveRange(tower)
+                : session.GetEffectiveRange(recipient);
+            var baseDamage = session.GetEffectiveDamage(tower, MathF.Max(1, tower.Level.Damage));
+            var basePierce = session.GetEffectiveArmorPierce(tower, tower.Level.ArmorPierce);
+            var baseHealth = enemy.Health;
+
+            Check.True(session.SetCoOpPaused(true, 1), $"pause {definition.Id} Protocol fixture");
+            Check.True(session.TryOverdriveTower(tower.Id, 1), $"activate {definition.Protocol.DisplayName}");
+            session.Update(0);
+            Check.Nearly(definition.Protocol.DurationSeconds, tower.OverdriveRemaining,
+                $"{definition.Id} authored Protocol duration");
+            Check.Nearly(definition.Protocol.CooldownSeconds, session.OverdriveCooldownRemaining,
+                $"{definition.Id} authored shared cooldown");
+
+            var boostedRate = recipient is null
+                ? session.GetEffectiveAttacksPerSecond(tower)
+                : session.GetEffectiveAttacksPerSecond(recipient);
+            var boostedRange = recipient is null
+                ? session.GetEffectiveRange(tower)
+                : session.GetEffectiveRange(recipient);
+            var boostedDamage = session.GetEffectiveDamage(tower, MathF.Max(1, tower.Level.Damage));
+            var boostedPierce = session.GetEffectiveArmorPierce(tower, tower.Level.ArmorPierce);
+            var protocol = definition.Protocol;
+            var changedGameplay = boostedRate > baseRate || boostedRange > baseRange || boostedDamage > baseDamage ||
+                boostedPierce > basePierce || enemy.Health < baseHealth || enemy.StatusEffects.Active.Count > 0;
+            Check.True(changedGameplay, $"{definition.Id} Protocol has a real gameplay effect");
+
+            if (protocol.BurstDamage > 0)
+                Check.True(enemy.Health < baseHealth, $"{definition.Id} burst damages a nearby enemy");
+            if (!string.IsNullOrWhiteSpace(protocol.BurstStatus))
+            {
+                Check.True(Enum.TryParse<StatusType>(protocol.BurstStatus, true, out var expectedStatus),
+                    $"{definition.Id} authored Protocol status is recognized");
+                Check.True(enemy.StatusEffects.Active.Any(status => status.Type == expectedStatus && status.SourceId == tower.Id),
+                    $"{definition.Id} burst applies its authored status");
+            }
+
+            var snapshot = session.CaptureCoOpState(31, 0, false);
+            var peer = GameSession.RestoreCoOpState(content, snapshot, 2);
+            Check.Equal(SessionChecksum.Compute(session, 31), SessionChecksum.Compute(peer, 31),
+                $"{definition.Id} active Protocol effect survives co-op reconstruction");
+            verified++;
+        }
+
+        Check.Equal(10, verified, "every authored tower Protocol is mechanically verified");
     }
 
     private static GameSession Session()

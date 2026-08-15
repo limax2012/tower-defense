@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Added a mechanical audit for all ten authored Protocols. Every active ability must alter live combat or support math, every declared burst/status must affect a nearby enemy, and the resulting active state must reconstruct to an exact co-op checksum.
 - Added an active tactical reconnect regression covering a player-two level-3 Charge Forge, partial production progress, and a partially spent Pulse Plate with live cooldown/handled-enemy state.
 - Added authoritative reconstruction coverage for all 40 completed tower paths. Player-2 ownership, Player-1 shared doctrine/final-role/target controls, manual Protocol state, automatic Protocol assignment, investments, and exact checksums must survive every branch snapshot.
 - Extended the 64-profile reconstruction matrix into each arena's live authored opening wave. Every difficulty/directive combination must now restore active spawn progress, scaled enemies, timers, economy, and wave identity to an exact Player-2 checksum as well as its intermission state.
