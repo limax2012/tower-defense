@@ -1652,7 +1652,7 @@ internal static class Program
 
         var future = new GameCommand { Sequence = 3, ClientRequestId = 3, PlayerId = 2, Type = GameCommandType.SetSpeed, Speed = 2f };
         Check.True(hostRunner.Schedule(hostRunner.Tick + 3, future), "future command scheduled before snapshot");
-        var state = host.CaptureCoOpState(hostRunner.Tick, 0b10, false);
+        var state = host.CaptureCoOpState(hostRunner.Tick, 0, false);
         state.PendingCommands = hostRunner.CapturePendingCommands();
         var json = JsonSerializer.Serialize(state);
         var transferred = JsonSerializer.Deserialize<CoOpStateSnapshot>(json)!;
@@ -1734,8 +1734,29 @@ internal static class Program
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, overflowedPlateIdentity, 2),
             "reconnect rejects Pulse Plate identities outside the reserved damage-source namespace");
 
+        var onePlayerReady = session.CaptureCoOpState(0, 0b01, false);
+        _ = GameSession.RestoreCoOpState(session.Content, onePlayerReady, 2);
+
+        var bothPlayersReady = session.CaptureCoOpState(0, 0b11, true, true);
+        _ = GameSession.RestoreCoOpState(session.Content, bothPlayersReady, 2);
+
+        var startWithoutBothPlayers = session.CaptureCoOpState(0, 0b01, true);
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, startWithoutBothPlayers, 2),
+            "queued co-op wave start requires both ready players");
+
+        var strandedBothPlayers = session.CaptureCoOpState(0, 0b11, false);
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, strandedBothPlayers, 2),
+            "both ready players cannot restore without their queued wave start");
+
+        var orphanedEarlyBonus = session.CaptureCoOpState(0, 0, false, true);
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, orphanedEarlyBonus, 2),
+            "early-call eligibility cannot restore without a queued co-op wave start");
+
         var inconsistentWaveSession = SessionWithWave();
         Check.True(inconsistentWaveSession.StartNextWave(), "start active wave for malformed progress test");
+        var activeWaveReady = inconsistentWaveSession.CaptureCoOpState(0, 0b01, false);
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, activeWaveReady, 2),
+            "active combat cannot retain stale co-op readiness");
         var inconsistentWave = inconsistentWaveSession.CaptureCoOpState(0, 0, false);
         inconsistentWave.Waves.QueuedEnemies++;
         Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(session.Content, inconsistentWave, 2),
@@ -1924,7 +1945,7 @@ internal static class Program
 
         hostRunner.RunTicks(35);
         Check.True(host.Waves.IsActive && host.Enemies.Count > 0, "reconnect soak snapshots active combat");
-        var snapshot = host.CaptureCoOpState(hostRunner.Tick, 0b11, false);
+        var snapshot = host.CaptureCoOpState(hostRunner.Tick, 0, false);
         snapshot.PendingCommands = hostRunner.CapturePendingCommands();
         var transferred = JsonSerializer.Deserialize<CoOpStateSnapshot>(JsonSerializer.Serialize(snapshot))!;
         var client = GameSession.RestoreCoOpState(host.Content, transferred, 2);

@@ -56,6 +56,11 @@ internal static class CoOpSnapshotValidator
             waves.SpawnedInGroup < 0 || waves.QueuedEnemies < 0 || !float.IsFinite(waves.GroupTimer) ||
             !float.IsFinite(waves.DelayRemaining) || !IsNonnegativeFinite(waves.IntermissionRemaining))
             throw new InvalidDataException("Co-op snapshot wave state is structurally invalid.");
+        var waveIsActive = waves.ActiveWaveNumber > 0;
+        if (snapshot.WaveStartQueued != (snapshot.ReadyMask == 0b11) ||
+            snapshot.WaveEarlyBonusQueued && !snapshot.WaveStartQueued ||
+            waveIsActive && (snapshot.ReadyMask != 0 || snapshot.WaveStartQueued || snapshot.WaveEarlyBonusQueued))
+            throw new InvalidDataException("Co-op snapshot wave-readiness state is contradictory.");
 
         ValidateCount(towers.Count, MaximumTowers, "tower");
         if (towers.Any(tower => tower is null) || towers.Select(tower => tower.Id).Distinct().Count() != towers.Count ||

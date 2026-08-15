@@ -180,6 +180,7 @@ The clean separation supports preserving the current multipliers. On Hard, Surge
 
 ## Current work
 
+- Authoritative reconnect validation now enforces the complete two-player wave-readiness state machine. The regression suite covers valid one-player and both-player preparation snapshots plus impossible queued, early-bonus, and active-wave combinations that previously could be silently normalized.
 - Online co-op shared pause now exposes the complete Tactical Library locally by click or Tab. Network polling remains active, and the overlay consumes mouse/keyboard input so planning clicks cannot leak through to the battlefield; a second Escape cleanly requests authoritative resume.
 - Challenge automation now supports `--challenge all` and quiet aggregate runs. A 384-run Hard matrix measured Standard 47.9%, Close Quarters 49.0%, No Reserves 46.9%, and the intentionally severe Core Six 29.2%, supporting the current fixed opening compensation without another economy change.
 - Challenge sweeps now print an arena-by-directive matrix, exposing geometry-specific restriction spikes instead of allowing them to disappear inside one aggregate directive result. The existing two-seed Hard corpus shows Close Quarters at 54.2% on Crosswind, 45.8% on Foundry, 54.2% on Prism, and 41.7% on Surge; Core Six remains consistently severe rather than containing one anomalous arena. Content loading also rejects shared or byte-equivalent campaign rosters, preserving independently authored waves for every arena.
