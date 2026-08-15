@@ -2799,8 +2799,10 @@ internal static class Program
             Check.True(coOp.CanSaveCheckpoint, "co-op host can save at a safe intermission");
 
             var repository = new SaveSlotRepository(testRoot);
+            Check.True(!repository.Exists, "empty dynamic save repository reports no checkpoint");
             repository.Save(solo, 2);
             repository.Save(coOp, 4);
+            Check.True(repository.Exists, "metadata-only existence check detects dynamic saves");
             var slots = repository.GetSlots();
             Check.Equal(3, slots.Count, "occupied saves plus the next available slot are enumerated");
             Check.True(slots.Single(slot => slot.Slot == 2).IsOccupied, "solo slot is occupied");

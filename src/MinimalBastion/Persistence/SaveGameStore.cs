@@ -40,7 +40,14 @@ public sealed class SaveSlotRepository
     public string RootDirectory { get; }
     public string SavesDirectory => Path.Combine(RootDirectory, "Saves");
     public string LegacySavePath => Path.Combine(RootDirectory, "savegame.json");
-    public bool Exists => GetSlots().Any(slot => slot.IsOccupied);
+    public bool Exists
+    {
+        get
+        {
+            TryMigrateLegacySave();
+            return GetExistingSlotNumbers().Count > 0;
+        }
+    }
 
     public string GetSlotPath(int slot)
     {
@@ -111,6 +118,11 @@ public sealed class SaveSlotRepository
     {
         ValidateSlot(slot);
         TryMigrateLegacySave();
+        return LoadDataCore(slot);
+    }
+
+    private SaveGameData LoadDataCore(int slot)
+    {
         var path = GetSlotPath(slot);
         var backupPath = GetSlotBackupPath(slot);
         if (!File.Exists(path) && !File.Exists(backupPath))
@@ -164,7 +176,10 @@ public sealed class SaveSlotRepository
         if (!File.Exists(path) && !File.Exists(GetSlotBackupPath(slot))) return new SaveSlotInfo(slot, false);
         try
         {
-            var data = LoadData(slot);
+            // GetSlots already performed legacy migration and enumerated every
+            // occupied slot once. Avoid repeating that directory scan for each
+            // row so large, dynamically growing save collections remain linear.
+            var data = LoadDataCore(slot);
             return new SaveSlotInfo(
                 slot,
                 true,
