@@ -225,31 +225,76 @@ public sealed class SaveSlotRepository
     private static void ValidateSaveStructure(SaveGameData data)
     {
         if (string.IsNullOrWhiteSpace(data.MapId) || data.MapId.Length > 128 ||
+            data.DifficultyId is null || data.DifficultyId.Length > 128 || data.ChallengeId is null || data.ChallengeId.Length > 128 ||
+            data.RunId is null || data.RunId.Length > 64 ||
             data.Economy is null || data.Waves is null || data.Towers is null || data.PulsePlates is null || data.Statistics is null ||
             data.Statistics.Towers is null || data.Statistics.Enemies is null || data.Statistics.TowerDefinitionByInstance is null ||
             data.NextEnemyId <= 0 || data.NextTowerId <= 0 || data.NextEmergencyDefenseId <= 0 ||
-            !float.IsFinite(data.Speed) || data.Speed <= 0 || !float.IsFinite(data.OverdriveCooldownRemaining) ||
+            !float.IsFinite(data.Speed) || data.Speed <= 0 || !IsNonnegativeFinite(data.OverdriveCooldownRemaining) ||
             data.EmergencyInventory < 0 || data.EmergencyDirectPurchasesThisWave < 0 || data.Waves.CurrentWaveNumber < 0 ||
-            data.Economy.Credits < 0 || data.Economy.Lives < 0 || data.Economy.TotalKills < 0 || data.Economy.EscapedEnemies < 0)
+            !IsNonnegativeFinite(data.Waves.IntermissionRemaining) || data.Economy.Credits < 0 || data.Economy.Lives < 0 ||
+            data.Economy.TotalKills < 0 || data.Economy.EscapedEnemies < 0 || data.Economy.TotalCreditsSpent < 0 ||
+            data.Economy.KillCreditsEarned < 0 || data.Economy.WaveCreditsEarned < 0 ||
+            data.Economy.EarlyStartCreditsEarned < 0 || data.Economy.SaleCreditsRecovered < 0)
             throw new InvalidDataException("Save data is structurally invalid.");
 
-        if (data.Towers.Select(tower => tower.Id).Distinct().Count() != data.Towers.Count ||
+        if (data.Towers.Any(tower => tower is null) || data.Towers.Select(tower => tower.Id).Distinct().Count() != data.Towers.Count ||
             data.Towers.Any(tower => tower.Id <= 0 || tower.OwnerPlayerId is < 1 or > 2 || string.IsNullOrWhiteSpace(tower.DefinitionId) ||
                 !float.IsFinite(tower.X) || !float.IsFinite(tower.Y) || tower.LevelIndex < 0 ||
-                !Enum.IsDefined(tower.TargetMode) || tower.InvestedCredits < 0 || !float.IsFinite(tower.CooldownRemaining)))
+                !Enum.IsDefined(tower.TargetMode) || tower.InvestedCredits < 0 || !float.IsFinite(tower.CooldownRemaining) ||
+                !IsNonnegativeFinite(tower.OverdriveRemaining) || !IsNonnegativeFinite(tower.LifetimeDamage) ||
+                tower.LifetimeKills < 0 || !IsNonnegativeFinite(tower.LifetimeSupportDamageEquivalent) ||
+                !IsNonnegativeFinite(tower.LifetimeExposeDamageEquivalent) ||
+                !IsNonnegativeFinite(tower.LifetimeArmorBreakDamageEquivalent) ||
+                !IsNonnegativeFinite(tower.LifetimeControlSeconds) || !IsNonnegativeFinite(tower.LifetimeExposeSeconds) ||
+                !IsNonnegativeFinite(tower.LifetimeArmorBreakSeconds)) ||
+            data.Towers.Any(tower => tower.Id >= data.NextTowerId) ||
+            data.AutoOverdriveTowerId != 0 && data.Towers.All(tower => tower.Id != data.AutoOverdriveTowerId))
             throw new InvalidDataException("Save tower data is structurally invalid.");
 
-        if (data.PulsePlates.Select(plate => plate.Id).Distinct().Count() != data.PulsePlates.Count ||
+        if (data.PulsePlates.Any(plate => plate is null) ||
+            data.PulsePlates.Select(plate => plate.Id).Distinct().Count() != data.PulsePlates.Count ||
             data.PulsePlates.Any(plate => plate.Id <= 0 || plate.OwnerPlayerId is < 1 or > 2 || plate.HandledEnemyIds is null ||
                 !float.IsFinite(plate.X) || !float.IsFinite(plate.Y) || plate.ChargesRemaining < 0 ||
-                !float.IsFinite(plate.ArmRemaining) || !float.IsFinite(plate.CooldownRemaining)))
+                !IsNonnegativeFinite(plate.ArmRemaining) || !IsNonnegativeFinite(plate.CooldownRemaining) ||
+                plate.HandledEnemyIds.Any(enemyId => enemyId <= 0)) ||
+            data.PulsePlates.Any(plate => plate.Id >= data.NextEmergencyDefenseId))
             throw new InvalidDataException("Save Pulse Plate data is structurally invalid.");
 
         if (data.Generator is { } generator && (generator.OwnerPlayerId is < 1 or > 2 || generator.LevelIndex < 0 ||
             generator.InvestedCredits < 0 || !float.IsFinite(generator.X) || !float.IsFinite(generator.Y) ||
-            !float.IsFinite(generator.ProductionRemaining)))
+            !IsNonnegativeFinite(generator.ProductionRemaining)))
             throw new InvalidDataException("Save Charge Forge data is structurally invalid.");
+
+        ValidateStatistics(data.Statistics);
     }
+
+    private static void ValidateStatistics(RunStatisticsSaveData statistics)
+    {
+        if (!IsNonnegativeFinite(statistics.SimulatedSeconds) || statistics.EmergencyDeployments < 0 ||
+            statistics.EmergencyDirectPurchases < 0 || statistics.EmergencyTriggers < 0 || statistics.EmergencyHits < 0 ||
+            statistics.EmergencyKills < 0 || !IsNonnegativeFinite(statistics.EmergencyDamage) ||
+            statistics.GeneratedCharges < 0 || statistics.GeneratorPurchases < 0 || statistics.GeneratorUpgrades < 0 ||
+            statistics.Towers.Any(tower => tower is null || string.IsNullOrWhiteSpace(tower.TowerId) ||
+                string.IsNullOrWhiteSpace(tower.DisplayName) || tower.Specializations is null ||
+                tower.Purchases < 0 || tower.Upgrades < 0 || tower.Sales < 0 || tower.CreditsSpent < 0 ||
+                tower.CreditsRecovered < 0 || tower.Hits < 0 || tower.Kills < 0 || tower.Overdrives < 0 ||
+                !IsNonnegativeFinite(tower.Damage) || !IsNonnegativeFinite(tower.SupportDamageEquivalent) ||
+                !IsNonnegativeFinite(tower.ExposeDamageEquivalent) || !IsNonnegativeFinite(tower.ArmorBreakDamageEquivalent) ||
+                !IsNonnegativeFinite(tower.ControlSeconds) || !IsNonnegativeFinite(tower.ExposeSeconds) ||
+                !IsNonnegativeFinite(tower.ArmorBreakSeconds) || !IsNonnegativeFinite(tower.ArmorAbsorbed) ||
+                !IsNonnegativeFinite(tower.Overkill) || tower.Specializations.Any(value =>
+                    string.IsNullOrWhiteSpace(value.Key) || value.Value < 0)) ||
+            statistics.Towers.Select(tower => tower.TowerId).Distinct(StringComparer.OrdinalIgnoreCase).Count() != statistics.Towers.Count ||
+            statistics.Enemies.Any(enemy => enemy is null || string.IsNullOrWhiteSpace(enemy.EnemyId) ||
+                string.IsNullOrWhiteSpace(enemy.DisplayName) || enemy.Kills < 0 || enemy.Escapes < 0 || enemy.LivesLost < 0) ||
+            statistics.Enemies.Select(enemy => enemy.EnemyId).Distinct(StringComparer.OrdinalIgnoreCase).Count() != statistics.Enemies.Count ||
+            statistics.TowerDefinitionByInstance.Any(source => source.Key <= 0 || string.IsNullOrWhiteSpace(source.Value) ||
+                statistics.Towers.All(tower => !tower.TowerId.Equals(source.Value, StringComparison.OrdinalIgnoreCase))))
+            throw new InvalidDataException("Save statistics are structurally invalid.");
+    }
+
+    private static bool IsNonnegativeFinite(float value) => float.IsFinite(value) && value >= 0;
 
     private static bool IsReadableSave(string path)
     {

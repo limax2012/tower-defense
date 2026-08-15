@@ -2404,6 +2404,21 @@ internal static class Program
             Check.Equal(semanticRecoveryGeneration, File.ReadAllText(repository.GetSlotBackupPath(1)),
                 "semantic corruption cannot replace a known-good save recovery generation");
 
+            var nestedCorruption = session.CaptureSaveGame();
+            nestedCorruption.Statistics.Towers.Add(new RunTowerStatisticsSaveData
+            {
+                TowerId = "tower",
+                DisplayName = "Tower",
+                Specializations = null!
+            });
+            File.WriteAllText(repository.GetSlotPath(1), JsonSerializer.Serialize(nestedCorruption));
+            Check.Equal(originalCredits, repository.LoadData(1).Economy.Credits,
+                "parseable nested telemetry corruption falls back to recovery");
+            var nestedRecoveryGeneration = File.ReadAllText(repository.GetSlotBackupPath(1));
+            repository.Save(session, 1);
+            Check.Equal(nestedRecoveryGeneration, File.ReadAllText(repository.GetSlotBackupPath(1)),
+                "nested corruption cannot rotate over a valid checkpoint backup");
+
             File.Delete(repository.GetSlotPath(1));
             Check.True(repository.GetSlots().Single(slot => slot.Slot == 1).IsOccupied,
                 "backup-only interrupted slot remains discoverable");
