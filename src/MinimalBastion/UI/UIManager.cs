@@ -60,7 +60,8 @@ public sealed class UIManager
     private string? _hoveredTowerCardId;
     private string? _specializationHint;
     private PowerNodeData? _hoveredPowerNode;
-    private readonly List<(string Id, string Name, int PowerNodes, int Challenge, string Description, string PathStyle, CampaignIntelInfo Campaign)> _maps = new();
+    private readonly List<(string Id, string Name, int PowerNodes, int Challenge, string Description, string PathStyle,
+        CampaignIntelInfo Campaign, IReadOnlyList<Vector2> Path, Color PathBase, Color PathAccent)> _maps = new();
     private readonly List<DifficultyDefinition> _difficulties = new();
     private readonly List<ChallengeDefinition> _challenges = new();
     private int _selectedMapIndex;
@@ -354,7 +355,9 @@ public sealed class UIManager
                 var campaign = waveSets is not null && enemies is not null && waveSets.TryGetValue(x.WaveSet, out var waveSet)
                     ? WaveIntel.AnalyzeCampaign(waveSet, enemies)
                     : new CampaignIntelInfo(0, 0, "STANDARD", 1, 0);
-                return (x.Id, x.DisplayName, x.PowerNodes.Count, x.ChallengeRating, x.Description, x.PathVisual.Style, campaign);
+                return (x.Id, x.DisplayName, x.PowerNodes.Count, x.ChallengeRating, x.Description, x.PathVisual.Style,
+                    campaign, (IReadOnlyList<Vector2>)x.Path.Select(point => point.ToVector2()).ToArray(),
+                    x.PathVisual.BaseColor, x.PathVisual.AccentColor);
             }));
         _selectedMapIndex = Math.Clamp(_selectedMapIndex, 0, Math.Max(0, _maps.Count - 1));
         _campaignLibraryMapIndex = Math.Clamp(_campaignLibraryMapIndex, 0, Math.Max(0, _maps.Count - 1));
@@ -2016,7 +2019,9 @@ public sealed class UIManager
         DrawText(batch, "MINIMAL BASTION", new Vector2(640, 295), ColorPalette.Ink, 2.2f, true);
         DrawText(batch, "A colorful geometric tower-defense game", new Vector2(640, 345), ColorPalette.Muted, 0.9f, true);
         var map = _maps.Count == 0
-            ? (Id: "foundry_loop", Name: "Foundry Loop", PowerNodes: 0, Challenge: 2, Description: "A balanced tactical arena.", PathStyle: "road", Campaign: new CampaignIntelInfo(0, 0, "STANDARD", 1, 0))
+            ? (Id: "foundry_loop", Name: "Foundry Loop", PowerNodes: 0, Challenge: 2, Description: "A balanced tactical arena.", PathStyle: "road",
+                Campaign: new CampaignIntelInfo(0, 0, "STANDARD", 1, 0), Path: (IReadOnlyList<Vector2>)Array.Empty<Vector2>(),
+                PathBase: ColorPalette.Path, PathAccent: ColorPalette.Gold)
             : _maps[_selectedMapIndex];
         var feature = map.PowerNodes > 0 ? $"{map.PowerNodes} SURGE NODES" : map.PathStyle.ToUpperInvariant();
         var mapSuffix = $"THREAT {map.Challenge}/5 | {feature}";
@@ -2620,8 +2625,10 @@ public sealed class UIManager
         DrawText(batch, selectedMap.Name.ToUpperInvariant(), new Vector2(detailPanel.X + 18, detailPanel.Y + 16), ColorPalette.Ink, 0.96f);
         DrawTextRight(batch, $"THREAT {selectedMap.Challenge}/5  |  {selectedMap.PowerNodes} SURGE NODES  |  {selectedMap.PathStyle.ToUpperInvariant()} PATH",
             new Vector2(detailPanel.Right - 18, detailPanel.Y + 21), ColorPalette.ReadableAccent(mapAccent, ColorPalette.Panel), 0.50f);
-        DrawFittedText(batch, selectedMap.Description, new Vector2(detailPanel.X + 18, detailPanel.Y + 48), ColorPalette.Muted, 0.48f, detailPanel.Width - 36);
-        DrawFittedText(batch, selectedMap.Campaign.CompactSummary, new Vector2(detailPanel.X + 18, detailPanel.Y + 72), mapAccent, 0.43f, detailPanel.Width - 36);
+        DrawFittedText(batch, selectedMap.Description, new Vector2(detailPanel.X + 18, detailPanel.Y + 48), ColorPalette.Muted, 0.48f, detailPanel.Width - 238);
+        DrawFittedText(batch, selectedMap.Campaign.CompactSummary, new Vector2(detailPanel.X + 18, detailPanel.Y + 72), mapAccent, 0.43f, detailPanel.Width - 238);
+        DrawRoutePreview(batch, p, new Rectangle(detailPanel.Right - 202, detailPanel.Y + 39, 184, 54),
+            selectedMap.Path, selectedMap.PathBase, selectedMap.PathAccent);
         p.FillRect(batch, new Rectangle(detailPanel.X + 18, detailPanel.Y + 98, detailPanel.Width - 36, 2), mapAccent);
 
         for (var index = 0; index < Math.Min(20, waves.Count); index++)
@@ -2635,6 +2642,35 @@ public sealed class UIManager
         DrawFittedCenteredText(batch,
             $"W21+ inherits this arena's final roster; HP accelerates, density/cadence stay capped, and a boss returns every 5 waves.  UP/DOWN selects; TAB changes page; ESC or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
+    }
+
+    private static void DrawRoutePreview(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect,
+        IReadOnlyList<Vector2> route, Color baseColor, Color accentColor)
+    {
+        p.FillRect(batch, rect, ColorPalette.PanelAlt);
+        p.DrawRect(batch, rect, ColorPalette.CardOutline, 1);
+        if (route.Count < 2) return;
+
+        const float padding = 6;
+        var left = rect.Left + padding;
+        var top = rect.Top + padding;
+        var width = rect.Width - padding * 2;
+        var height = rect.Height - padding * 2;
+        Vector2 Transform(Vector2 point) => new(
+            left + MathHelper.Clamp(point.X / GameConstants.MapWidth, 0, 1) * width,
+            top + MathHelper.Clamp((point.Y - GameConstants.TopBarHeight) /
+                (GameConstants.LogicalHeight - GameConstants.TopBarHeight), 0, 1) * height);
+
+        var points = route.Select(Transform).ToArray();
+        for (var index = 0; index < points.Length - 1; index++)
+            p.Line(batch, points[index], points[index + 1], baseColor, 5);
+        foreach (var point in points)
+            p.FillRect(batch, new Rectangle((int)point.X - 2, (int)point.Y - 2, 5, 5), baseColor);
+        for (var index = 0; index < points.Length - 1; index++)
+            p.Line(batch, points[index], points[index + 1], accentColor, 1);
+
+        p.DrawPolygon(batch, points[0], 4, 4, true, ColorPalette.Cyan, MathHelper.PiOver4);
+        p.DrawPolygon(batch, points[^1], 4, 3, true, ColorPalette.Coral, -MathHelper.PiOver2);
     }
 
     private void DrawProfilesLibrary(SpriteBatch batch, PrimitiveRenderer p, Rectangle panel, string returnDestination)
