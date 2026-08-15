@@ -99,6 +99,8 @@ public sealed class UIManager
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
     private int _mainMenuSelection = 5;
     private int _settingsSelection;
+    private int _pauseMenuSelection;
+    private int _resultMenuSelection;
     private int _towerLibraryIndex;
     private int _towerLibraryDoctrineIndex;
     private int _enemyLibraryIndex;
@@ -1003,14 +1005,42 @@ public sealed class UIManager
             return UiAction.None;
         }
 
-        if (input.EscapePressed || input.PausePressed || input.EnterPressed)
+        if (input.EscapePressed || input.PausePressed)
         {
             _restartArmed = false;
             return UiAction.Resume;
         }
+        if (input.TabPressed || input.NavigateUpPressed || input.NavigateDownPressed)
+        {
+            MovePauseMenuSelection(input.NavigateUpPressed ? -1 : 1, session);
+            return UiAction.None;
+        }
+        if (input.EnterPressed) return ActivatePauseMenuSelection(session);
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
-        if (_restartButton.Contains(point))
+        for (var selection = 0; selection < 7; selection++)
+        {
+            if (!PauseMenuOptionRectangle(selection).Contains(point)) continue;
+            _pauseMenuSelection = selection;
+            return ActivatePauseMenuSelection(session);
+        }
+        return UiAction.None;
+    }
+
+    private void MovePauseMenuSelection(int direction, MinimalBastion.GameSession session)
+    {
+        _restartArmed = false;
+        for (var attempts = 0; attempts < 7; attempts++)
+        {
+            _pauseMenuSelection = (_pauseMenuSelection + direction + 7) % 7;
+            if (_pauseMenuSelection != 3 || session.CanSaveCheckpoint)
+                if (_pauseMenuSelection != 4 || _saveAvailable) return;
+        }
+    }
+
+    private UiAction ActivatePauseMenuSelection(MinimalBastion.GameSession session)
+    {
+        if (_pauseMenuSelection == 5)
         {
             if (_restartArmed)
             {
@@ -1021,19 +1051,34 @@ public sealed class UIManager
             return UiAction.None;
         }
         _restartArmed = false;
-        if (_resumeButton.Contains(point)) return UiAction.Resume;
-        if (_towerLibraryButton.Contains(point))
+        if (_pauseMenuSelection == 1)
         {
             _towerLibraryOpen = true;
             _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, Math.Max(0, _libraryTowers.Count - 1));
             return UiAction.None;
         }
-        if (_pauseSettingsButton.Contains(point)) return UiAction.Settings;
-        if (_saveButton.Contains(point) && session.CanSaveCheckpoint) return UiAction.SaveGame;
-        if (_loadButton.Contains(point) && _saveAvailable) return UiAction.LoadGame;
-        if (_mainMenuButton.Contains(point)) return UiAction.MainMenu;
-        return UiAction.None;
+        return _pauseMenuSelection switch
+        {
+            0 => UiAction.Resume,
+            2 => UiAction.Settings,
+            3 when session.CanSaveCheckpoint => UiAction.SaveGame,
+            4 when _saveAvailable => UiAction.LoadGame,
+            6 => UiAction.MainMenu,
+            _ => UiAction.None
+        };
     }
+
+    private Rectangle PauseMenuOptionRectangle(int selection) => selection switch
+    {
+        0 => _resumeButton,
+        1 => _towerLibraryButton,
+        2 => _pauseSettingsButton,
+        3 => _saveButton,
+        4 => _loadButton,
+        5 => _restartButton,
+        6 => _mainMenuButton,
+        _ => Rectangle.Empty
+    };
 
     public UiAction HandleTitleTowerLibrary(InputSnapshot input) =>
         HandleTowerLibraryInput(input) ? UiAction.MainMenu : UiAction.None;
@@ -1194,14 +1239,29 @@ public sealed class UIManager
 
     public UiAction HandleResultInput(InputSnapshot input, bool victory)
     {
-        if (input.EnterPressed)
+        if (input.TabPressed || input.NavigateLeftPressed || input.NavigateRightPressed ||
+            input.NavigateUpPressed || input.NavigateDownPressed)
         {
             _restartArmed = false;
-            return victory ? UiAction.ContinueEndless : UiAction.ViewField;
+            var reverse = input.NavigateLeftPressed || input.NavigateUpPressed;
+            _resultMenuSelection = (_resultMenuSelection + (reverse ? -1 : 1) + 3) % 3;
+            return UiAction.None;
         }
+        if (input.EnterPressed) return ActivateResultSelection(victory);
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
-        if (_resultRestartButton.Contains(point))
+        for (var selection = 0; selection < 3; selection++)
+        {
+            if (!ResultOptionRectangle(selection).Contains(point)) continue;
+            _resultMenuSelection = selection;
+            return ActivateResultSelection(victory);
+        }
+        return UiAction.None;
+    }
+
+    private UiAction ActivateResultSelection(bool victory)
+    {
+        if (_resultMenuSelection == 1)
         {
             if (_restartArmed)
             {
@@ -1212,10 +1272,18 @@ public sealed class UIManager
             return UiAction.None;
         }
         _restartArmed = false;
-        if (_resultContinueButton.Contains(point)) return victory ? UiAction.ContinueEndless : UiAction.ViewField;
-        if (_resultMenuButton.Contains(point)) return UiAction.MainMenu;
-        return UiAction.None;
+        return _resultMenuSelection == 0
+            ? victory ? UiAction.ContinueEndless : UiAction.ViewField
+            : UiAction.MainMenu;
     }
+
+    private Rectangle ResultOptionRectangle(int selection) => selection switch
+    {
+        0 => _resultContinueButton,
+        1 => _resultRestartButton,
+        2 => _resultMenuButton,
+        _ => Rectangle.Empty
+    };
 
     public UiAction HandleDefeatFieldInput(InputSnapshot input)
     {
@@ -2080,6 +2148,9 @@ public sealed class UIManager
                 _restartArmed ? ColorPalette.Coral : ColorPalette.Cobalt);
             DrawButton(batch, p, _resultMenuButton, "MAIN MENU", true, ColorPalette.Violet);
         }
+        var focus = ResultOptionRectangle(Math.Clamp(_resultMenuSelection, 0, 2));
+        focus.Inflate(3, 3);
+        p.DrawRect(batch, focus, ColorPalette.Ink, 2);
     }
 
     private void DrawDefeatFieldControls(SpriteBatch batch, PrimitiveRenderer p)
@@ -2202,9 +2273,13 @@ public sealed class UIManager
         DrawButton(batch, p, _restartButton, _restartArmed ? "CONFIRM RESTART" : "RESTART", true,
             _restartArmed ? ColorPalette.Coral : ColorPalette.Orange);
         DrawButton(batch, p, _mainMenuButton, "MAIN MENU", true, ColorPalette.Coral);
+        var focus = PauseMenuOptionRectangle(Math.Clamp(_pauseMenuSelection, 0, 6));
+        focus.Inflate(3, 3);
+        p.DrawRect(batch, focus, ColorPalette.Ink, 2);
         DrawFittedCenteredText(batch,
             $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
             new Vector2(640, 580), session.Challenge.AccentColor, 0.50f, 500);
+        DrawText(batch, "UP/DOWN SELECT  |  ENTER ACTIVATE", new Vector2(640, 608), ColorPalette.Muted, 0.44f, true);
     }
 
     private void DrawTowerLibrary(SpriteBatch batch, PrimitiveRenderer p, string returnDestination)

@@ -526,6 +526,16 @@ internal static class Program
         Check.Equal(UiAction.Restart,
             restartUi.HandlePausedInput(WorldInput(new Vector2(640, 467)) with { LeftPressed = true }, Session()),
             "second pause-menu restart click confirms the reset");
+        var keyboardRestartUi = new UIManager(null!);
+        var keyboardRestartSession = Session();
+        for (var move = 0; move < 4; move++)
+            keyboardRestartUi.HandlePausedInput(WorldInput(Vector2.Zero) with { NavigateDownPressed = true }, keyboardRestartSession);
+        Check.Equal(UiAction.None,
+            keyboardRestartUi.HandlePausedInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, keyboardRestartSession),
+            "focused pause restart still arms before mutating the run");
+        Check.Equal(UiAction.Restart,
+            keyboardRestartUi.HandlePausedInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, keyboardRestartSession),
+            "second focused pause restart activation confirms the reset");
 
         var coOpSession = Session();
         coOpSession.ConfigureCoOp(2);
@@ -989,6 +999,14 @@ internal static class Program
         Check.Equal(UiAction.Restart,
             ui.HandleResultInput(WorldInput(new Vector2(621, 603)) with { LeftPressed = true }, false),
             "second result restart click confirms the reset");
+        var keyboardResults = new UIManager(null!);
+        keyboardResults.HandleResultInput(WorldInput(Vector2.Zero) with { NavigateRightPressed = true }, false);
+        Check.Equal(UiAction.None,
+            keyboardResults.HandleResultInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, false),
+            "focused result restart arms confirmation");
+        Check.Equal(UiAction.Restart,
+            keyboardResults.HandleResultInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, false),
+            "focused result restart requires a second activation");
         Check.Equal(UiAction.ViewResults,
             ui.HandleDefeatFieldInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),
             "inspection escape returns to results");
