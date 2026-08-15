@@ -260,6 +260,8 @@ internal static class Program
         var ui = new UIManager(null!);
         ui.ConfigureDifficulties(content.Difficulties.Values);
         Check.Equal("normal", ui.SelectedDifficultyId, "new game UI defaults to normal");
+        Check.Equal(UiAction.Play, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+            "title Enter starts the prominent new-game action");
         ui.HandleMainMenu(WorldInput(new Vector2(685, 390)) with { LeftPressed = true });
         Check.Equal("hard", ui.SelectedDifficultyId, "difficulty selector cycles profiles");
     }
@@ -445,6 +447,9 @@ internal static class Program
     {
         foreach (var canSave in new[] { false, true })
             Check.True(UIManager.PauseCheckpointStatus(canSave).All(character => character is >= ' ' and <= '~'), "pause status uses compiled ASCII glyphs");
+        Check.Equal(UiAction.Resume,
+            new UIManager(null!).HandlePausedInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, Session()),
+            "pause Enter resumes the match");
     }
 
     private static void OpeningWaveBalance()
@@ -758,6 +763,12 @@ internal static class Program
         Check.Equal(UiAction.ViewField,
             ui.HandleResultInput(WorldInput(new Vector2(399, 603)) with { LeftPressed = true }, false),
             "defeat results expose the field-inspection action");
+        Check.Equal(UiAction.ContinueEndless,
+            ui.HandleResultInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, true),
+            "victory Enter continues into endless defense");
+        Check.Equal(UiAction.ViewField,
+            ui.HandleResultInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, false),
+            "defeat Enter opens read-only field inspection");
         Check.Equal(UiAction.ViewResults,
             ui.HandleDefeatFieldInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),
             "inspection escape returns to results");
@@ -1282,6 +1293,15 @@ internal static class Program
         var ipv6 = OnlineHostEndpoint.Parse("[2001:db8::1]:28742", 28741);
         Check.Equal("2001:db8::1", ipv6.Host, "IPv6 host parsed");
         Check.Equal(28742, ipv6.Port, "IPv6 port parsed");
+
+        var ui = new UIManager(null!);
+        ui.HandleCoOpMenu(WorldInput(Vector2.Zero) with { TextEntered = "friend.example" });
+        ui.HandleCoOpMenu(WorldInput(Vector2.Zero) with { TabPressed = true });
+        ui.HandleCoOpMenu(WorldInput(Vector2.Zero) with { TextEntered = "AB12CD" });
+        Check.Equal("friend.example", ui.JoinHostInput, "keyboard host entry remains in the address field");
+        Check.Equal("AB12CD", ui.JoinCodeInput, "Tab switches keyboard entry to the join-code field");
+        Check.Equal(UiAction.JoinCoOp, ui.HandleCoOpMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+            "Enter joins after both keyboard fields are complete");
     }
 
     private static void HeadlessSimulationDeterministic()
@@ -1676,6 +1696,16 @@ internal static class Program
         var ui = new UIManager(null!);
         ui.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
         ui.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values);
+        var tabUi = new UIManager(null!);
+        tabUi.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
+        tabUi.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values);
+        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
+        Check.True(tabUi.LibraryShowsThreats, "Tactical Library Tab advances from towers to threats");
+        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
+        Check.True(tabUi.LibraryShowsCampaign, "Tactical Library Tab advances from threats to campaigns");
+        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
+        Check.True(!tabUi.LibraryShowsThreats && !tabUi.LibraryShowsCampaign,
+            "Tactical Library Tab wraps from campaigns to towers");
         Check.Equal(UiAction.TowerLibrary,
             ui.HandleMainMenu(WorldInput(new Vector2(712, 442)) with { LeftPressed = true }),
             "title screen opens tower library");
@@ -1928,6 +1958,9 @@ internal static class Program
 
             var slotUi = new UIManager(null!);
             slotUi.ConfigureSaveSlots(slots, false);
+            Check.Equal(UiAction.ConfirmSaveSlot,
+                slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+                "save browser Enter confirms the selected usable slot");
             Check.Equal(UiAction.None,
                 slotUi.HandleSaveSlots(WorldInput(new Vector2(870, 600)) with { LeftPressed = true }),
                 "next-page control changes pages without loading");

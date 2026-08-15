@@ -110,7 +110,8 @@ public readonly record struct InputSnapshot(
     string TextEntered,
     bool BackspacePressed,
     bool EnterPressed,
-    bool CopyPressed = false);
+    bool CopyPressed = false,
+    bool TabPressed = false);
 
 public sealed class ViewportTransform
 {
@@ -193,7 +194,8 @@ public sealed class InputRouter
             textEntered,
             ShouldBackspace(keyboard),
             IsPressed(keyboard, _previousKeyboard, Microsoft.Xna.Framework.Input.Keys.Enter),
-            controlDown && IsPressed(keyboard, _previousKeyboard, Keys.C));
+            controlDown && IsPressed(keyboard, _previousKeyboard, Keys.C),
+            IsPressed(keyboard, _previousKeyboard, Keys.Tab));
         _previousKeyboard = keyboard;
         _previousMouse = mouse;
         return snapshot;

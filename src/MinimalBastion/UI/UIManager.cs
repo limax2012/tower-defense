@@ -330,6 +330,7 @@ public sealed class UIManager
 
     public UiAction HandleMainMenu(InputSnapshot input)
     {
+        if (input.EnterPressed) return UiAction.Play;
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
         if (_mapButton.Contains(point) && _maps.Count > 1)
@@ -394,6 +395,11 @@ public sealed class UIManager
                 return UiAction.None;
             }
             return UiAction.CloseSaveSlots;
+        }
+        if (input.EnterPressed)
+        {
+            var enterSelection = _saveSlots.FirstOrDefault(slot => slot.Slot == _selectedSaveSlot);
+            if (_saveSlotWriteMode || enterSelection is { IsOccupied: true, Error: null }) return UiAction.ConfirmSaveSlot;
         }
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
@@ -493,6 +499,7 @@ public sealed class UIManager
 
     public UiAction HandleCoOpMenu(InputSnapshot input)
     {
+        if (input.TabPressed) _editingJoinCode = !_editingJoinCode;
         if (input.LeftPressed)
         {
             var clicked = input.MousePosition.ToPoint();
@@ -765,7 +772,7 @@ public sealed class UIManager
             return UiAction.None;
         }
 
-        if (input.EscapePressed || input.PausePressed) return UiAction.Resume;
+        if (input.EscapePressed || input.PausePressed || input.EnterPressed) return UiAction.Resume;
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
         if (_resumeButton.Contains(point)) return UiAction.Resume;
@@ -792,6 +799,7 @@ public sealed class UIManager
         _enemyLibraryIndex = Math.Clamp(_enemyLibraryIndex, 0, Math.Max(0, _libraryEnemies.Count - 1));
         if (input.EscapePressed || input.PausePressed || input.RightPressed) return true;
         _campaignLibraryMapIndex = Math.Clamp(_campaignLibraryMapIndex, 0, Math.Max(0, _maps.Count - 1));
+        if (input.TabPressed) CycleTowerLibraryTab();
         var activeCount = _libraryShowsCampaign ? _maps.Count : _libraryShowsThreats ? _libraryEnemies.Count : _libraryTowers.Count;
         if (input.TowerHotkey > 0 && input.TowerHotkey <= activeCount)
         {
@@ -861,8 +869,26 @@ public sealed class UIManager
         return false;
     }
 
+    private void CycleTowerLibraryTab()
+    {
+        if (!_libraryShowsThreats && !_libraryShowsCampaign && _libraryEnemies.Count > 0)
+        {
+            _libraryShowsThreats = true;
+            return;
+        }
+        if (!_libraryShowsCampaign && _libraryCampaignWaves.Count > 0)
+        {
+            _libraryShowsThreats = false;
+            _libraryShowsCampaign = true;
+            return;
+        }
+        _libraryShowsThreats = false;
+        _libraryShowsCampaign = false;
+    }
+
     public UiAction HandleResultInput(InputSnapshot input, bool victory)
     {
+        if (input.EnterPressed) return victory ? UiAction.ContinueEndless : UiAction.ViewField;
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
         if (_resultContinueButton.Contains(point)) return victory ? UiAction.ContinueEndless : UiAction.ViewField;
@@ -1590,7 +1616,7 @@ public sealed class UIManager
         DrawButton(batch, p, _joinCoOpButton, "JOIN ONLINE GAME", CanJoinOnline, ColorPalette.Green);
         DrawButton(batch, p, _backButton, "BACK", true, ColorPalette.Violet);
         DrawText(batch, "Shared credits, lives, and tower control; placement is still marked P1/P2.", new Vector2(640, 590), ColorPalette.Muted, 0.56f, true);
-        DrawText(batch, "Ctrl+V pastes an address; hold Backspace to erase. Middle-click the battlefield to ping.", new Vector2(640, 613), ColorPalette.Muted, 0.52f, true);
+        DrawText(batch, "TAB switches fields; Ctrl+V pastes; hold Backspace to erase. Middle-click the field to ping.", new Vector2(640, 613), ColorPalette.Muted, 0.50f, true);
     }
 
     private void DrawCoOpLobby(SpriteBatch batch, PrimitiveRenderer p)
@@ -1868,7 +1894,7 @@ public sealed class UIManager
         }
 
         DrawTowerLibraryDetails(batch, p, towers[_towerLibraryIndex], detailPanel);
-        DrawText(batch, $"Click a tower or press 1-0.  ESC, right-click, or BACK returns to {returnDestination}.", new Vector2(640, 674), ColorPalette.Muted, 0.49f, true);
+        DrawText(batch, $"Click a tower or press 1-0.  TAB changes page.  ESC, right-click, or BACK returns to {returnDestination}.", new Vector2(640, 674), ColorPalette.Muted, 0.47f, true);
     }
 
     private void DrawCampaignLibrary(SpriteBatch batch, PrimitiveRenderer p, Rectangle detailPanel, string returnDestination)
@@ -1926,7 +1952,7 @@ public sealed class UIManager
         }
 
         DrawFittedCenteredText(batch,
-            $"W21+ inherits this arena's final roster; HP accelerates, density/cadence stay capped, and a boss returns every 5 waves.  ESC or BACK returns to {returnDestination}.",
+            $"W21+ inherits this arena's final roster; HP accelerates, density/cadence stay capped, and a boss returns every 5 waves.  TAB changes page; ESC or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
     }
 
@@ -1988,8 +2014,8 @@ public sealed class UIManager
         }
 
         DrawEnemyLibraryDetails(batch, p, _libraryEnemies[_enemyLibraryIndex], detailPanel);
-        DrawText(batch, $"Click a threat or press 1-5.  Values precede wave and difficulty scaling.  ESC, right-click, or BACK returns to {returnDestination}.",
-            new Vector2(640, 674), ColorPalette.Muted, 0.46f, true);
+        DrawText(batch, $"Click a threat or press 1-5.  Values precede scaling.  TAB changes page; ESC, right-click, or BACK returns to {returnDestination}.",
+            new Vector2(640, 674), ColorPalette.Muted, 0.45f, true);
     }
 
     private void DrawEnemyLibraryDetails(SpriteBatch batch, PrimitiveRenderer p, EnemyDefinition definition, Rectangle panel)

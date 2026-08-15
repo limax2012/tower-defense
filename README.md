@@ -63,6 +63,7 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 ## Controls
 
 - **Tower Library** is available from both the title screen and pause menu. Click either tier-two doctrine to preview its exact stats, cumulative cost, and interaction with both final roles before starting or while planning a run.
+- `Enter`: activate the primary action on the title screen, pause/results screens, or selected save slot. `Tab` cycles Tactical Library pages and switches between the co-op address/code fields.
 - Left click: select, place, or activate a UI control.
 - Right click or Escape: cancel placement; Escape pauses in solo play.
 - `1`-`0`: prepare the corresponding tower.
@@ -76,7 +77,7 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 - `S`: toggle 1x/2x speed.
 - `P`: pause/resume in solo play.
 - Middle click: send a co-op ping.
-- In the co-op address/code fields, `Ctrl+C` copies the active field, `Ctrl+V` pastes, and holding Backspace continuously erases text.
+- In the co-op address/code fields, `Ctrl+C` copies the active field, `Ctrl+V` pastes, holding Backspace continuously erases text, and `Tab` switches fields.
 - `F4`: toggle the debug overlay in Debug builds.
 
 ## Gameplay notes
