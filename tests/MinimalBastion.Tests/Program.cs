@@ -3242,9 +3242,19 @@ internal static class Program
 
             Directory.CreateDirectory(legacyRoot);
             var legacyRepository = new SaveSlotRepository(legacyRoot);
-            File.WriteAllText(legacyRepository.LegacySavePath, JsonSerializer.Serialize(solo.CaptureSaveGame()));
+            var legacyData = solo.CaptureSaveGame();
+            legacyData.RunId = "";
+            legacyData.DifficultyId = "";
+            legacyData.ChallengeId = "";
+            File.WriteAllText(legacyRepository.LegacySavePath, JsonSerializer.Serialize(legacyData));
             var migrated = legacyRepository.GetSlots();
             Check.True(migrated[0].IsOccupied, "legacy checkpoint migrates into slot one");
+            Check.Equal("hard", migrated[0].DifficultyId, "legacy slot metadata identifies the original hard rules");
+            Check.Equal("standard", migrated[0].ChallengeId, "legacy slot metadata defaults to the standard directive");
+            var restoredLegacy = legacyRepository.Load(solo.Content);
+            Check.Equal("hard", restoredLegacy.DifficultyId, "legacy checkpoint restores the original hard rules");
+            Check.Equal("standard", restoredLegacy.ChallengeId, "legacy checkpoint restores the standard directive");
+            Check.True(!string.IsNullOrWhiteSpace(restoredLegacy.RunId), "legacy checkpoint receives a valid run identity");
             Check.True(File.Exists(legacyRepository.LegacySavePath), "legacy checkpoint remains untouched after migration");
         }
         finally
