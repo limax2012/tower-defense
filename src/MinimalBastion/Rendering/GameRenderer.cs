@@ -11,7 +11,8 @@ public sealed class GameRenderer
 {
     public bool ReducedEffects { get; set; }
 
-    public void Draw(SpriteBatch batch, PrimitiveRenderer primitives, MinimalBastion.GameSession session)
+    public void Draw(SpriteBatch batch, PrimitiveRenderer primitives, MinimalBastion.GameSession session,
+        bool showTransientCombat = true)
     {
         primitives.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight), session.Map.Definition.Background.BaseColor);
         DrawTerrain(batch, primitives, session);
@@ -20,8 +21,11 @@ public sealed class GameRenderer
         DrawRanges(batch, primitives, session);
         DrawTowers(batch, primitives, session);
         DrawEnemies(batch, primitives, session);
-        DrawProjectiles(batch, primitives, session);
-        DrawEffects(batch, primitives, session);
+        if (showTransientCombat)
+        {
+            DrawProjectiles(batch, primitives, session);
+            DrawEffects(batch, primitives, session);
+        }
         DrawMarkers(batch, primitives, session);
     }
 

@@ -1213,7 +1213,8 @@ public sealed class Game1 : Game
         {
             if (_session is not null && _state != GameState.MainMenu)
             {
-                _gameRenderer.Draw(_spriteBatch, _primitives, _session);
+                _gameRenderer.Draw(_spriteBatch, _primitives, _session,
+                    showTransientCombat: _state != GameState.DefeatField);
                 if (_state == GameState.Playing || _state == GameState.Paused)
                     _debug.Draw(_spriteBatch, _primitives, _session, gameTime.ElapsedGameTime.TotalSeconds > 0 ? (float)(1 / gameTime.ElapsedGameTime.TotalSeconds) : 0);
             }

@@ -99,6 +99,7 @@ Reports: `.build/balance/four-map-hard-close_quarters-3x.json`, `.build/balance/
 ## Endless validation
 
 - A doctrine/range-era 144-run Hard matrix continued all 12 strategies across all four arenas toward wave 40. No defense reached the cap. Across all campaigns, average failure was wave 20.9; among the 83 runs that reached wave 20, average depth was 26.5. Control survivors averaged 34.2 and peaked at 39. Map survivor averages were Crosswind 28.2, Prism 26.3, Foundry 26.1, and Surge 24.9. Report: `.build/balance/doctrine-range-hard-endless40-3x.json`.
+- A fresh wave-60 audit on the current executable ran all 12 policies once across all four maps on Easy, Normal, and Hard. None of 144 runs reached wave 60: Easy peaked at 43 (14 reached 30), Normal at 39 (7 reached 30), and Hard at 39 (5 reached 30). Control led the survivors but still failed on every map, confirming quadratic health escalation eventually breaks stabilized range/control economies rather than only increasing roster count. Reports: `.build/balance/overnight-endless60-{easy,normal,hard}-1x.json`.
 
 - Five Foundry Adaptive seeds targeted wave 30. One failed the authored campaign at wave 14; the four campaign-clearing runs reached waves 23, 24, 24, and 28 rather than encountering an artificial wave-21 wall.
 - A 12-strategy Surge Divide pass produced three wave-30 survivors: AntiSwarm and Control with 10 lives, and Tactical with 12. Adaptive reached 28 and LongRange reached 25.

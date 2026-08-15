@@ -91,6 +91,9 @@ Updated: 2026-08-15
   - `.build/balance/overnight-audit-normal-3x.json`
   - `.build/balance/overnight-audit-hard-3x.json`
   - `.build/balance/overnight-audit-bastion-3x.json`
+  - `.build/balance/overnight-endless60-easy-1x.json`
+  - `.build/balance/overnight-endless60-normal-1x.json`
+  - `.build/balance/overnight-endless60-hard-1x.json`
 
 ### Current difficulty audit
 

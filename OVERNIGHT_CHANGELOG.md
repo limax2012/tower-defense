@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Cleaned defeat-field inspection without altering the concluded simulation: surviving enemies, defenses, roads, nodes, and ranges remain visible, while projectiles and momentary attack rings from the fatal tick are suppressed instead of appearing frozen. This is renderer-only, so solo/co-op checksums remain untouched.
 - Enforced the two-player wave gate at the transport boundary. Player 2 can no longer bypass the readiness coordinator with a raw `StartWave` request, false readiness cannot count as consent, and host ready flags must agree with the authoritative P1/P2 mask.
 - Tightened reconnect snapshot validation around bounded run/announcement strings and live homing-projectile references. A malformed orphan projectile can no longer restore as a client-only miss and immediately provoke another checksum repair loop.
 - Removed the last visible legacy “relay node” label from Prism Circuit and standardized current documentation on Surge Nodes and tower-specific Protocols without changing stable IDs or save/network schemas.
