@@ -18,7 +18,7 @@ The listener is dual-stack and binds all adapters. The join code is a lightweigh
 - Either player may place towers and use shared Pulse Plates.
 - Both players must ready every wave. The host queues the authoritative start only after both bits are set.
 - A jointly early-called intermission awards the normal shared 20-credit reward only when the second ready signal reaches the host before the countdown expires.
-- Pause is disabled in online play; speed changes are shared authoritative commands.
+- Either player can pause or resume the shared match with Esc, P, or the HUD control. Combat freezes on the same deterministic tick for both peers while tower planning remains available; the pause owner is preserved through reconnect snapshots.
 - Middle-click emits a transient cyan/coral player ping.
 - **Restart Co-op** retains the connection and asks the host to create and broadcast a fresh authoritative match on the same map. **Main Menu** explicitly ends the session.
 
@@ -36,17 +36,17 @@ The host:
 4. applies the same scheduled command locally;
 5. broadcasts the authoritative command and tick.
 
-Both peers advance `DeterministicSessionRunner` with a fixed simulation step. `SessionChecksum` includes map, waves, shared economy, enemies, towers, ownership, targeting, branches, Overdrive state/cooldown, projectiles, Pulse Plate handled-enemy IDs, and forge state. Peers exchange periodic tick/checksum messages and fail clearly on divergence or a command arriving after its tick.
+Both peers advance `DeterministicSessionRunner` with a fixed simulation step. `SessionChecksum` includes map, waves, shared economy, enemies, towers, ownership, targeting, branches, Protocol state/cooldown, shared pause state, projectiles, Pulse Plate handled-enemy IDs, and forge state. Peers exchange periodic tick/checksum messages; divergence or a command arriving after its tick pauses play and requests a clean host-authoritative snapshot. A snapshot-tick fence rejects checksums still in flight from the state that was just repaired.
 
 Network code never implements a second copy of placement, affordability, upgrade, tactical, or selling rules; it calls the same validated `GameSession` methods as solo UI and automated players.
 
 ## Transport
 
-- Newline-delimited JSON envelopes over `TcpClient`/`TcpListener`.
-- Protocol version validation on every envelope.
-- Maximum message length: 65,536 characters.
+- Length-prefixed UTF-8 JSON envelopes over `TcpClient`/`TcpListener`.
+- Protocol, message-kind, direction, player identity, semantic field, command, receipt, and snapshot validation before gameplay dispatch.
+- Maximum frame size: 2 MiB. Declared size is checked before payload allocation, and each connection permits at most 64 queued outbound frames.
 - TCP `NoDelay` enabled for command responsiveness.
-- Six-character code handshake before the host accepts Player 2.
+- Six-character code and recursive executable/content fingerprint handshake before the host accepts Player 2. Both sides abandon a half-open handshake after ten seconds.
 - Message types: hello/welcome/rejected, command request/receipt/authoritative command, state snapshot/resync request, ready/wave ready, tick sync, restart request, ping, and disconnect.
 - Map, difficulty, challenge, active combat, pending commands, economy, ready state, and run identity travel in the authoritative snapshot. Player 2 reconstructs the exact host session before readying.
 - Host command input delay: six fixed ticks, providing a small latency buffer.
@@ -62,6 +62,7 @@ Network code never implements a second copy of placement, affordability, upgrade
 - Map/difficulty/challenge identity and latent future-entity state in checksums and session construction.
 - Active-combat snapshot round trip, future-command restoration, post-reconnect combat soak, repeated loopback reconnection, and graceful connection close detection.
 - Jittered 0-5 tick command delivery across shared placement, branching, targeting, Protocols, speed, and selling, plus explicit rejection once the six-tick authority buffer has been missed.
+- Real loopback coverage for bounded framing, malformed-envelope rejection, shared pause transport, restart requests, reconnect listener reuse, and post-snapshot checksum fencing.
 
 The native menu, address/code fields, map selection label, and lobby presentation have also been visually inspected.
 
@@ -69,7 +70,7 @@ The native menu, address/code fields, map selection label, and lobby presentatio
 
 - No matchmaking, lobby directory, hosted relay, automatic NAT traversal, or UPnP/NAT-PMP mapping.
 - Host must be reachable through manual port forwarding or a VPN.
-- Transport is not encrypted; do not send secrets through the protocol. Current messages contain gameplay commands and state hashes only.
+- Transport is not encrypted; do not send secrets through the protocol. Current messages contain gameplay commands, reconnect state, and state hashes only.
 - Reconnect is supported through the existing join code and a host-authoritative recovery snapshot, but host migration, spectators, and more-than-two-player support are not.
 - Both peers must run identical executable/content versions; build/content fingerprints reject incompatible peers before play.
 - Six-tick buffering is suitable for ordinary direct connections but has not been field-tested across high-latency remote routes.

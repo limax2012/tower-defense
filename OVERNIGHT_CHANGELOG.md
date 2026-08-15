@@ -1,5 +1,9 @@
 # Overnight Changelog
 
+- Drained in-flight connect, accept, receive, and send tasks during every co-op teardown. A late successful connection is disposed instead of becoming an unowned socket, while expected cancellation faults are observed safely.
+- Added a post-snapshot checksum fence and bounded tick window. Delayed checksums from the state that was just repaired can no longer arrive after resume and trigger a false second resynchronization.
+- Enforced host/client message direction after the handshake. Echoed host checksums/snapshots and client-only requests are rejected before they can mutate sync state.
+- Added type-aware validation for complete co-op envelopes, including defined message kinds, bounded semantic fields, finite presence coordinates, player/command identity agreement, receipts, checksums, and authoritative snapshots. A real loopback regression proves malformed framed traffic is rejected at the transport edge.
 - Bounded host and client connection handshakes to ten seconds. A half-open TCP peer can no longer occupy the private host listener indefinitely; failure returns to the existing retry/accept flow with a clear timeout message.
 - Centralized structural validation for live and snapshotted co-op commands. Null IDs, nonfinite coordinates, invalid enums/entities, and unsupported speed values are rejected before sequencing or gameplay lookup; malformed authority traffic requests a clean resync.
 - Added a strict 64-frame connection-level outbound budget before serialization/allocation. A stalled socket now faults into the existing preserved-session reconnect path instead of retaining an unbounded internal write queue.
@@ -216,7 +220,6 @@ Date: 2026-08-14
 
 - Direct internet host requires manual router forwarding or VPN connectivity.
 - No hosted relay, matchmaking, automatic NAT traversal, or encryption.
-- No persistent run-history browser beyond individual save metadata and end-of-run analysis.
 - Automated strategy results are healthy but are not a substitute for human branch timing, protocol use, and late endless reorganization.
 - Human remote-latency and late-wave playtesting remain necessary despite deterministic/loopback coverage.
 
@@ -225,4 +228,4 @@ Date: 2026-08-14
 1. Field-test direct online play and reconnect on two remote PCs and different consumer routers.
 2. Evaluate an optional authorized hosted rendezvous/relay if port forwarding remains too burdensome.
 3. Collect human results for all four difficulty profiles and adjust only statistically persistent outliers.
-4. Add another arena only when it introduces a genuinely different placement constraint or tactical system rather than another route variant.
+4. Add a fifth arena only when it introduces a genuinely different placement constraint or tactical system rather than another route variant.
