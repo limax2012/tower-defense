@@ -80,6 +80,8 @@ internal static class Program
             ("online co-op reconnect transport", CoOpReconnectTransport),
             ("co-op invalid code", CoOpInvalidCode),
             ("co-op incompatible build", CoOpIncompatibleBuild),
+            ("build fingerprint content coverage", BuildFingerprintContentCoverage),
+            ("content identity validation", ContentIdentityValidation),
             ("online endpoint parsing", OnlineEndpointParsing),
             ("tower information", TowerInformation),
             ("tower library reference", TowerLibraryReference),
@@ -1304,6 +1306,65 @@ internal static class Program
             "Enter joins after both keyboard fields are complete");
     }
 
+    private static void BuildFingerprintContentCoverage()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"MinimalBastionFingerprint-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(directory, "Maps"));
+            File.WriteAllText(Path.Combine(directory, "Towers.json"), "{\"version\":1}");
+            File.WriteAllText(Path.Combine(directory, "Maps", "Arena.json"), "{\"id\":\"arena\"}");
+            var baseline = BuildFingerprint.Compute(directory);
+            Check.Equal(64, baseline.Length, "build fingerprint uses a full SHA-256 digest");
+            Check.Equal(baseline, BuildFingerprint.Compute(directory), "build fingerprint is repeatable");
+
+            File.WriteAllText(Path.Combine(directory, "notes.txt"), "non-authoritative");
+            Check.Equal(baseline, BuildFingerprint.Compute(directory), "non-JSON files do not affect gameplay compatibility");
+            File.WriteAllText(Path.Combine(directory, "Maps", "Arena.json"), "{\"id\":\"changed\"}");
+            Check.True(!baseline.Equals(BuildFingerprint.Compute(directory), StringComparison.Ordinal),
+                "nested campaign content changes the compatibility fingerprint");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    private static void ContentIdentityValidation()
+    {
+        var source = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var directory = Path.Combine(Path.GetTempPath(), $"MinimalBastionContent-{Guid.NewGuid():N}");
+        try
+        {
+            CopyDirectory(source, directory);
+            File.Copy(Path.Combine(directory, "Maps", "FoundryLoop.json"), Path.Combine(directory, "Maps", "DuplicateMap.json"));
+            Check.Throws<InvalidDataException>(() => new ContentLoader(directory).Load(), "duplicate map IDs are rejected");
+            File.Delete(Path.Combine(directory, "Maps", "DuplicateMap.json"));
+
+            var foundryMapPath = Path.Combine(directory, "Maps", "FoundryLoop.json");
+            var foundryMap = File.ReadAllText(foundryMapPath).Replace("\"foundry_waves\"", "\"prism_waves\"", StringComparison.Ordinal);
+            File.WriteAllText(foundryMapPath, foundryMap);
+            Check.Throws<InvalidDataException>(() => new ContentLoader(directory).Load(), "maps cannot bind another arena's campaign");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    private static void CopyDirectory(string source, string destination)
+    {
+        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
+            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var target = Path.Combine(destination, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target);
+        }
+    }
+
     private static void HeadlessSimulationDeterministic()
     {
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
@@ -2316,5 +2377,18 @@ internal static class Check
     public static void Nearly(float expected, float actual, string name)
     {
         if (MathF.Abs(expected - actual) > 0.02f) throw new InvalidOperationException($"Expected {expected:0.###}, got {actual:0.###}: {name}");
+    }
+
+    public static void Throws<TException>(Action action, string name) where TException : Exception
+    {
+        try
+        {
+            action();
+        }
+        catch (TException)
+        {
+            return;
+        }
+        throw new InvalidOperationException($"Expected {typeof(TException).Name}: {name}");
     }
 }

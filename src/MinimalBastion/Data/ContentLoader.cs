@@ -28,6 +28,8 @@ public sealed class ContentLoader
         {
             if (!waveSets.TryGetValue(candidateMap.WaveSet, out var candidateWaves))
                 throw new InvalidDataException($"No wave set found for map {candidateMap.Id}: {candidateMap.WaveSet}");
+            if (!candidateWaves.MapId.Equals(candidateMap.Id, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException($"Wave set {candidateWaves.Id} belongs to {candidateWaves.MapId}, not map {candidateMap.Id}.");
             DataValidator.Validate(towers, enemies, candidateMap, candidateWaves, tactics);
         }
         DataValidator.ValidateDifficulties(difficulties);
@@ -51,11 +53,14 @@ public sealed class ContentLoader
     {
         var result = new Dictionary<string, MapDefinition>(StringComparer.OrdinalIgnoreCase);
         var directory = Path.Combine(_root, "Maps");
-        foreach (var path in Directory.EnumerateFiles(directory, "*.json"))
+        foreach (var path in Directory.EnumerateFiles(directory, "*.json").OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
         {
+            if (!HasTopLevelProperty(path, "path")) continue;
             var map = JsonSerializer.Deserialize<MapDefinition>(File.ReadAllText(path), ContentJson.Options);
-            if (map is not null && !string.IsNullOrWhiteSpace(map.Id) && map.Path.Count >= 2)
-                result[map.Id] = map;
+            if (map is null || string.IsNullOrWhiteSpace(map.Id) || map.Path.Count < 2)
+                throw new InvalidDataException($"Invalid map definition: {path}");
+            if (!result.TryAdd(map.Id, map))
+                throw new InvalidDataException($"Duplicate map ID: {map.Id}");
         }
         return result;
     }
@@ -64,17 +69,35 @@ public sealed class ContentLoader
     {
         var result = new Dictionary<string, WaveSetDefinition>(StringComparer.OrdinalIgnoreCase);
         var directory = Path.Combine(_root, "Maps");
-        foreach (var path in Directory.EnumerateFiles(directory, "*.json"))
+        foreach (var path in Directory.EnumerateFiles(directory, "*.json").OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
         {
+            if (!HasTopLevelProperty(path, "waves")) continue;
             var waves = JsonSerializer.Deserialize<WaveSetDefinition>(File.ReadAllText(path), ContentJson.Options);
-            if (waves is not null && !string.IsNullOrWhiteSpace(waves.MapId) && waves.Waves.Count > 0)
-            {
-                result[Path.GetFileNameWithoutExtension(path)] = waves;
-                result[waves.MapId] = waves;
-                if (!string.IsNullOrWhiteSpace(waves.Id)) result[waves.Id] = waves;
-            }
+            if (waves is null || string.IsNullOrWhiteSpace(waves.Id) || string.IsNullOrWhiteSpace(waves.MapId) || waves.Waves.Count == 0)
+                throw new InvalidDataException($"Invalid wave-set definition: {path}");
+            AddWaveSetAlias(result, Path.GetFileNameWithoutExtension(path), waves);
+            AddWaveSetAlias(result, waves.MapId, waves);
+            AddWaveSetAlias(result, waves.Id, waves);
         }
         return result;
+    }
+
+    private static void AddWaveSetAlias(Dictionary<string, WaveSetDefinition> result, string alias, WaveSetDefinition waves)
+    {
+        if (result.TryGetValue(alias, out var existing) && !ReferenceEquals(existing, waves))
+            throw new InvalidDataException($"Duplicate wave-set identity: {alias}");
+        result[alias] = waves;
+    }
+
+    private static bool HasTopLevelProperty(string path, string propertyName)
+    {
+        using var document = JsonDocument.Parse(File.ReadAllText(path), new JsonDocumentOptions
+        {
+            CommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true
+        });
+        return document.RootElement.ValueKind == JsonValueKind.Object &&
+            document.RootElement.EnumerateObject().Any(property => property.Name.Equals(propertyName, StringComparison.OrdinalIgnoreCase));
     }
 
     private T Read<T>(string relativePath)

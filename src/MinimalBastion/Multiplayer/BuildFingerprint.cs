@@ -7,16 +7,22 @@ public static class BuildFingerprint
 {
     public static string Compute(string contentDirectory)
     {
+        if (!Directory.Exists(contentDirectory))
+            throw new DirectoryNotFoundException($"Content directory was not found: {contentDirectory}");
+
+        var contentFiles = Directory.EnumerateFiles(contentDirectory, "*.json", SearchOption.AllDirectories)
+            .OrderBy(path => Path.GetRelativePath(contentDirectory, path), StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (contentFiles.Length == 0)
+            throw new InvalidDataException($"Content directory contains no JSON definitions: {contentDirectory}");
+
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        Append(hash, "MinimalBastion.CoOpBuild.v1");
         Append(hash, typeof(BuildFingerprint).Assembly.ManifestModule.ModuleVersionId.ToString("N"));
-        if (Directory.Exists(contentDirectory))
+        foreach (var file in contentFiles)
         {
-            foreach (var file in Directory.EnumerateFiles(contentDirectory, "*.json", SearchOption.AllDirectories)
-                         .OrderBy(path => Path.GetRelativePath(contentDirectory, path), StringComparer.OrdinalIgnoreCase))
-            {
-                Append(hash, Path.GetRelativePath(contentDirectory, file).Replace('\\', '/').ToLowerInvariant());
-                hash.AppendData(File.ReadAllBytes(file));
-            }
+            Append(hash, Path.GetRelativePath(contentDirectory, file).Replace('\\', '/').ToLowerInvariant());
+            hash.AppendData(File.ReadAllBytes(file));
         }
         return Convert.ToHexString(hash.GetHashAndReset());
     }
