@@ -472,10 +472,29 @@ public sealed class GameRenderer
         }
     }
 
-    private static void DrawProjectiles(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    private void DrawProjectiles(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
         foreach (var projectile in session.Projectiles.Projectiles)
         {
+            if (!ReducedEffects)
+            {
+                var destination = projectile.Kind == Combat.ProjectileKind.Homing &&
+                                  projectile.Target is { IsDead: false, HasEscaped: false }
+                    ? projectile.Target.Position
+                    : projectile.AimPoint;
+                var forward = destination - projectile.Position;
+                if (forward.LengthSquared() > 1f)
+                {
+                    forward.Normalize();
+                    var trailLength = MathF.Max(7, projectile.Radius * 2.2f);
+                    p.Line(batch,
+                        projectile.Position - forward * trailLength,
+                        projectile.Position - forward * 2f,
+                        ColorPalette.WithAlpha(projectile.Color, 145),
+                        2);
+                }
+            }
+
             var shape = projectile.Kind switch
             {
                 Combat.ProjectileKind.ImpactPoint => "square",
