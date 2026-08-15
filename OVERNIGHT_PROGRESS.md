@@ -15,6 +15,8 @@ Updated: 2026-08-15
 - Endless simulations now distinguish authored campaign clears from reaching a requested endless target and report depth by arena. Current wave-35 audits show finite failure pressure across Easy, Normal, and Hard, while the strongest easier-profile control plans retain meaningful post-campaign runway.
 - The reconstruction matrix now verifies all 64 arena/difficulty/directive combinations through local checkpoint restore plus both intermission and live-opening authoritative Player-2 snapshots with exact checksum parity.
 - All 40 completed tower paths now have a Player-2 reconstruction regression covering shared management, ownership attribution, targeting, manual/automatic Protocol state, and checksum parity.
+- All ten authored Protocols now have live mechanical assertions plus active-effect co-op reconstruction coverage; tactical reconnects likewise preserve a partially spent Plate and a player-two level-3 Forge through subsequent deterministic ticks.
+- Fresh matched Hard audits remain stable at 83/144 wins (57.6%). Forced Prism, Arc, and Mortar sweeps keep all twelve tested cross-tree paths viable, so no speculative stat change was applied during cleanup.
 
 ## Completed work
 

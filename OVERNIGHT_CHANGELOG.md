@@ -1,5 +1,6 @@
 # Overnight Changelog
 
+- Exposed each arena's base starting credits on the title selector and Campaign Library. Route-specific opening-economy compensation is now visible before committing to a map, alongside its threat rating, roster, and route preview.
 - Added a mechanical audit for all ten authored Protocols. Every active ability must alter live combat or support math, every declared burst/status must affect a nearby enemy, and the resulting active state must reconstruct to an exact co-op checksum.
 - Added an active tactical reconnect regression covering a player-two level-3 Charge Forge, partial production progress, and a partially spent Pulse Plate with live cooldown/handled-enemy state.
 - Added authoritative reconstruction coverage for all 40 completed tower paths. Player-2 ownership, Player-1 shared doctrine/final-role/target controls, manual Protocol state, automatic Protocol assignment, investments, and exact checksums must survive every branch snapshot.

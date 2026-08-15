@@ -60,7 +60,7 @@ public sealed class UIManager
     private string? _hoveredTowerCardId;
     private string? _specializationHint;
     private PowerNodeData? _hoveredPowerNode;
-    private readonly List<(string Id, string Name, int PowerNodes, int Challenge, string Description, string PathStyle,
+    private readonly List<(string Id, string Name, int PowerNodes, int Challenge, int StartingCredits, string Description, string PathStyle,
         CampaignIntelInfo Campaign, IReadOnlyList<Vector2> Path, Color PathBase, Color PathAccent)> _maps = new();
     private readonly List<DifficultyDefinition> _difficulties = new();
     private readonly List<ChallengeDefinition> _challenges = new();
@@ -355,7 +355,7 @@ public sealed class UIManager
                 var campaign = waveSets is not null && enemies is not null && waveSets.TryGetValue(x.WaveSet, out var waveSet)
                     ? WaveIntel.AnalyzeCampaign(waveSet, enemies)
                     : new CampaignIntelInfo(0, 0, "STANDARD", 1, 0);
-                return (x.Id, x.DisplayName, x.PowerNodes.Count, x.ChallengeRating, x.Description, x.PathVisual.Style,
+                return (x.Id, x.DisplayName, x.PowerNodes.Count, x.ChallengeRating, x.StartingCredits, x.Description, x.PathVisual.Style,
                     campaign, (IReadOnlyList<Vector2>)x.Path.Select(point => point.ToVector2()).ToArray(),
                     x.PathVisual.BaseColor, x.PathVisual.AccentColor);
             }));
@@ -2019,12 +2019,13 @@ public sealed class UIManager
         DrawText(batch, "MINIMAL BASTION", new Vector2(640, 295), ColorPalette.Ink, 2.2f, true);
         DrawText(batch, "A colorful geometric tower-defense game", new Vector2(640, 345), ColorPalette.Muted, 0.9f, true);
         var map = _maps.Count == 0
-            ? (Id: "foundry_loop", Name: "Foundry Loop", PowerNodes: 0, Challenge: 2, Description: "A balanced tactical arena.", PathStyle: "road",
+            ? (Id: "foundry_loop", Name: "Foundry Loop", PowerNodes: 0, Challenge: 2, StartingCredits: 400,
+                Description: "A balanced tactical arena.", PathStyle: "road",
                 Campaign: new CampaignIntelInfo(0, 0, "STANDARD", 1, 0), Path: (IReadOnlyList<Vector2>)Array.Empty<Vector2>(),
                 PathBase: ColorPalette.Path, PathAccent: ColorPalette.Gold)
             : _maps[_selectedMapIndex];
         var feature = map.PowerNodes > 0 ? $"{map.PowerNodes} SURGE NODES" : map.PathStyle.ToUpperInvariant();
-        var mapSuffix = $"THREAT {map.Challenge}/5 | {feature}";
+        var mapSuffix = $"THREAT {map.Challenge}/5 | {feature} | BASE {map.StartingCredits} CREDITS";
         var difficulty = _difficulties.Count == 0 ? null : _difficulties[_selectedDifficultyIndex];
         var challenge = _challenges.Count == 0 ? null : _challenges[_selectedChallengeIndex];
         var bestRun = BestRunLabel(_runHistory, map.Id, difficulty?.Id ?? DifficultyCatalog.DefaultId,
@@ -2607,7 +2608,8 @@ public sealed class UIManager
                 map.PathStyle.Equals("channel", StringComparison.OrdinalIgnoreCase) ? "triangle" : "square",
                 accent, ColorPalette.Ink, Math.Max(1, map.Challenge - 1), false);
             DrawFittedText(batch, map.Name, new Vector2(row.X + 58, row.Y + 14), ColorPalette.Ink, 0.62f, 160);
-            DrawText(batch, $"THREAT {map.Challenge}/5  |  {map.PathStyle.ToUpperInvariant()}", new Vector2(row.X + 58, row.Y + 39), ColorPalette.Muted, 0.43f);
+            DrawText(batch, $"THREAT {map.Challenge}/5  |  {map.PathStyle.ToUpperInvariant()}  |  BASE {map.StartingCredits}",
+                new Vector2(row.X + 58, row.Y + 39), ColorPalette.Muted, 0.43f);
             DrawFittedText(batch, $"{map.Campaign.TotalContacts:N0} contacts  |  peak {map.Campaign.PeakContacts}  |  boss W{map.Campaign.BossWave}",
                 new Vector2(row.X + 14, row.Y + 67), ColorPalette.ReadableAccent(accent, selected ? ColorPalette.Tint(accent, 0.80f) : ColorPalette.PanelAlt),
                 0.40f, row.Width - 28);
@@ -2623,7 +2625,7 @@ public sealed class UIManager
 
         var mapAccent = MapLibraryAccent(selectedMap.PathStyle);
         DrawText(batch, selectedMap.Name.ToUpperInvariant(), new Vector2(detailPanel.X + 18, detailPanel.Y + 16), ColorPalette.Ink, 0.96f);
-        DrawTextRight(batch, $"THREAT {selectedMap.Challenge}/5  |  {selectedMap.PowerNodes} SURGE NODES  |  {selectedMap.PathStyle.ToUpperInvariant()} PATH",
+        DrawTextRight(batch, $"THREAT {selectedMap.Challenge}/5  |  {selectedMap.PowerNodes} SURGE NODES  |  BASE {selectedMap.StartingCredits}",
             new Vector2(detailPanel.Right - 18, detailPanel.Y + 21), ColorPalette.ReadableAccent(mapAccent, ColorPalette.Panel), 0.50f);
         DrawFittedText(batch, selectedMap.Description, new Vector2(detailPanel.X + 18, detailPanel.Y + 48), ColorPalette.Muted, 0.48f, detailPanel.Width - 238);
         DrawFittedText(batch, selectedMap.Campaign.CompactSummary, new Vector2(detailPanel.X + 18, detailPanel.Y + 72), mapAccent, 0.43f, detailPanel.Width - 238);
