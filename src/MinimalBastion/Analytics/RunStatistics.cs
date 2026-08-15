@@ -29,6 +29,7 @@ public sealed class RunStatistics
     public int GeneratedCharges { get; private set; }
     public int GeneratorPurchases { get; private set; }
     public int GeneratorUpgrades { get; private set; }
+    public int ProtocolActivations => (int)Math.Min(int.MaxValue, _towers.Values.Sum(x => (long)x.Overdrives));
     public IReadOnlyCollection<RunTowerStatistics> Towers => _towers.Values;
     public IReadOnlyCollection<RunEnemyStatistics> Enemies => _enemies.Values;
     public IReadOnlyDictionary<int, string> TowerDefinitionByInstance => _towerDefinitionByInstance;

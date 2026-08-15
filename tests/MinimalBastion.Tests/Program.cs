@@ -3215,12 +3215,14 @@ internal static class Program
         Check.True(session.TryOverdriveTower(tower.Id, 1), "other player activates overdrive");
         Check.Nearly(1.75f, session.GetEffectiveAttacksPerSecond(tower), "overdrive rate bonus");
         Check.Equal(1, session.Statistics.Towers.Single().Overdrives, "overdrive telemetry");
+        Check.Equal(1, session.Statistics.ProtocolActivations, "run-wide protocol telemetry");
         Check.True(!session.TryOverdriveTower(tower.Id, 2), "overdrive cooldown enforced");
         for (var index = 0; index < 51; index++) session.Update(0.1f);
         Check.True(!tower.IsOverdriven, "overdrive duration expires");
         Check.True(session.OverdriveCooldownRemaining > 0, "cooldown outlasts effect");
         for (var index = 0; index < 130; index++) session.Update(0.1f);
         Check.True(session.TryOverdriveTower(tower.Id, 2), "overdrive recharges");
+        Check.Equal(2, session.Statistics.ProtocolActivations, "run-wide protocol count accumulates");
 
         var automatic = Session();
         automatic.Content.Towers["tower"].Levels[0].Range = 220;

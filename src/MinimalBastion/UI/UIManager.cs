@@ -2315,21 +2315,25 @@ public sealed class UIManager
         var stats = session.Statistics;
         var threat = stats.GreatestLeakThreat;
         var elapsed = TimeSpan.FromSeconds(stats.SimulatedSeconds);
-        DrawSummaryLine(batch, "CREDITS EARNED", economy.TotalCreditsEarned.ToString(), rect.X + 14, rect.Y + 56);
-        DrawSummaryLine(batch, "CREDITS SPENT", economy.TotalCreditsSpent.ToString(), rect.X + 14, rect.Y + 79);
-        DrawSummaryLine(batch, "SALE RECOVERY", economy.SaleCreditsRecovered.ToString(), rect.X + 14, rect.Y + 102);
-        DrawSummaryLine(batch, "PLATES DEPLOYED", stats.EmergencyDeployments.ToString(), rect.X + 14, rect.Y + 137);
-        DrawSummaryLine(batch, "PLATE DAMAGE", stats.EmergencyDamage.ToString("0"), rect.X + 14, rect.Y + 160);
-        DrawSummaryLine(batch, "FORGED CHARGES", stats.GeneratedCharges.ToString(), rect.X + 14, rect.Y + 183);
-        DrawText(batch, "GREATEST LEAK THREAT", new Vector2(rect.X + 14, rect.Y + 218), ColorPalette.Muted, 0.48f);
-        DrawText(batch, threat is null ? "NONE" : $"{threat.DisplayName.ToUpperInvariant()}  -{threat.LivesLost} LIVES", new Vector2(rect.X + 14, rect.Y + 238), threat is null ? ColorPalette.Green : ColorPalette.Coral, 0.56f);
+        var left = rect.X + 14;
+        var right = rect.X + 134;
+        DrawSummaryMetric(batch, "CREDITS EARNED", economy.TotalCreditsEarned.ToString(), left, rect.Y + 53, ColorPalette.Gold);
+        DrawSummaryMetric(batch, "CREDITS SPENT", economy.TotalCreditsSpent.ToString(), right, rect.Y + 53, ColorPalette.Ink);
+        DrawSummaryMetric(batch, "EARLY BONUS", economy.EarlyStartCreditsEarned.ToString(), left, rect.Y + 91, ColorPalette.Green);
+        DrawSummaryMetric(batch, "SALE RETURN", economy.SaleCreditsRecovered.ToString(), right, rect.Y + 91, ColorPalette.Orange);
+        DrawSummaryMetric(batch, "PROTOCOLS", stats.ProtocolActivations.ToString(), left, rect.Y + 129, ColorPalette.Violet);
+        DrawSummaryMetric(batch, "PLATES", stats.EmergencyDeployments.ToString(), right, rect.Y + 129, ColorPalette.Coral);
+        DrawSummaryMetric(batch, "PLATE DAMAGE", stats.EmergencyDamage.ToString("0"), left, rect.Y + 167, ColorPalette.Coral);
+        DrawSummaryMetric(batch, "FORGED", stats.GeneratedCharges.ToString(), right, rect.Y + 167, ColorPalette.Green);
+        DrawText(batch, "GREATEST LEAK THREAT", new Vector2(rect.X + 14, rect.Y + 210), ColorPalette.Muted, 0.44f);
+        DrawText(batch, threat is null ? "NONE" : $"{threat.DisplayName.ToUpperInvariant()}  -{threat.LivesLost} LIVES", new Vector2(rect.X + 14, rect.Y + 228), threat is null ? ColorPalette.Green : ColorPalette.Coral, 0.52f);
         DrawText(batch, $"DEFENSE TIME  {elapsed.Minutes:00}:{elapsed.Seconds:00}", new Vector2(rect.X + 14, rect.Bottom - 27), ColorPalette.Cobalt, 0.52f);
     }
 
-    private void DrawSummaryLine(SpriteBatch batch, string label, string value, int x, int y)
+    private void DrawSummaryMetric(SpriteBatch batch, string label, string value, int x, int y, Color valueColor)
     {
-        DrawText(batch, label, new Vector2(x, y), ColorPalette.Muted, 0.49f);
-        DrawText(batch, value, new Vector2(x + 212, y), ColorPalette.Ink, 0.55f, true);
+        DrawText(batch, label, new Vector2(x, y), ColorPalette.Muted, 0.38f);
+        DrawText(batch, value, new Vector2(x, y + 15), valueColor, 0.58f);
     }
 
     private void DrawOverlay(SpriteBatch batch, PrimitiveRenderer p, string title, string subtitle)

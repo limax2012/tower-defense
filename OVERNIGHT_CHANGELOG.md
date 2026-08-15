@@ -193,6 +193,7 @@ Date: 2026-08-14
 
 ## Quality-of-life changes
 
+- Reworked Run Analysis into a readable two-column metric grid and surfaced previously hidden early-call income and run-wide Protocol activation totals.
 - Replaced the frozen post-victory Final Field with **Continue Endless**. It resumes the same battlefield for wave-21 preparation and lets attack visuals cool off under normal simulation.
 - Added deterministic endless scaling, rotating pressure themes, recurring five-wave bosses, performance-bounded roster growth, solo checkpoint persistence, co-op continuation commands, reconnect state, and endless HUD labeling.
 - The Plates button now reports only stored inventory or direct-purchase cost. The Charge Forge button exclusively owns the production timer, paused state, and storage-full state, avoiding duplicate countdowns.

@@ -165,6 +165,7 @@ The clean separation supports preserving the current multipliers. On Hard, Surge
 
 ## Current work
 
+- Result analysis now exposes early-call earnings and total Protocol activations alongside economy, Pulse Plate, forge, leak, and duration metrics. The narrow panel uses a compact two-column hierarchy instead of adding more full-width rows.
 - Feature pass is safely checkpointed, tested, simulated, published, visually inspected, and documented.
 
 ## Highest-value next priorities
