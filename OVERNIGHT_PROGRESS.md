@@ -52,6 +52,7 @@ Updated: 2026-08-15
 - Restored and extended the colorful geometric/schematic direction after rejecting the black-and-white pass.
 - Preserved seamless continuous roads with yellow dashes only: no tiles, seams, corner circles, square joints, or heavy outlines.
 - Replaced grid/debug-looking build regions with quiet tinted fields and exact corner brackets.
+- Trimmed every build-zone boundary to the real tower-center road/edge clearance and added geometric content validation, so cyan fields never advertise an invalid strip beside a route or screen edge.
 - Added Surge Divide (internal ID `relay_divide`) with nine compact, non-stacking Surge Nodes for rate, range, damage, or armor-pierce placement decisions. Its independently authored wave roster is deliberately harder to compensate for that positional upside.
 - Added Crosswind Basin and Prism Circuit, each with distinct route geometry, visual treatment, starting economy, and independently authored 20-wave campaign.
 - Renamed player-facing relay terminology to Surge Node and added placement/hover/selected-tower intel with exact radius, active bonus, and resulting stat deltas.

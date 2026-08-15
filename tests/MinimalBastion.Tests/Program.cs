@@ -564,7 +564,7 @@ internal static class Program
         var positions = new[]
         {
             new Vector2(50, 200),
-            new Vector2(220, 200),
+            new Vector2(220, 190),
             new Vector2(220, 350),
             new Vector2(460, 200)
         };

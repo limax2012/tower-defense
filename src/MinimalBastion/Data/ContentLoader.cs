@@ -158,6 +158,9 @@ public static class DataValidator
             throw new InvalidDataException($"Invalid map fundamentals: {map.Id}");
         if (map.BuildableRegions.Count == 0 || map.BuildableRegions.Any(region => !ValidMapRegion(region, map.LogicalSize)))
             throw new InvalidDataException($"Invalid buildable region in map: {map.Id}");
+        if (map.BuildableRegions.Any(region => !ValidTowerCenterRegion(region, map.LogicalSize) ||
+                MinimumPathDistance(region, map.Path) < GameConstants.PlacementPathClearance))
+            throw new InvalidDataException($"Buildable region advertises an invalid tower center in map: {map.Id}");
         if (map.RestrictedRegions.Any(region => !ValidMapRegion(region, map.LogicalSize)))
             throw new InvalidDataException($"Invalid restricted region in map: {map.Id}");
         if (map.Path.Any(point => point.X < -map.PathWidth || point.X > map.LogicalSize.Width + map.PathWidth ||
@@ -253,6 +256,82 @@ public static class DataValidator
     private static bool ValidMapRegion(RectangleData region, LogicalSizeData size) =>
         region.Width > 0 && region.Height > 0 && region.X >= 0 && region.Y >= 0 &&
         region.X + region.Width <= size.Width && region.Y + region.Height <= size.Height;
+
+    private static bool ValidTowerCenterRegion(RectangleData region, LogicalSizeData size) =>
+        region.X >= GameConstants.TowerRadius &&
+        region.Y >= GameConstants.TopBarHeight + GameConstants.TowerRadius &&
+        region.X + region.Width <= size.Width - GameConstants.TowerRadius &&
+        region.Y + region.Height <= size.Height - GameConstants.TowerRadius;
+
+    private static float MinimumPathDistance(RectangleData region, IReadOnlyList<PointData> path)
+    {
+        var minimum = float.MaxValue;
+        for (var index = 0; index < path.Count - 1; index++)
+            minimum = MathF.Min(minimum, SegmentRectangleDistance(path[index].ToVector2(), path[index + 1].ToVector2(), region));
+        return minimum;
+    }
+
+    private static float SegmentRectangleDistance(Vector2 start, Vector2 end, RectangleData region)
+    {
+        var left = region.X;
+        var right = region.X + region.Width;
+        var top = region.Y;
+        var bottom = region.Y + region.Height;
+        var corners = new[]
+        {
+            new Vector2(left, top), new Vector2(right, top),
+            new Vector2(right, bottom), new Vector2(left, bottom)
+        };
+
+        if (PointInRectangle(start, left, right, top, bottom) || PointInRectangle(end, left, right, top, bottom)) return 0;
+        for (var index = 0; index < corners.Length; index++)
+            if (SegmentsIntersect(start, end, corners[index], corners[(index + 1) % corners.Length])) return 0;
+
+        var minimum = MathF.Min(PointRectangleDistance(start, left, right, top, bottom),
+            PointRectangleDistance(end, left, right, top, bottom));
+        foreach (var corner in corners) minimum = MathF.Min(minimum, PointSegmentDistance(corner, start, end));
+        return minimum;
+    }
+
+    private static bool PointInRectangle(Vector2 point, float left, float right, float top, float bottom) =>
+        point.X >= left && point.X <= right && point.Y >= top && point.Y <= bottom;
+
+    private static float PointRectangleDistance(Vector2 point, float left, float right, float top, float bottom)
+    {
+        var dx = MathF.Max(MathF.Max(left - point.X, 0), point.X - right);
+        var dy = MathF.Max(MathF.Max(top - point.Y, 0), point.Y - bottom);
+        return MathF.Sqrt(dx * dx + dy * dy);
+    }
+
+    private static float PointSegmentDistance(Vector2 point, Vector2 start, Vector2 end)
+    {
+        var delta = end - start;
+        var lengthSquared = delta.LengthSquared();
+        var amount = lengthSquared <= 0.0001f ? 0 : MathHelper.Clamp(Vector2.Dot(point - start, delta) / lengthSquared, 0, 1);
+        return Vector2.Distance(point, start + delta * amount);
+    }
+
+    private static bool SegmentsIntersect(Vector2 a, Vector2 b, Vector2 c, Vector2 d)
+    {
+        var abC = Cross(a, b, c);
+        var abD = Cross(a, b, d);
+        var cdA = Cross(c, d, a);
+        var cdB = Cross(c, d, b);
+        if ((abC > 0 && abD < 0 || abC < 0 && abD > 0) &&
+            (cdA > 0 && cdB < 0 || cdA < 0 && cdB > 0)) return true;
+        const float epsilon = 0.001f;
+        return MathF.Abs(abC) <= epsilon && OnSegment(a, b, c) ||
+               MathF.Abs(abD) <= epsilon && OnSegment(a, b, d) ||
+               MathF.Abs(cdA) <= epsilon && OnSegment(c, d, a) ||
+               MathF.Abs(cdB) <= epsilon && OnSegment(c, d, b);
+    }
+
+    private static float Cross(Vector2 a, Vector2 b, Vector2 c) =>
+        (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
+
+    private static bool OnSegment(Vector2 a, Vector2 b, Vector2 point) =>
+        point.X >= MathF.Min(a.X, b.X) && point.X <= MathF.Max(a.X, b.X) &&
+        point.Y >= MathF.Min(a.Y, b.Y) && point.Y <= MathF.Max(a.Y, b.Y);
 
     private static void RequireUnique(IEnumerable<string> ids, string kind)
     {

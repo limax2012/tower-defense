@@ -17,13 +17,13 @@
     { "x": 820, "y": 180 }, { "x": 820, "y": 480 }, { "x": 952, "y": 480 }
   ],
   "buildableRegions": [
-    { "x": 22, "y": 82, "width": 52, "height": 220 },
-    { "x": 156, "y": 158, "width": 188, "height": 92 },
+    { "x": 22, "y": 82, "width": 38, "height": 218 },
+    { "x": 160, "y": 160, "width": 180, "height": 90 },
     { "x": 272, "y": 360, "width": 238, "height": 178 },
-    { "x": 430, "y": 342, "width": 82, "height": 150 },
+    { "x": 430, "y": 342, "width": 80, "height": 150 },
     { "x": 612, "y": 250, "width": 158, "height": 160 },
     { "x": 614, "y": 536, "width": 270, "height": 132 },
-    { "x": 866, "y": 82, "width": 68, "height": 332 }
+    { "x": 870, "y": 82, "width": 64, "height": 332 }
   ],
   "restrictedRegions": [],
   "powerNodes": [

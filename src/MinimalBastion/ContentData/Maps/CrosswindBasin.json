@@ -17,15 +17,15 @@
     { "x": 952, "y": 620 }
   ],
   "buildableRegions": [
-    { "x": 24, "y": 210, "width": 62, "height": 300 },
+    { "x": 24, "y": 210, "width": 56, "height": 300 },
     { "x": 190, "y": 210, "width": 120, "height": 240 },
     { "x": 430, "y": 230, "width": 120, "height": 210 },
     { "x": 670, "y": 250, "width": 120, "height": 250 },
-    { "x": 430, "y": 72, "width": 120, "height": 70 },
-    { "x": 680, "y": 72, "width": 110, "height": 60 },
+    { "x": 430, "y": 74, "width": 120, "height": 68 },
+    { "x": 680, "y": 74, "width": 110, "height": 56 },
     { "x": 900, "y": 230, "width": 38, "height": 300 },
-    { "x": 210, "y": 674, "width": 110, "height": 30 },
-    { "x": 450, "y": 674, "width": 110, "height": 30 }
+    { "x": 210, "y": 674, "width": 110, "height": 28 },
+    { "x": 450, "y": 674, "width": 110, "height": 28 }
   ],
   "restrictedRegions": [],
   "waveSet": "crosswind_waves",
