@@ -12,8 +12,43 @@ public sealed record WaveIntelInfo(
     public string CompactThreats => Threats.Count == 0 ? "STANDARD" : string.Join("/", Threats.Take(3));
 }
 
+public sealed record CampaignIntelInfo(
+    int TotalContacts,
+    int PeakContacts,
+    string OpeningThreats,
+    float FinalHealthMultiplier,
+    int BossWave)
+{
+    public string CompactSummary =>
+        $"CAMPAIGN  OPEN {OpeningThreats}  |  {TotalContacts:N0} CONTACTS  |  PEAK {PeakContacts}  |  FINAL HEALTH x{FinalHealthMultiplier:0.00}  |  BOSS W{BossWave}";
+}
+
 public static class WaveIntel
 {
+    public static CampaignIntelInfo AnalyzeCampaign(WaveSetDefinition campaign, IReadOnlyDictionary<string, EnemyDefinition> enemies)
+    {
+        var waves = campaign.Waves;
+        if (waves.Count == 0) return new CampaignIntelInfo(0, 0, "STANDARD", 1f, 0);
+        var total = waves.Sum(wave => wave.Groups.Sum(group => group.Count));
+        var peak = waves.Max(wave => wave.Groups.Sum(group => group.Count));
+        var opening = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var group in waves.Take(Math.Min(5, waves.Count)).SelectMany(wave => wave.Groups))
+        {
+            if (!enemies.TryGetValue(group.EnemyId, out var enemy)) continue;
+            var category = enemy.RegenerationPerSecond > 0 ? "REGEN"
+                : enemy.Shield > 0 ? "SHIELD"
+                : enemy.Speed >= 100 ? "FAST"
+                : enemy.Armor > 0 ? "ARMOR"
+                : "SWARM";
+            opening[category] = opening.GetValueOrDefault(category) + group.Count;
+        }
+        var openingThreats = string.Join("/", opening.OrderByDescending(pair => pair.Value).ThenBy(pair => pair.Key).Take(3).Select(pair => pair.Key));
+        if (string.IsNullOrEmpty(openingThreats)) openingThreats = "STANDARD";
+        var bossWave = waves.FirstOrDefault(wave => wave.Groups.Any(group => group.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)))?.Number
+            ?? waves[^1].Number;
+        return new CampaignIntelInfo(total, peak, openingThreats, waves[^1].HealthMultiplier, bossWave);
+    }
+
     public static WaveIntelInfo Analyze(WaveDefinition wave, IReadOnlyDictionary<string, EnemyDefinition> enemies)
     {
         var count = wave.Groups.Sum(x => x.Count);

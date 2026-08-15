@@ -107,7 +107,7 @@ public sealed class Game1 : Game
             _contentFingerprint = BuildFingerprint.Compute(contentDirectory);
             var font = Content.Load<SpriteFont>("Fonts/Interface");
             _ui = new UIManager(font);
-            _ui.ConfigureMaps(_content.Maps.Values);
+            _ui.ConfigureMaps(_content.Maps.Values, _content.WaveSets, _content.Enemies);
             _ui.ConfigureDifficulties(_content.Difficulties.Values);
             _ui.ConfigureTowerLibrary(_content.Towers.Values);
             _ui.ConfigureSettings(_settings);

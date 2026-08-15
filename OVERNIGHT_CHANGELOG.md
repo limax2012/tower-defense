@@ -7,6 +7,7 @@ Date: 2026-08-15
 - Added Crosswind Basin, a fourth arena with a seamless cyan-banked channel, current-chevron field motif, three compact crossfire islands, no power nodes, a distinct starting economy, and a runner-led authored 20-wave campaign.
 - Completed the missing five-seed Easy matrix across the original three arenas: 150/180 wins (83.3%), with only Economy and indiscriminate Spam consistently failing.
 - Extended lifetime Tower Intel beyond direct damage/kills: individual Beacons retain assisted damage, while source towers retain control, expose, and armor-break enemy-seconds. The values survive save/load and co-op snapshots and participate in deterministic state checks.
+- Added data-derived campaign intel to the arena selector. Every map now previews its opening threat mix, total contacts, peak density, final health multiplier, and boss timing before a run; native high-resolution QA confirmed the extra planning line remains readable.
 - Added Easy, Normal, Hard, and Bastion profiles with persistent save/co-op identity and deterministic checksums. Hard preserves the previous authored economy and enemy values; Normal is the default onboarding experience.
 - Gave Foundry Loop, Prism Circuit, and Surge Divide separate 20-wave campaigns. Surge now carries the hardest roster and opening economy instead of granting nine nodes against the same opposition as Foundry.
 - Added Prism Circuit as a third arena with a distinct continuous conduit visual, a new route/build topology, and three restrained Surge Nodes.

@@ -57,7 +57,7 @@ public sealed class UIManager
     private string? _hoveredTowerCardId;
     private string? _specializationHint;
     private PowerNodeData? _hoveredPowerNode;
-    private readonly List<(string Id, string Name, int PowerNodes, int Challenge, string Description, string PathStyle)> _maps = new();
+    private readonly List<(string Id, string Name, int PowerNodes, int Challenge, string Description, string PathStyle, CampaignIntelInfo Campaign)> _maps = new();
     private readonly List<DifficultyDefinition> _difficulties = new();
     private int _selectedMapIndex;
     private int _selectedDifficultyIndex;
@@ -222,13 +222,20 @@ public sealed class UIManager
         _saveSlotPage = selectedIndex / _saveSlotRows.Length;
     }
 
-    public void ConfigureMaps(IEnumerable<MapDefinition> maps)
+    public void ConfigureMaps(IEnumerable<MapDefinition> maps, IReadOnlyDictionary<string, WaveSetDefinition>? waveSets = null,
+        IReadOnlyDictionary<string, EnemyDefinition>? enemies = null)
     {
         _maps.Clear();
         _maps.AddRange(maps.OrderBy(x => x.Id.Equals("foundry_loop", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
             .ThenBy(x => x.ChallengeRating)
             .ThenBy(x => x.DisplayName)
-            .Select(x => (x.Id, x.DisplayName, x.PowerNodes.Count, x.ChallengeRating, x.Description, x.PathVisual.Style)));
+            .Select(x =>
+            {
+                var campaign = waveSets is not null && enemies is not null && waveSets.TryGetValue(x.WaveSet, out var waveSet)
+                    ? WaveIntel.AnalyzeCampaign(waveSet, enemies)
+                    : new CampaignIntelInfo(0, 0, "STANDARD", 1, 0);
+                return (x.Id, x.DisplayName, x.PowerNodes.Count, x.ChallengeRating, x.Description, x.PathVisual.Style, campaign);
+            }));
         _selectedMapIndex = Math.Clamp(_selectedMapIndex, 0, Math.Max(0, _maps.Count - 1));
     }
 
@@ -1156,7 +1163,7 @@ public sealed class UIManager
         DrawText(batch, "MINIMAL BASTION", new Vector2(640, 295), ColorPalette.Ink, 2.2f, true);
         DrawText(batch, "A colorful geometric tower-defense game", new Vector2(640, 345), ColorPalette.Muted, 0.9f, true);
         var map = _maps.Count == 0
-            ? (Id: "foundry_loop", Name: "Foundry Loop", PowerNodes: 0, Challenge: 2, Description: "A balanced tactical arena.", PathStyle: "road")
+            ? (Id: "foundry_loop", Name: "Foundry Loop", PowerNodes: 0, Challenge: 2, Description: "A balanced tactical arena.", PathStyle: "road", Campaign: new CampaignIntelInfo(0, 0, "STANDARD", 1, 0))
             : _maps[_selectedMapIndex];
         var feature = map.PowerNodes > 0 ? $"{map.PowerNodes} SURGE NODES" : map.PathStyle.ToUpperInvariant();
         var mapSuffix = $"THREAT {map.Challenge}/5 | {feature}";
@@ -1171,10 +1178,11 @@ public sealed class UIManager
         DrawButton(batch, p, _mainMenuSettingsButton, "SETTINGS", true, ColorPalette.Orange, ColorPalette.Ink);
         DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
         var difficultySummary = difficulty?.Description ?? "A balanced defense.";
-        DrawFittedCenteredText(batch, $"{mapSuffix} | {map.Description}", new Vector2(640, 638), ColorPalette.Muted, 0.52f, 900);
+        DrawFittedCenteredText(batch, $"{mapSuffix} | {map.Description}", new Vector2(640, 632), ColorPalette.Muted, 0.50f, 920);
+        DrawFittedCenteredText(batch, map.Campaign.CompactSummary, new Vector2(640, 650), ColorPalette.Cyan, 0.44f, 940);
         DrawFittedCenteredText(batch, $"{(difficulty?.DisplayName ?? "Normal").ToUpperInvariant()} | {difficultySummary}",
-            new Vector2(640, 660), difficulty?.AccentColor ?? ColorPalette.Cobalt, 0.48f, 860);
-        DrawText(batch, "Left click places/selects   \u2022   Right click cancels   \u2022   Escape pauses", new Vector2(640, 687), ColorPalette.Navy, 0.58f, true);
+            new Vector2(640, 669), difficulty?.AccentColor ?? ColorPalette.Cobalt, 0.46f, 880);
+        DrawText(batch, "Left click places/selects   \u2022   Right click cancels   \u2022   Escape pauses", new Vector2(640, 691), ColorPalette.Navy, 0.54f, true);
     }
 
     private void DrawSettings(SpriteBatch batch, PrimitiveRenderer p)

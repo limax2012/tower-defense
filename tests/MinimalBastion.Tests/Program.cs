@@ -318,8 +318,13 @@ internal static class Program
         var crosswindSession = new GameSession(content, crosswind.Id, "hard");
         Check.True(crosswindSession.TryPlaceTower("needle_turret", new Vector2(250, 320)),
             "Crosswind interior island accepts a practical tower placement");
+        var crosswindIntel = WaveIntel.AnalyzeCampaign(content.WaveSets[crosswind.WaveSet], content.Enemies);
+        Check.Equal(1066, crosswindIntel.TotalContacts, "Crosswind campaign intel counts the authored roster");
+        Check.Equal(118, crosswindIntel.PeakContacts, "Crosswind campaign intel identifies peak density");
+        Check.True(crosswindIntel.OpeningThreats.Contains("FAST", StringComparison.Ordinal) && crosswindIntel.BossWave == 20,
+            "Crosswind campaign intel exposes its opening identity and boss timing");
         var mapUi = new UIManager(null!);
-        mapUi.ConfigureMaps(content.Maps.Values);
+        mapUi.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
         Check.Equal("foundry_loop", mapUi.SelectedMapId, "arena selector starts on Foundry");
         mapUi.HandleMainMenu(WorldInput(new Vector2(500, 370)) with { LeftPressed = true });
         Check.Equal("crosswind_basin", mapUi.SelectedMapId, "arena selector advances by challenge rating");
