@@ -263,14 +263,14 @@ public sealed class UIManager
             return $"[Q] {field} | FULL";
         if (session.EmergencyInventory > 0)
         {
-            var stored = session.Generator is { } forge
-                ? $"STORED {session.EmergencyInventory}/{forge.Level.Capacity}"
-                : $"STORED {session.EmergencyInventory}";
-            return $"[Q] {stored} | {field} | PLACE";
+            var stock = session.Generator is { } forge
+                ? $"{session.EmergencyInventory}/{forge.Level.Capacity}"
+                : session.EmergencyInventory.ToString();
+            return $"[Q] DEPLOY {stock} | {field}";
         }
         if (session.Waves.IsActive)
-            return $"[Q] {field} | BUY {session.CurrentEmergencyDirectPurchaseCost}";
-        return $"[Q] {field} | WAVE ONLY";
+            return $"[Q] BUY {session.CurrentEmergencyDirectPurchaseCost} | {field}";
+        return $"[Q] PLATES 0 | {field}";
     }
 
     private static string EarlyCallStatus(int currentWave, float intermissionRemaining) =>
@@ -1556,7 +1556,7 @@ public sealed class UIManager
         var plateFieldFull = session.EmergencyDefenses.Count >= defense.MaximumActive;
         var emergencyReady = session.TacticalSystemsEnabled && !plateFieldFull && (session.EmergencyInventory > 0 || session.CanDirectPurchaseEmergencyDefense);
         var emergencyLabel = session.TacticalSystemsEnabled ? PulsePlateButtonLabel(session) : "[Q] PLATES | DIRECTIVE OFF";
-        DrawButton(batch, p, _emergencyButton, emergencyLabel, emergencyReady, ColorPalette.Gold);
+        DrawButton(batch, p, _emergencyButton, emergencyLabel, emergencyReady, ColorPalette.Gold, ColorPalette.Ink);
 
         var generator = session.Content.Tactics.Generator;
         var generatorReady = session.TacticalSystemsEnabled && (session.Generator is not null || session.Economy.CanAfford(generator.PurchaseCost));

@@ -2975,6 +2975,8 @@ internal static class Program
         var position = new Vector2(200, 30);
         Check.True(UIManager.PulsePlateButtonLabel(session).Contains("FIELD 0/16", StringComparison.Ordinal),
             "plate button always shows active field capacity");
+        Check.True(UIManager.PulsePlateButtonLabel(session).StartsWith("[Q] DEPLOY 1", StringComparison.Ordinal),
+            "stored plate label leads with its available action");
         Check.Equal(PlacementFailure.None, session.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, position), "road placement");
         Check.Equal(PlacementFailure.None, session.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(250, 61)), "visible road edge placement");
         Check.Equal(PlacementFailure.MustBeOnPath, session.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(200, 100)), "off-road rejection");
@@ -3031,6 +3033,8 @@ internal static class Program
         Check.True(directSession.StartNextWave(), "start wave for direct buying");
         Check.True(directSession.TryDeployEmergencyDefense(new Vector2(300, 30)), "first direct plate purchase");
         Check.Equal(240, directSession.Economy.Credits, "first direct plate keeps accessible base cost");
+        Check.True(UIManager.PulsePlateButtonLabel(directSession).Contains("BUY 75", StringComparison.Ordinal),
+            "active-wave plate label leads with the next direct purchase price");
         Check.True(directSession.TryDeployEmergencyDefense(new Vector2(330, 30)), "second direct plate purchase");
         Check.Equal(165, directSession.Economy.Credits, "second direct plate pays escalating cost");
         Check.Equal(90, directSession.CurrentEmergencyDirectPurchaseCost, "next direct plate price is visible and deterministic");
@@ -3078,7 +3082,7 @@ internal static class Program
         Check.True(session.TryPlaceGenerator(position), "place forge");
         Check.Equal(80, session.Economy.Credits, "forge purchase cost");
         Check.Equal(1, session.EmergencyInventory, "initial inventory retained");
-        Check.True(UIManager.PulsePlateButtonLabel(session).Contains("STORED 1/3", StringComparison.Ordinal) &&
+        Check.True(UIManager.PulsePlateButtonLabel(session).Contains("DEPLOY 1/3", StringComparison.Ordinal) &&
             UIManager.PulsePlateButtonLabel(session).Contains("FIELD 0/16", StringComparison.Ordinal),
             "plate button distinguishes forge storage from active field capacity");
 
