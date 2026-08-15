@@ -514,6 +514,9 @@ public sealed class Game1 : Game
 
     private void HandleNetworkEnvelope(CoOpEnvelope envelope)
     {
+        if (!CoOpEnvelopeValidator.IsExpectedInbound(envelope, _isNetworkHost))
+            throw new InvalidDataException("The co-op peer sent a message reserved for the opposite connection direction.");
+
         switch (envelope.Type)
         {
             case CoOpMessageType.StateSnapshot when !_isNetworkHost && envelope.State is not null:

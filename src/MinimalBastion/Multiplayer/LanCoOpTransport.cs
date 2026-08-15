@@ -95,6 +95,18 @@ public static class CoOpEnvelopeValidator
         };
     }
 
+    public static bool IsExpectedInbound(CoOpEnvelope envelope, bool receiverIsHost) => envelope.Type switch
+    {
+        CoOpMessageType.CommandRequest or CoOpMessageType.ResyncRequest or CoOpMessageType.RestartRequest =>
+            receiverIsHost && envelope.PlayerId == 2,
+        CoOpMessageType.StateSnapshot or CoOpMessageType.CommandReceipt or CoOpMessageType.AuthoritativeCommand or
+            CoOpMessageType.Rejected => !receiverIsHost,
+        CoOpMessageType.Ready or CoOpMessageType.WaveReady or CoOpMessageType.TickSync or
+            CoOpMessageType.Ping or CoOpMessageType.Cursor or CoOpMessageType.Disconnect =>
+            envelope.PlayerId == (receiverIsHost ? 2 : 1),
+        _ => false
+    };
+
     private static bool IsCommandRequest(GameCommand? command, int playerId) =>
         command is { Sequence: 0, ClientRequestId: > 0 } && command.PlayerId == playerId &&
         GameCommandValidator.IsStructurallyValid(command);

@@ -1670,6 +1670,26 @@ internal static class Program
             PlayerId = 2,
             Command = new GameCommand { PlayerId = 1, ClientRequestId = 1, Type = GameCommandType.StartWave }
         }), "command envelopes cannot spoof the command's player identity");
+        Check.True(CoOpEnvelopeValidator.IsExpectedInbound(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.TickSync,
+            PlayerId = 2
+        }, true), "host accepts checksum replies only from player two");
+        Check.True(!CoOpEnvelopeValidator.IsExpectedInbound(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.TickSync,
+            PlayerId = 1
+        }, true), "host rejects echoed host checksum traffic");
+        Check.True(CoOpEnvelopeValidator.IsExpectedInbound(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.AuthoritativeCommand,
+            PlayerId = 2
+        }, false), "client accepts player-two commands after host sequencing");
+        Check.True(!CoOpEnvelopeValidator.IsExpectedInbound(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.StateSnapshot,
+            PlayerId = 1
+        }, true), "host never consumes its own authoritative snapshot");
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await using var host = new LanCoOpHost(0, "BOUNDS");
