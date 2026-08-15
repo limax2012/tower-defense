@@ -787,9 +787,22 @@ internal static class Program
     {
         foreach (var canSave in new[] { false, true })
             Check.True(UIManager.PauseCheckpointStatus(canSave).All(character => character is >= ' ' and <= '~'), "pause status uses compiled ASCII glyphs");
-        Check.Equal(UiAction.Resume,
+        Check.Equal(UiAction.None,
             new UIManager(null!).HandlePausedInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, Session()),
-            "pause Enter resumes the match");
+            "pause Enter cannot activate a command");
+        var mouseOnlyUi = new UIManager(null!);
+        Check.Equal(UiAction.None,
+            mouseOnlyUi.HandlePausedInput(WorldInput(Vector2.Zero) with { NavigateDownPressed = true }, Session()),
+            "pause Down cannot select a command");
+        Check.Equal(UiAction.None,
+            mouseOnlyUi.HandlePausedInput(WorldInput(Vector2.Zero) with { NavigateUpPressed = true, EnterPressed = true }, Session()),
+            "pause arrow and Enter combinations remain inert");
+        Check.Equal(UiAction.None,
+            mouseOnlyUi.HandlePausedInput(WorldInput(Vector2.Zero) with { TabPressed = true }, Session()),
+            "pause Tab cannot create keyboard focus");
+        Check.Equal(UiAction.Resume,
+            mouseOnlyUi.HandlePausedInput(WorldInput(new Vector2(640, 247)) with { LeftPressed = true }, Session()),
+            "pause Resume still requires and accepts a left click");
         var restartUi = new UIManager(null!);
         Check.Equal(UiAction.None,
             restartUi.HandlePausedInput(WorldInput(new Vector2(640, 497)) with { LeftPressed = true }, Session()),
@@ -797,21 +810,6 @@ internal static class Program
         Check.Equal(UiAction.Restart,
             restartUi.HandlePausedInput(WorldInput(new Vector2(640, 497)) with { LeftPressed = true }, Session()),
             "second pause-menu restart click confirms the reset");
-        var keyboardRestartUi = new UIManager(null!);
-        var keyboardRestartSession = Session();
-        for (var move = 0; move < 4; move++)
-            keyboardRestartUi.HandlePausedInput(WorldInput(Vector2.Zero) with { NavigateDownPressed = true }, keyboardRestartSession);
-        Check.Equal(UiAction.None,
-            keyboardRestartUi.HandlePausedInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, keyboardRestartSession),
-            "focused pause restart still arms before mutating the run");
-        Check.Equal(UiAction.Restart,
-            keyboardRestartUi.HandlePausedInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, keyboardRestartSession),
-            "second focused pause restart activation confirms the reset");
-        keyboardRestartUi.PreparePauseScreen();
-        Check.Equal(UiAction.Resume,
-            keyboardRestartUi.HandlePausedInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, keyboardRestartSession),
-            "a newly opened pause screen safely resets focus to Resume");
-
         var coOpSession = Session();
         coOpSession.ConfigureCoOp(2);
         GameCommand? pauseRequest = null;

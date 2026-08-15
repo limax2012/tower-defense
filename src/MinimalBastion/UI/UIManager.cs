@@ -109,7 +109,6 @@ public sealed class UIManager
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
     private bool _setupForCoOp;
     private int _settingsSelection;
-    private int _pauseMenuSelection;
     private int _resultMenuSelection;
     private int _towerLibraryIndex;
     private int _towerLibraryDoctrineIndex;
@@ -215,7 +214,6 @@ public sealed class UIManager
 
     public void PreparePauseScreen()
     {
-        _pauseMenuSelection = 0;
         _restartArmed = false;
         _towerLibraryOpen = false;
     }
@@ -1125,37 +1123,19 @@ public sealed class UIManager
             _restartArmed = false;
             return UiAction.Resume;
         }
-        if (input.TabPressed || input.NavigateUpPressed || input.NavigateDownPressed)
-        {
-            MovePauseMenuSelection(input.NavigateUpPressed ? -1 : 1, session);
-            return UiAction.None;
-        }
-        if (input.EnterPressed) return ActivatePauseMenuSelection(session);
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
         for (var selection = 0; selection < 7; selection++)
         {
             if (!PauseMenuOptionRectangle(selection).Contains(point)) continue;
-            _pauseMenuSelection = selection;
-            return ActivatePauseMenuSelection(session);
+            return ActivatePauseMenuOption(selection, session);
         }
         return UiAction.None;
     }
 
-    private void MovePauseMenuSelection(int direction, MinimalBastion.GameSession session)
+    private UiAction ActivatePauseMenuOption(int selection, MinimalBastion.GameSession session)
     {
-        _restartArmed = false;
-        for (var attempts = 0; attempts < 7; attempts++)
-        {
-            _pauseMenuSelection = (_pauseMenuSelection + direction + 7) % 7;
-            if (_pauseMenuSelection != 3 || session.CanSaveCheckpoint)
-                if (_pauseMenuSelection != 4 || _saveAvailable) return;
-        }
-    }
-
-    private UiAction ActivatePauseMenuSelection(MinimalBastion.GameSession session)
-    {
-        if (_pauseMenuSelection == 5)
+        if (selection == 5)
         {
             if (_restartArmed)
             {
@@ -1166,13 +1146,13 @@ public sealed class UIManager
             return UiAction.None;
         }
         _restartArmed = false;
-        if (_pauseMenuSelection == 1)
+        if (selection == 1)
         {
             _towerLibraryOpen = true;
             _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, Math.Max(0, _libraryTowers.Count - 1));
             return UiAction.None;
         }
-        return _pauseMenuSelection switch
+        return selection switch
         {
             0 => UiAction.Resume,
             2 => UiAction.Settings,
@@ -2623,15 +2603,12 @@ public sealed class UIManager
         DrawButton(batch, p, _restartButton, _restartArmed ? "CONFIRM RESTART" : "RESTART", true,
             _restartArmed ? ColorPalette.Coral : ColorPalette.Orange);
         DrawButton(batch, p, _mainMenuButton, "MAIN MENU", true, ColorPalette.Coral);
-        var focus = PauseMenuOptionRectangle(Math.Clamp(_pauseMenuSelection, 0, 6));
-        focus.Inflate(3, 3);
-        p.DrawRect(batch, focus, ColorPalette.Ink, 2);
         DrawFittedCenteredText(batch,
             _restartArmed
                 ? RestartPreservationLabel
                 : $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
             new Vector2(640, 580), _restartArmed ? ColorPalette.Coral : session.Challenge.AccentColor, 0.50f, 500);
-        DrawText(batch, "UP/DOWN SELECT  |  ENTER ACTIVATE", new Vector2(640, 612), ColorPalette.Muted, 0.44f, true);
+        DrawText(batch, "LEFT CLICK A COMMAND  |  ESC RESUMES", new Vector2(640, 612), ColorPalette.Muted, 0.44f, true);
     }
 
     private void DrawTowerLibrary(SpriteBatch batch, PrimitiveRenderer p, string returnDestination)
