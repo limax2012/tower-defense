@@ -6,6 +6,7 @@
     "description": "All towers and tactical reserves are available.",
     "startingCreditsMultiplier": 1.0,
     "tacticalSystemsEnabled": true,
+    "protocolsEnabled": true,
     "excludedTowerIds": [],
     "accent": "#2192AA"
   },
@@ -16,6 +17,7 @@
     "description": "Watchtower and Siege Mortar are offline; fight near the route with 10% more starting credits.",
     "startingCreditsMultiplier": 1.10,
     "tacticalSystemsEnabled": true,
+    "protocolsEnabled": true,
     "excludedTowerIds": ["watchtower", "siege_mortar"],
     "accent": "#EC8B2D"
   },
@@ -26,17 +28,31 @@
     "description": "Advanced roster lock: use Needle, Frost, Shard, Ember, Breaker, and Beacon with 30% more starting credits.",
     "startingCreditsMultiplier": 1.30,
     "tacticalSystemsEnabled": true,
+    "protocolsEnabled": true,
     "excludedTowerIds": ["watchtower", "arc_relay", "siege_mortar", "prism_beam"],
     "accent": "#7C53DA"
   },
   {
     "id": "no_reserves",
-    "displayName": "No Reserves",
-    "menuLabel": "No Reserve",
-    "description": "Pulse Plates and the Charge Forge are offline; tower funding begins 5% higher.",
-    "startingCreditsMultiplier": 1.05,
+    "displayName": "Fundamentals",
+    "menuLabel": "Fundamentals",
+    "description": "Win through towers, permanent upgrades, and targeting. Plates, Forge, and Protocols are offline; start with 25% more credits.",
+    "startingCreditsMultiplier": 1.25,
     "tacticalSystemsEnabled": false,
+    "protocolsEnabled": false,
     "excludedTowerIds": [],
     "accent": "#EC5062"
+  },
+  {
+    "id": "sandbox_lab",
+    "displayName": "Sandbox Lab",
+    "menuLabel": "Sandbox",
+    "description": "Unlimited solo tower testing with fixed targets, immortal targets, and replayable authored waves.",
+    "startingCreditsMultiplier": 1.0,
+    "tacticalSystemsEnabled": false,
+    "protocolsEnabled": true,
+    "isSandbox": true,
+    "excludedTowerIds": [],
+    "accent": "#2AC275"
   }
 ]

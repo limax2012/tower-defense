@@ -13,21 +13,23 @@ public sealed class GameRenderer
     public bool ReducedEffects { get; set; }
 
     public void Draw(SpriteBatch batch, PrimitiveRenderer primitives, MinimalBastion.GameSession session,
-        bool showTransientCombat = true)
+        bool showTransientCombat = true, float presentationLeadSeconds = 0)
     {
+        var presentation = PresentationFrame.Create(session, presentationLeadSeconds);
         primitives.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight), session.Map.Definition.Background.BaseColor);
         DrawTerrain(batch, primitives, session);
         DrawPath(batch, primitives, session);
         DrawMarkers(batch, primitives, session);
-        DrawTacticalDefenses(batch, primitives, session);
+        DrawTacticalDefenses(batch, primitives, session, presentation);
         DrawRanges(batch, primitives, session);
-        DrawTowers(batch, primitives, session);
-        DrawEnemies(batch, primitives, session);
+        DrawTowers(batch, primitives, session, presentation);
+        DrawEnemies(batch, primitives, session, presentation);
         if (showTransientCombat)
         {
-            DrawProjectiles(batch, primitives, session);
-            DrawEffects(batch, primitives, session);
+            DrawProjectiles(batch, primitives, session, presentation);
+            DrawEffects(batch, primitives, session, presentation);
         }
+        DrawAutoProtocolOverlay(batch, primitives, session, presentation.TimeSeconds);
     }
 
     private static void DrawTerrain(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -434,7 +436,8 @@ public sealed class GameRenderer
     private static float DisplayRange(MinimalBastion.GameSession session, TowerInstance tower) =>
         tower.IsSupport ? session.GetEffectiveAuraRange(tower) : session.GetEffectiveRange(tower);
 
-    private static void DrawTacticalDefenses(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    private static void DrawTacticalDefenses(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session,
+        PresentationFrame presentation)
     {
         foreach (var plate in session.EmergencyDefenses)
         {
@@ -447,7 +450,7 @@ public sealed class GameRenderer
         var visual = generator.Definition.Visual;
         p.DrawShape(batch, generator.Position, visual.Radius, visual.Shape,
             visual.PrimaryColor, visual.AccentColor, generator.LevelIndex + 1, true,
-            1f + MathF.Sin(session.Statistics.SimulatedSeconds * 2.5f) * 0.04f, true);
+            1f + MathF.Sin(presentation.TimeSeconds * 2.5f) * 0.04f, true);
         if (session.IsCoOp)
             p.Ring(batch, generator.Position, visual.Radius + 8, generator.OwnerPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral, 2);
         var track = new Rectangle((int)generator.Position.X - 22, (int)generator.Position.Y + visual.Radius + 8, 44, 5);
@@ -457,50 +460,87 @@ public sealed class GameRenderer
             p.Ring(batch, generator.Position, visual.Radius + (session.IsCoOp ? 12 : 8), ColorPalette.Gold, 3);
     }
 
-    private void DrawTowers(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    private void DrawTowers(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session,
+        PresentationFrame presentation)
     {
-        var time = session.Statistics.SimulatedSeconds;
-        foreach (var tower in session.Towers)
+        var time = presentation.TimeSeconds;
+        var autoTower = session.Towers.FirstOrDefault(tower => tower.Id == session.AutoOverdriveTowerId);
+
+        // Aura ranges are battlefield information, not tower foreground art.
+        // Keep them beneath every tower so an Auto-armed support tower cannot
+        // put its large dashed range over neighboring tower silhouettes.
+        foreach (var supportTower in session.Towers.Where(tower => tower.IsSupport && !tower.IsSandboxDisabled))
         {
-            var supportPulse = tower.IsSupport ? 1f + MathF.Sin(time * 3f + tower.Id) * 0.06f : 1f;
-            if (tower.IsOverdriven) supportPulse *= 1f + MathF.Sin(time * 13f + tower.Id) * 0.05f;
-            var pulse = supportPulse * tower.VisualScale;
-            var primary = tower.Definition.Visual.PrimaryColor;
-            var accent = tower.Definition.Visual.AccentColor;
-            p.DrawShape(batch, tower.Position, tower.Definition.Visual.Radius, tower.Definition.Visual.Shape,
-                primary, accent, tower.LevelIndex + 1, true, pulse, true);
-            if (tower.Specialization is { } specialization)
-            {
-                var branchIndex = tower.Definition.Specializations.IndexOf(specialization);
-                // The first and second specialization choices are stacked in Tower Intel,
-                // so matching up/down glyphs communicate the chosen branch more clearly
-                // than the old, otherwise unexplained circle/diamond pair.
-                if (branchIndex == 0)
-                    p.DrawPolygon(batch, tower.Position, 5f, 3, false, ColorPalette.Paper, -MathHelper.PiOver2);
-                else
-                    p.DrawPolygon(batch, tower.Position, 5f, 3, false, ColorPalette.Paper, MathHelper.PiOver2);
-            }
-            if (session.Map.GetPowerBuff(tower.Position).IsPowered)
-                p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 10, ColorPalette.WithAlpha(ColorPalette.Gold, 190), 12, 2);
-            if (tower.IsOverdriven)
-            {
-                p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 15 + MathF.Sin(time * 8f) * 2f,
-                    tower.Definition.Visual.PrimaryColor, 16, 3);
-                if (!ReducedEffects) DrawProtocolSignature(batch, p, tower, time);
-            }
-            else if (session.AutoOverdriveTowerId == tower.Id)
-                DrawAutoProtocolEffect(batch, p, tower, time);
-
-            if (session.IsCoOp)
-                p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 8, tower.OwnerPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral, 2);
-            if (session.GetSupportBuff(tower).IsActive)
-                DrawSignalBeaconEffect(batch, p, tower, time);
-            if (tower == session.SelectedTower)
-                p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + (session.IsCoOp ? 12 : 8), ColorPalette.Gold, 3);
-
-            if (tower.IsSupport)
-                p.DashedRing(batch, tower.Position, session.GetEffectiveAuraRange(tower), ColorPalette.WithAlpha(accent, 120), 28, 2);
+            var accent = supportTower.Definition.Visual.AccentColor;
+            p.DashedRing(batch, supportTower.Position, session.GetEffectiveAuraRange(supportTower),
+                ColorPalette.WithAlpha(accent, 120), 28, 2);
         }
+
+        foreach (var tower in session.Towers)
+            if (tower != autoTower)
+                DrawTower(batch, p, session, presentation, tower, time);
+
+        // Auto is a temporary render priority, not a permanent tower property.
+        // Moving Auto to another tower naturally returns this one to normal order.
+        if (autoTower is not null)
+            DrawTower(batch, p, session, presentation, autoTower, time);
+    }
+
+    private void DrawTower(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session,
+        PresentationFrame presentation, TowerInstance tower, float time)
+    {
+        var supportPulse = tower.IsSupport ? 1f + MathF.Sin(time * 3f + tower.Id) * 0.06f : 1f;
+        if (tower.IsOverdriven) supportPulse *= 1f + MathF.Sin(time * 13f + tower.Id) * 0.05f;
+        var pulse = supportPulse * presentation.TowerScale(tower);
+        var primary = tower.IsSandboxDisabled ? ColorPalette.Muted : tower.Definition.Visual.PrimaryColor;
+        var accent = tower.IsSandboxDisabled ? ColorPalette.MapBoundary : tower.Definition.Visual.AccentColor;
+        p.DrawShape(batch, tower.Position, tower.Definition.Visual.Radius, tower.Definition.Visual.Shape,
+            primary, accent, tower.LevelIndex + 1, true, pulse, true);
+        if (tower.IsSandboxDisabled)
+        {
+            var slash = tower.Definition.Visual.Radius * 0.58f;
+            p.Line(batch, tower.Position + new Vector2(-slash, -slash), tower.Position + new Vector2(slash, slash), ColorPalette.Coral, 3);
+            p.Line(batch, tower.Position + new Vector2(slash, -slash), tower.Position + new Vector2(-slash, slash), ColorPalette.Coral, 3);
+            if (tower == session.SelectedTower)
+                p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 8, ColorPalette.Gold, 3);
+            return;
+        }
+        if (tower.Specialization is { } specialization)
+        {
+            var branchIndex = tower.Definition.Specializations.IndexOf(specialization);
+            // The first and second specialization choices are stacked in Tower Intel,
+            // so matching up/down glyphs communicate the chosen branch more clearly
+            // than the old, otherwise unexplained circle/diamond pair.
+            if (branchIndex == 0)
+                p.DrawPolygon(batch, tower.Position, 5f, 3, false, ColorPalette.Paper, -MathHelper.PiOver2);
+            else
+                p.DrawPolygon(batch, tower.Position, 5f, 3, false, ColorPalette.Paper, MathHelper.PiOver2);
+        }
+        if (session.Map.GetPowerBuff(tower.Position).IsPowered)
+            p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 10, ColorPalette.WithAlpha(ColorPalette.Gold, 190), 12, 2);
+        if (tower.IsOverdriven)
+        {
+            p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 15 + MathF.Sin(time * 8f) * 2f,
+                tower.Definition.Visual.PrimaryColor, 16, 3);
+            if (!ReducedEffects) DrawProtocolSignature(batch, p, tower, time);
+        }
+        if (session.IsCoOp)
+            p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 8,
+                tower.OwnerPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral, 2);
+        if (session.GetSupportBuff(tower).IsActive)
+            DrawSignalBeaconEffect(batch, p, tower, time);
+        if (tower == session.SelectedTower)
+            p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + (session.IsCoOp ? 12 : 8), ColorPalette.Gold, 3);
+    }
+
+    private static void DrawAutoProtocolOverlay(SpriteBatch batch, PrimitiveRenderer p,
+        MinimalBastion.GameSession session, float time)
+    {
+        var autoTower = session.Towers.FirstOrDefault(tower => tower.Id == session.AutoOverdriveTowerId);
+        if (autoTower is null || autoTower.IsSandboxDisabled) return;
+        // This final overlay pass keeps the brackets and A badge above towers,
+        // enemies, projectiles, and geometric attack effects.
+        DrawAutoProtocolEffect(batch, p, autoTower, time);
     }
 
     private static void DrawProtocolSignature(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)
@@ -581,9 +621,34 @@ public sealed class GameRenderer
     private static void DrawAutoProtocolEffect(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)
     {
         var pulse = (MathF.Sin(time * 3.5f + tower.Id) + 1f) * 0.5f;
-        var marker = tower.Position + new Vector2(-tower.Definition.Visual.Radius * 0.58f, tower.Definition.Visual.Radius * 0.58f);
-        p.Circle(batch, marker, 4.3f, ColorPalette.WithAlpha(ColorPalette.Navy, 225));
-        p.DrawPolygon(batch, marker, 2.8f + pulse * 0.45f, 4, false, ColorPalette.Cobalt, MathHelper.PiOver4);
+        var color = ColorPalette.WithAlpha(ColorPalette.Cobalt, (byte)(190 + pulse * 55));
+        var bracketRadius = tower.Definition.Visual.Radius + 11.5f + pulse;
+        const float bracketLength = 6f;
+
+        // Four open brackets read as an armed targeting frame without replacing
+        // the tower's authored identity ring, co-op ownership ring, or Beacon pip.
+        for (var xIndex = 0; xIndex < 2; xIndex++)
+        for (var yIndex = 0; yIndex < 2; yIndex++)
+        {
+            var xSign = xIndex == 0 ? -1f : 1f;
+            var ySign = yIndex == 0 ? -1f : 1f;
+            var corner = tower.Position + new Vector2(xSign * bracketRadius, ySign * bracketRadius);
+            p.Line(batch, corner, corner - new Vector2(xSign * bracketLength, 0), color, 3);
+            p.Line(batch, corner, corner - new Vector2(0, ySign * bracketLength), color, 3);
+        }
+
+        // A literal geometric A remains legible during the active Protocol, when
+        // the tower's separate animated Protocol signature is also visible.
+        var badgeDirection = Vector2.Normalize(new Vector2(-1f, 1f));
+        var marker = tower.Position + badgeDirection * (tower.Definition.Visual.Radius + 9f);
+        p.Circle(batch, marker, 8f, ColorPalette.WithAlpha(ColorPalette.Cobalt, 238));
+        p.Ring(batch, marker, 8f, ColorPalette.Navy, 2);
+        var top = marker + new Vector2(0, -4f);
+        var lowerLeft = marker + new Vector2(-3.4f, 3.5f);
+        var lowerRight = marker + new Vector2(3.4f, 3.5f);
+        p.Line(batch, lowerLeft, top, ColorPalette.Paper, 2);
+        p.Line(batch, top, lowerRight, ColorPalette.Paper, 2);
+        p.Line(batch, marker + new Vector2(-1.8f, 0.8f), marker + new Vector2(1.8f, 0.8f), ColorPalette.Paper, 2);
     }
 
     private static void DrawSignalBeaconEffect(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)
@@ -600,75 +665,82 @@ public sealed class GameRenderer
         p.Circle(batch, markerPosition, 2.55f + pulse * 0.55f, ColorPalette.WithAlpha(ColorPalette.Gold, alpha));
     }
 
-    private static void DrawEnemies(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    private static void DrawEnemies(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session,
+        PresentationFrame presentation)
     {
-        var time = session.Statistics.SimulatedSeconds;
+        var time = presentation.TimeSeconds;
         foreach (var enemy in session.Enemies)
         {
             if (enemy.IsDead || enemy.HasEscaped) continue;
+            var position = presentation.EnemyPosition(enemy);
             var pulseRate = enemy.IsBoss ? 8f : 5f;
             var pulseAmount = enemy.IsBoss ? 0.09f : 0.05f;
             var pulse = enemy.IsBoss || enemy.Definition.Id.Contains("regenerator", StringComparison.OrdinalIgnoreCase)
                 ? 1f + MathF.Sin(time * pulseRate) * pulseAmount : 1f;
             var primary = enemy.Definition.Visual.PrimaryColor;
             var accent = enemy.Definition.Visual.AccentColor;
-            p.DrawShape(batch, enemy.Position, (int)MathF.Round(enemy.Radius), enemy.Definition.Visual.Shape,
+            p.DrawShape(batch, position, (int)MathF.Round(enemy.Radius), enemy.Definition.Visual.Shape,
                 primary, accent, enemy.Definition.Visual.Marks + (enemy.IsBoss ? 2 : 0), enemy.Definition.Visual.Ring || enemy.IsElite || enemy.IsBoss, pulse);
 
             if (enemy.IsBoss)
             {
-                p.DashedRing(batch, enemy.Position, enemy.Radius + 10, ColorPalette.Coral, 16, 3);
-                p.DashedRing(batch, enemy.Position, enemy.Radius + 16, ColorPalette.Gold, 24, 2);
+                p.DashedRing(batch, position, enemy.Radius + 10, ColorPalette.Coral, 16, 3);
+                p.DashedRing(batch, position, enemy.Radius + 16, ColorPalette.Gold, 24, 2);
             }
             else if (enemy.IsElite)
-                p.DashedRing(batch, enemy.Position, enemy.Radius + 7, ColorPalette.Gold, 12, 2);
+                p.DashedRing(batch, position, enemy.Radius + 7, ColorPalette.Gold, 12, 2);
+
+            if (enemy.IsSandboxImmortal)
+                p.DashedRing(batch, position, enemy.Radius + (enemy.IsBoss ? 21 : 7), ColorPalette.Paper, 10, 2);
 
             var healthRatio = enemy.MaxHealth > 0 ? enemy.Health / enemy.MaxHealth : 0;
-            p.HealthBar(batch, enemy.Position - new Vector2(0, enemy.Radius + 11), enemy.Radius * (enemy.IsBoss ? 3.5f : 2.5f),
+            p.HealthBar(batch, position - new Vector2(0, enemy.Radius + 11), enemy.Radius * (enemy.IsBoss ? 3.5f : 2.5f),
                 healthRatio, ColorPalette.Health(healthRatio), ColorPalette.HealthTrack, ColorPalette.Ink);
 
             if (enemy.Shield > 0)
-                p.Ring(batch, enemy.Position, enemy.Radius + 5, ColorPalette.Shield, 3);
+                p.Ring(batch, position, enemy.Radius + 5, ColorPalette.Shield, 3);
             if (enemy.StatusEffects.IsBurning)
             {
                 var burnAlpha = (byte)(145 + (MathF.Sin(time * 7f + enemy.Id) + 1f) * 42f);
-                p.Ring(batch, enemy.Position, MathF.Max(5, enemy.Radius - 2), ColorPalette.WithAlpha(ColorPalette.Orange, burnAlpha), 2);
+                p.Ring(batch, position, MathF.Max(5, enemy.Radius - 2), ColorPalette.WithAlpha(ColorPalette.Orange, burnAlpha), 2);
             }
             if (enemy.StatusEffects.SlowFactor > 0)
-                p.DashedRing(batch, enemy.Position, enemy.Radius + 9, ColorPalette.Slow, 16, 2);
+                p.DashedRing(batch, position, enemy.Radius + 9, ColorPalette.Slow, 16, 2);
             if (enemy.StatusEffects.DamageMultiplier > 1f)
             {
-                p.Ring(batch, enemy.Position, enemy.Radius + 13, ColorPalette.Violet, 2);
-                p.DrawPolygon(batch, enemy.Position - new Vector2(0, enemy.Radius + 13), 3.5f, 4, false, ColorPalette.Violet, MathHelper.PiOver4);
+                p.Ring(batch, position, enemy.Radius + 13, ColorPalette.Violet, 2);
+                p.DrawPolygon(batch, position - new Vector2(0, enemy.Radius + 13), 3.5f, 4, false, ColorPalette.Violet, MathHelper.PiOver4);
             }
             if (enemy.StatusEffects.ArmorReduction > 0)
-                StatusGlyphRenderer.DrawArmorBreak(batch, p, enemy.Position, enemy.Radius);
+                StatusGlyphRenderer.DrawArmorBreak(batch, p, position, enemy.Radius);
             if (enemy.StatusEffects.IsStunned)
-                StatusGlyphRenderer.DrawStun(batch, p, enemy.Position, enemy.Radius,
+                StatusGlyphRenderer.DrawStun(batch, p, position, enemy.Radius,
                     (MathF.Sin(time * 11f + enemy.Id) + 1f) * 0.5f);
             if (enemy.Definition.RegenerationPerSecond > 0)
-                p.Ring(batch, enemy.Position, enemy.Radius + 11, ColorPalette.Lime, 2);
+                p.Ring(batch, position, enemy.Radius + 11, ColorPalette.Lime, 2);
         }
     }
 
-    private void DrawProjectiles(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    private void DrawProjectiles(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session,
+        PresentationFrame presentation)
     {
         foreach (var projectile in session.Projectiles.Projectiles)
         {
+            var position = presentation.ProjectilePosition(projectile);
             if (!ReducedEffects)
             {
                 var destination = projectile.Kind == Combat.ProjectileKind.Homing &&
                                   projectile.Target is { IsDead: false, HasEscaped: false }
-                    ? projectile.Target.Position
+                    ? presentation.EnemyPosition(projectile.Target)
                     : projectile.AimPoint;
-                var forward = destination - projectile.Position;
+                var forward = destination - position;
                 if (forward.LengthSquared() > 1f)
                 {
                     forward.Normalize();
                     var trailLength = MathF.Max(7, projectile.Radius * 2.2f);
                     p.Line(batch,
-                        projectile.Position - forward * trailLength,
-                        projectile.Position - forward * 2f,
+                        position - forward * trailLength,
+                        position - forward * 2f,
                         ColorPalette.WithAlpha(projectile.Color, 145),
                         2);
                 }
@@ -680,16 +752,19 @@ public sealed class GameRenderer
                 Combat.ProjectileKind.Straight => "triangle",
                 _ => "diamond"
             };
-            p.DrawShape(batch, projectile.Position, Math.Max(4, (int)projectile.Radius + 2), shape,
+            p.DrawShape(batch, position, Math.Max(4, (int)projectile.Radius + 2), shape,
                 projectile.Color, ColorPalette.Ink, 0, false);
         }
     }
 
-    private void DrawEffects(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
+    private void DrawEffects(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session,
+        PresentationFrame presentation)
     {
         foreach (var effect in session.Effects.Effects)
         {
-            var progress = MathHelper.Clamp(effect.Remaining / MathF.Max(effect.Duration, 0.001f), 0, 1);
+            var remaining = presentation.EffectRemaining(effect);
+            if (remaining <= 0) continue;
+            var progress = MathHelper.Clamp(remaining / MathF.Max(effect.Duration, 0.001f), 0, 1);
             var alpha = (byte)(100 + 155 * progress);
             var effectColor = ColorPalette.WithAlpha(effect.Color, alpha);
             if (effect.Kind == EffectKind.Beam)

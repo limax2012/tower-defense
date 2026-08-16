@@ -38,6 +38,7 @@ public enum GameState
     Settings,
     SaveSlots,
     RunHistory,
+    RunHistoryField,
     CoOpMenu,
     CoOpLobby,
     CoOpReconnect,
@@ -121,7 +122,12 @@ public readonly record struct InputSnapshot(
     bool NavigateDownPressed = false,
     bool NavigateLeftPressed = false,
     bool NavigateRightPressed = false,
-    bool AutoProtocolPressed = false);
+    bool AutoProtocolPressed = false,
+    bool SandboxSpawnPressed = false,
+    bool SandboxResetPressed = false,
+    bool SandboxClearTowersPressed = false,
+    bool SandboxWavePreviousPressed = false,
+    bool SandboxWaveNextPressed = false);
 
 public sealed class ViewportTransform
 {
@@ -197,6 +203,7 @@ public sealed class InputRouter
     private readonly Queue<char> _textInput = new();
     private readonly ViewportTransform _transform;
     private long _nextBackspaceRepeatTimestamp;
+    private bool _wasWindowActive;
 
     public InputRouter(ViewportTransform transform) => _transform = transform;
 
@@ -206,11 +213,34 @@ public sealed class InputRouter
             _textInput.Enqueue(char.ToUpperInvariant(character));
     }
 
-    public InputSnapshot Update()
+    public void LoseWindowFocus()
+    {
+        _wasWindowActive = false;
+        _textInput.Clear();
+        _nextBackspaceRepeatTimestamp = 0;
+    }
+
+    public InputSnapshot Update(bool windowActive)
     {
         var keyboard = Microsoft.Xna.Framework.Input.Keyboard.GetState();
         var mouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
         var logical = _transform.ScreenToLogical(new Point(mouse.X, mouse.Y));
+
+        // Keyboard.GetState and Mouse.GetState can report global device state even
+        // while the game is covered or minimized. Synchronize the physical state
+        // without emitting actions whenever the window is inactive. The first
+        // frame after focus returns is suppressed as well, preventing the click or
+        // key used to reactivate the window from triggering a game command.
+        if (!windowActive || !_wasWindowActive)
+        {
+            _previousKeyboard = keyboard;
+            _previousMouse = mouse;
+            _textInput.Clear();
+            _nextBackspaceRepeatTimestamp = 0;
+            _wasWindowActive = windowActive;
+            return InactiveSnapshot(logical);
+        }
+
         var controlDown = keyboard.IsKeyDown(Keys.LeftControl) || keyboard.IsKeyDown(Keys.RightControl);
         var textEntered = DrainTextInput();
         if (controlDown) textEntered = "";
@@ -244,11 +274,40 @@ public sealed class InputRouter
             IsPressed(keyboard, _previousKeyboard, Keys.Down),
             IsPressed(keyboard, _previousKeyboard, Keys.Left),
             IsPressed(keyboard, _previousKeyboard, Keys.Right),
-            IsPressed(keyboard, _previousKeyboard, Keys.A));
+            IsPressed(keyboard, _previousKeyboard, Keys.A),
+            IsPressed(keyboard, _previousKeyboard, Keys.F),
+            IsPressed(keyboard, _previousKeyboard, Keys.R),
+            !controlDown && IsPressed(keyboard, _previousKeyboard, Keys.C),
+            IsPressed(keyboard, _previousKeyboard, Keys.OemMinus) || IsPressed(keyboard, _previousKeyboard, Keys.Subtract),
+            IsPressed(keyboard, _previousKeyboard, Keys.OemPlus) || IsPressed(keyboard, _previousKeyboard, Keys.Add));
         _previousKeyboard = keyboard;
         _previousMouse = mouse;
+        _wasWindowActive = true;
         return snapshot;
     }
+
+    private static InputSnapshot InactiveSnapshot(Vector2 mousePosition) => new(
+        MousePosition: mousePosition,
+        LeftPressed: false,
+        LeftReleased: false,
+        RightPressed: false,
+        PingPressed: false,
+        EscapePressed: false,
+        PausePressed: false,
+        DebugKeyPressed: false,
+        IsMouseOverLogicalCanvas: false,
+        TowerHotkey: 0,
+        UpgradePressed: false,
+        SellPressed: false,
+        TargetPressed: false,
+        StartWavePressed: false,
+        SpeedPressed: false,
+        EmergencyPressed: false,
+        GeneratorPressed: false,
+        OverdrivePressed: false,
+        TextEntered: "",
+        BackspacePressed: false,
+        EnterPressed: false);
 
     private static bool IsPressed(KeyboardState current, KeyboardState previous, Microsoft.Xna.Framework.Input.Keys key)
         => current.IsKeyDown(key) && !previous.IsKeyDown(key);

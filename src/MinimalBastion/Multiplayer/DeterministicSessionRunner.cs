@@ -4,8 +4,9 @@ namespace MinimalBastion.Multiplayer;
 
 public sealed class DeterministicSessionRunner
 {
-    public const float FixedStepSeconds = 0.05f;
-    public const int MaximumFutureTicks = 240;
+    public const int SimulationTicksPerSecond = 60;
+    public const float FixedStepSeconds = 1f / SimulationTicksPerSecond;
+    public const int MaximumFutureTicks = SimulationTicksPerSecond * 12;
     public const int MaximumPendingCommands = 512;
     public const int AppliedSequenceHistoryLimit = 4096;
     private readonly GameSession _session;
@@ -17,6 +18,7 @@ public sealed class DeterministicSessionRunner
     private float _accumulator;
 
     public long Tick { get; private set; }
+    public float PresentationLeadSeconds => Math.Clamp(_accumulator, 0, FixedStepSeconds);
     public int PendingCommandCount => _pendingSequences.Count;
     public int AppliedSequenceHistoryCount => _appliedSequences.Count;
     public long ExpiredAppliedSequenceFloor => _expiredAppliedSequenceFloor;
@@ -217,6 +219,8 @@ public static class SessionChecksum
             Add(ref hash, projectile.Speed);
             Add(ref hash, projectile.SplashRadius);
             Add(ref hash, projectile.SplashTargetLimit);
+            Add(ref hash, projectile.RicochetRange);
+            Add(ref hash, projectile.RicochetDamageMultiplier);
             Add(ref hash, projectile.Payload.PriorityDamageMultiplier);
             Add(ref hash, projectile.Payload.ArmorPierce);
             Add(ref hash, projectile.Payload.IgnoreShield ? 1 : 0);

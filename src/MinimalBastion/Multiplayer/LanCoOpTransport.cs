@@ -30,7 +30,7 @@ public enum CoOpMessageType
 
 public sealed record CoOpEnvelope
 {
-    public const int CurrentProtocolVersion = 9;
+    public const int CurrentProtocolVersion = 10;
     public CoOpMessageType Type { get; init; }
     public int ProtocolVersion { get; init; } = CurrentProtocolVersion;
     public string JoinCode { get; init; } = "";
@@ -47,6 +47,7 @@ public sealed record CoOpEnvelope
     public float X { get; init; }
     public float Y { get; init; }
     public int EntityId { get; init; }
+    public string TowerDefinitionId { get; init; } = "";
     public CoOpStateSnapshot? State { get; init; }
 }
 
@@ -160,7 +161,8 @@ public static class CoOpEnvelopeValidator
             envelope.Message.Length > MaximumMessageLength || envelope.Checksum is null ||
             envelope.Checksum.Length > MaximumFingerprintLength || envelope.PlayerId is < 0 or > 2 ||
             envelope.Tick < 0 || (envelope.ReadyMask & ~0b11) != 0 ||
-            !float.IsFinite(envelope.X) || !float.IsFinite(envelope.Y) || envelope.EntityId < 0)
+            !float.IsFinite(envelope.X) || !float.IsFinite(envelope.Y) || envelope.EntityId < 0 ||
+            envelope.TowerDefinitionId is null || envelope.TowerDefinitionId.Length > 128)
             return false;
 
         return envelope.Type switch
@@ -185,7 +187,8 @@ public static class CoOpEnvelopeValidator
             CoOpMessageType.ResyncRequest => envelope.PlayerId == 2,
             CoOpMessageType.RestartRequest => envelope.PlayerId == 2,
             CoOpMessageType.Disconnect => envelope.PlayerId is 1 or 2,
-            CoOpMessageType.Cursor => envelope.PlayerId is 1 or 2 && IsReasonablePosition(envelope),
+            CoOpMessageType.Cursor => envelope.PlayerId is 1 or 2 && IsReasonablePosition(envelope) &&
+                (envelope.EntityId == 0 || string.IsNullOrWhiteSpace(envelope.TowerDefinitionId)),
             _ => false
         };
     }

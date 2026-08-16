@@ -14,7 +14,12 @@ namespace MinimalBastion;
 public sealed class Game1 : Game
 {
     private const int OnlineCoOpPort = 28741;
-    private const int NetworkInputDelayTicks = 6;
+    // A 200ms host scheduling window tolerates ordinary friend-to-friend jitter
+    // while cutting the previous 300ms command delay. Simulation itself runs
+    // locally on each peer; only commands and periodic checksums cross the link.
+    private const int NetworkInputDelayTicks = DeterministicSessionRunner.SimulationTicksPerSecond / 5;
+    private const int NetworkChecksumIntervalTicks = DeterministicSessionRunner.SimulationTicksPerSecond;
+    private const int NetworkChecksumHistoryTicks = DeterministicSessionRunner.SimulationTicksPerSecond * 12;
     private readonly GraphicsDeviceManager _graphics;
     private readonly UserSettings _settings;
     private readonly ViewportTransform _viewportTransform = new();
@@ -28,6 +33,7 @@ public sealed class Game1 : Game
     private AudioManager? _audio;
     private GameContent _content = null!;
     private GameSession? _session;
+    private GameSession? _historyInspectionSession;
     private GameState _state = GameState.MainMenu;
     private string? _loadError;
     private string _contentFingerprint = "";
@@ -84,13 +90,20 @@ public sealed class Game1 : Game
         IsMouseVisible = true;
         Window.AllowUserResizing = true;
         Window.Title = "Minimal Bastion";
+        // Variable presentation permits 60/120/144 Hz rendering. Co-op gameplay
+        // remains on its own deterministic fixed-rate runner.
+        IsFixedTimeStep = false;
     }
 
     protected override void Initialize()
     {
         _viewportTransform.Update(_graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight);
         _input = new InputRouter(_viewportTransform);
-        Window.TextInput += (_, args) => _input.QueueTextInput(args.Character);
+        Window.TextInput += (_, args) =>
+        {
+            if (IsActive) _input.QueueTextInput(args.Character);
+        };
+        Deactivated += (_, _) => _input.LoseWindowFocus();
         base.Initialize();
     }
 
@@ -144,7 +157,7 @@ public sealed class Game1 : Game
     protected override void Update(GameTime gameTime)
     {
         _viewportTransform.Update(GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
-        var input = _input.Update();
+        var input = _input.Update(IsActive);
         var elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
         _audio?.Update(elapsedSeconds);
         _coOpCursor.Advance(elapsedSeconds);
@@ -177,6 +190,9 @@ public sealed class Game1 : Game
             case GameState.RunHistory:
                 HandleRunHistoryAction(WithUiAudio(_ui.HandleRunHistory(input)));
                 break;
+            case GameState.RunHistoryField:
+                UpdateRunHistoryField(input);
+                break;
             case GameState.CoOpMenu:
                 HandleCoOpMenuAction(WithUiAudio(_ui.HandleCoOpMenu(input)));
                 break;
@@ -190,7 +206,11 @@ public sealed class Game1 : Game
                 UpdatePlaying(input, gameTime);
                 break;
             case GameState.Paused:
-                if (_session is not null) HandlePauseAction(WithUiAudio(_ui.HandlePausedInput(input, _session)));
+                if (_session is not null)
+                {
+                    HandlePauseAction(WithUiAudio(_ui.HandlePausedInput(input, _session)));
+                    if (_state == GameState.Paused) _session.UpdatePausedIntermission(elapsedSeconds);
+                }
                 break;
             case GameState.Victory:
             case GameState.Defeat:
@@ -248,17 +268,19 @@ public sealed class Game1 : Game
             SendCoOpPing(input.MousePosition);
         if (_networkRunner is not null && _networkStarted &&
             _coOpCursor.TryCaptureLocal(input.MousePosition, input.IsMouseOverLogicalCanvas,
-                _session.SelectedTower?.Id ?? 0, out var cursorPosition))
+                _session.SelectedTower?.Id ?? 0, _session.PlacementTowerId ?? "", out var cursorPosition))
             QueueSend(new CoOpEnvelope
             {
                 Type = CoOpMessageType.Cursor,
                 PlayerId = _localPlayerId,
                 X = cursorPosition.X,
                 Y = cursorPosition.Y,
-                EntityId = _session.SelectedTower?.Id ?? 0
+                EntityId = _session.SelectedTower?.Id ?? 0,
+                TowerDefinitionId = _session.PlacementTowerId ?? ""
             });
         _debug.Update(input);
         Action<GameCommand>? commandSink = _networkRunner is null ? null : SubmitLocalNetworkCommand;
+        var gameplayOverlayWasOpen = _ui.IsGameplayOverlayOpen;
         var action = WithUiAudio(_ui.HandleGameplayInput(input, _session, commandSink, _localPlayerId));
         if (_networkRunner is null && action == UiAction.Pause)
         {
@@ -266,10 +288,30 @@ public sealed class Game1 : Game
             _state = GameState.Paused;
             return;
         }
+        if (_networkRunner is not null && action == UiAction.Restart)
+        {
+            Restart();
+            return;
+        }
+        if (_networkRunner is not null && action == UiAction.MainMenu)
+        {
+            CleanupNetwork();
+            _state = GameState.MainMenu;
+            return;
+        }
 
-        if (action != UiAction.TowerLibrary)
+        // A local library overlay in co-op must consume its opening, browsing,
+        // and closing input without emitting a semantic action every frame.
+        // Track both sides of the transition so the same keystroke never leaks
+        // through to battlefield controls.
+        if (!gameplayOverlayWasOpen && !_ui.IsGameplayOverlayOpen && action != UiAction.TowerLibrary &&
+            !(_session.IsCoOp && _session.IsCoOpPaused))
             _session.HandleWorldInput(input, commandSink, _localPlayerId);
-        if (_networkRunner is null) _session.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
+        if (_networkRunner is null)
+        {
+            _session.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
+            _session.TryAutoStartNextWave(_settings.AutoStartWaves);
+        }
         else
         {
             _networkRunner.Advance((float)gameTime.ElapsedGameTime.TotalSeconds);
@@ -308,6 +350,7 @@ public sealed class Game1 : Game
             _activeSaveSlot = null;
             _state = GameState.Playing;
         }
+        else if (action == UiAction.HostCoOp) BeginHostingCoOp();
         else if (action == UiAction.TowerLibrary) _state = GameState.TowerLibrary;
         else if (action == UiAction.Settings)
         {
@@ -337,16 +380,16 @@ public sealed class Game1 : Game
     {
         switch (action)
         {
-            case UiAction.HostCoOp:
-                BeginHostingCoOp();
+            case UiAction.OpenCoOpSetup:
+                _ui.PrepareGameSetup(true);
+                _state = GameState.GameSetup;
                 break;
             case UiAction.JoinCoOp:
                 BeginJoiningCoOp(_ui.JoinHostInput, _ui.JoinCodeInput);
                 break;
             case UiAction.MainMenu:
                 CleanupNetwork();
-                _ui.PrepareGameSetup(true);
-                _state = GameState.GameSetup;
+                _state = GameState.MainMenu;
                 break;
         }
     }
@@ -598,7 +641,8 @@ public sealed class Game1 : Game
                 ShowCoOpPing(new Vector2(envelope.X, envelope.Y), envelope.PlayerId);
                 break;
             case CoOpMessageType.Cursor when envelope.PlayerId != _localPlayerId:
-                if (_coOpCursor.Receive(new Vector2(envelope.X, envelope.Y), envelope.PlayerId, envelope.EntityId))
+                if (_coOpCursor.Receive(new Vector2(envelope.X, envelope.Y), envelope.PlayerId, envelope.EntityId,
+                        envelope.TowerDefinitionId))
                     SyncRemoteCoOpCursor();
                 break;
             case CoOpMessageType.CommandRequest when _isNetworkHost && _networkStarted && envelope.Command is not null:
@@ -709,7 +753,8 @@ public sealed class Game1 : Game
     }
 
     private void SyncRemoteCoOpCursor() =>
-        _ui?.SetRemoteCoOpCursor(_coOpCursor.RemotePosition, _coOpCursor.RemotePlayerId, _coOpCursor.RemoteEntityId);
+        _ui?.SetRemoteCoOpCursor(_coOpCursor.RemotePosition, _coOpCursor.RemotePlayerId, _coOpCursor.RemoteEntityId,
+            _coOpCursor.RemotePlacementTowerId);
 
     private void QueueAuthoritativeCommand(GameCommand request)
     {
@@ -752,16 +797,20 @@ public sealed class Game1 : Game
 
     private void OnNetworkTickCompleted(long tick)
     {
-        if (_session is null || _networkRunner is null) return;
+        // Checksums are synchronization samples, not part of simulation. Hashing
+        // every entity at all 60 local ticks would waste substantial endgame CPU;
+        // both peers instead hash the same once-per-second deterministic boundary.
+        if (_session is null || _networkRunner is null || !_networkStarted ||
+            tick % NetworkChecksumIntervalTicks != 0) return;
         var checksum = SessionChecksum.Compute(_session, tick);
         _networkChecksums[tick] = checksum;
-        foreach (var expired in _networkChecksums.Keys.Where(value => value < tick - 240).ToArray())
+        foreach (var expired in _networkChecksums.Keys.Where(value => value < tick - NetworkChecksumHistoryTicks).ToArray())
             _networkChecksums.Remove(expired);
-        foreach (var expired in _remoteNetworkChecksums.Keys.Where(value => value < tick - 240).ToArray())
+        foreach (var expired in _remoteNetworkChecksums.Keys.Where(value => value < tick - NetworkChecksumHistoryTicks).ToArray())
             _remoteNetworkChecksums.Remove(expired);
-        _repliedChecksumTicks.RemoveWhere(value => value < tick - 240);
+        _repliedChecksumTicks.RemoveWhere(value => value < tick - NetworkChecksumHistoryTicks);
 
-        if (_networkStarted && _isNetworkHost && tick % 20 == 0)
+        if (_isNetworkHost)
         {
             _lastSyncTick = tick;
             QueueSend(new CoOpEnvelope { Type = CoOpMessageType.TickSync, PlayerId = 1, Tick = tick, Checksum = checksum });
@@ -1081,6 +1130,11 @@ public sealed class Game1 : Game
             DuplicateSaveSlot(_ui.SelectedSaveSlot);
             return;
         }
+        if (action == UiAction.HostSavedGame)
+        {
+            LoadSaveSlot(_ui.SelectedSaveSlot, hostCoOp: true);
+            return;
+        }
         if (action != UiAction.ConfirmSaveSlot) return;
 
         var slot = _ui.SelectedSaveSlot;
@@ -1090,11 +1144,12 @@ public sealed class Game1 : Game
             _state = _saveSlotReturnState;
         }
         else
-            LoadSaveSlot(slot);
+            LoadSaveSlot(slot, hostCoOp: false);
     }
 
     private void OpenRunHistory(string? preferredRunId = null)
     {
+        _historyInspectionSession = null;
         try
         {
             _ui.ConfigureRunHistory(RunHistoryStore.GetEntries(), preferredRunId);
@@ -1110,6 +1165,19 @@ public sealed class Game1 : Game
 
     private void HandleRunHistoryAction(UiAction action)
     {
+        if (action == UiAction.ViewRunHistoryField && _ui.SelectedRunHistoryEntry is { } entry)
+        {
+            try
+            {
+                _historyInspectionSession = entry.CreateInspectionSession(_content);
+                _state = GameState.RunHistoryField;
+            }
+            catch (Exception exception)
+            {
+                _ui.SetRunHistoryStatus($"Layout unavailable: {exception.GetBaseException().Message}");
+            }
+            return;
+        }
         if (action == UiAction.CloseRunHistory)
         {
             OpenSaveSlots(_saveSlotWriteMode, _saveSlotReturnState);
@@ -1129,6 +1197,22 @@ public sealed class Game1 : Game
         {
             _ui.SetRunHistoryStatus($"History delete failed: {exception.GetBaseException().Message}");
         }
+    }
+
+    private void UpdateRunHistoryField(InputSnapshot input)
+    {
+        if (_historyInspectionSession is null)
+        {
+            _state = GameState.RunHistory;
+            return;
+        }
+        if (WithUiAudio(_ui.HandleRunHistoryFieldInput(input)) == UiAction.CloseRunHistoryField)
+        {
+            _historyInspectionSession = null;
+            _state = GameState.RunHistory;
+            return;
+        }
+        _historyInspectionSession.HandleInspectionInput(input);
     }
 
     private void RecordTerminalRun()
@@ -1227,23 +1311,27 @@ public sealed class Game1 : Game
         }
     }
 
-    private void LoadSaveSlot(int slot)
+    private void LoadSaveSlot(int slot, bool hostCoOp)
     {
         try
         {
             var restored = SaveGameStore.Load(_content, slot);
-            if (restored.IsCoOp)
+            if (hostCoOp)
             {
-                _ui.SetSaveState(true, $"Loaded co-op {SaveSlotLabel(slot).ToLowerInvariant()}; waiting for player 2.");
+                _ui.SetSaveState(true, $"Hosting {SaveSlotLabel(slot).ToLowerInvariant()}; waiting for player 2.");
                 BeginHostingCoOp(restored, slot);
                 return;
             }
 
             CleanupNetwork();
+            var resumedFromCoOp = restored.IsCoOp;
+            restored.ConfigureSolo();
             AssignSession(restored);
             _activeSaveSlot = slot > SaveSlotRepository.AutosaveSlot ? slot : null;
             _lastAutosaveAttemptedWave = restored.CurrentWave;
-            _ui.SetSaveState(true, $"Loaded solo {SaveSlotLabel(slot).ToLowerInvariant()} after wave {restored.CurrentWave}.");
+            _ui.SetSaveState(true, resumedFromCoOp
+                ? $"Continued co-op {SaveSlotLabel(slot).ToLowerInvariant()} solo after wave {restored.CurrentWave}."
+                : $"Loaded solo {SaveSlotLabel(slot).ToLowerInvariant()} after wave {restored.CurrentWave}.");
             _state = GameState.Playing;
         }
         catch (Exception exception)
@@ -1284,14 +1372,18 @@ public sealed class Game1 : Game
         }
         else
         {
-            if (_session is not null && _state != GameState.MainMenu)
+            var presentedSession = _state == GameState.RunHistoryField ? _historyInspectionSession : _session;
+            if (presentedSession is not null && _state != GameState.MainMenu)
             {
-                _gameRenderer.Draw(_spriteBatch, _primitives, _session,
-                    showTransientCombat: _state != GameState.DefeatField);
+                _gameRenderer.Draw(_spriteBatch, _primitives, presentedSession,
+                    showTransientCombat: _state is not (GameState.DefeatField or GameState.RunHistoryField),
+                    presentationLeadSeconds: _state == GameState.Playing
+                        ? _networkRunner?.PresentationLeadSeconds ?? 0
+                        : 0);
                 if (_state == GameState.Playing || _state == GameState.Paused)
-                    _debug.Draw(_spriteBatch, _primitives, _session, gameTime.ElapsedGameTime.TotalSeconds > 0 ? (float)(1 / gameTime.ElapsedGameTime.TotalSeconds) : 0);
+                    _debug.Draw(_spriteBatch, _primitives, presentedSession, gameTime.ElapsedGameTime.TotalSeconds > 0 ? (float)(1 / gameTime.ElapsedGameTime.TotalSeconds) : 0);
             }
-            _ui.Draw(_spriteBatch, _primitives, _state, _session);
+            _ui.Draw(_spriteBatch, _primitives, _state, presentedSession);
         }
 
         _spriteBatch.End();

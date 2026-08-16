@@ -9,3 +9,5 @@ src/MinimalBastion/Content/bin/
 src/MinimalBastion/Content/obj/
 .dotnet/
 .build/
+.artifacts/
+.verification/

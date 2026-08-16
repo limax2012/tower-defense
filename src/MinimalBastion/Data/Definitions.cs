@@ -63,6 +63,8 @@ public sealed class ChallengeDefinition
     public string Description { get; set; } = "All towers and tactical reserves are available.";
     public float StartingCreditsMultiplier { get; set; } = 1f;
     public bool TacticalSystemsEnabled { get; set; } = true;
+    public bool ProtocolsEnabled { get; set; } = true;
+    public bool IsSandbox { get; set; }
     public List<string> ExcludedTowerIds { get; set; } = new();
     public string Accent { get; set; } = "#2192AA";
     public Color AccentColor => TowerVisualData.ParseColor(Accent);
@@ -171,12 +173,35 @@ public sealed class TowerProtocolDefinition
     public float ArmorPierceBonus { get; set; }
     public float AuraAttackSpeedBonus { get; set; }
     public float AuraRangeBonus { get; set; }
+    public string AutoTriggerMode { get; set; } = ProtocolAutoTriggerModes.Coverage;
     public int AutoTriggerCount { get; set; } = 4;
+    public int AutoTriggerTargetCount { get; set; }
     public float BurstRadius { get; set; }
     public float BurstDamage { get; set; }
     public string BurstStatus { get; set; } = "";
     public float BurstStatusMagnitude { get; set; }
     public float BurstStatusDuration { get; set; }
+}
+
+public static class ProtocolAutoTriggerModes
+{
+    public const string Coverage = "coverage";
+    public const string ProtocolArea = "protocol_area";
+    public const string PriorityTargets = "priority_targets";
+    public const string DenseCluster = "dense_cluster";
+    public const string EngagedRecipients = "engaged_recipients";
+
+    public static string Normalize(string? mode) => mode?.Trim().ToLowerInvariant() switch
+    {
+        ProtocolArea => ProtocolArea,
+        PriorityTargets => PriorityTargets,
+        DenseCluster => DenseCluster,
+        EngagedRecipients => EngagedRecipients,
+        _ => Coverage
+    };
+
+    public static bool IsKnown(string? mode) => string.IsNullOrWhiteSpace(mode) || mode.Trim().ToLowerInvariant() is
+        Coverage or ProtocolArea or PriorityTargets or DenseCluster or EngagedRecipients;
 }
 
 public sealed class TowerSpecializationDefinition
@@ -217,6 +242,8 @@ public sealed class TowerLevelDefinition
     public float SplashRadius { get; set; }
     public int SplashTargetLimit { get; set; }
     public bool HomingSplash { get; set; }
+    public float RicochetRange { get; set; }
+    public float RicochetDamageMultiplier { get; set; }
     public int ChainCount { get; set; }
     public float ChainDamage { get; set; }
     public float ChainRange { get; set; }
@@ -256,6 +283,8 @@ public sealed class TowerLevelDefinition
             SplashRadius = SplashRadius * utility,
             SplashTargetLimit = Math.Max(0, SplashTargetLimit + doctrine.SplashTargetLimitBonus),
             HomingSplash = HomingSplash,
+            RicochetRange = RicochetRange * utility,
+            RicochetDamageMultiplier = RicochetDamageMultiplier,
             ChainCount = Math.Max(0, ChainCount + doctrine.ChainCountBonus),
             ChainDamage = ChainDamage * damage,
             ChainRange = ChainRange * range,

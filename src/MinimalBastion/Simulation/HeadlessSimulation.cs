@@ -171,7 +171,7 @@ public static class HeadlessSimulation
                 GeneratorUpgrades = _generatorUpgrades,
                 GeneratedCharges = _generatedCharges,
                 Overdrives = _overdrives,
-                ProtocolsEnabled = options.UseProtocols
+                ProtocolsEnabled = options.UseProtocols && session.ProtocolsEnabled
             };
         }
 

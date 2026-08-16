@@ -9,7 +9,7 @@ Permanent tower damage is mechanically consistent from wave 1 through wave 20. T
 ## Economy
 
 - Hard difficulty uses each arena's base economy: Foundry Loop 400 credits, Crosswind Basin 390, Prism Circuit 380, and Surge Divide 360, all with 20 lives.
-- Easy and Normal multiply those map-specific credits and provide 30 or 24 lives; Bastion preserves base credits but reduces the margin to 15 lives.
+- Easy and Normal multiply those map-specific credits and provide 30 or 24 lives; Bastion preserves base credits while applying 112% enemy health, 102% enemy speed, and a reduced but recoverable margin of 18 lives.
 - Enemies award kill credits; completed waves award `40 + 10 * wave`.
 - Skipping a live preparation countdown awards 20 credits. The first wave never grants this reward.
 - Towers and the Charge Forge sell for 60% of total invested cost.
@@ -21,7 +21,7 @@ Permanent tower damage is mechanically consistent from wave 1 through wave 20. T
 | Tower | Identity | Final specialization choice |
 | --- | --- | --- |
 | Needle Turret | Cheap, reliable short-range generalist. | Rapid Array for swarm cadence or Rail Pin for heavy armor-piercing shots. |
-| Frost Spire | Low-damage area control that extends exposure time. | Permafrost for maximum slow and duration or Hail Lancer for fast direct area damage with a lighter slow. |
+| Frost Spire | Low-damage area control that extends exposure time. | Permafrost for maximum slow strength and duration or Hail Lancer for faster direct damage with a weaker, shorter slow. |
 | Shard Fan | Short-range multi-projectile swarm control. | Razor Bloom for wide seven-shard clear or Lance Fan for a tight armor-piercing burst. |
 | Watchtower | Long-range priority damage for runners and durable targets. | Sentinel Array for steady interception or Deadeye Post for extreme-range priority shots. |
 | Ember Coil | Persistent burn pressure after range contact. | Wildfire Matrix for crowded-route burn or Searing Brand for long-range, armor-piercing boss burn. |
@@ -55,11 +55,12 @@ Traits remain visible through silhouette, health/shield treatment, rank rings, m
 
 ## Status, synergy, and targeting
 
-- Slow: strongest slow applies; Arc Relay deals 35% more damage to slowed targets.
+- Slow: the strongest slow applies. Arc Relay gains a Conductive damage bonus equal to the target's Slow strength, capped at 30%; weak Slows no longer grant the full benefit.
 - Burn: capped at two sources; burning lowers effective armor by 2.
 - Armor reduction/pierce: creates follow-up value for rapid attacks.
 - Exposed: increases incoming damage and rewards focus fire.
 - Stun: short, resistance-scaled control.
+- Statuses remain compatible. Their strongest-only/capped stacking rules create soft diminishing returns without making mixed Frost, Burn, Breaker, Prism, and Arc defenses invalid.
 - Signal Beacon: nearby attack-rate and range aura. Affected towers show a compact gold broadcast marker, while Tower Intel reports the exact Beacon-only rate and range deltas alongside effective combined stats.
 - Surge Nodes: map-authored attack-rate, range, damage, or armor-pierce bonuses with deliberately small footprints. A tower center must be inside a node; bonuses stack additively with Beacon and active Protocols.
 
@@ -80,19 +81,19 @@ Each arena has a distinct flat geometric route treatment and background motif wh
 
 - Pulse Plate: forgiving road-snapped two-charge defense. Each pulse deals 38 area damage in radius 52, briefly stuns and slows the group, pierces 2 armor, and pushes the triggering enemy up to 28 path units backward. Elites receive 60% of that push and bosses 25%; after an accepted push, an enemy has 0.75 seconds of knockback grace while still taking plate damage and status effects. The field supports at most 16 active plates. These limits preserve useful opening control without allowing a packed road to chain-lock enemies.
 - Charge Forge: one per map. Level 1 produces every 34 active-wave seconds to capacity 3; levels 2/3 improve cadence to 26/20 seconds, capacity to 4/5, and plate damage by 15%/30%. Production is frozen before and between waves and while storage is full. The fixed cadence is identical at every wave number; only purchasing an upgrade changes it.
-- Protocols replace the old generic Overdrive bonus. Each tower has a thematic active burst and timed stat package on a shared per-protocol cooldown; one selected tower can optionally auto-trigger under nearby pressure or against an elite/boss.
+- Protocols replace the old generic Overdrive bonus. Each tower has a thematic active burst and timed stat package on a shared per-protocol cooldown; one selected tower can optionally auto-trigger against an engaged elite/boss or a role-specific condition. Direct towers measure range pressure, area Protocols measure their actual pulse field, Breaker requires armored/shielded threats, Mortar requires one splash cluster, and Signal Beacon requires either two supported combat towers to be engaged or six threats in one recipient's range.
 
 Tactical controls live in the sidebar so they never cover usable battlefield space. Plates are responsive recovery tools; permanent towers remain the strategic foundation.
 
 ## Online co-op
 
 - Two-player direct internet TCP on port `28741`; host shares a public IP/DNS endpoint and six-character code.
-- The host sequences authoritative commands; both peers execute the same fixed-tick deterministic stream and compare checksums.
+- The host sequences authoritative commands; both peers execute the same 60 Hz fixed-tick deterministic stream locally and compare one checksum sample per second. Local-only sub-tick presentation supports high-refresh rendering without entering synchronized state.
 - Credits, lives, plate inventory, forge, waves, speed, and victory/defeat are shared.
 - Towers and forge retain visible P1/P2 placement attribution, but either player may upgrade, specialize, retarget, activate/automate a Protocol, or sell any shared defense.
 - Both players must ready a wave. Calling during intermission grants the normal shared early reward.
 - Middle-click pings are color-coded by player.
-- Pause is disabled during co-op; either peer may command shared speed.
+- Either peer may pause/resume the shared simulation or command shared speed. Shared pause locks battlefield management and uses a compact sidebar; an active early-call deadline continues while combat remains frozen. `Tab` opens a local Tactical Library overlay at any time without pausing the peer simulation.
 - Restart at victory or defeat preserves the peer connection, resets both players to a fresh host-authoritative session on the same map, and allocates a new host save slot. Main Menu disconnects.
 - A temporary disconnect pauses both peers in a reconnect overlay. Player 2 can reconnect with the same endpoint/code and receives a complete host-authoritative active-match snapshot before both simulations resume.
 
@@ -104,4 +105,4 @@ Victory/defeat reports wave reached, lives, kills, leaks, tower damage leaders, 
 
 Endless wave `s = wave - 20` uses the authored wave 20 as its deterministic anchor. Health multiplier grows by `1 + 0.085s + 0.0045s²`; base group counts grow by 1.25% per wave up to +60%; spawn intervals tighten by 0.75% per wave up to 20%; and speed adds 0.006 per wave up to a 1.30 multiplier. Five rotating roster themes add focused runner, armored, regenerator, or elite pressure, with a scaled Bastion Core every fifth endless wave. This keeps wave 21 recognizable, makes fixed max-level defenses eventually fail, and bounds enemy count for rendering and simulation stability.
 
-Current replayability comes from four authored arenas/campaigns, four difficulty profiles, four independently selected challenge directives, strategic tower pools, two final roles for every tower, targeting, manual or automatic Protocol timing, persistent run history, and deterministic agent/seeds. Standard preserves the full game; Close Quarters removes Watchtower/Mortar, Core Six constrains the roster to six complementary systems, and No Reserves disables Plates/Forge. Fixed start-credit compensation belongs to the selected directive and never changes tower effectiveness by wave or elapsed time. Daily seeded challenges remain a future candidate.
+Current replayability comes from four authored arenas/campaigns, four difficulty profiles, four independently selected competitive challenge directives, strategic tower pools, two final roles for every tower, targeting, manual or automatic Protocol timing, persistent run history, and deterministic agent/seeds. Standard preserves the full game; Close Quarters removes Watchtower/Mortar, Core Six constrains the roster to six complementary systems, and Fundamentals keeps the full tower roster while disabling Plates, Forge, and Protocols in exchange for 25% more opening credits. A separate solo Sandbox Lab reuses real combat behavior with unlimited resources, fixed or immortal targets, rank/group controls, repeatable Protocols, and arbitrary authored-wave playback; it does not save or enter competitive analytics. Fixed start-credit compensation belongs to the selected directive and never changes tower effectiveness by wave or elapsed time. Daily seeded challenges remain a future candidate.

@@ -49,6 +49,7 @@ internal static class Program
             ("map roster and power nodes", MapRosterAndPowerNodes),
             ("difficulty profiles and persistence", DifficultyProfilesAndPersistence),
             ("challenge directives and persistence", ChallengeDirectivesAndPersistence),
+            ("sandbox tower laboratory", SandboxTowerLaboratory),
             ("profile matrix state reconstruction", ProfileMatrixStateReconstruction),
             ("power node tower intel", PowerNodeTowerIntel),
             ("pause UI glyph coverage", PauseUiGlyphCoverage),
@@ -68,7 +69,7 @@ internal static class Program
             ("mixed wave composition", MixedWaveComposition),
             ("arc relay chain", ArcRelayChain),
             ("frost area control", FrostAreaControl),
-            ("needle rapid micro burst", NeedleRapidMicroBurst),
+            ("needle rapid ricochet", NeedleRapidRicochet),
             ("breaker breach punch through", BreakerBreachPunchThrough),
             ("mortar predictive aim", MortarPredictiveAim),
             ("economy telemetry", EconomyTelemetry),
@@ -98,7 +99,7 @@ internal static class Program
             ("content identity validation", ContentIdentityValidation),
             ("online endpoint parsing", OnlineEndpointParsing),
             ("tower information", TowerInformation),
-            ("tower library reference", TowerLibraryReference),
+            ("tactical library reference", TacticalLibraryReference),
             ("tower tier two doctrines", TowerTierTwoDoctrines),
             ("balance benchmark doctrine coverage", BalanceBenchmarkDoctrineCoverage),
             ("tower specializations", TowerSpecializations),
@@ -153,9 +154,10 @@ internal static class Program
         Check.Equal(1, defaultChallenges.Count, "simulation defaults to one challenge directive");
         Check.Equal(ChallengeCatalog.DefaultId, defaultChallenges[0], "simulation retains standard directive default");
         var allChallenges = SimulationCli.ResolveChallenges("all", content);
-        Check.Equal(content.Challenges.Count, allChallenges.Count, "simulation can sweep every challenge directive");
-        Check.True(allChallenges.SequenceEqual(content.Challenges.Values.Select(x => x.Id), StringComparer.OrdinalIgnoreCase),
-            "challenge sweep follows the authored menu order");
+        var simulatedChallenges = content.Challenges.Values.Where(x => !x.IsSandbox).Select(x => x.Id).ToArray();
+        Check.Equal(simulatedChallenges.Length, allChallenges.Count, "simulation excludes the non-competitive sandbox");
+        Check.True(allChallenges.SequenceEqual(simulatedChallenges, StringComparer.OrdinalIgnoreCase),
+            "challenge sweep follows the authored competitive menu order");
         var path = SimulationCli.ParseForcedBuild("siege_mortar:mortar_loader>quake_shell", content);
         Check.Equal("siege_mortar", path!.TowerId, "forced build parser tower");
         Check.Equal("mortar_loader", path.DoctrineId, "forced build parser doctrine");
@@ -282,7 +284,11 @@ internal static class Program
         Check.Equal(5, content.Enemies.Count, "enemy count");
         Check.Equal(20, content.Waves.Waves.Count, "wave count");
         Check.Equal(4, content.Maps.Count, "map count");
-        Check.Equal(4, content.Challenges.Count, "challenge directive count");
+        Check.Equal(5, content.Challenges.Count, "challenge directive count including the solo sandbox");
+        Check.True(!content.Challenges["no_reserves"].ProtocolsEnabled &&
+            content.Challenges.Where(pair => !pair.Key.Equals("no_reserves", StringComparison.OrdinalIgnoreCase))
+                .All(pair => pair.Value.ProtocolsEnabled),
+            "Fundamentals is the only Protocol-free directive");
         Check.Equal(1090, content.Waves.Waves.SelectMany(x => x.Groups).Sum(x => x.Count), "enemy count in waves");
         Check.True(content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase)) >= 5, "elite encounter groups");
         Check.Equal(1, content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)), "final boss group");
@@ -376,12 +382,21 @@ internal static class Program
         var hard = new GameSession(content, "foundry_loop", "hard");
         var normal = new GameSession(content, "foundry_loop", "normal");
         var easy = new GameSession(content, "foundry_loop", "easy");
+        var bastion = new GameSession(content, "foundry_loop", "bastion");
         Check.Equal(400, hard.Economy.Credits, "hard preserves original starting credits");
         Check.Equal(20, hard.Economy.StartingLives, "hard preserves original starting lives");
         Check.Equal(450, normal.Economy.Credits, "normal starting credit allowance");
         Check.Equal(24, normal.Economy.StartingLives, "normal starting lives");
         Check.Equal(500, easy.Economy.Credits, "easy starting credit allowance");
         Check.Equal(30, easy.Economy.StartingLives, "easy starting lives");
+        Check.Equal(400, bastion.Economy.Credits, "bastion preserves the uncompromised starting economy");
+        Check.Equal(18, bastion.Economy.StartingLives, "bastion retains a reduced but recoverable life margin");
+        Check.Nearly(1.12f, bastion.Difficulty.EnemyHealthMultiplier, "bastion health pressure");
+        Check.Nearly(1.02f, bastion.Difficulty.EnemySpeedMultiplier, "bastion speed pressure");
+        Check.True(bastion.Difficulty.ModifierSummary.Contains("ENEMY HP 112%") &&
+            bastion.Difficulty.ModifierSummary.Contains("SPEED 102%") &&
+            bastion.Difficulty.ModifierSummary.EndsWith("18 LIVES"),
+            "bastion selector exposes the tuned expert profile exactly");
         Check.True(content.Difficulties["normal"].ModifierSummary.Contains("ENEMY HP 90%") &&
             content.Difficulties["normal"].ModifierSummary.Contains("START CREDITS 112.5%") &&
             content.Difficulties["normal"].ModifierSummary.EndsWith("24 LIVES"),
@@ -418,8 +433,8 @@ internal static class Program
             "title ignores keyboard navigation so mouse choices remain unambiguous");
         Check.Equal(UiAction.OpenSoloSetup, ui.HandleMainMenu(WorldInput(new Vector2(640, 390)) with { LeftPressed = true }),
             "title mouse opens the new-game setup");
-        Check.Equal(UiAction.OpenCoOpSetup, ui.HandleMainMenu(WorldInput(new Vector2(640, 440)) with { LeftPressed = true }),
-            "title mouse opens the online co-op setup");
+        Check.Equal(UiAction.CoOp, ui.HandleMainMenu(WorldInput(new Vector2(640, 440)) with { LeftPressed = true }),
+            "title mouse opens the online connection screen directly");
         ui.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
         ui.PrepareGameSetup(false);
         Check.Equal(UiAction.None, ui.HandleGameSetup(WorldInput(Vector2.Zero) with { NavigateRightPressed = true }),
@@ -429,8 +444,10 @@ internal static class Program
         Check.Equal(UiAction.Play, ui.HandleGameSetup(WorldInput(new Vector2(560, 609)) with { LeftPressed = true }),
             "solo setup confirms the selected profile");
         ui.PrepareGameSetup(true);
-        Check.Equal(UiAction.CoOp, ui.HandleGameSetup(WorldInput(new Vector2(560, 609)) with { LeftPressed = true }),
-            "online setup continues with the selected host profile");
+        Check.Equal(UiAction.HostCoOp, ui.HandleGameSetup(WorldInput(new Vector2(560, 609)) with { LeftPressed = true }),
+            "online host setup starts hosting with the selected profile");
+        Check.Equal(UiAction.CoOp, ui.HandleGameSetup(WorldInput(Vector2.Zero) with { EscapePressed = true }),
+            "online host setup returns to the connection screen");
     }
 
     private static void ChallengeDirectivesAndPersistence()
@@ -440,7 +457,7 @@ internal static class Program
         var standard = new GameSession(content, "foundry_loop", "hard", "standard");
         var close = new GameSession(content, "foundry_loop", "hard", "close_quarters");
         var core = new GameSession(content, "foundry_loop", "hard", "core_six");
-        var noReserves = new GameSession(content, "foundry_loop", "hard", "no_reserves");
+        var fundamentals = new GameSession(content, "foundry_loop", "hard", "no_reserves");
 
         Check.Equal(400, standard.Economy.Credits, "standard directive preserves starting economy");
         Check.Equal(440, close.Economy.Credits, "close-quarters compensation is fixed at session start");
@@ -451,12 +468,40 @@ internal static class Program
         Check.True(core.IsTowerAvailable("ember_coil") && !core.IsTowerAvailable("prism_beam"),
             "core-six roster retains its authored compact arsenal");
         Check.Equal(520, core.Economy.Credits, "advanced core-six roster receives its fixed opening cushion");
-        Check.True(!noReserves.TacticalSystemsEnabled && noReserves.EmergencyInventory == 0,
-            "no-reserves disables tactical inventory");
-        Check.Equal(420, noReserves.Economy.Credits, "no-reserves compensation stays matched to standard difficulty");
+        Check.Equal("Fundamentals", fundamentals.Challenge.DisplayName, "stable directive id exposes its new player-facing name");
+        Check.True(!fundamentals.TacticalSystemsEnabled && fundamentals.EmergencyInventory == 0,
+            "fundamentals disables tactical inventory");
+        Check.True(!fundamentals.ProtocolsEnabled, "fundamentals disables manual and automatic Protocols");
+        Check.Equal(500, fundamentals.Economy.Credits, "fundamentals receives its fixed tower-only opening cushion");
         Check.Equal(PlacementFailure.TacticalSystemsDisabled,
-            noReserves.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(200, 30)),
-            "no-reserves rejects pulse placement explicitly");
+            fundamentals.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(200, 30)),
+            "fundamentals rejects pulse placement explicitly");
+        Check.True(fundamentals.TryPlaceTower("needle_turret", new Vector2(45, 200)),
+            "fundamentals retains the complete permanent tower roster");
+        var fundamentalsTower = fundamentals.Towers.Single();
+        Check.True(!fundamentals.TryOverdriveTower(fundamentalsTower.Id),
+            "fundamentals rejects manual Protocol activation");
+        Check.True(!fundamentals.TryToggleAutoProtocol(fundamentalsTower.Id),
+            "fundamentals rejects automatic Protocol arming");
+        Check.True(!GameCommandProcessor.Apply(fundamentals, new GameCommand
+        {
+            Sequence = 1,
+            PlayerId = 2,
+            Type = GameCommandType.OverdriveTower,
+            EntityId = fundamentalsTower.Id
+        }).Accepted, "fundamentals rejects remote co-op Protocol commands authoritatively");
+
+        // Saves made before No Reserves became Fundamentals may contain a
+        // dormant auto selection or Protocol timer. Restore the permanent
+        // defenses, but normalize those newly prohibited transient systems.
+        var legacyFundamentalsSave = fundamentals.CaptureSaveGame();
+        legacyFundamentalsSave.OverdriveCooldownRemaining = 9;
+        legacyFundamentalsSave.AutoOverdriveTowerId = fundamentalsTower.Id;
+        legacyFundamentalsSave.Towers[0].OverdriveRemaining = 4;
+        var normalizedFundamentals = GameSession.RestoreSaveGame(content, legacyFundamentalsSave);
+        Check.Equal(0, normalizedFundamentals.AutoOverdriveTowerId, "legacy fundamentals auto Protocol is cleared");
+        Check.Nearly(0, normalizedFundamentals.OverdriveCooldownRemaining, "legacy fundamentals Protocol cooldown is cleared");
+        Check.True(!normalizedFundamentals.Towers[0].IsOverdriven, "legacy fundamentals active Protocol is cleared");
 
         var saved = close.CaptureSaveGame();
         Check.Equal("close_quarters", saved.ChallengeId, "save captures challenge directive");
@@ -475,6 +520,99 @@ internal static class Program
         Check.Equal("close_quarters", ui.SelectedChallengeId, "mode row selects close quarters directly");
     }
 
+    private static void SandboxTowerLaboratory()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        var session = new GameSession(content, "foundry_loop", "hard", "sandbox_lab");
+
+        Check.True(session.IsSandbox, "sandbox content creates a laboratory session");
+        Check.True(session.Economy.UnlimitedCredits && session.Economy.UnlimitedLives,
+            "sandbox economy explicitly exposes unlimited resources");
+        Check.True(!session.CanSaveCheckpoint && !session.StartNextWave(),
+            "sandbox cannot enter campaign persistence or sequential campaign progression");
+        var credits = session.Economy.Credits;
+        Check.True(session.TryPlaceTower("needle_turret", new Vector2(45, 200)), "sandbox places normal towers");
+        Check.Equal(credits, session.Economy.Credits, "sandbox placement does not consume its displayed economy");
+        var tower = session.Towers.Single();
+
+        Check.True(session.SpawnSandboxTargets("t1_crawler", 5, 1f, "Standard", true),
+            "sandbox creates a compact immortal target pack");
+        Check.Equal(5, session.Enemies.Count, "manual target count is exact");
+        Check.True(session.Enemies.All(enemy => enemy.IsSandboxImmortal && MathF.Abs(enemy.HealthScale - 1f) < 0.001f),
+            "manual base targets ignore campaign difficulty scaling");
+        var target = session.Enemies[0];
+        var targetHealth = target.Health;
+        session.DamageResolver.Apply(target, new DamagePayload { Damage = 500, SourceTowerId = tower.Id });
+        Check.Nearly(targetHealth, target.Health, "immortal targets retain health while receiving real hits");
+        Check.True(tower.LifetimeDamage > 0, "immortal target hits still populate tower telemetry");
+
+        Check.True(session.TryOverdriveTower(tower.Id), "sandbox retains the authored Protocol behavior");
+        Check.True(session.ResetSandboxProtocol(), "sandbox can ready another Protocol test without clearing targets");
+        Check.Nearly(0, session.OverdriveCooldownRemaining, "Protocol-only reset clears the shared cooldown");
+        Check.True(!tower.IsOverdriven && session.Enemies.Count == 5,
+            "Protocol-only reset preserves targets while ending the active effect");
+        session.ResetSandboxExperiment();
+        Check.Equal(0, session.Enemies.Count, "lab reset clears test targets");
+        Check.Nearly(0, tower.LifetimeDamage, "lab reset clears tower damage telemetry");
+        Check.Nearly(0, session.OverdriveCooldownRemaining, "lab reset readies Protocol testing");
+        Check.True(!tower.IsOverdriven, "lab reset clears active Protocol state");
+
+        Check.True(session.ToggleSandboxTower(tower.Id) && tower.IsSandboxDisabled,
+            "sandbox can disable an individual tower without removing it");
+        Check.True(!session.TryOverdriveTower(tower.Id), "disabled sandbox towers cannot run Protocols");
+        Check.True(session.ToggleSandboxTower(tower.Id) && !tower.IsSandboxDisabled,
+            "sandbox can re-enable an individual tower");
+        Check.True(session.TestSandboxProtocol(tower.Id) && tower.IsOverdriven,
+            "sandbox Protocol test always starts the selected Protocol from a clean timer");
+
+        var sandboxUi = new UIManager(null!);
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { OverdrivePressed = true }, session);
+        Check.True(!tower.IsOverdriven && session.OverdriveCooldownRemaining <= 0,
+            "sandbox E resets an active Protocol test and its shared cooldown");
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { OverdrivePressed = true }, session);
+        Check.True(tower.IsOverdriven,
+            "sandbox E starts the selected Protocol again once the test is reset");
+
+        Check.Equal(1, sandboxUi.SelectedSandboxWave, "sandbox authored-wave selection starts at wave one");
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxWavePreviousPressed = true }, session);
+        Check.Equal(session.TotalWaves, sandboxUi.SelectedSandboxWave,
+            "sandbox minus hotkey wraps to the final authored wave");
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxWaveNextPressed = true }, session);
+        Check.Equal(1, sandboxUi.SelectedSandboxWave,
+            "sandbox plus hotkey wraps to the first authored wave");
+
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxSpawnPressed = true }, session);
+        Check.True(session.Enemies.Count > 0, "sandbox F hotkey spawns the configured target group");
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxResetPressed = true }, session);
+        Check.Equal(0, session.Enemies.Count, "sandbox R hotkey resets test targets");
+        Check.True(!tower.IsOverdriven && session.OverdriveCooldownRemaining <= 0,
+            "sandbox R hotkey also resets Protocol state");
+
+        Check.True(session.StartSandboxWave(10), "sandbox can replay a selected authored wave");
+        Check.True(session.SandboxWaveActive && session.SandboxQueuedEnemies > 0,
+            "authored test wave exposes deployment progress");
+        for (var step = 0; step < 80 && session.Enemies.Count == 0; step++) session.Update(0.05f);
+        Check.True(session.Enemies.Count > 0, "authored test wave uses normal timed enemy spawning");
+        Check.True(session.Enemies.All(enemy => !enemy.IsSandboxImmortal), "authored wave targets remain destructible");
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SellPressed = true }, session);
+        Check.Equal(0, session.Towers.Count, "sandbox Delete hotkey removes only the selected tower");
+        Check.True(session.Enemies.Count > 0, "removing one sandbox tower preserves active test targets");
+        Check.True(session.TryPlaceTower("needle_turret", new Vector2(45, 200)),
+            "sandbox can rebuild independently after removing one tower");
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxClearTowersPressed = true }, session);
+        Check.Equal(0, session.Towers.Count, "sandbox can clear the entire tower layout independently of its targets");
+        Check.True(session.Enemies.Count > 0, "sandbox C hotkey clears towers while preserving active test targets");
+
+        var ui = new UIManager(null!);
+        ui.ConfigureChallenges(content.Challenges.Values);
+        ui.PrepareGameSetup(false);
+        ui.HandleGameSetup(WorldInput(new Vector2(1100, 345)) with { LeftPressed = true });
+        Check.Equal("sandbox_lab", ui.SelectedChallengeId, "solo setup exposes Sandbox Lab as a direct mode choice");
+        ui.PrepareGameSetup(true);
+        Check.Equal("standard", ui.SelectedChallengeId, "online setup excludes and safely leaves the solo-only sandbox");
+    }
+
     private static void ProfileMatrixStateReconstruction()
     {
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
@@ -482,7 +620,7 @@ internal static class Program
         var combinations = 0;
         foreach (var map in content.Maps.Values)
         foreach (var difficulty in content.Difficulties.Values)
-        foreach (var challenge in content.Challenges.Values)
+        foreach (var challenge in content.Challenges.Values.Where(challenge => !challenge.IsSandbox))
         {
             var session = new GameSession(content, map.Id, difficulty.Id, challenge.Id);
             var saved = GameSession.RestoreSaveGame(content, session.CaptureSaveGame());
@@ -523,8 +661,8 @@ internal static class Program
             combinations++;
         }
 
-        Check.Equal(content.Maps.Count * content.Difficulties.Count * content.Challenges.Count, combinations,
-            "every selectable gameplay profile reconstructs through save and co-op state");
+        Check.Equal(content.Maps.Count * content.Difficulties.Count * content.Challenges.Values.Count(challenge => !challenge.IsSandbox), combinations,
+            "every competitive gameplay profile reconstructs through save and co-op state");
     }
 
     private static void HighResolutionViewport()
@@ -607,7 +745,12 @@ internal static class Program
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EnterPressed = true }),
             "settings ignores keyboard activation");
         Check.Equal(UiAction.ApplySettings,
-            ui.HandleSettingsInput(WorldInput(new Vector2(640, 450)) with { LeftPressed = true }),
+            ui.HandleSettingsInput(WorldInput(new Vector2(640, 357)) with { LeftPressed = true }),
+            "auto-start setting applies immediately");
+        Check.True(settings.AutoStartWaves, "auto-start setting toggles on");
+        Check.Equal(6, ui.SelectedSettingsIndex, "clicked auto-start control remains identifiable");
+        Check.Equal(UiAction.ApplySettings,
+            ui.HandleSettingsInput(WorldInput(new Vector2(640, 485)) with { LeftPressed = true }),
             "clicked music control applies immediately");
         Check.Equal(5, ui.SelectedSettingsIndex, "clicked music control remains identifiable");
         Check.Nearly(0, settings.MusicVolume, "full music volume wraps to mute");
@@ -619,7 +762,7 @@ internal static class Program
         try
         {
             var repository = new UserSettingsRepository(directory);
-            repository.Save(new UserSettings { WindowWidth = 1600, WindowHeight = 900, SfxVolume = 0.25f, MusicVolume = 0.10f });
+            repository.Save(new UserSettings { WindowWidth = 1600, WindowHeight = 900, SfxVolume = 0.25f, MusicVolume = 0.10f, AutoStartWaves = true });
             repository.Save(new UserSettings { WindowWidth = 1920, WindowHeight = 1080, SfxVolume = 0.75f, MusicVolume = 0.35f });
             Check.Equal(1920, repository.Load().WindowWidth, "settings repository loads its current generation");
             File.WriteAllText(repository.SettingsPath, "{ interrupted");
@@ -627,6 +770,7 @@ internal static class Program
             Check.Equal(1600, recovered.WindowWidth, "corrupt settings recover from the previous valid generation");
             Check.Nearly(0.25f, recovered.SfxVolume, "settings recovery preserves audio choices");
             Check.Nearly(0.10f, recovered.MusicVolume, "settings recovery preserves music choices");
+            Check.True(recovered.AutoStartWaves, "settings recovery preserves auto-start preference");
 
             repository.Save(new UserSettings { WindowWidth = 2560, WindowHeight = 1440, SfxVolume = float.NaN, MusicVolume = float.NaN });
             Check.Nearly(0.65f, repository.Load().SfxVolume, "nonfinite runtime volume normalizes before persistence");
@@ -652,6 +796,8 @@ internal static class Program
         Check.Equal(new Color(244, 245, 248), ColorPalette.Paper, "soft off-white surface");
         Check.Equal(new Color(33, 146, 170), ColorPalette.Cyan, "controlled cyan accent");
         Check.Equal(new Color(42, 194, 117), ColorPalette.Green, "controlled green accent");
+        Check.True(ColorPalette.ContrastRatio(ColorPalette.GreenText, ColorPalette.PanelAlt) >= 4.5f,
+            "dark success ink keeps upgrade gains readable on Tower Intel panels");
         Check.True(ColorPalette.ContrastRatio(ColorPalette.Paper, ColorPalette.Berry) >= 4.5f,
             "map-selector berry supports readable light text");
         var paletteContent = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
@@ -816,8 +962,9 @@ internal static class Program
         Check.Equal(UiAction.Restart,
             restartUi.HandlePausedInput(WorldInput(new Vector2(640, 497)) with { LeftPressed = true }, Session()),
             "second pause-menu restart click confirms the reset");
-        var coOpSession = Session();
+        var coOpSession = SessionWithWave();
         coOpSession.ConfigureCoOp(2);
+        Check.True(coOpSession.StartNextWave(), "co-op Tab test enters an active wave");
         GameCommand? pauseRequest = null;
         Check.Equal(UiAction.None,
             new UIManager(null!).HandleGameplayInput(
@@ -827,13 +974,45 @@ internal static class Program
             "co-op pause request carries the desired authoritative state");
 
         var coOpLibraryUi = new UIManager(null!);
-        Check.True(coOpSession.SetCoOpPaused(true, 1), "co-op library test enters authoritative pause");
-        Check.Equal(UiAction.TowerLibrary,
+        Check.Equal(UiAction.None,
             coOpLibraryUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { TabPressed = true }, coOpSession, _ => { }, 2),
-            "Tab opens a local tactical library only after shared pause is active");
-        Check.Equal(UiAction.TowerLibrary,
+            "Tab opens the local co-op library without emitting a repeated audio action");
+        Check.True(coOpLibraryUi.IsGameplayOverlayOpen,
+            "Tab opens the local tactical library while the shared simulation is active");
+        Check.True(!coOpSession.IsCoOpPaused,
+            "opening the tactical library does not pause the shared simulation");
+        Check.Equal(UiAction.None,
+            coOpLibraryUi.HandleGameplayInput(WorldInput(Vector2.Zero), coOpSession, _ => { }, 2),
+            "an open live co-op library remains open and silent on subsequent frames");
+        Check.Equal(UiAction.None,
             coOpLibraryUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { EscapePressed = true }, coOpSession, _ => { }, 2),
             "closing the co-op library consumes Escape instead of resuming or touching the field");
+        Check.True(!coOpLibraryUi.IsGameplayOverlayOpen,
+            "closing the co-op library clears its battlefield-input block");
+        Check.True(coOpSession.SetCoOpPaused(true, 1), "co-op library test enters authoritative pause");
+        GameCommand? blockedPauseCommand = null;
+        Check.Equal(UiAction.None,
+            coOpLibraryUi.HandleGameplayInput(
+                WorldInput(new Vector2(50, 200)) with { LeftPressed = true, TowerHotkey = 1, EmergencyPressed = true },
+                coOpSession, command => blockedPauseCommand = command, 2),
+            "shared pause consumes battlefield construction input");
+        Check.True(blockedPauseCommand is null,
+            "shared pause does not emit construction or tactical commands");
+        Check.True(!GameCommandProcessor.Apply(coOpSession, new GameCommand
+        {
+            PlayerId = 2,
+            Type = GameCommandType.PlaceTower,
+            TowerDefinitionId = "tower",
+            X = 50,
+            Y = 200
+        }).Accepted, "authoritative rules reject battlefield mutations during shared pause");
+        Check.Equal(UiAction.None,
+            coOpLibraryUi.HandleGameplayInput(
+                WorldInput(new Vector2(1120, 270)) with { LeftPressed = true }, coOpSession, _ => { }, 2),
+            "compact shared-pause sidebar opens the Tactical Library locally");
+        Check.True(coOpLibraryUi.IsGameplayOverlayOpen,
+            "shared-pause Tactical Library control opens the overlay");
+        coOpLibraryUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { EscapePressed = true }, coOpSession, _ => { }, 2);
         GameCommand? resumeRequest = null;
         Check.Equal(UiAction.None,
             coOpLibraryUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { EscapePressed = true }, coOpSession,
@@ -882,6 +1061,17 @@ internal static class Program
         Check.Nearly(0.75f, path.GetProgress(150), "second segment progress");
         Check.Nearly(50, path.GetPosition(150).Y, "position y");
         Check.True(path.DistanceToPath(new Vector2(50, 20)) <= 20.01f, "distance to segment");
+
+        var session = Session();
+        var enemy = new EnemyInstance(1, Enemy("smooth", 100, 60, 1, 0, 0), session.Map.Path, 1, 1);
+        var presentation = PresentationFrame.Create(session, DeterministicSessionRunner.FixedStepSeconds * 0.5f);
+        var presentedPosition = presentation.EnemyPosition(enemy);
+        Check.True(presentedPosition.X > enemy.Position.X,
+            "presentation extrapolates enemy motion between authoritative ticks");
+        Check.Nearly(enemy.Position.Y, presentedPosition.Y,
+            "presentation follows the authored path without mutating its geometry");
+        Check.Nearly(0, enemy.DistanceAlongPath,
+            "presentation smoothing never mutates authoritative enemy progress");
     }
 
     private static void TargetModes()
@@ -1521,6 +1711,16 @@ internal static class Program
 
     private static void NetworkDeterministicCommands()
     {
+        Check.Equal(60, DeterministicSessionRunner.SimulationTicksPerSecond,
+            "co-op deterministic simulation runs locally at 60 Hz");
+        var cadenceRunner = new DeterministicSessionRunner(Session());
+        Check.Equal(0, cadenceRunner.Advance(DeterministicSessionRunner.FixedStepSeconds * 0.5f),
+            "a high-refresh half-frame remains a presentation-only sub-tick");
+        Check.Nearly(DeterministicSessionRunner.FixedStepSeconds * 0.5f, cadenceRunner.PresentationLeadSeconds,
+            "runner exposes local sub-tick time for smooth high-refresh rendering");
+        Check.Equal(1, cadenceRunner.Advance(DeterministicSessionRunner.FixedStepSeconds * 0.5f),
+            "two high-refresh half-frames advance exactly one authoritative tick");
+
         var first = SessionWithWave();
         var second = SessionWithWave();
         first.ConfigureCoOp(1);
@@ -1585,7 +1785,7 @@ internal static class Program
             TowerDefinitionId = "tower",
             X = 50,
             Y = 200
-        }), "tower placement can be planned while shared combat is paused");
+        }), "late tower placement remains deterministic while shared combat is paused");
         Check.True(pausedRunner.Schedule(pausedRunner.Tick, new GameCommand
         {
             Sequence = 3,
@@ -1594,12 +1794,12 @@ internal static class Program
             TowerDefinitionId = "beacon",
             X = 110,
             Y = 200
-        }), "beacon placement can be planned while shared combat is paused");
+        }), "late support placement remains deterministic while shared combat is paused");
         pausedRunner.RunTicks(1);
-        Check.True(paused.GetSupportBuff(paused.Towers.Single(tower => tower.Definition.Id == "tower")).IsActive,
-            "paused planning refreshes Beacon coverage without resuming combat");
+        Check.Equal(0, paused.Towers.Count,
+            "authoritative pause rejects queued tower and support placement");
         Check.Nearly(0, paused.Statistics.SimulatedSeconds,
-            "paused support refresh does not advance gameplay time");
+            "rejected paused commands do not advance gameplay time");
         Check.True(pausedRunner.Schedule(pausedRunner.Tick, new GameCommand
         {
             Sequence = 4,
@@ -1611,6 +1811,26 @@ internal static class Program
         Check.True(!paused.IsCoOpPaused && paused.Statistics.SimulatedSeconds > 0,
             "resuming restarts deterministic gameplay time on the command tick");
         Check.Equal(0, paused.CoOpPausePlayerId, "resuming clears stale pause attribution");
+        Check.True(pausedRunner.Schedule(pausedRunner.Tick, new GameCommand
+        {
+            Sequence = 5,
+            PlayerId = 1,
+            Type = GameCommandType.PlaceTower,
+            TowerDefinitionId = "tower",
+            X = 50,
+            Y = 200
+        }) && pausedRunner.Schedule(pausedRunner.Tick, new GameCommand
+        {
+            Sequence = 6,
+            PlayerId = 2,
+            Type = GameCommandType.PlaceTower,
+            TowerDefinitionId = "beacon",
+            X = 110,
+            Y = 200
+        }), "construction commands can be issued after shared play resumes");
+        pausedRunner.RunTicks(1);
+        Check.True(paused.GetSupportBuff(paused.Towers.Single(tower => tower.Definition.Id == "tower")).IsActive,
+            "resumed construction refreshes Beacon coverage normally");
     }
 
     private static void CoOpCommandHistoryBounds()
@@ -1759,8 +1979,8 @@ internal static class Program
         Check.True(host.TryOverdriveTower(host.Towers[0].Id, 2), "snapshot captures a remote-activated Protocol");
         Check.True(host.SetCoOpPaused(true), "snapshot captures a shared paused match");
 
-        var future = new GameCommand { Sequence = 3, ClientRequestId = 3, PlayerId = 2, Type = GameCommandType.SetSpeed, Speed = 2f };
-        Check.True(hostRunner.Schedule(hostRunner.Tick + 3, future), "future command scheduled before snapshot");
+        var future = new GameCommand { Sequence = 3, ClientRequestId = 3, PlayerId = 2, Type = GameCommandType.SetPaused, Paused = false };
+        Check.True(hostRunner.Schedule(hostRunner.Tick + 3, future), "future resume command scheduled before snapshot");
         var state = host.CaptureCoOpState(hostRunner.Tick, 0, false);
         state.PendingCommands = hostRunner.CapturePendingCommands();
         var json = JsonSerializer.Serialize(state);
@@ -1786,7 +2006,7 @@ internal static class Program
         hostRunner.RunTicks(20);
         clientRunner.RunTicks(20);
         Check.Equal(SessionChecksum.Compute(host, hostRunner.Tick), SessionChecksum.Compute(client, clientRunner.Tick), "restored sessions remain deterministic");
-        Check.Nearly(2f, client.Speed, "restored future command executes");
+        Check.True(!client.IsCoOpPaused, "restored future resume command executes");
 
         var intermissionHost = SessionWithWave();
         Check.True(intermissionHost.StartNextWave(), "start wave for intermission snapshot");
@@ -2171,7 +2391,8 @@ internal static class Program
             "checksum from the repaired snapshot tick is fenced as pre-repair traffic");
         Check.True(CoOpChecksumWindow.IsAcceptable(120, 100, 120),
             "fresh post-snapshot checksum is accepted");
-        Check.True(!CoOpChecksumWindow.IsAcceptable(500, 100, 200),
+        Check.True(!CoOpChecksumWindow.IsAcceptable(
+                DeterministicSessionRunner.MaximumFutureTicks + 500, 100, 200),
             "stale checksum outside the bounded history window is ignored");
         Check.True(!CoOpChecksumWindow.IsAcceptable(100, -1, 100 + DeterministicSessionRunner.MaximumFutureTicks + 1),
             "far-future checksum cannot accumulate while a peer catches up");
@@ -2322,19 +2543,29 @@ internal static class Program
         tracker.Advance(CoOpCursorTracker.SendIntervalSeconds);
         Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 42, out _),
             "tower selection changes send without waiting for the idle heartbeat");
+        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, "needle_turret", out _),
+            "starting tower placement sends its ghost without waiting for the cursor cadence");
+        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, "frost_spire", out _),
+            "switching placement towers updates the remote ghost immediately");
+        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, "", out _),
+            "canceling placement clears the remote ghost immediately");
         tracker.Advance(CoOpCursorTracker.IdleHeartbeatSeconds);
-        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 42, out _),
+        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, "", out _),
             "stationary cursor heartbeat keeps remote presence alive");
         Check.True(!tracker.TryCaptureLocal(new Vector2(GameConstants.MapWidth + 10, 220), true, 0, out _),
             "sidebar positions are excluded from battlefield presence traffic");
 
-        Check.True(tracker.Receive(new Vector2(400, 300), 2, 17), "valid remote cursor is accepted");
+        Check.True(tracker.Receive(new Vector2(400, 300), 2, 0, "needle_turret"), "valid remote cursor is accepted");
         Check.Equal(new Vector2(400, 300), tracker.RemotePosition!.Value, "remote cursor position is exposed for drawing");
         Check.Equal(2, tracker.RemotePlayerId, "remote cursor retains player identity");
+        Check.Equal("needle_turret", tracker.RemotePlacementTowerId, "remote cursor retains placement ghost context");
+        Check.True(tracker.Receive(new Vector2(400, 300), 2, 17), "selected deployed tower replaces placement context");
         Check.Equal(17, tracker.RemoteEntityId, "remote cursor retains selected tower context");
+        Check.Equal("", tracker.RemotePlacementTowerId, "selected deployed tower clears the placement ghost");
         Check.True(!tracker.Receive(new Vector2(float.NaN, 300), 2), "nonfinite remote cursor is ignored");
         tracker.Advance(CoOpCursorTracker.RemoteTimeoutSeconds + 0.01f);
-        Check.True(tracker.RemotePosition is null && tracker.RemotePlayerId == 0 && tracker.RemoteEntityId == 0,
+        Check.True(tracker.RemotePosition is null && tracker.RemotePlayerId == 0 && tracker.RemoteEntityId == 0 &&
+                   tracker.RemotePlacementTowerId.Length == 0,
             "stale remote presence disappears instead of freezing on the battlefield");
     }
 
@@ -2355,12 +2586,20 @@ internal static class Program
         var receipt = await client.ReceiveAsync(timeout.Token);
         Check.True(receipt!.Receipt!.Value.Accepted, "client receives accepted receipt");
         Check.Equal(3L, receipt.Receipt.Value.Command.Sequence, "authoritative sequence survives transport");
-        await client.SendAsync(new CoOpEnvelope { Type = CoOpMessageType.Cursor, PlayerId = 2, X = 321, Y = 222, EntityId = 9 }, timeout.Token);
+        await client.SendAsync(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.Cursor,
+            PlayerId = 2,
+            X = 321,
+            Y = 222,
+            TowerDefinitionId = "needle_turret"
+        }, timeout.Token);
         var cursor = await server.ReceiveAsync(timeout.Token);
         Check.Equal(CoOpMessageType.Cursor, cursor!.Type, "remote cursor update survives transport");
         Check.Nearly(321, cursor.X, "remote cursor x survives transport");
         Check.Nearly(222, cursor.Y, "remote cursor y survives transport");
-        Check.Equal(9, cursor.EntityId, "remote tower selection survives presence transport");
+        Check.Equal(0, cursor.EntityId, "placement presence stays distinct from deployed-tower selection");
+        Check.Equal("needle_turret", cursor.TowerDefinitionId, "remote placement ghost survives presence transport");
         var pause = new GameCommand
         {
             ClientRequestId = 8,
@@ -2405,6 +2644,11 @@ internal static class Program
         Check.Equal("P1 + P2 | LIVE", UIManager.CoOpLinkStatusLabel(true, false, 0.8f), "fresh traffic reports a live link");
         Check.Equal("LINK DELAY | 3s", UIManager.CoOpLinkStatusLabel(true, false, 2.1f), "delayed traffic reports age without claiming RTT");
         Check.Equal("LINK STALLED | 8s", UIManager.CoOpLinkStatusLabel(true, false, 7.2f), "stalled traffic warns before reconnect timeout");
+        Check.Equal("WAITING P2", UIManager.CoOpSidebarLinkStatusLabel(false, false, 0), "compact sidebar reports absent peer");
+        Check.Equal("RESYNC", UIManager.CoOpSidebarLinkStatusLabel(true, true, 0), "compact sidebar prioritizes repair state");
+        Check.Equal("P1+P2 LIVE", UIManager.CoOpSidebarLinkStatusLabel(true, false, 0.8f), "compact sidebar reports a live link");
+        Check.Equal("DELAY 3s", UIManager.CoOpSidebarLinkStatusLabel(true, false, 2.1f), "compact sidebar reports link delay");
+        Check.Equal("STALLED 8s", UIManager.CoOpSidebarLinkStatusLabel(true, false, 7.2f), "compact sidebar reports a stalled link");
     }
 
     private static void CoOpFramingBounds()
@@ -2439,6 +2683,14 @@ internal static class Program
             X = float.NaN,
             Y = 200
         }), "nonfinite presence coordinates are rejected before dispatch");
+        Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.Cursor,
+            PlayerId = 2,
+            X = 200,
+            Y = 200,
+            TowerDefinitionId = new string('X', 129)
+        }), "oversized placement presence identifiers are rejected before dispatch");
         Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
         {
             Type = CoOpMessageType.ResyncRequest,
@@ -2692,8 +2944,8 @@ internal static class Program
         Check.Equal(28742, ipv6.Port, "IPv6 port parsed");
 
         var hostUi = new UIManager(null!);
-        Check.Equal(UiAction.HostCoOp, hostUi.HandleCoOpMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
-            "online menu defaults keyboard focus to hosting");
+        Check.Equal(UiAction.OpenCoOpSetup, hostUi.HandleCoOpMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
+            "online menu defaults keyboard focus to host configuration");
         var backUi = new UIManager(null!);
         backUi.HandleCoOpMenu(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
         Check.Equal(UiAction.MainMenu, backUi.HandleCoOpMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
@@ -2970,6 +3222,47 @@ internal static class Program
         Check.True(expiredBonus.StartNextWave(expiredReady.EarlyBonusQueued), "late co-op readiness still starts wave");
         Check.Equal(0, expiredBonus.Economy.EarlyStartCreditsEarned,
             "one early ready cannot preserve the bonus after the second player waits too long");
+
+        var automatic = SessionWithWaves(3);
+        Check.True(!automatic.TryAutoStartNextWave(true), "auto-start preserves manual opening setup");
+        Check.True(automatic.StartNextWave(), "start auto-start setup wave");
+        ResolveSingleEnemyWave(automatic);
+        Check.True(UIManager.SoloWaveButtonLabel(automatic, true).StartsWith("AUTO 10s", StringComparison.Ordinal),
+            "HUD exposes the automatic intermission countdown");
+        Check.True(!automatic.TryAutoStartNextWave(true), "auto-start waits for the full intermission");
+        for (var index = 0; index < 101; index++) automatic.Update(0.1f);
+        Check.True(automatic.TryAutoStartNextWave(true), "auto-start launches the next solo wave after intermission");
+        Check.Equal(0, automatic.Economy.EarlyStartCreditsEarned,
+            "automatic starts after the deadline and does not earn early-call credits");
+
+        var automaticCoOp = SessionWithWaves(2);
+        Check.True(automaticCoOp.StartNextWave(), "start co-op auto-start guard setup wave");
+        ResolveSingleEnemyWave(automaticCoOp);
+        for (var index = 0; index < 101; index++) automaticCoOp.Update(0.1f);
+        automaticCoOp.ConfigureCoOp(1);
+        Check.True(!automaticCoOp.TryAutoStartNextWave(true),
+            "a local setting cannot bypass shared co-op wave readiness");
+
+        var pausedCountdown = SessionWithWaves(2);
+        pausedCountdown.ConfigureCoOp(1);
+        Check.True(pausedCountdown.StartNextWave(), "start shared-pause countdown setup wave");
+        ResolveSingleEnemyWave(pausedCountdown);
+        var countdownBeforePause = pausedCountdown.IntermissionRemaining;
+        var simulatedBeforePause = pausedCountdown.Statistics.SimulatedSeconds;
+        Check.True(pausedCountdown.SetCoOpPaused(true, 1), "pause during early-call countdown");
+        pausedCountdown.Update(1f);
+        Check.True(pausedCountdown.IntermissionRemaining < countdownBeforePause,
+            "early-call countdown continues during shared pause");
+        Check.Nearly(simulatedBeforePause, pausedCountdown.Statistics.SimulatedSeconds,
+            "shared pause still freezes scored simulation time while the planning deadline runs");
+
+        var soloPausedCountdown = SessionWithWaves(2);
+        Check.True(soloPausedCountdown.StartNextWave(), "start solo-pause countdown setup wave");
+        ResolveSingleEnemyWave(soloPausedCountdown);
+        var soloCountdownBeforePause = soloPausedCountdown.IntermissionRemaining;
+        soloPausedCountdown.UpdatePausedIntermission(1f);
+        Check.True(soloPausedCountdown.IntermissionRemaining < soloCountdownBeforePause,
+            "solo pause uses the same non-bankable early-call deadline");
     }
 
     private static void ResolveSingleEnemyWave(GameSession session)
@@ -3047,11 +3340,15 @@ internal static class Program
         var behavior = TowerBehaviorRegistry.Create("chain");
         behavior.Attack(new TowerInstanceContext { Tower = tower, Target = first, Session = session });
 
+        Check.Nearly(0, ChainBehavior.ConductiveBonus(0), "chain has no bonus without slow");
+        Check.Nearly(0.15f, ChainBehavior.ConductiveBonus(0.15f), "chain bonus scales with weak slow");
+        Check.Nearly(0.30f, ChainBehavior.ConductiveBonus(0.30f), "chain bonus reaches cap");
+        Check.Nearly(0.30f, ChainBehavior.ConductiveBonus(0.62f), "chain bonus is capped");
         Check.Nearly(80, first.Health, "chain primary damage");
         Check.Nearly(90, second.Health, "chain first hop");
-        Check.Nearly(86.5f, third.Health, "chain slowed-target synergy");
+        Check.Nearly(87f, third.Health, "chain slowed-target synergy");
         Check.Nearly(100, outOfRange.Health, "chain range limit");
-        Check.Nearly(43.5f, 400 - first.Health - second.Health - third.Health - outOfRange.Health, "chain damage is bounded");
+        Check.Nearly(43f, 400 - first.Health - second.Health - third.Health - outOfRange.Health, "chain damage is bounded");
         Check.Equal(3, session.Effects.Effects.Count(x => x.Kind == EffectKind.Beam), "primary plus two chain beams");
     }
 
@@ -3198,17 +3495,17 @@ internal static class Program
             "Shatter-style armor projectiles obey their crowd cap");
     }
 
-    private static void NeedleRapidMicroBurst()
+    private static void NeedleRapidRicochet()
     {
         var session = Session();
         var level = new TowerLevelDefinition
         {
             Range = 200,
-            Damage = 11,
+            Damage = 10,
             AttacksPerSecond = 3.1f,
             ProjectileSpeed = 10_000,
-            SplashRadius = 16,
-            SplashTargetLimit = 2
+            RicochetRange = 72,
+            RicochetDamageMultiplier = 0.6f
         };
         var definition = new TowerDefinition
         {
@@ -3222,9 +3519,9 @@ internal static class Program
         var crowd = Enumerable.Range(0, 3)
             .Select(index => new EnemyInstance(30 + index, session.Content.Enemies["enemy"], session.Map.Path, 1, 1))
             .ToArray();
-        crowd[0].UpdateMovement(10, session.Map.Path);
-        crowd[1].UpdateMovement(10.7f, session.Map.Path);
-        crowd[2].UpdateMovement(11.4f, session.Map.Path);
+        crowd[0].UpdateMovement(3, session.Map.Path);
+        crowd[1].UpdateMovement(4, session.Map.Path);
+        crowd[2].UpdateMovement(10, session.Map.Path);
         session.Enemies.AddRange(crowd);
 
         TowerBehaviorRegistry.Create("single_projectile").Attack(new TowerInstanceContext
@@ -3236,13 +3533,24 @@ internal static class Program
         session.Projectiles.Update(1, session);
 
         Check.Equal(2, crowd.Count(enemy => enemy.Health < enemy.MaxHealth),
-            "Rapid-style single projectiles stop at the authored two-target cap");
+            "Rapid-style single projectiles hit only the primary and one nearby enemy");
         Check.True(crowd.Take(2).All(enemy => enemy.Health < enemy.MaxHealth) && crowd[2].Health == crowd[2].MaxHealth,
-            "Rapid micro-burst resolves nearest enemies deterministically");
+            "Rapid ricochet resolves the nearest eligible enemy deterministically");
+        Check.Nearly(10, crowd[0].MaxHealth - crowd[0].Health, "Rapid primary retains full damage");
+        Check.Nearly(6, crowd[1].MaxHealth - crowd[1].Health, "Rapid ricochet applies its authored damage ratio");
+        Check.True(session.Effects.Effects.Any(effect => effect.Kind == EffectKind.Beam &&
+                effect.Start == crowd[0].Position && effect.End == crowd[1].Position),
+            "Rapid ricochet is communicated by a visible jump between enemies");
+        var projectileState = new ProjectileInstance(tower.Position, crowd[0].Position, crowd[0], 500,
+            ProjectileKind.Homing, 0, new DamagePayload { Damage = 10 }, Color.Blue, 3,
+            ricochetRange: 72, ricochetDamageMultiplier: 0.6f).CaptureCoOpState();
+        Check.Nearly(72, projectileState.RicochetRange, "Rapid ricochet reach survives active-projectile snapshots");
+        Check.Nearly(0.6f, projectileState.RicochetDamageMultiplier, "Rapid ricochet damage survives active-projectile snapshots");
         var rapid = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load()
             .Towers["needle_turret"].Specializations.Single(specialization => specialization.Id == "rapid_array");
-        Check.Equal(2, rapid.Level.SplashTargetLimit, "Rapid Array content preserves its strict two-target identity");
-        Check.True(rapid.Level.SplashRadius <= 16, "Rapid Array remains a compact burst rather than general splash artillery");
+        Check.Nearly(72, rapid.Level.RicochetRange, "Rapid Array content provides useful follow-up reach");
+        Check.Nearly(0.6f, rapid.Level.RicochetDamageMultiplier, "Rapid Array keeps its follow-up below full primary damage");
+        Check.Nearly(0, rapid.Level.SplashRadius, "Rapid Array no longer presents a misleading area splash");
     }
 
     private static void BreakerBreachPunchThrough()
@@ -3288,6 +3596,35 @@ internal static class Program
         Check.True(content.Towers.Values.All(x => TowerInfo.ShortRole(x).Length <= 10), "catalog roles fit compact cards");
         Check.True(content.Towers.Values.All(x => x.Visual.Marks == 1), "every tower begins with one level mark");
         Check.True(content.Towers.Values.All(x => x.Visual.Ring), "every tower has a consistent outer ring");
+        var beaconUpgradeFill = content.Towers["signal_beacon"].Visual.PrimaryColor;
+        var beaconUpgradeText = ColorPalette.HighContrastText(beaconUpgradeFill);
+        Check.True(beaconUpgradeText == ColorPalette.Ink &&
+                   ColorPalette.ContrastRatio(beaconUpgradeText, beaconUpgradeFill) >= 7f &&
+                   ColorPalette.ContrastRatio(beaconUpgradeText, beaconUpgradeFill) >
+                   ColorPalette.ContrastRatio(ColorPalette.Paper, beaconUpgradeFill),
+            "Signal Beacon's pale first upgrade button receives higher-contrast text");
+        var upgradeChoices = content.Towers.Values
+            .SelectMany(tower => tower.Tier2Doctrines.Select(choice => (tower.Id, choice.DisplayName, choice.ShortLabel, choice.Summary))
+                .Concat(tower.Specializations.Select(choice => (tower.Id, choice.DisplayName, choice.ShortLabel, choice.Summary))))
+            .ToArray();
+        var vagueUpgradeWords = new[] { "lighter", "harder", "utility", "throughput", "steadier", "cadence" };
+        Check.True(upgradeChoices.All(choice => choice.DisplayName.Length <= 16 && choice.Summary.Length <= 48),
+            "upgrade names and summaries stay compact enough for Tower Intel");
+        Check.True(upgradeChoices.All(choice => vagueUpgradeWords.All(word =>
+                !choice.Summary.Contains(word, StringComparison.OrdinalIgnoreCase))),
+            "upgrade summaries avoid vague comparative jargon");
+        Check.True(content.Towers.Values.All(tower => tower.Tier2Doctrines.Select(choice => choice.ShortLabel)
+                .Concat(tower.Specializations.Select(choice => choice.ShortLabel))
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count() == tower.Tier2Doctrines.Count + tower.Specializations.Count),
+            "each tower uses distinct readable doctrine and final-role labels");
+        var progressionTower = new TowerInstance(1, content.Towers["ember_coil"], Vector2.Zero);
+        Check.True(progressionTower.TryChooseDoctrine("ember_hot_core") &&
+                   progressionTower.TrySpecialize("searing_brand"),
+            "create completed Ember progression label fixture");
+        var progressionLabel = TowerInfo.ProgressionLabel(progressionTower);
+        Check.True(progressionLabel.IndexOf("HOT CORE", StringComparison.Ordinal) <
+                   progressionLabel.IndexOf("SEARING BRAND", StringComparison.Ordinal),
+            "Tower Intel lists the Tier 2 doctrine before the Tier 3 specialization");
         var breachLevel = content.Towers["breaker_cannon"].Specializations.Single(x => x.Id == "breach_round").Level;
         Check.True(TowerInfo.Special(content.Towers["breaker_cannon"], breachLevel).Contains("2 targets max", StringComparison.Ordinal),
             "compact Breach intel exposes its strict punch-through limit");
@@ -3311,8 +3648,107 @@ internal static class Program
         var pelletLevel = content.Towers["shard_fan"].Levels[0];
         Check.Nearly(pelletLevel.Damage * pelletLevel.AttacksPerSecond * pelletLevel.PelletCount,
             TowerInfo.RawDps(pelletLevel), "pellet DPS includes every projectile");
+        Check.True(!TowerInfo.LiveCombatSummary(8, 2, 125).Contains("DPS", StringComparison.Ordinal),
+            "live Tower Intel leaves derived DPS to the Tactical Library");
+        Check.True(TowerInfo.LibraryStatLines(content.Towers["needle_turret"], content.Towers["needle_turret"].Levels[0])
+                .Any(line => line.Contains("DPS", StringComparison.Ordinal)),
+            "Tactical Library retains derived DPS for precise planning");
         Check.True(TowerInfo.UpgradeSummary(content.Towers["needle_turret"], 0).Contains("DAMAGE", StringComparison.Ordinal),
             "upgrade summary exposes damage delta");
+
+        foreach (var definition in content.Towers.Values)
+        {
+            var baseStats = TowerInfo.ComparisonStats(definition, definition.Levels[0]);
+            Check.True(baseStats.Count <= 12, $"{definition.Id} complete live stat set fits the compact Intel grid");
+        }
+        var needleBaseStats = TowerInfo.ComparisonStats(content.Towers["needle_turret"], content.Towers["needle_turret"].Levels[0]);
+        Check.True(needleBaseStats.Any(stat => stat.Label == "RICOCHET" && stat.Value == "0%") &&
+            needleBaseStats.Any(stat => stat.Label == "PIERCE" && stat.Value == "0"),
+            "base Needle Intel reserves explicit zero-value rows for both future final roles");
+        var calibratedFeed = content.Towers["needle_turret"].Tier2Doctrines.Single(doctrine => doctrine.Id == "needle_calibrator");
+        var calibratedPreview = TowerInfo.ComparisonStats(content.Towers["needle_turret"],
+            content.Towers["needle_turret"].Levels[0],
+            content.Towers["needle_turret"].Levels[1].WithDoctrine(calibratedFeed));
+        var calibratedRate = calibratedPreview.Single(stat => stat.Label == "RATE");
+        Check.Equal(TowerStatDirection.Unchanged, calibratedRate.Direction,
+            "Calibrated Feed rate stays neutral when both values display as 2/s");
+        Check.Equal("RATE 2/s", TowerInfo.ComparisonStatText(calibratedRate),
+            "unchanged upgrade stats do not imply a hidden delta");
+        var calibratedDamage = calibratedPreview.Single(stat => stat.Label == "DAMAGE");
+        Check.Equal("DAMAGE 8 -> 11", TowerInfo.ComparisonStatText(calibratedDamage),
+            "changed upgrade stats show their old and new values");
+        Check.Equal("8 -> 11", TowerInfo.ComparisonStatValueText(calibratedDamage),
+            "compact upgrade grids retain the complete old-to-new value pair");
+        Check.Equal(TowerStatDirection.Increase, calibratedDamage.Direction,
+            "old-to-new upgrade gains retain increase coloring");
+        var prism = content.Towers["prism_beam"];
+        var frequency = prism.Tier2Doctrines.Single(doctrine => doctrine.Id == "prism_frequency");
+        var coreLance = prism.Specializations.Single(specialization => specialization.Id == "core_lance");
+        var coreLancePreview = TowerInfo.ComparisonStats(prism,
+            prism.Levels[1].WithDoctrine(frequency), coreLance.Level.WithDoctrine(frequency));
+        Check.Equal("BLOCK -> PASS",
+            TowerInfo.ComparisonStatValueText(coreLancePreview.Single(stat => stat.Label == "SHIELDS")),
+            "boolean upgrade comparisons stay complete in the dense Intel grid");
+        var mortar = content.Towers["siege_mortar"];
+        var quickLoader = mortar.Tier2Doctrines.Single(doctrine => doctrine.Id == "mortar_loader");
+        var loaderPreview = TowerInfo.ComparisonStats(mortar, mortar.Levels[0], mortar.Levels[1].WithDoctrine(quickLoader));
+        Check.Equal(TowerStatDirection.Increase, loaderPreview.Single(stat => stat.Label == "RATE").Direction,
+            "upgrade comparison marks gains for green rendering");
+        Check.Equal(TowerStatDirection.Decrease, loaderPreview.Single(stat => stat.Label == "RANGE").Direction,
+            "upgrade comparison marks explicit branch tradeoffs for red rendering");
+        Check.Equal(TowerStatDirection.Decrease, loaderPreview.Single(stat => stat.Label == "AREA").Direction,
+            "upgrade comparison exposes reduced splash area instead of hiding it in prose");
+        Check.True(content.Towers.Values.All(definition => definition.Levels.Zip(definition.Levels.Skip(1))
+                .All(pair => pair.Second.Damage >= pair.First.Damage &&
+                    pair.Second.AttacksPerSecond >= pair.First.AttacksPerSecond &&
+                    pair.Second.Range >= pair.First.Range)),
+            "ordinary authored level tracks never reduce core combat stats; decreases belong to named branch tradeoffs");
+
+        var needleUpgrade = TowerInfo.UpgradeSummary(content.Towers["needle_turret"], 0);
+        Check.True(needleUpgrade.Contains("SPEED 500>530", StringComparison.Ordinal),
+            "Needle upgrade preview includes projectile speed");
+        var shardDoctrine = PreviewDoctrine(content, "shard_fan", "shard_scatter");
+        Check.True(shardDoctrine.Contains("SHOTS", StringComparison.Ordinal) && shardDoctrine.Contains("SPREAD", StringComparison.Ordinal),
+            "Shard upgrade preview includes projectile count and spread");
+        var watchDoctrine = PreviewDoctrine(content, "watchtower", "watch_spotter");
+        Check.True(watchDoctrine.Contains("RANGE", StringComparison.Ordinal) && watchDoctrine.Contains("SPEED", StringComparison.Ordinal),
+            "Watchtower upgrade preview includes coverage and projectile speed");
+        var frostDoctrine = PreviewDoctrine(content, "frost_spire", "frost_deep_chill");
+        Check.True(frostDoctrine.Contains("SLOW", StringComparison.Ordinal) && frostDoctrine.Count(character => character == 's') >= 2,
+            "Frost upgrade preview includes slow intensity and both durations");
+        var frostTradeoff = PreviewDoctrine(content, "frost_spire", "frost_ice_needle");
+        Check.True(frostTradeoff.Contains("SLOW 35% 2s>", StringComparison.Ordinal) && frostTradeoff.Contains("1.7s", StringComparison.Ordinal),
+            "Frost damage doctrine clearly exposes its reduced slow strength and duration");
+        var emberDoctrine = PreviewDoctrine(content, "ember_coil", "ember_kindling");
+        Check.True(emberDoctrine.Contains("BURN", StringComparison.Ordinal) && emberDoctrine.Contains("SPLASH", StringComparison.Ordinal),
+            "Ember upgrade preview includes burn profile and splash area");
+        var breakerDoctrine = PreviewDoctrine(content, "breaker_cannon", "breaker_bored");
+        Check.True(breakerDoctrine.Contains("PIERCE", StringComparison.Ordinal) && breakerDoctrine.Contains("RANGE", StringComparison.Ordinal),
+            "Breaker doctrine preview includes its penetration and reach");
+        var breaker = content.Towers["breaker_cannon"];
+        var bored = breaker.Tier2Doctrines.Single(doctrine => doctrine.Id == "breaker_bored");
+        var breachPreview = TowerInfo.SpecializationSummary(breaker, breaker.Levels[1].WithDoctrine(bored),
+            breaker.Specializations.Single(specialization => specialization.Id == "breach_round"), bored);
+        Check.True(breachPreview.Contains("BREAK", StringComparison.Ordinal) &&
+            breachPreview.Contains("HEAVY", StringComparison.Ordinal) && breachPreview.Contains("CAP", StringComparison.Ordinal) &&
+            breachPreview.Contains("HOMING", StringComparison.Ordinal),
+            "Breaker specialization preview includes armor break, heavy multiplier, target cap, and homing impact");
+        var arcDoctrine = PreviewDoctrine(content, "arc_relay", "arc_fork");
+        Check.True(arcDoctrine.Contains("ARCS", StringComparison.Ordinal) && arcDoctrine.Contains("ARC RANGE", StringComparison.Ordinal),
+            "Arc upgrade preview includes chain count, damage, and reach");
+        var mortarDoctrine = PreviewDoctrine(content, "siege_mortar", "mortar_survey");
+        Check.True(mortarDoctrine.Contains("SPLASH", StringComparison.Ordinal) && mortarDoctrine.Contains("CAP", StringComparison.Ordinal),
+            "Mortar upgrade preview includes splash radius and target cap");
+        var prismDoctrine = PreviewDoctrine(content, "prism_beam", "prism_aperture");
+        Check.True(prismDoctrine.Contains("EXPOSE", StringComparison.Ordinal) && prismDoctrine.Contains("PIERCE", StringComparison.Ordinal),
+            "Prism upgrade preview includes expose strength, duration, and pierce");
+
+        string PreviewDoctrine(GameContent loadedContent, string towerId, string doctrineId)
+        {
+            var towerDefinition = loadedContent.Towers[towerId];
+            return TowerInfo.DoctrineSummary(towerDefinition,
+                towerDefinition.Tier2Doctrines.Single(doctrine => doctrine.Id == doctrineId));
+        }
 
         var needle = content.Towers["needle_turret"];
         var beacon = content.Towers["signal_beacon"];
@@ -3342,15 +3778,16 @@ internal static class Program
         Check.True(doctrineSummary.Contains("RANGE 147>159", StringComparison.Ordinal),
             "tier-two doctrine preview includes beacon-adjusted range");
         var doctrineLevel = needle.Levels[1].WithDoctrine(cycler);
-        var specializationSummary = TowerInfo.SpecializationSummary(doctrineLevel,
+        var specializationSummary = TowerInfo.SpecializationSummary(needle, doctrineLevel,
             needle.Specializations.Single(x => x.Id == "rapid_array"), cycler, signalBuff);
-        Check.True(specializationSummary.Contains("SPLASH 16 / 2 MAX", StringComparison.Ordinal),
-            "tier-three branch preview explains Rapid Array's bounded micro-burst");
+        Check.True(specializationSummary.Contains("RICOCHET 0%>60%", StringComparison.Ordinal) &&
+            specializationSummary.Contains("REACH 0>72", StringComparison.Ordinal),
+            "tier-three branch preview explains Rapid Array's bounded ricochet");
         Check.True(specializationSummary.Contains("RATE 3.15>4.44", StringComparison.Ordinal),
             "tier-three branch preview includes beacon-adjusted rate");
         var beaconUpgrade = TowerInfo.UpgradeSummary(beacon, 0);
-        Check.True(beaconUpgrade.Contains("AURA 145>165", StringComparison.Ordinal), "beacon upgrade compares aura radius");
-        Check.True(beaconUpgrade.Contains("RATE +15%>+25%", StringComparison.Ordinal), "beacon upgrade compares aura rate");
+        Check.True(beaconUpgrade.Contains("FIELD 145>165", StringComparison.Ordinal), "beacon upgrade compares aura radius");
+        Check.True(beaconUpgrade.Contains("AURA RATE +15%>+25%", StringComparison.Ordinal), "beacon upgrade compares aura rate");
         Check.Nearly(0, beacon.Protocol.AttackSpeedBonus, "beacon protocol does not advertise a no-op self attack-rate bonus");
         Check.True(!TowerInfo.ProtocolBonuses(beacon.Protocol).StartsWith("RATE", StringComparison.Ordinal),
             "beacon protocol summary leads with its actual aura effects");
@@ -3363,13 +3800,34 @@ internal static class Program
             "beacon live summary includes every active Network Surge effect");
         var protocolReference = TowerInfo.ProtocolLibrarySummary(needle);
         Check.True(protocolReference.Contains("6s / CD 18s", StringComparison.Ordinal) &&
-            protocolReference.Contains("AUTO 4+ / ELITE/BOSS", StringComparison.Ordinal),
-            "tower library exposes exact protocol timing and automatic trigger rules");
+            protocolReference.Contains("AUTO TRIGGER: 4+ TARGETS IN TOWER RANGE, OR ANY ENGAGED ELITE / BOSS", StringComparison.Ordinal),
+            "tactical library exposes exact protocol timing and automatic trigger rules");
+        foreach (var definition in content.Towers.Values)
+        {
+            var bonusRows = TowerInfo.ProtocolBonusRows(definition.Protocol);
+            Check.True(bonusRows.Count is >= 1 and <= 2,
+                $"{definition.Id} compact protocol bonuses use at most two readable rows");
+            Check.Equal(TowerInfo.ProtocolBonuses(definition.Protocol, int.MaxValue),
+                string.Join("  ", bonusRows),
+                $"{definition.Id} compact protocol rows preserve every authored effect");
+        }
+        Check.Equal("AUTO TRIGGER: 2+ TARGETS IN TOWER RANGE, OR ANY ENGAGED ELITE / BOSS",
+            TowerInfo.ProtocolAutoTriggerSummary(content.Towers["watchtower"].Protocol),
+            "each tower exposes its authored Auto threshold as a dedicated library line");
+        Check.Equal("AUTO TRIGGER: 2+ SUPPORTED TOWERS ENGAGED, OR 6+ TARGETS ON ONE RECIPIENT, OR ANY ENGAGED ELITE / BOSS",
+            TowerInfo.ProtocolAutoTriggerSummary(content.Towers["signal_beacon"].Protocol),
+            "Signal Beacon Auto describes recipient engagement instead of enemies near the non-attacking Beacon");
+        Check.True(TowerInfo.ProtocolAutoTriggerSummary(content.Towers["breaker_cannon"].Protocol)
+                .Contains("ARMORED OR SHIELDED TARGETS", StringComparison.Ordinal),
+            "Breaker Auto waits for targets its anti-armor Protocol is designed to counter");
+        Check.True(TowerInfo.ProtocolAutoTriggerSummary(content.Towers["siege_mortar"].Protocol)
+                .Contains("ONE IMPACT GROUP", StringComparison.Ordinal),
+            "Mortar Auto requires enemies grouped tightly enough to share an impact");
         var breakerProtocol = TowerInfo.ProtocolLibrarySummary(content.Towers["breaker_cannon"]);
         Check.True(breakerProtocol.Contains("PULSE 20", StringComparison.Ordinal) &&
             breakerProtocol.Contains("BREAK 4/5s", StringComparison.Ordinal) &&
             breakerProtocol.Contains("AREA 185", StringComparison.Ordinal),
-            "tower library preserves instant Protocol damage and status payload beyond compact live labels");
+            "tactical library preserves instant Protocol damage and status payload beyond compact live labels");
         var breakerLiveProtocol = TowerInfo.ProtocolLiveSummary(content.Towers["breaker_cannon"].Protocol);
         Check.True(breakerLiveProtocol.Contains("PULSE 20 / AREA 185", StringComparison.Ordinal) &&
             breakerLiveProtocol.Contains("BREAK 4/5s", StringComparison.Ordinal),
@@ -3382,7 +3840,7 @@ internal static class Program
             "running Protocol Intel explicitly identifies its applied boost");
     }
 
-    private static void TowerLibraryReference()
+    private static void TacticalLibraryReference()
     {
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
@@ -3393,9 +3851,9 @@ internal static class Program
         ui.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values, content.Tactics);
         var firstTower = ui.SelectedLibraryTowerId;
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
-        Check.True(ui.SelectedLibraryTowerId != firstTower, "tower library Down selects the next tower");
+        Check.True(ui.SelectedLibraryTowerId != firstTower, "tactical library Down selects the next tower");
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
-        Check.Equal(firstTower!, ui.SelectedLibraryTowerId!, "tower library Up returns to the previous tower");
+        Check.Equal(firstTower!, ui.SelectedLibraryTowerId!, "tactical library Up returns to the previous tower");
         var tabUi = new UIManager(null!);
         tabUi.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
         tabUi.ConfigureDifficulties(content.Difficulties.Values);
@@ -3421,18 +3879,23 @@ internal static class Program
         Check.True(closeReference.Contains("TOWERS AVAILABLE 8/10") &&
             closeReference.Any(line => line.Contains("WATCHTOWER", StringComparison.Ordinal)),
             "profile reference exposes exact directive roster restrictions");
+        var fundamentalsReference = UIManager.ChallengeReferenceLines(content.Challenges["no_reserves"], content.Towers.Count);
+        Check.True(fundamentalsReference.Contains("TACTICAL RESERVES OFF") &&
+            fundamentalsReference.Contains("TOWER PROTOCOLS OFF") &&
+            fundamentalsReference.Contains("TOWERS AVAILABLE 10/10"),
+            "profile reference exposes every Fundamentals restriction and its full tower roster");
         Check.Equal(UiAction.TowerLibrary,
             ui.HandleMainMenu(WorldInput(new Vector2(640, 540)) with { LeftPressed = true }),
-            "title screen opens tower library");
+            "title screen opens tactical library");
         Check.Equal(UiAction.None,
-            ui.HandleTitleTowerLibrary(WorldInput(new Vector2(580, 67)) with { LeftPressed = true }),
+            ui.HandleTitleTowerLibrary(WorldInput(new Vector2(762, 57)) with { LeftPressed = true }),
             "threat reference remains inside tactical library");
         Check.True(ui.LibraryShowsThreats, "tactical library switches to threat reference");
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TowerHotkey = 3 });
         Check.Equal("t3_brute", ui.SelectedLibraryEnemyId!, "threat hotkeys select the health-ordered archetype");
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
         Check.Equal("t1_crawler", ui.SelectedLibraryEnemyId!, "threat library supports health-ordered arrow selection");
-        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(725, 67)) with { LeftPressed = true });
+        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(871, 57)) with { LeftPressed = true });
         Check.True(ui.LibraryShowsCampaign, "tactical library switches to campaign reference");
         Check.Equal(20, ui.SelectedLibraryCampaignWaveCount, "campaign reference exposes all authored waves");
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TowerHotkey = 2 });
@@ -3440,11 +3903,11 @@ internal static class Program
         var secondMap = ui.SelectedLibraryCampaignMapId;
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
         Check.True(ui.SelectedLibraryCampaignMapId != secondMap, "campaign library supports arrow selection");
-        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(860, 67)) with { LeftPressed = true });
+        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(980, 57)) with { LeftPressed = true });
         Check.True(ui.LibraryShowsProfiles, "tactical library switches to profile reference");
-        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(990, 67)) with { LeftPressed = true });
+        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(1078, 57)) with { LeftPressed = true });
         Check.True(ui.LibraryShowsSystems, "tactical library switches to systems reference");
-        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(450, 67)) with { LeftPressed = true });
+        ui.HandleTitleTowerLibrary(WorldInput(new Vector2(666, 57)) with { LeftPressed = true });
         Check.True(!ui.LibraryShowsThreats, "tactical library returns to tower planning");
         Check.True(!ui.LibraryShowsCampaign, "tower planning closes campaign reference");
         Check.True(!ui.LibraryShowsProfiles, "tower planning closes profile reference");
@@ -3492,6 +3955,9 @@ internal static class Program
 
         Check.True(TowerInfo.LibraryStatLines(content.Towers["arc_relay"], content.Towers["arc_relay"].Levels[1])
             .Any(line => line.Contains("MAX CHAIN DPS", StringComparison.Ordinal)), "library exposes maximum chain output");
+        Check.True(TowerInfo.LibraryStatLines(content.Towers["arc_relay"], content.Towers["arc_relay"].Levels[1])
+            .Any(line => line.Contains("SLOW BONUS UP TO +30%", StringComparison.Ordinal)),
+            "library explains the bounded proportional Arc and Slow synergy");
         Check.True(TowerInfo.LibraryStatLines(content.Towers["signal_beacon"], content.Towers["signal_beacon"].Levels[0])
             .Any(line => line.Contains("ATTACK RATE", StringComparison.Ordinal)), "library exposes support aura strength");
     }
@@ -3799,8 +4265,11 @@ internal static class Program
 
             var slotUi = new UIManager(null!);
             slotUi.ConfigureSaveSlots(slots, false);
+            Check.Equal(UiAction.HostSavedGame,
+                slotUi.HandleSaveSlots(WorldInput(new Vector2(595, 543)) with { LeftPressed = true }),
+                "every readable checkpoint can reopen as an online host");
             Check.Equal(UiAction.DuplicateSaveSlot,
-                slotUi.HandleSaveSlots(WorldInput(new Vector2(680, 543)) with { LeftPressed = true }),
+                slotUi.HandleSaveSlots(WorldInput(new Vector2(755, 543)) with { LeftPressed = true }),
                 "load browser offers duplication for the selected autosave");
             slotUi.HandleSaveSlots(WorldInput(Vector2.Zero) with { NavigateDownPressed = true });
             Check.Equal(1, slotUi.SelectedSaveSlot, "save browser Down moves from autosave to the first manual slot");
@@ -3835,6 +4304,13 @@ internal static class Program
             Check.True(!restoredSolo.IsCoOp, "solo slot restores as solo");
             Check.True(restoredCoOp.IsCoOp, "co-op slot restores as a hosted co-op session");
             Check.Equal(2, restoredCoOp.Towers.Single().OwnerPlayerId, "co-op tower ownership survives slot restore");
+            var coOpCredits = restoredCoOp.Economy.Credits;
+            var coOpWave = restoredCoOp.CurrentWave;
+            restoredCoOp.ConfigureSolo();
+            Check.True(!restoredCoOp.IsCoOp && !restoredCoOp.IsCoOpPaused && restoredCoOp.LocalPlayerId == 1,
+                "a co-op checkpoint can continue locally without shared-network state");
+            Check.Equal(coOpCredits, restoredCoOp.Economy.Credits, "solo continuation preserves shared credits");
+            Check.Equal(coOpWave, restoredCoOp.CurrentWave, "solo continuation preserves co-op wave progress");
 
             Directory.CreateDirectory(legacyRoot);
             var legacyRepository = new SaveSlotRepository(legacyRoot);
@@ -3966,15 +4442,68 @@ internal static class Program
                 Lives = 8,
                 StartingLives = 20,
                 Kills = 1090,
+                CreditsRemaining = 3000,
                 CreditsEarned = 24000,
                 CreditsSpent = 21000,
+                SaleCreditsRecovered = 600,
                 EarlyCallCredits = 180,
                 ProtocolActivations = 24,
                 PlateDeployments = 8,
+                PlateDirectPurchases = 3,
+                PlateTriggers = 14,
+                PlateHits = 38,
+                PlateKills = 5,
                 PlateDamage = 640,
                 ForgedCharges = 6,
+                ForgePurchases = 1,
+                ForgeUpgrades = 2,
                 DefenseSeconds = 1234,
-                TopTowerName = "Needle Turret"
+                TopTowerName = "Needle Turret",
+                GreatestLeakThreatName = "Aegis",
+                GreatestLeakThreatLivesLost = 3,
+                Towers =
+                [
+                    new RunHistoryTowerEntry
+                    {
+                        TowerId = "needle_turret",
+                        DisplayName = "Needle Turret",
+                        Purchases = 4,
+                        Upgrades = 6,
+                        CreditsSpent = 1200,
+                        Hits = 900,
+                        Kills = 300,
+                        ProtocolActivations = 8,
+                        Damage = 18000,
+                        SupportDamageEquivalent = 200
+                    }
+                ],
+                Enemies =
+                [
+                    new RunHistoryEnemyEntry { EnemyId = "t4_aegis", DisplayName = "Aegis", Kills = 20, Escapes = 1, LivesLost = 3 }
+                ],
+                FinalLayout = new RunHistoryLayoutSnapshot
+                {
+                    StoredPlates = 2,
+                    AutoProtocolTowerId = 7,
+                    Towers =
+                    [
+                        new TowerSaveData
+                        {
+                            Id = 7,
+                            OwnerPlayerId = 2,
+                            DefinitionId = "needle_turret",
+                            X = 200,
+                            Y = 240,
+                            LevelIndex = 2,
+                            DoctrineId = "needle_calibrator",
+                            SpecializationId = "needle_rail",
+                            TargetMode = TargetMode.Strongest,
+                            InvestedCredits = 310,
+                            LifetimeDamage = 18_000,
+                            LifetimeKills = 300
+                        }
+                    ]
+                }
             };
             repository.Upsert(first);
             repository.Upsert(first with
@@ -3993,6 +4522,14 @@ internal static class Program
             Check.Equal(8, updated.PlateDeployments, "run history retains tactical deployments");
             Check.Nearly(640, updated.PlateDamage, "run history retains tactical damage");
             Check.Equal(6, updated.ForgedCharges, "run history retains forged charge output");
+            Check.Equal(600, updated.SaleCreditsRecovered, "run history retains sale recovery");
+            Check.Equal(3, updated.PlateDirectPurchases, "run history retains direct plate purchases");
+            Check.Equal(14, updated.PlateTriggers, "run history retains plate triggers");
+            Check.Equal(1, updated.Towers.Count, "run history retains per-tower statistics");
+            Check.Equal(1, updated.Enemies.Count, "run history retains per-threat statistics");
+            Check.Equal(1, updated.FinalLayout!.Towers.Count, "run history retains the final placed defense layout");
+            Check.Equal(TargetMode.Strongest, updated.FinalLayout.Towers[0].TargetMode,
+                "run history layout retains tower targeting and progression state");
             Check.True(File.Exists(repository.BackupPath), "run history retains a recovery generation");
 
             var legacyRepository = new RunHistoryRepository(Path.Combine(testRoot, "legacy"));
@@ -4041,6 +4578,13 @@ internal static class Program
             Check.Equal("run-a", historyUi.SelectedRunHistoryId!, "run history Down selects the next record");
             historyUi.HandleRunHistory(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
             Check.Equal("run-b", historyUi.SelectedRunHistoryId!, "run history Up returns to the previous record");
+            historyUi.HandleRunHistory(WorldInput(new Vector2(400, 150)) with { LeftPressed = true });
+            Check.True(historyUi.IsRunHistoryDetailOpen, "clicking a run opens its complete detail view");
+            Check.Equal(UiAction.ViewRunHistoryField,
+                historyUi.HandleRunHistory(WorldInput(new Vector2(480, 671)) with { LeftPressed = true }),
+                "run details expose the archived final layout when one was captured");
+            historyUi.HandleRunHistory(WorldInput(Vector2.Zero) with { EscapePressed = true });
+            Check.True(!historyUi.IsRunHistoryDetailOpen, "Escape returns from run details to the history list");
             Check.True(repository.Delete("run-a"), "individual history entries can be deleted");
             Check.Equal(1, repository.GetEntries().Count, "deleting history leaves unrelated records intact");
 
@@ -4073,6 +4617,20 @@ internal static class Program
                 "invalid caller-supplied history is rejected before writing");
 
             var session = Session();
+            Check.True(session.TryPlaceTower("tower", new Vector2(50, 200), 2),
+                "history inspection source places a tower");
+            var archivedRun = RunHistoryEntry.FromSession(session);
+            Check.Equal(1, archivedRun.FinalLayout!.Towers.Count,
+                "terminal capture creates a structured layout rather than a resolution-bound screenshot");
+            var inspection = archivedRun.CreateInspectionSession(session.Content);
+            Check.Equal(1, inspection.Towers.Count, "archived layout reconstructs its placed tower");
+            Check.Equal(0, inspection.Enemies.Count, "archived layout intentionally omits terminal enemies");
+            Check.Equal(0, inspection.Projectiles.Projectiles.Count, "archived layout intentionally omits terminal projectiles");
+            inspection.HandleInspectionInput(WorldInput(new Vector2(50, 200)) with { LeftPressed = true });
+            Check.Equal(inspection.Towers[0].Id, inspection.SelectedTower!.Id,
+                "archived towers remain clickable for progression and lifetime-stat inspection");
+            Check.Equal(2, inspection.SelectedTower.OwnerPlayerId,
+                "archived tower inspection retains the original co-op builder identity");
             var runId = session.RunId;
             var restoredSave = GameSession.RestoreSaveGame(session.Content, session.CaptureSaveGame());
             Check.Equal(runId, restoredSave.RunId, "checkpoint restore preserves run identity");
@@ -4192,7 +4750,62 @@ internal static class Program
         Check.True(automatic.Enemies[0].Health < automatic.Enemies[0].MaxHealth, "protocol activation pulse applies damage");
         var protocolBurst = automatic.Effects.Effects.Single(effect => effect.Kind == EffectKind.Splash);
         Check.Nearly(250, protocolBurst.Radius, "area protocol communicates its exact affected radius");
+
+        var supportAutomatic = Session();
+        supportAutomatic.Economy.AddCredits(1_000);
+        supportAutomatic.Content.Towers["tower"].Levels[0].Range = 220;
+        supportAutomatic.Content.Towers["beacon"] = AutoProtocolBeaconDefinition();
+        Check.True(supportAutomatic.TryPlaceTower("tower", new Vector2(30, 90)), "place first engaged Beacon recipient");
+        Check.True(supportAutomatic.TryPlaceTower("tower", new Vector2(100, 90)), "place second engaged Beacon recipient");
+        Check.True(supportAutomatic.TryPlaceTower("beacon", new Vector2(60, 180)), "place automatic Signal Beacon");
+        var automaticBeacon = supportAutomatic.Towers.Single(tower => tower.IsSupport);
+        Check.True(supportAutomatic.TryToggleAutoProtocol(automaticBeacon.Id), "arm recipient-aware Beacon protocol");
+        supportAutomatic.SpawnEnemy("enemy", 1, 1);
+        supportAutomatic.Update(0.1f);
+        Check.True(automaticBeacon.IsOverdriven,
+            "Beacon Auto activates when two supported towers engage even a single shared threat");
+
+        var loneSupportAutomatic = Session();
+        loneSupportAutomatic.Economy.AddCredits(1_000);
+        loneSupportAutomatic.Content.Towers["tower"].Levels[0].Range = 220;
+        loneSupportAutomatic.Content.Towers["beacon"] = AutoProtocolBeaconDefinition();
+        Check.True(loneSupportAutomatic.TryPlaceTower("tower", new Vector2(30, 90)), "place lone Beacon recipient");
+        Check.True(loneSupportAutomatic.TryPlaceTower("beacon", new Vector2(60, 180)), "place lone-recipient Beacon");
+        var loneBeacon = loneSupportAutomatic.Towers.Single(tower => tower.IsSupport);
+        Check.True(loneSupportAutomatic.TryToggleAutoProtocol(loneBeacon.Id), "arm lone-recipient Beacon protocol");
+        for (var index = 0; index < 5; index++) loneSupportAutomatic.SpawnEnemy("enemy", 1, 1);
+        loneSupportAutomatic.Update(0.1f);
+        Check.True(!loneBeacon.IsOverdriven,
+            "Beacon Auto conserves the shared cooldown for one lightly pressured recipient");
+        loneSupportAutomatic.SpawnEnemy("enemy", 1, 1);
+        loneSupportAutomatic.Update(0.1f);
+        Check.True(loneBeacon.IsOverdriven,
+            "Beacon Auto still activates when one supported tower faces six threats by itself");
     }
+
+    private static TowerDefinition AutoProtocolBeaconDefinition() => new()
+    {
+        Id = "beacon",
+        DisplayName = "Test Beacon",
+        Role = "Support aura",
+        Behavior = "aura",
+        PurchaseCost = 100,
+        Protocol = new TowerProtocolDefinition
+        {
+            DisplayName = "Network Test",
+            Summary = "Tests recipient-aware automatic activation",
+            DurationSeconds = 4,
+            CooldownSeconds = 10,
+            AuraAttackSpeedBonus = 0.2f,
+            AutoTriggerMode = ProtocolAutoTriggerModes.EngagedRecipients,
+            AutoTriggerCount = 2,
+            AutoTriggerTargetCount = 6
+        },
+        Levels = new List<TowerLevelDefinition>
+        {
+            new() { AuraRange = 145, AuraAttackSpeedBonus = 0.15f, AuraRangeBonus = 0.1f }
+        }
+    };
 
     private static void AuthoredTowerProtocols()
     {

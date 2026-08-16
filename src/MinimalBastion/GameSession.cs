@@ -28,6 +28,12 @@ public sealed class GameSession
     private int _nextEnemyId = 1;
     private int _nextTowerId = 1;
     private int _nextEmergencyDefenseId = 1;
+    private WaveDefinition? _sandboxActiveWave;
+    private int _sandboxGroupIndex;
+    private int _sandboxSpawnedInGroup;
+    private float _sandboxGroupTimer;
+    private float _sandboxDelayRemaining;
+    private int _sandboxQueuedEnemies;
 
     public string RunId { get; private set; } = Guid.NewGuid().ToString("N");
     public GameContent Content => _content;
@@ -36,6 +42,8 @@ public sealed class GameSession
     public ChallengeDefinition Challenge { get; }
     public string ChallengeId => Challenge.Id;
     public bool TacticalSystemsEnabled => Challenge.TacticalSystemsEnabled;
+    public bool ProtocolsEnabled => Challenge.ProtocolsEnabled;
+    public bool IsSandbox => Challenge.IsSandbox;
     public MapRuntime Map { get; }
     public EconomyService Economy { get; }
     public WaveManager Waves { get; }
@@ -89,10 +97,14 @@ public sealed class GameSession
     public int NextTowerId => _nextTowerId;
     public int NextEmergencyDefenseId => _nextEmergencyDefenseId;
     public bool IsEndlessMode => Waves.EndlessModeEnabled;
-    public bool CanStartWave => Waves.CanStartNextWave;
+    public bool CanStartWave => IsSandbox ? _sandboxActiveWave is null : Waves.CanStartNextWave;
     public float IntermissionRemaining => Waves.IntermissionRemaining;
-    public int EnemiesRemaining => Waves.EstimateRemainingIncludingLive(Enemies.Count(x => !x.IsDead && !x.HasEscaped));
-    public bool CanSaveCheckpoint => !Waves.IsActive && Enemies.Count == 0 && !IsVictory && !IsDefeat;
+    public int EnemiesRemaining => IsSandbox
+        ? _sandboxQueuedEnemies + Enemies.Count(x => !x.IsDead && !x.HasEscaped)
+        : Waves.EstimateRemainingIncludingLive(Enemies.Count(x => !x.IsDead && !x.HasEscaped));
+    public bool CanSaveCheckpoint => !IsSandbox && !Waves.IsActive && Enemies.Count == 0 && !IsVictory && !IsDefeat;
+    public bool SandboxWaveActive => _sandboxActiveWave is not null;
+    public int SandboxQueuedEnemies => _sandboxQueuedEnemies;
 
     public event Action<TowerInstance>? TowerPlaced;
     public event Action<TowerInstance, int>? TowerUpgraded;
@@ -119,13 +131,24 @@ public sealed class GameSession
         Difficulty = DifficultyCatalog.Resolve(content, difficultyId);
         Challenge = ChallengeCatalog.Resolve(content, challengeId);
         Map = new MapRuntime(mapDefinition);
-        Economy = new EconomyService(ChallengeCatalog.StartingCredits(mapDefinition, Difficulty, Challenge), Difficulty.StartingLives);
+        Economy = new EconomyService(
+            ChallengeCatalog.StartingCredits(mapDefinition, Difficulty, Challenge),
+            Difficulty.StartingLives,
+            unlimitedCredits: IsSandbox,
+            unlimitedLives: IsSandbox);
         Waves = new WaveManager(waveSet.Waves);
         DamageResolver = new DamageResolver(this);
         Statistics = new RunStatistics(this);
         _towerSystem = new TowerSystem(TargetSelector);
         EmergencyInventory = TacticalSystemsEnabled ? Math.Max(0, content.Tactics.EmergencyDefense.StartingInventory) : 0;
-        if (!Challenge.Id.Equals(ChallengeCatalog.DefaultId, StringComparison.OrdinalIgnoreCase))
+        if (IsSandbox)
+        {
+            AnnouncementTitle = "SANDBOX LAB ONLINE";
+            AnnouncementSubtitle = "Build freely, spawn fixed targets, or replay an authored wave.";
+            AnnouncementRemaining = 4.2f;
+            AnnouncementPositive = true;
+        }
+        else if (!Challenge.Id.Equals(ChallengeCatalog.DefaultId, StringComparison.OrdinalIgnoreCase))
         {
             AnnouncementTitle = Challenge.DisplayName.ToUpperInvariant();
             AnnouncementSubtitle = Challenge.Description;
@@ -146,9 +169,9 @@ public sealed class GameSession
         if (IsVictory || IsDefeat) return;
         if (IsCoOpPaused)
         {
-            // Shared pause still permits deterministic building and tower
-            // management. Keep support topology current without advancing a
-            // single combat, economy, animation, or cooldown timer.
+            // A shared pause freezes the defense, but the early-call window is
+            // a real planning deadline rather than bankable paused time.
+            UpdatePausedIntermission(unscaledDeltaSeconds);
             _buffSystem.Update(Towers);
             return;
         }
@@ -156,8 +179,12 @@ public sealed class GameSession
         Statistics.Advance(deltaSeconds);
         AnnouncementRemaining = MathF.Max(0, AnnouncementRemaining - deltaSeconds);
         OverdriveCooldownRemaining = MathF.Max(0, OverdriveCooldownRemaining - deltaSeconds);
-        Waves.UpdateIntermission(deltaSeconds);
-        Waves.Update(deltaSeconds, this);
+        if (IsSandbox) UpdateSandboxWave(deltaSeconds);
+        else
+        {
+            Waves.UpdateIntermission(deltaSeconds);
+            Waves.Update(deltaSeconds, this);
+        }
         _enemySystem.Update(deltaSeconds, this);
         _tacticalDefenseSystem.Update(deltaSeconds, this);
         TryActivateAutomaticProtocol();
@@ -166,10 +193,17 @@ public sealed class GameSession
         Projectiles.Update(deltaSeconds, this);
         Effects.Update(deltaSeconds);
         Enemies.RemoveAll(x => x.IsDead || x.HasEscaped);
-        Waves.TryComplete(Enemies.Count == 0, this);
+        if (!IsSandbox) Waves.TryComplete(Enemies.Count == 0, this);
 
-        if (Economy.Lives <= 0) IsDefeat = true;
+        if (!IsSandbox && Economy.Lives <= 0) IsDefeat = true;
         else if (Waves.IsFinalWaveCleared && !Waves.EndlessModeEnabled && Enemies.Count == 0) IsVictory = true;
+    }
+
+    public void UpdatePausedIntermission(float unscaledDeltaSeconds)
+    {
+        if (IsVictory || IsDefeat || IsSandbox || Waves.IsActive) return;
+        var deltaSeconds = MathF.Min(0.1f, MathF.Max(0, unscaledDeltaSeconds)) * Speed;
+        Waves.UpdateIntermission(deltaSeconds);
     }
 
     public void HandleWorldInput(InputSnapshot input, Action<GameCommand>? commandSink = null, int playerId = 1)
@@ -351,6 +385,14 @@ public sealed class GameSession
         if (localPlayerId is < 1 or > 2) throw new ArgumentOutOfRangeException(nameof(localPlayerId));
         IsCoOp = true;
         LocalPlayerId = localPlayerId;
+    }
+
+    public void ConfigureSolo()
+    {
+        IsCoOp = false;
+        IsCoOpPaused = false;
+        CoOpPausePlayerId = 0;
+        LocalPlayerId = 1;
     }
 
     public bool TryPlaceTower(string towerId, Vector2 position, int ownerPlayerId = 1, bool selectPlaced = true)
@@ -594,7 +636,7 @@ public sealed class GameSession
     public bool TryOverdriveTower(int towerId, int requestingPlayerId = 1)
     {
         var tower = Towers.FirstOrDefault(x => x.Id == towerId);
-        if (requestingPlayerId is < 1 or > 2 || tower is null || tower.IsOverdriven || OverdriveCooldownRemaining > 0)
+        if (!ProtocolsEnabled || requestingPlayerId is < 1 or > 2 || tower is null || tower.IsSandboxDisabled || tower.IsOverdriven || OverdriveCooldownRemaining > 0)
             return false;
         tower.ActivateOverdrive();
         OverdriveCooldownRemaining = tower.Protocol.CooldownSeconds;
@@ -614,34 +656,99 @@ public sealed class GameSession
 
     public bool TryToggleAutoProtocol(int towerId, int requestingPlayerId = 1)
     {
-        if (requestingPlayerId is < 1 or > 2) return false;
+        if (!ProtocolsEnabled || requestingPlayerId is < 1 or > 2) return false;
         if (AutoOverdriveTowerId == towerId)
         {
             AutoOverdriveTowerId = 0;
             return true;
         }
-        if (Towers.All(x => x.Id != towerId)) return false;
+        if (Towers.All(x => x.Id != towerId || x.IsSandboxDisabled)) return false;
         AutoOverdriveTowerId = towerId;
         return true;
     }
 
     private void TryActivateAutomaticProtocol()
     {
+        if (!ProtocolsEnabled)
+        {
+            AutoOverdriveTowerId = 0;
+            return;
+        }
         if (AutoOverdriveTowerId <= 0 || OverdriveCooldownRemaining > 0 || Enemies.Count == 0) return;
         var tower = Towers.FirstOrDefault(x => x.Id == AutoOverdriveTowerId);
-        if (tower is null)
+        if (tower is null || tower.IsSandboxDisabled)
         {
             AutoOverdriveTowerId = 0;
             return;
         }
 
-        var targets = GetProtocolTargets(tower).ToArray();
-        if (targets.Length < tower.Protocol.AutoTriggerCount && !targets.Any(x => x.IsElite || x.IsBoss)) return;
+        if (!ShouldActivateAutomaticProtocol(tower)) return;
         TryOverdriveTower(tower.Id);
+    }
+
+    private bool ShouldActivateAutomaticProtocol(TowerInstance tower)
+    {
+        var coverageTargets = GetProtocolTargets(tower).ToArray();
+        // Priority ranks are always worth an automatic Protocol, but only when
+        // this tower (or a Beacon recipient) can actually engage them.
+        if (coverageTargets.Any(enemy => enemy.IsElite || enemy.IsBoss)) return true;
+
+        var required = tower.Protocol.AutoTriggerCount;
+        return ProtocolAutoTriggerModes.Normalize(tower.Protocol.AutoTriggerMode) switch
+        {
+            ProtocolAutoTriggerModes.ProtocolArea => CountLiveEnemiesInRadius(tower.Position, tower.Protocol.BurstRadius) >= required,
+            ProtocolAutoTriggerModes.PriorityTargets => coverageTargets.Count(IsProtocolPriorityTarget) >= required,
+            ProtocolAutoTriggerModes.DenseCluster => LargestProtocolTargetCluster(tower, coverageTargets) >= required,
+            ProtocolAutoTriggerModes.EngagedRecipients => HasEngagedProtocolRecipients(tower),
+            _ => coverageTargets.Length >= required
+        };
+    }
+
+    private int CountLiveEnemiesInRadius(Vector2 center, float radius)
+    {
+        if (radius <= 0) return 0;
+        var radiusSquared = radius * radius;
+        return Enemies.Count(enemy => !enemy.IsDead && !enemy.HasEscaped &&
+            Vector2.DistanceSquared(center, enemy.Position) <= radiusSquared);
+    }
+
+    private static bool IsProtocolPriorityTarget(EnemyInstance enemy) =>
+        enemy.BaseArmor > 0 || enemy.Shield > 0 || enemy.IsElite || enemy.IsBoss;
+
+    private int LargestProtocolTargetCluster(TowerInstance tower, IReadOnlyList<EnemyInstance> coverageTargets)
+    {
+        var clusterRadius = tower.Level.SplashRadius > 0
+            ? tower.Level.SplashRadius
+            : tower.Level.ChainRange;
+        if (clusterRadius <= 0 || coverageTargets.Count == 0) return 0;
+
+        var radiusSquared = clusterRadius * clusterRadius;
+        var liveEnemies = Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped).ToArray();
+        return coverageTargets.Max(center => liveEnemies.Count(enemy =>
+            Vector2.DistanceSquared(center.Position, enemy.Position) <= radiusSquared));
+    }
+
+    private bool HasEngagedProtocolRecipients(TowerInstance supportTower)
+    {
+        var engagedRecipients = 0;
+        foreach (var recipient in GetProtocolRecipients(supportTower))
+        {
+            var range = GetEffectiveRange(recipient);
+            var rangeSquared = range * range;
+            var targetCount = Enemies.Count(enemy => !enemy.IsDead && !enemy.HasEscaped &&
+                Vector2.DistanceSquared(recipient.Position, enemy.Position) <= rangeSquared);
+            if (targetCount > 0) engagedRecipients++;
+            if (supportTower.Protocol.AutoTriggerTargetCount > 0 &&
+                targetCount >= supportTower.Protocol.AutoTriggerTargetCount)
+                return true;
+        }
+
+        return engagedRecipients >= supportTower.Protocol.AutoTriggerCount;
     }
 
     public IReadOnlyList<EnemyInstance> GetProtocolTargets(TowerInstance tower)
     {
+        if (tower.IsSandboxDisabled) return Array.Empty<EnemyInstance>();
         if (!tower.IsSupport)
         {
             var range = GetEffectiveRange(tower);
@@ -649,14 +756,20 @@ public sealed class GameSession
                 Vector2.DistanceSquared(tower.Position, enemy.Position) <= range * range).ToArray();
         }
 
-        var auraRange = GetEffectiveAuraRange(tower);
-        var recipients = Towers.Where(recipient => !recipient.IsSupport &&
-            Vector2.DistanceSquared(tower.Position, recipient.Position) <= auraRange * auraRange).ToArray();
+        var recipients = GetProtocolRecipients(tower);
         return Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped && recipients.Any(recipient =>
         {
             var range = GetEffectiveRange(recipient);
             return Vector2.DistanceSquared(recipient.Position, enemy.Position) <= range * range;
         })).ToArray();
+    }
+
+    private TowerInstance[] GetProtocolRecipients(TowerInstance supportTower)
+    {
+        var auraRange = GetEffectiveAuraRange(supportTower);
+        var auraRangeSquared = auraRange * auraRange;
+        return Towers.Where(recipient => recipient.Id != supportTower.Id && !recipient.IsSupport && !recipient.IsSandboxDisabled &&
+            Vector2.DistanceSquared(supportTower.Position, recipient.Position) <= auraRangeSquared).ToArray();
     }
 
     private void ApplyProtocolBurst(TowerInstance tower)
@@ -719,14 +832,217 @@ public sealed class GameSession
         return true;
     }
 
-    public bool StartNextWave(bool? earlyStartEligible = null) => Waves.TryStartNextWave(this, earlyStartEligible);
+    public bool StartNextWave(bool? earlyStartEligible = null) =>
+        !IsSandbox && Waves.TryStartNextWave(this, earlyStartEligible);
+
+    public bool TryAutoStartNextWave(bool enabled)
+    {
+        // Co-op readiness is a shared player decision and must never be
+        // bypassed by one peer's local preference. Wave one also remains
+        // manual so enabling this option cannot erase opening build time.
+        if (!enabled || IsSandbox || IsCoOp || CurrentWave <= 0 || IntermissionRemaining > 0 || !CanStartWave)
+            return false;
+        return StartNextWave(false);
+    }
+
     public void SetSpeed(float speed) => Speed = speed >= 1.5f ? 2f : 1f;
+
+    public float SandboxHealthMultiplierForWave(int waveNumber)
+    {
+        var wave = Waves.GetAuthoredWave(waveNumber);
+        return wave is null ? 1f : wave.HealthMultiplier * Difficulty.EnemyHealthMultiplier;
+    }
+
+    public bool SpawnSandboxTargets(string enemyId, int count, float healthMultiplier, string rank, bool immortal)
+    {
+        if (!IsSandbox || count is < 1 or > 24 || !float.IsFinite(healthMultiplier) || healthMultiplier <= 0 ||
+            !_content.Enemies.TryGetValue(enemyId, out var definition)) return false;
+        if (!Enum.TryParse<EnemyRank>(rank, true, out _)) return false;
+
+        var spacing = MathF.Max(18f, definition.Visual.Radius * 1.35f);
+        for (var index = 0; index < count; index++)
+        {
+            if (_nextEnemyId >= int.MaxValue) break;
+            var enemy = new EnemyInstance(_nextEnemyId++, definition, Map.Path, healthMultiplier, 1f, rank, immortal);
+            enemy.SetSandboxPathDistance(18f + index * spacing, Map.Path);
+            Enemies.Add(enemy);
+        }
+
+        AnnouncementTitle = immortal ? "IMMORTAL TARGETS DEPLOYED" : $"{count} {definition.DisplayName.ToUpperInvariant()} DEPLOYED";
+        AnnouncementSubtitle = immortal
+            ? "Damage and status effects register, but target health cannot fall."
+            : $"Fixed health scale {healthMultiplier:0.##}x // {rank.ToUpperInvariant()} rank.";
+        AnnouncementPositive = true;
+        AnnouncementRemaining = 2.5f;
+        return true;
+    }
+
+    public bool StartSandboxWave(int waveNumber)
+    {
+        if (!IsSandbox || _sandboxActiveWave is not null || Waves.GetAuthoredWave(waveNumber) is not { } wave) return false;
+        _sandboxActiveWave = wave;
+        _sandboxGroupIndex = 0;
+        _sandboxSpawnedInGroup = 0;
+        _sandboxGroupTimer = 0;
+        _sandboxDelayRemaining = wave.Groups.Count > 0 ? wave.Groups[0].DelayBefore : 0;
+        _sandboxQueuedEnemies = wave.Groups.Sum(group => group.Count);
+        AnnouncementTitle = $"TEST WAVE {wave.Number} // {wave.Archetype.ToUpperInvariant()}";
+        AnnouncementSubtitle = $"Real {Map.Definition.DisplayName} composition with {Difficulty.DisplayName} scaling.";
+        AnnouncementPositive = false;
+        AnnouncementRemaining = 2.8f;
+        return wave.Groups.Count > 0;
+    }
+
+    public void ClearSandboxTargets()
+    {
+        if (!IsSandbox) return;
+        CancelSandboxWave();
+        Enemies.Clear();
+        Projectiles.Clear();
+        Effects.Clear();
+        AnnouncementTitle = "TEST TARGETS CLEARED";
+        AnnouncementSubtitle = "Tower placement and lifetime test data were preserved.";
+        AnnouncementPositive = true;
+        AnnouncementRemaining = 1.8f;
+    }
+
+    public void ResetSandboxExperiment()
+    {
+        if (!IsSandbox) return;
+        ClearSandboxTargets();
+        OverdriveCooldownRemaining = 0;
+        AutoOverdriveTowerId = 0;
+        foreach (var tower in Towers) tower.ResetSandboxTelemetry();
+        AnnouncementTitle = "TEST RESET";
+        AnnouncementSubtitle = "Targets, shots, tower metrics, and Protocol timers cleared; towers preserved.";
+        AnnouncementPositive = true;
+        AnnouncementRemaining = 2.2f;
+    }
+
+    public bool RemoveSandboxTower(int towerId)
+    {
+        if (!IsSandbox) return false;
+        var tower = Towers.FirstOrDefault(candidate => candidate.Id == towerId);
+        if (tower is null || !TrySellTower(towerId)) return false;
+        AnnouncementTitle = "TOWER REMOVED";
+        AnnouncementSubtitle = $"{tower.Definition.DisplayName} was removed; targets and other towers were preserved.";
+        AnnouncementPositive = true;
+        AnnouncementRemaining = 1.8f;
+        return true;
+    }
+
+    public bool ToggleSandboxTower(int towerId)
+    {
+        if (!IsSandbox) return false;
+        var tower = Towers.FirstOrDefault(candidate => candidate.Id == towerId);
+        if (tower is null) return false;
+        tower.ToggleSandboxDisabled();
+        if (AutoOverdriveTowerId == tower.Id) AutoOverdriveTowerId = 0;
+        AnnouncementTitle = tower.IsSandboxDisabled ? "TOWER DISABLED" : "TOWER ENABLED";
+        AnnouncementSubtitle = $"{tower.Definition.DisplayName} {(tower.IsSandboxDisabled ? "will not attack or provide support." : "has returned to the experiment.")}";
+        AnnouncementPositive = !tower.IsSandboxDisabled;
+        AnnouncementRemaining = 1.6f;
+        return true;
+    }
+
+    public void ClearSandboxTowers()
+    {
+        if (!IsSandbox) return;
+        Towers.Clear();
+        Projectiles.Clear();
+        Effects.Clear();
+        SelectedTower = null;
+        HoveredTower = null;
+        AutoOverdriveTowerId = 0;
+        OverdriveCooldownRemaining = 0;
+        AnnouncementTitle = "ALL TOWERS CLEARED";
+        AnnouncementSubtitle = "Targets remain in place for a fresh defense layout.";
+        AnnouncementPositive = true;
+        AnnouncementRemaining = 1.8f;
+    }
+
+    public bool ResetSandboxProtocol()
+    {
+        if (!IsSandbox) return false;
+        OverdriveCooldownRemaining = 0;
+        AutoOverdriveTowerId = 0;
+        foreach (var tower in Towers) tower.ClearOverdrive();
+        AnnouncementTitle = "PROTOCOL TEST READY";
+        AnnouncementSubtitle = "Active effects and the shared cooldown were reset; targets and metrics remain.";
+        AnnouncementPositive = true;
+        AnnouncementRemaining = 1.8f;
+        return true;
+    }
+
+    public bool TestSandboxProtocol(int towerId)
+    {
+        if (!IsSandbox) return false;
+        var tower = Towers.FirstOrDefault(candidate => candidate.Id == towerId);
+        if (tower is null || tower.IsSandboxDisabled) return false;
+        OverdriveCooldownRemaining = 0;
+        AutoOverdriveTowerId = 0;
+        foreach (var candidate in Towers) candidate.ClearOverdrive();
+        if (!TryOverdriveTower(tower.Id)) return false;
+        AnnouncementTitle = $"TESTING {tower.Protocol.DisplayName.ToUpperInvariant()}";
+        AnnouncementSubtitle = "The selected tower's Protocol restarted from a clean timer.";
+        AnnouncementPositive = true;
+        AnnouncementRemaining = 1.8f;
+        return true;
+    }
+
+    private void UpdateSandboxWave(float deltaSeconds)
+    {
+        if (_sandboxActiveWave is not { } wave || wave.Groups.Count == 0) return;
+        if (_sandboxGroupIndex >= wave.Groups.Count)
+        {
+            CancelSandboxWave();
+            return;
+        }
+        if (_sandboxDelayRemaining > 0)
+        {
+            _sandboxDelayRemaining -= deltaSeconds;
+            if (_sandboxDelayRemaining > 0) return;
+        }
+
+        var group = wave.Groups[_sandboxGroupIndex];
+        _sandboxGroupTimer -= deltaSeconds;
+        if (_sandboxSpawnedInGroup < group.Count && _sandboxGroupTimer <= 0)
+        {
+            SpawnEnemy(group.EnemyId, wave.HealthMultiplier, wave.SpeedMultiplier, group.Rank);
+            _sandboxSpawnedInGroup++;
+            _sandboxQueuedEnemies = Math.Max(0, _sandboxQueuedEnemies - 1);
+            _sandboxGroupTimer += group.SpawnInterval;
+        }
+
+        if (_sandboxSpawnedInGroup < group.Count) return;
+        _sandboxGroupIndex++;
+        if (_sandboxGroupIndex >= wave.Groups.Count)
+        {
+            _sandboxActiveWave = null;
+            _sandboxQueuedEnemies = 0;
+            return;
+        }
+        _sandboxSpawnedInGroup = 0;
+        _sandboxGroupTimer = 0;
+        _sandboxDelayRemaining = wave.Groups[_sandboxGroupIndex].DelayBefore;
+    }
+
+    private void CancelSandboxWave()
+    {
+        _sandboxActiveWave = null;
+        _sandboxGroupIndex = 0;
+        _sandboxSpawnedInGroup = 0;
+        _sandboxGroupTimer = 0;
+        _sandboxDelayRemaining = 0;
+        _sandboxQueuedEnemies = 0;
+    }
 
     public bool SetCoOpPaused(bool paused, int playerId = 1)
     {
         if (!IsCoOp || playerId is < 1 or > 2) return false;
         IsCoOpPaused = paused;
         CoOpPausePlayerId = paused ? playerId : 0;
+        if (paused) CancelPlacement();
         return true;
     }
 
@@ -927,8 +1243,8 @@ public sealed class GameSession
         session.Economy.RestoreSaveData(data.Economy);
         session.Waves.RestoreCoOpState(data.Waves);
         session.Speed = data.Speed >= 1.5f ? 2f : 1f;
-        session.OverdriveCooldownRemaining = MathF.Max(0, data.OverdriveCooldownRemaining);
-        session.AutoOverdriveTowerId = data.Towers.Any(tower => tower.Id == data.AutoOverdriveTowerId)
+        session.OverdriveCooldownRemaining = session.ProtocolsEnabled ? MathF.Max(0, data.OverdriveCooldownRemaining) : 0;
+        session.AutoOverdriveTowerId = session.ProtocolsEnabled && data.Towers.Any(tower => tower.Id == data.AutoOverdriveTowerId)
             ? data.AutoOverdriveTowerId
             : 0;
         session.EmergencyInventory = Math.Max(0, data.EmergencyInventory);
@@ -940,7 +1256,9 @@ public sealed class GameSession
                 throw new InvalidDataException($"Network tower '{savedTower.DefinitionId}' is not available.");
             if (savedTower.InvestedCredits < definition.PurchaseCost)
                 throw new InvalidDataException($"Network tower '{savedTower.DefinitionId}' has impossible investment state.");
-            session.Towers.Add(TowerInstance.RestoreCoOpState(savedTower, definition));
+            var tower = TowerInstance.RestoreCoOpState(savedTower, definition);
+            if (!session.ProtocolsEnabled) tower.ClearOverdrive();
+            session.Towers.Add(tower);
         }
 
         foreach (var savedEnemy in data.Enemies)
@@ -997,8 +1315,8 @@ public sealed class GameSession
         session.Economy.RestoreSaveData(data.Economy);
         session.Waves.RestoreSaveData(data.Waves);
         session.Speed = data.Speed >= 1.5f ? 2f : 1f;
-        session.OverdriveCooldownRemaining = MathF.Max(0, data.OverdriveCooldownRemaining);
-        session.AutoOverdriveTowerId = data.Towers.Any(tower => tower.Id == data.AutoOverdriveTowerId)
+        session.OverdriveCooldownRemaining = session.ProtocolsEnabled ? MathF.Max(0, data.OverdriveCooldownRemaining) : 0;
+        session.AutoOverdriveTowerId = session.ProtocolsEnabled && data.Towers.Any(tower => tower.Id == data.AutoOverdriveTowerId)
             ? data.AutoOverdriveTowerId
             : 0;
         session.EmergencyInventory = Math.Max(0, data.EmergencyInventory);
@@ -1010,7 +1328,9 @@ public sealed class GameSession
                 throw new InvalidDataException($"Saved tower '{savedTower.DefinitionId}' is not available.");
             if (savedTower.InvestedCredits < definition.PurchaseCost)
                 throw new InvalidDataException($"Saved tower '{savedTower.DefinitionId}' has impossible investment state.");
-            session.Towers.Add(TowerInstance.RestoreSaveData(savedTower, definition));
+            var tower = TowerInstance.RestoreSaveData(savedTower, definition);
+            if (!session.ProtocolsEnabled) tower.ClearOverdrive();
+            session.Towers.Add(tower);
         }
         ValidateRestoredTacticalState(session, data.PulsePlates, data.Generator);
         foreach (var savedPlate in data.PulsePlates.Where(x => x.ChargesRemaining > 0))
@@ -1023,6 +1343,7 @@ public sealed class GameSession
         session._nextTowerId = Math.Max(data.NextTowerId, session.Towers.Select(x => x.Id).DefaultIfEmpty(0).Max() + 1);
         session._nextEmergencyDefenseId = Math.Max(data.NextEmergencyDefenseId, session.EmergencyDefenses.Select(x => x.Id).DefaultIfEmpty(0).Max() + 1);
         session.Statistics.RestoreSaveData(data.Statistics, session.Towers);
+        session._buffSystem.Update(session.Towers);
         session.SelectedTower = null;
         session.SelectedGenerator = null;
         session.HoveredTower = null;

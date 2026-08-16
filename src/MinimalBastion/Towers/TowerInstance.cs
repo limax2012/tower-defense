@@ -40,6 +40,7 @@ public sealed class TowerInstance
     public float LifetimeControlSeconds { get; private set; }
     public float LifetimeExposeSeconds { get; private set; }
     public float LifetimeArmorBreakSeconds { get; private set; }
+    public bool IsSandboxDisabled { get; private set; }
     public bool IsOverdriven => OverdriveRemaining > 0;
     public TowerProtocolDefinition Protocol => Definition.Protocol;
     public bool IsSupport => Definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase);
@@ -70,14 +71,18 @@ public sealed class TowerInstance
     public bool CanUpgrade => !RequiresDoctrine && !RequiresSpecialization && LevelIndex < Definition.Levels.Count - 1 && Level.UpgradeCost.HasValue;
     public int UpgradeCost => Level.UpgradeCost ?? 0;
     public int SellValue => (int)MathF.Floor(InvestedCredits * GameConstants.SellRatio);
-    public float VisualScale
+    public float VisualScale => VisualScaleAt(0);
+
+    public float VisualScaleAt(float elapsedSeconds)
     {
-        get
-        {
-            var deployScale = DeployAnimationRemaining <= 0 ? 1f : 0.70f + 0.30f * (1f - DeployAnimationRemaining / DeployAnimationDuration);
-            var recoilScale = 1f - 0.08f * (RecoilAnimationRemaining / RecoilAnimationDuration);
-            return deployScale * recoilScale;
-        }
+        elapsedSeconds = MathF.Max(0, elapsedSeconds);
+        var deployRemaining = MathF.Max(0, DeployAnimationRemaining - elapsedSeconds);
+        var recoilRemaining = MathF.Max(0, RecoilAnimationRemaining - elapsedSeconds);
+        var deployScale = deployRemaining <= 0
+            ? 1f
+            : 0.70f + 0.30f * (1f - deployRemaining / DeployAnimationDuration);
+        var recoilScale = 1f - 0.08f * (recoilRemaining / RecoilAnimationDuration);
+        return deployScale * recoilScale;
     }
 
     public bool TryUpgrade()
@@ -128,6 +133,28 @@ public sealed class TowerInstance
 
     public void OnFired() => RecoilAnimationRemaining = RecoilAnimationDuration;
     public void ActivateOverdrive() => OverdriveRemaining = Protocol.DurationSeconds;
+    internal void ClearOverdrive() => OverdriveRemaining = 0;
+
+    internal void ToggleSandboxDisabled()
+    {
+        IsSandboxDisabled = !IsSandboxDisabled;
+        CooldownRemaining = 0;
+        OverdriveRemaining = 0;
+    }
+
+    internal void ResetSandboxTelemetry()
+    {
+        CooldownRemaining = 0;
+        OverdriveRemaining = 0;
+        LifetimeDamage = 0;
+        LifetimeKills = 0;
+        LifetimeSupportDamageEquivalent = 0;
+        LifetimeExposeDamageEquivalent = 0;
+        LifetimeArmorBreakDamageEquivalent = 0;
+        LifetimeControlSeconds = 0;
+        LifetimeExposeSeconds = 0;
+        LifetimeArmorBreakSeconds = 0;
+    }
 
     internal void RecordCombat(float appliedDamage, bool killed)
     {

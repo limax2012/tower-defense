@@ -107,6 +107,8 @@ internal static class CoOpSnapshotValidator
             projectile.TargetEnemyId < 0 ||
             !Enum.IsDefined(typeof(ProjectileKind), projectile.Kind) || !IsNonnegativeFinite(projectile.Speed) ||
             !IsNonnegativeFinite(projectile.SplashRadius) || projectile.SplashTargetLimit < 0 ||
+            !IsNonnegativeFinite(projectile.RicochetRange) || !IsNonnegativeFinite(projectile.RicochetDamageMultiplier) ||
+            projectile.RicochetDamageMultiplier > 1 ||
             !IsNonnegativeFinite(projectile.Damage) || !IsPositiveFinite(projectile.PriorityDamageMultiplier) ||
             projectile.PriorityDamageMultiplier < 1 ||
             projectile.PriorityDamageMultiplier > 3 || !IsNonnegativeFinite(projectile.ArmorPierce) ||

@@ -59,9 +59,9 @@ internal static class BehaviorHelpers
         };
     }
 
-    public static void Projectile(TowerInstanceContext context, EnemyInstance target, ProjectileKind kind, Vector2 aimPoint, float splashRadius, DamagePayload payload, float speed, Color color, float radius = 5f, int splashTargetLimit = 0)
+    public static void Projectile(TowerInstanceContext context, EnemyInstance target, ProjectileKind kind, Vector2 aimPoint, float splashRadius, DamagePayload payload, float speed, Color color, float radius = 5f, int splashTargetLimit = 0, float ricochetRange = 0, float ricochetDamageMultiplier = 0)
     {
-        context.Session.Projectiles.Add(new ProjectileInstance(context.Tower.Position, aimPoint, target, speed, kind, splashRadius, payload, color, radius, splashTargetLimit));
+        context.Session.Projectiles.Add(new ProjectileInstance(context.Tower.Position, aimPoint, target, speed, kind, splashRadius, payload, color, radius, splashTargetLimit, ricochetRange, ricochetDamageMultiplier));
     }
 }
 
@@ -73,7 +73,9 @@ public sealed class SingleProjectileBehavior : ITowerBehavior
         BehaviorHelpers.Projectile(context, context.Target, ProjectileKind.Homing, context.Target.Position, level.SplashRadius,
             BehaviorHelpers.Payload(context, level, level.Damage, null, level.IgnoreShield, level.ArmorPierce),
             level.ProjectileSpeed, context.Tower.Definition.Visual.PrimaryColor,
-            splashTargetLimit: level.SplashTargetLimit);
+            splashTargetLimit: level.SplashTargetLimit,
+            ricochetRange: level.RicochetRange,
+            ricochetDamageMultiplier: level.RicochetDamageMultiplier);
     }
 }
 
@@ -139,6 +141,8 @@ public sealed class ArmorProjectileBehavior : ITowerBehavior
 
 public sealed class ChainBehavior : ITowerBehavior
 {
+    public const float MaximumConductiveBonus = 0.30f;
+
     public void Attack(TowerInstanceContext context)
     {
         var level = context.Tower.Level;
@@ -160,7 +164,11 @@ public sealed class ChainBehavior : ITowerBehavior
         context.Session.Effects.AddFlash(previous, context.Tower.Definition.Visual.PrimaryColor, 0.18f, 28);
     }
 
-    private static float ConductiveMultiplier(EnemyInstance enemy) => enemy.StatusEffects.SlowFactor > 0 ? 1.35f : 1f;
+    public static float ConductiveBonus(float slowFactor) =>
+        Math.Clamp(slowFactor, 0f, MaximumConductiveBonus);
+
+    private static float ConductiveMultiplier(EnemyInstance enemy) =>
+        1f + ConductiveBonus(enemy.StatusEffects.SlowFactor);
 }
 
 public sealed class SplashProjectileBehavior : ITowerBehavior

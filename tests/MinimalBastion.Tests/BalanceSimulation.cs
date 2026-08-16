@@ -69,6 +69,7 @@ internal static class BalanceSimulation
         PrintFinalRoleScenarios(content);
 
         PrintSupportEconomy(content);
+        PrintCrossTowerSynergies(content);
         Console.WriteLine("Metrics include projectile travel, path movement, armor, shields, DOT persistence, overkill, kills, leaks, and damage reports.");
     }
 
@@ -173,6 +174,80 @@ internal static class BalanceSimulation
             var spread = SupportContribution(content, row, compact: false);
             Console.WriteLine($"{row.Label,-10}  {row.CumulativeCost,4}  {compact.AssistedDps,7:0.0}  {compact.AssistedDps / row.CumulativeCost,12:0.000}  {spread.AssistedDps,6:0.0}  {spread.AssistedDps / row.CumulativeCost,11:0.000}");
         }
+    }
+
+    private static void PrintCrossTowerSynergies(GameContent content)
+    {
+        var frost = content.Towers["frost_spire"];
+        var arc = content.Towers["arc_relay"];
+        var ember = content.Towers["ember_coil"];
+        var needle = content.Towers["needle_turret"];
+        var breaker = content.Towers["breaker_cannon"];
+        var prism = content.Towers["prism_beam"];
+
+        Console.WriteLine();
+        Console.WriteLine("CROSS-TOWER SYNERGIES (20-second stationary targets; bonus isolates pair output above both towers alone)");
+        Console.WriteLine("Pair / configuration               Armor  Targets  Solo sum  Pair DPS  Bonus DPS  Bonus %");
+        Console.WriteLine("---------------------------------  -----  -------  --------  --------  ---------  -------");
+        PrintSynergyRow(content, "Frost + Arc L1", frost, TierRows(frost)[0], arc, TierRows(arc)[0], 0, 8);
+        PrintSynergyRow(content, "Permafrost + Storm", frost,
+            FindTier(frost, "frost_deep_chill", "permafrost"), arc,
+            FindTier(arc, "arc_fork", "storm_lattice"), 0, 8);
+        PrintSynergyRow(content, "Ember + Needle L1", ember, TierRows(ember)[0], needle, TierRows(needle)[0], 8, 1);
+        PrintSynergyRow(content, "Shatter + Needle L1", breaker,
+            FindTier(breaker, "breaker_bored", "shatter_shell"), needle, TierRows(needle)[0], 8, 4);
+        PrintSynergyRow(content, "Prism + Needle L1", prism, TierRows(prism)[0], needle, TierRows(needle)[0], 0, 1);
+    }
+
+    private static TierRow FindTier(TowerDefinition tower, string doctrineId, string specializationId) =>
+        TierRows(tower).Single(row =>
+            string.Equals(row.DoctrineId, doctrineId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(row.SpecializationId, specializationId, StringComparison.OrdinalIgnoreCase));
+
+    private static void PrintSynergyRow(
+        GameContent content,
+        string label,
+        TowerDefinition first,
+        TierRow firstTier,
+        TowerDefinition second,
+        TierRow secondTier,
+        float armor,
+        int targetCount)
+    {
+        var firstDps = RunSynergyTeam(content, new[] { new TowerBuild(first, firstTier) }, armor, targetCount).DamagePerSecond;
+        var secondDps = RunSynergyTeam(content, new[] { new TowerBuild(second, secondTier) }, armor, targetCount).DamagePerSecond;
+        var pairDps = RunSynergyTeam(content,
+            new[] { new TowerBuild(first, firstTier), new TowerBuild(second, secondTier) }, armor, targetCount).DamagePerSecond;
+        var soloSum = firstDps + secondDps;
+        var bonus = pairDps - soloSum;
+        var bonusPercent = soloSum <= 0 ? 0 : bonus / soloSum * 100f;
+        Console.WriteLine($"{label,-33}  {armor,5:0.#}  {targetCount,7}  {soloSum,8:0.0}  {pairDps,8:0.0}  {bonus,9:0.0}  {bonusPercent,6:0.0}%");
+    }
+
+    private static SimulationResult RunSynergyTeam(
+        GameContent content,
+        IReadOnlyList<TowerBuild> builds,
+        float armor,
+        int targetCount)
+    {
+        const float seconds = 20f;
+        var enemy = EnemyLike(content.Enemies.Values.First(), "benchmark_synergy", 100_000, 0.01f, armor, 0, 0);
+        var session = CreateSession(content, builds.Select(x => x.Definition).ToArray(), new[] { enemy }, StationaryMap());
+        var positions = builds.Count == 1
+            ? new[] { new Vector2(400, 300) }
+            : new[] { new Vector2(340, 300), new Vector2(460, 300) };
+        for (var index = 0; index < builds.Count; index++)
+        {
+            var build = builds[index];
+            AddTower(session, build.Definition, positions[index], build.Tier.LevelIndex,
+                build.Tier.SpecializationId, build.Tier.DoctrineId);
+        }
+
+        var targets = Enumerable.Range(0, targetCount).Select(_ => AddEnemy(session, enemy)).ToArray();
+        var metrics = new Metrics();
+        session.DamageResolver.DamageApplied += metrics.Record;
+        Simulate(session, seconds);
+        return metrics.ToResult(seconds, targets);
     }
 
     private static float RawDps(TowerLevelDefinition level) => level.Damage * level.AttacksPerSecond;
@@ -393,6 +468,7 @@ internal static class BalanceSimulation
     private static PointData Point(float x, float y) => new() { X = x, Y = y };
 
     private sealed record SupportResult(float AssistedDamage, float AssistedDps);
+    private sealed record TowerBuild(TowerDefinition Definition, TierRow Tier);
     private sealed record TierRow(string Label, int LevelIndex, string? DoctrineId, string? SpecializationId,
         int CumulativeCost, int MarginalCost);
 

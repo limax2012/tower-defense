@@ -232,16 +232,22 @@ public static class DataValidator
         {
             var tower = towers[i];
             if (tower.PurchaseCost <= 0 || tower.Levels.Count != 3) throw new InvalidDataException($"Invalid tower: {tower.Id}");
-            if (tower.Levels.Any(x => x.Range < 0 || (!tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) && x.Range <= 0) || x.AttacksPerSecond < 0 || x.Damage < 0 || x.SplashTargetLimit < 0 || x.PriorityDamageMultiplier is < 1f or > 3f ||
+            if (tower.Levels.Any(x => x.Range < 0 || (!tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) && x.Range <= 0) || x.AttacksPerSecond < 0 || x.Damage < 0 || x.SplashTargetLimit < 0 || x.RicochetRange < 0 || x.RicochetDamageMultiplier is < 0f or > 1f || (x.RicochetRange > 0) != (x.RicochetDamageMultiplier > 0) || x.PriorityDamageMultiplier is < 1f or > 3f ||
                 x.HomingSplash && (x.SplashRadius <= 0 || x.SplashTargetLimit <= 0)))
                 throw new InvalidDataException($"Invalid tower levels: {tower.Id}");
             var protocol = tower.Protocol;
             if (string.IsNullOrWhiteSpace(protocol.DisplayName) || string.IsNullOrWhiteSpace(protocol.Summary) ||
                 protocol.DurationSeconds <= 0 || protocol.CooldownSeconds < protocol.DurationSeconds ||
-                protocol.AutoTriggerCount <= 0 || protocol.AttackSpeedBonus < 0 || protocol.DamageBonus < 0 ||
+                protocol.AutoTriggerCount <= 0 || protocol.AutoTriggerTargetCount < 0 || !ProtocolAutoTriggerModes.IsKnown(protocol.AutoTriggerMode) ||
+                protocol.AttackSpeedBonus < 0 || protocol.DamageBonus < 0 ||
                 protocol.RangeBonus < 0 || protocol.ArmorPierceBonus < 0 || protocol.AuraAttackSpeedBonus < 0 ||
                 protocol.AuraRangeBonus < 0 || protocol.BurstRadius < 0 || protocol.BurstDamage < 0 ||
                 protocol.BurstStatusMagnitude < 0 || protocol.BurstStatusDuration < 0 ||
+                (ProtocolAutoTriggerModes.Normalize(protocol.AutoTriggerMode) == ProtocolAutoTriggerModes.ProtocolArea && protocol.BurstRadius <= 0) ||
+                (ProtocolAutoTriggerModes.Normalize(protocol.AutoTriggerMode) == ProtocolAutoTriggerModes.EngagedRecipients &&
+                 !tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase)) ||
+                (ProtocolAutoTriggerModes.Normalize(protocol.AutoTriggerMode) == ProtocolAutoTriggerModes.DenseCluster &&
+                 tower.Levels.All(level => level.SplashRadius <= 0 && level.ChainRange <= 0)) ||
                 (!string.IsNullOrWhiteSpace(protocol.BurstStatus) && !Enum.TryParse<StatusType>(protocol.BurstStatus, true, out _)))
                 throw new InvalidDataException($"Invalid tower protocol: {tower.Id}");
             if (tower.Tier2Doctrines.Count is not 0 and not 2 ||
@@ -256,7 +262,7 @@ public static class DataValidator
             if (tower.Specializations.Count is not 0 and not 2 ||
                 tower.Specializations.Any(x => string.IsNullOrWhiteSpace(x.Id) || string.IsNullOrWhiteSpace(x.DisplayName) ||
                     string.IsNullOrWhiteSpace(x.ShortLabel) || x.UpgradeCost <= 0 ||
-                    specializationNeedsCombatStats && (x.Level.Range <= 0 || x.Level.AttacksPerSecond <= 0 || x.Level.Damage < 0 || x.Level.SplashTargetLimit < 0 || x.Level.PriorityDamageMultiplier is < 1f or > 3f ||
+                    specializationNeedsCombatStats && (x.Level.Range <= 0 || x.Level.AttacksPerSecond <= 0 || x.Level.Damage < 0 || x.Level.SplashTargetLimit < 0 || x.Level.RicochetRange < 0 || x.Level.RicochetDamageMultiplier is < 0f or > 1f || (x.Level.RicochetRange > 0) != (x.Level.RicochetDamageMultiplier > 0) || x.Level.PriorityDamageMultiplier is < 1f or > 3f ||
                         x.Level.HomingSplash && (x.Level.SplashRadius <= 0 || x.Level.SplashTargetLimit <= 0)) ||
                     !specializationNeedsCombatStats && (x.Level.AuraRange <= 0 || x.Level.AuraAttackSpeedBonus < 0 || x.Level.AuraRangeBonus < 0)) ||
                 tower.Specializations.Select(x => x.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() != tower.Specializations.Count)

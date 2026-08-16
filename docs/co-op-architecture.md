@@ -4,7 +4,7 @@
 
 Minimal Bastion supports direct internet co-op between two copies of the same build:
 
-1. Host selects the map and chooses **Online Co-op > Host Online Game**.
+1. Host chooses **Online Co-op > Host Online Game**, then selects the arena, difficulty, and directive.
 2. Host forwards TCP `28741` to the host PC and allows the executable through the firewall if required.
 3. Host shares the displayed six-character code plus public IP/DNS name.
 4. Player 2 enters `host`, `host:port`, IPv4, DNS, or bracketed IPv6 plus the code.
@@ -18,7 +18,7 @@ The listener is dual-stack and binds all adapters. The join code is a lightweigh
 - Either player may place towers and use shared Pulse Plates.
 - Both players must ready every wave. The host queues the authoritative start only after both bits are set.
 - A jointly early-called intermission awards the normal shared 20-credit reward only when the second ready signal reaches the host before the countdown expires.
-- Either player can pause or resume the shared match with Esc, P, or the HUD control. Combat freezes on the same deterministic tick for both peers while tower planning remains available; the pause owner is preserved through reconnect snapshots.
+- Either player can pause or resume the shared match with Esc, P, or the HUD control. Combat freezes on the same deterministic tick for both peers, the compact sidebar leaves the field visible, and all mutable battlefield commands are locked until resume. A between-wave early-call deadline continues during pause, and the pause owner is preserved through reconnect snapshots.
 - Middle-click emits a transient cyan/coral player ping.
 - **Restart Co-op** retains the connection and asks the host to create and broadcast a fresh authoritative match on the same map. **Main Menu** explicitly ends the session.
 
@@ -36,7 +36,7 @@ The host:
 4. applies the same scheduled command locally;
 5. broadcasts the authoritative command and tick.
 
-Both peers advance `DeterministicSessionRunner` with a fixed simulation step. `SessionChecksum` includes map, waves, shared economy, enemies, towers, ownership, targeting, branches, Protocol state/cooldown, shared pause state, projectiles, Pulse Plate handled-enemy IDs, and forge state. Peers exchange periodic tick/checksum messages; divergence or a command arriving after its tick pauses play and requests a clean host-authoritative snapshot. A snapshot-tick fence rejects checksums still in flight from the state that was just repaired.
+Both peers advance `DeterministicSessionRunner` locally at 60 deterministic ticks per second. Rendering is variable-rate and extrapolates only the remaining fraction of the current tick, so enemy/projectile motion and short effects stay smooth at 60/120/144 Hz without writing predicted values into gameplay state, snapshots, or checksums. `SessionChecksum` includes map, waves, shared economy, enemies, towers, ownership, targeting, branches, Protocol state/cooldown, shared pause state, projectiles, Pulse Plate handled-enemy IDs, and forge state. Peers exchange one checksum sample per second; divergence or a command arriving after its tick pauses play and requests a clean host-authoritative snapshot. A snapshot-tick fence rejects checksums still in flight from the state that was just repaired.
 
 Network code never implements a second copy of placement, affordability, upgrade, tactical, or selling rules; it calls the same validated `GameSession` methods as solo UI and automated players.
 
@@ -50,7 +50,7 @@ Network code never implements a second copy of placement, affordability, upgrade
 - Six-character code and recursive executable/content fingerprint handshake before the host accepts Player 2. Both sides abandon a half-open handshake after ten seconds.
 - Message types: hello/welcome/rejected, command request/receipt/authoritative command, state snapshot/resync request, ready/wave ready, tick sync, restart request, ping, and disconnect.
 - Map, difficulty, challenge, active combat, pending commands, economy, ready state, and run identity travel in the authoritative snapshot. Player 2 reconstructs the exact host session before readying.
-- Host command input delay: six fixed ticks, providing a small latency buffer.
+- Host command input delay: twelve 60 Hz ticks (200 ms), preserving a practical internet jitter buffer while improving on the former 300 ms delay.
 - The periodic checksum exchange also acts as a heartbeat. Fifteen seconds without valid inbound traffic preserves the match and enters reconnect instead of waiting for a platform TCP timeout.
 
 ## Test coverage
@@ -64,7 +64,8 @@ Network code never implements a second copy of placement, affordability, upgrade
 - Map/difficulty/challenge identity and latent future-entity state in checksums and session construction.
 - Active-combat snapshot round trip, future-command restoration, authored wave-progress invariants, branch/status/projectile rejection, post-reconnect combat soak, repeated loopback reconnection, and graceful connection close detection.
 - Per-connection Player 2 request-session rotation, allowing a restarted client to begin request numbering again without resetting authoritative command sequence or pending simulation state.
-- Jittered 0-5 tick command delivery across shared placement, branching, targeting, Protocols, speed, and selling, plus explicit rejection once the six-tick authority buffer has been missed.
+- Jittered command delivery across shared placement, branching, targeting, Protocols, speed, and selling, plus explicit rejection after an authoritative tick has been missed.
+- 60 Hz local deterministic cadence, high-refresh sub-tick presentation, and proof that presentation does not mutate authoritative enemy progress.
 - Real loopback coverage for bounded framing, malformed-envelope rejection, shared pause transport, restart requests, reconnect listener reuse, and post-snapshot checksum fencing.
 - Heartbeat tolerance, activity refresh, sustained-silence timeout, and resumed-frame clamping.
 
@@ -77,7 +78,7 @@ The native menu, address/code fields, map selection label, and lobby presentatio
 - Transport is not encrypted; do not send secrets through the protocol. Current messages contain gameplay commands, reconnect state, and state hashes only.
 - Reconnect is supported through the existing join code and a host-authoritative recovery snapshot, but host migration, spectators, and more-than-two-player support are not.
 - Both peers must run identical executable/content versions; build/content fingerprints reject incompatible peers before play.
-- Six-tick buffering is suitable for ordinary direct connections but has not been field-tested across high-latency remote routes.
+- The 200 ms command buffer is suitable for ordinary direct connections but has not been field-tested across high-latency remote routes.
 - Windows firewall/router behavior cannot be configured by the game.
 
 ## Highest-value networking follow-up

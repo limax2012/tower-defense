@@ -31,6 +31,8 @@ public sealed class EffectSystem
     private readonly List<EffectInstance> _effects = new();
     public IReadOnlyList<EffectInstance> Effects => _effects;
 
+    public void Clear() => _effects.Clear();
+
     public void AddFlash(Vector2 position, Color color, float duration, float radius)
     {
         if (!ReserveTransientSlot(EffectKind.Flash)) return;

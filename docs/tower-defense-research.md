@@ -19,7 +19,7 @@ Tower identities should be visible in their range, cadence, targeting, silhouett
 Minimal Bastion application:
 
 - Preserve the ten-tower roster and three levels rather than adding breadth prematurely. Two tier-two doctrines establish an early build direction, while either final role remains available so each tower has four completed combinations without a sprawling progression tree.
-- Strengthen combinations already supported by the combat model: burn reduces effective armor, Arc Relay rewards slowed targets, and exposed targets reward follow-up damage.
+- Strengthen combinations already supported by the combat model: burn reduces effective armor, Arc Relay rewards slowed targets in proportion to Slow strength, and exposed targets reward follow-up damage. Prefer visible bonuses and strongest-only diminishing returns over hard status incompatibilities that invalidate mixed defenses.
 - Use deterministic telemetry to verify that a tower's intended job appears in damage, kill, control, and support outcomes.
 
 ### 2. Active intervention is strongest when scarce and anticipated
@@ -50,7 +50,7 @@ Minimal Bastion application:
 
 - Keep authored mixed waves as the campaign's learnable backbone.
 - Use deterministic seeds and strategy profiles for testing.
-- Implemented directives now provide a full sandbox, two restricted tower rosters, and a tower-only/no-reserves mode with fixed opening compensation. A daily seeded ruleset remains a candidate; it should reuse the same authoritative restriction and telemetry seams.
+- Implemented directives now provide a full sandbox, two restricted tower rosters, and a Fundamentals mode built around permanent towers without Plates, Forge, or Protocols. A daily seeded ruleset remains a candidate; it should reuse the same authoritative restriction and telemetry seams.
 
 ### 5. Multiplayer requires shared rules before networking
 

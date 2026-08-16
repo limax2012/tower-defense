@@ -11,6 +11,8 @@ public sealed class ProjectileSystem
 
     public void Add(ProjectileInstance projectile) => _projectiles.Add(projectile);
 
+    public void Clear() => _projectiles.Clear();
+
     public List<ProjectileRuntimeState> CaptureCoOpState() =>
         _projectiles.Where(projectile => !projectile.IsExpired).Select(projectile => projectile.CaptureCoOpState()).ToList();
 
@@ -48,11 +50,42 @@ public sealed class ProjectileSystem
                 session.DamageResolver.Apply(target, projectile.Payload);
                 session.Effects.AddImpact(target.Position, projectile.Color,
                     MathF.Max(6, MathF.Min(12, target.Radius * 0.6f)));
+                ApplyRicochet(session, projectile, target);
             }
             projectile.Expire();
         }
         _projectiles.RemoveAll(x => x.IsExpired);
     }
+
+    private static void ApplyRicochet(MinimalBastion.GameSession session, ProjectileInstance projectile, EnemyInstance primary)
+    {
+        if (projectile.RicochetRange <= 0 || projectile.RicochetDamageMultiplier <= 0) return;
+
+        var rangeSquared = projectile.RicochetRange * projectile.RicochetRange;
+        var secondary = session.Enemies
+            .Where(enemy => enemy.Id != primary.Id && !enemy.IsDead && !enemy.HasEscaped &&
+                Vector2.DistanceSquared(enemy.Position, primary.Position) <= rangeSquared)
+            .OrderBy(enemy => Vector2.DistanceSquared(enemy.Position, primary.Position))
+            .ThenBy(enemy => enemy.Id)
+            .FirstOrDefault();
+        if (secondary is null) return;
+
+        session.DamageResolver.Apply(secondary, ScaleDamage(projectile.Payload, projectile.RicochetDamageMultiplier));
+        session.Effects.AddBeam(primary.Position, secondary.Position, projectile.Color, 0.11f);
+        session.Effects.AddImpact(secondary.Position, projectile.Color,
+            MathF.Max(5, MathF.Min(9, secondary.Radius * 0.5f)));
+    }
+
+    private static DamagePayload ScaleDamage(DamagePayload payload, float multiplier) => new()
+    {
+        Damage = payload.Damage * multiplier,
+        PriorityDamageMultiplier = payload.PriorityDamageMultiplier,
+        ArmorPierce = payload.ArmorPierce,
+        IgnoreShield = payload.IgnoreShield,
+        IsDamageOverTime = payload.IsDamageOverTime,
+        Status = payload.Status,
+        SourceTowerId = payload.SourceTowerId
+    };
 
     private static void AddSplashEffect(MinimalBastion.GameSession session, ProjectileInstance projectile)
     {

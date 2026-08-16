@@ -22,6 +22,9 @@ public static class ColorPalette
     public static readonly Color Orange = new(229, 138, 50);
     public static readonly Color Gold = new(232, 182, 55);
     public static readonly Color Green = new(42, 194, 117);
+    // Dark success ink for text drawn on Paper/PanelAlt. Keep the brighter
+    // Green for filled controls, effects, and battlefield state.
+    public static readonly Color GreenText = new(18, 112, 69);
     public static readonly Color Lime = new(129, 201, 77);
 
     public static readonly Color MapBoundary = new(27, 53, 68);
@@ -64,6 +67,9 @@ public static class ColorPalette
         }
         return Color.Lerp(accent, target, readableAmount);
     }
+
+    public static Color HighContrastText(Color background) =>
+        ContrastRatio(Ink, background) >= ContrastRatio(Paper, background) ? Ink : Paper;
 
     public static float ContrastRatio(Color first, Color second)
     {

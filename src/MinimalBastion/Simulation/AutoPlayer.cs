@@ -470,6 +470,8 @@ public sealed class AutoPlayer
         var value = directDps;
         value += level.BurnDamagePerSecond * MathF.Min(1f, level.BurnDuration * level.AttacksPerSecond);
         value *= 1f + MathF.Max(0, level.PelletCount - 1) * (0.25f + threat.Swarm * 0.65f);
+        if (level.RicochetRange > 0)
+            value += directDps * level.RicochetDamageMultiplier * (0.25f + threat.Swarm * 0.75f);
         if (level.ChainCount > 0)
             value += level.ChainDamage * level.ChainCount * level.AttacksPerSecond * (0.35f + threat.Swarm * 0.65f);
         if (level.SplashRadius > 0) value *= 1.12f + threat.Swarm * MathF.Min(2.4f, level.SplashRadius / 24f);
@@ -480,7 +482,7 @@ public sealed class AutoPlayer
         value += level.StunDuration * (4f + threat.Fast * 12f);
         var rankedThreat = threat.HasBoss ? 1f : threat.HasElite ? 0.35f : 0f;
         value += rankedThreat * (level.Damage * 0.35f + level.ArmorPierce * 2.5f + level.ExposePercent * 45f);
-        if (threat.HasBoss && (level.PelletCount > 1 || level.SplashRadius > 0)) value *= 0.94f;
+        if (threat.HasBoss && (level.PelletCount > 1 || level.SplashRadius > 0 || level.RicochetRange > 0)) value *= 0.94f;
         value *= 1f + MathHelper.Clamp((level.Range - 115f) / 650f, 0, 0.32f);
         if (threat.Armored > 0.3f && level.Damage < 12 && level.ArmorPierce <= 0) value *= 0.72f;
         if (threat.Shielded > 0.2f && level.IgnoreShield) value *= 1.25f;
@@ -738,7 +740,7 @@ public sealed class AutoPlayer
 
     private static void TryUseOverdrive(GameSession session, ThreatProfile threat)
     {
-        if (session.OverdriveCooldownRemaining > 0 || session.Enemies.Count == 0) return;
+        if (!session.ProtocolsEnabled || session.OverdriveCooldownRemaining > 0 || session.Enemies.Count == 0) return;
         var pressure = threat.HasBoss || threat.HasElite || session.Enemies.Count >= 5 ||
                        session.Economy.Lives <= session.Economy.StartingLives * 0.6f;
         if (!pressure) return;

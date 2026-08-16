@@ -2,10 +2,10 @@
   {
     "id": "needle_turret", "displayName": "Needle Turret", "role": "Generalist", "behavior": "single_projectile", "purchaseCost": 90, "defaultTargetMode": "First",
     "visual": { "shape": "square", "primary": "#2C7AE7", "accent": "#173F68", "radius": 18, "marks": 1, "ring": true },
-    "protocol": { "displayName": "Rapid Cycle", "summary": "Doubles fire rate for six seconds", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 1.0, "autoTriggerCount": 4 },
+    "protocol": { "displayName": "Rapid Cycle", "summary": "Doubles fire rate for six seconds", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 1.0, "autoTriggerMode": "coverage", "autoTriggerCount": 4 },
     "tier2Doctrines": [
-      { "id": "needle_cycler", "displayName": "Cycler Feed", "shortLabel": "CYCLER", "summary": "Faster cadence with lighter needles", "upgradeCost": 45, "damageMultiplier": 0.92, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.0, "utilityMultiplier": 1.0 },
-      { "id": "needle_calibrator", "displayName": "Calibrated Feed", "shortLabel": "CALIB", "summary": "Heavier accurate needles at longer reach", "upgradeCost": 45, "damageMultiplier": 1.10, "attackSpeedMultiplier": 0.91, "rangeMultiplier": 1.06, "utilityMultiplier": 1.03 }
+      { "id": "needle_cycler", "displayName": "Quick Feed", "shortLabel": "QUICK", "summary": "Favors fire rate over shot damage", "upgradeCost": 45, "damageMultiplier": 0.92, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.0, "utilityMultiplier": 1.0 },
+      { "id": "needle_calibrator", "displayName": "Calibrated Feed", "shortLabel": "CALIBRATE", "summary": "Favors shot damage and range over fire rate", "upgradeCost": 45, "damageMultiplier": 1.10, "attackSpeedMultiplier": 0.91, "rangeMultiplier": 1.06, "utilityMultiplier": 1.03 }
     ],
     "levels": [
       { "range": 125, "damage": 8, "attacksPerSecond": 2.0, "projectileSpeed": 500, "upgradeCost": 45 },
@@ -14,11 +14,11 @@
     ],
     "specializations": [
       {
-        "id": "rapid_array", "displayName": "Rapid Array", "shortLabel": "RAPID", "summary": "High-rate two-target swarm bursts", "upgradeCost": 80,
-        "level": { "range": 145, "damage": 10, "attacksPerSecond": 3.1, "projectileSpeed": 620, "splashRadius": 16, "splashTargetLimit": 2, "upgradeCost": null }
+        "id": "rapid_array", "displayName": "Rapid Array", "shortLabel": "RAPID", "summary": "Shots ricochet 60% to one nearby target", "upgradeCost": 80,
+        "level": { "range": 145, "damage": 10, "attacksPerSecond": 3.1, "projectileSpeed": 620, "ricochetRange": 72, "ricochetDamageMultiplier": 0.60, "upgradeCost": null }
       },
       {
-        "id": "rail_pin", "displayName": "Rail Pin", "shortLabel": "RAIL", "summary": "Heavy armor-piercing shots", "upgradeCost": 90,
+        "id": "rail_pin", "displayName": "Rail Pin", "shortLabel": "RAIL", "summary": "High damage, range, speed, and armor pierce", "upgradeCost": 90,
         "level": { "range": 165, "damage": 24, "attacksPerSecond": 1.4, "projectileSpeed": 700, "armorPierce": 5, "upgradeCost": null }
       }
     ]
@@ -26,10 +26,10 @@
   {
     "id": "shard_fan", "displayName": "Shard Fan", "role": "Anti-swarm", "behavior": "pellet_burst", "purchaseCost": 150, "defaultTargetMode": "First",
     "visual": { "shape": "triangle", "primary": "#E58A32", "accent": "#7B480F", "radius": 18, "marks": 1, "ring": true },
-    "protocol": { "displayName": "Razorstorm", "summary": "Accelerates and hardens every shard", "durationSeconds": 5, "cooldownSeconds": 18, "attackSpeedBonus": 0.75, "damageBonus": 0.2, "autoTriggerCount": 5, "burstRadius": 135, "burstDamage": 16 },
+    "protocol": { "displayName": "Razorstorm", "summary": "Accelerates and hardens every shard", "durationSeconds": 5, "cooldownSeconds": 18, "attackSpeedBonus": 0.75, "damageBonus": 0.2, "autoTriggerMode": "protocol_area", "autoTriggerCount": 5, "burstRadius": 135, "burstDamage": 16 },
     "tier2Doctrines": [
-      { "id": "shard_scatter", "displayName": "Scatter Vanes", "shortLabel": "SCATTER", "summary": "One extra lighter shard for crowd coverage", "upgradeCost": 90, "damageMultiplier": 0.90, "attackSpeedMultiplier": 0.94, "rangeMultiplier": 0.96, "utilityMultiplier": 0.92, "pelletCountBonus": 1 },
-      { "id": "shard_temper", "displayName": "Tempered Vanes", "shortLabel": "TEMPER", "summary": "Harder penetrating shards at longer reach", "upgradeCost": 90, "damageMultiplier": 1.05, "attackSpeedMultiplier": 0.94, "rangeMultiplier": 1.04, "utilityMultiplier": 1.08 }
+      { "id": "shard_scatter", "displayName": "Scatter Vanes", "shortLabel": "SCATTER", "summary": "Favors shard count and wider spread", "upgradeCost": 90, "damageMultiplier": 0.90, "attackSpeedMultiplier": 0.94, "rangeMultiplier": 0.96, "utilityMultiplier": 0.92, "pelletCountBonus": 1 },
+      { "id": "shard_temper", "displayName": "Tempered Vanes", "shortLabel": "TEMPER", "summary": "Favors damage, range, and armor pierce", "upgradeCost": 90, "damageMultiplier": 1.05, "attackSpeedMultiplier": 0.94, "rangeMultiplier": 1.04, "utilityMultiplier": 1.08 }
     ],
     "levels": [
       { "range": 118, "damage": 9, "attacksPerSecond": 0.80, "projectileSpeed": 400, "pelletCount": 3, "pelletSpreadDegrees": 18, "armorPierce": 1, "upgradeCost": 90 },
@@ -38,11 +38,11 @@
     ],
     "specializations": [
       {
-        "id": "razor_bloom", "displayName": "Razor Bloom", "shortLabel": "BLOOM", "summary": "Wide seven-shard swarm clear", "upgradeCost": 135,
+        "id": "razor_bloom", "displayName": "Razor Bloom", "shortLabel": "BLOOM", "summary": "Wide multi-shard burst for dense crowds", "upgradeCost": 135,
         "level": { "range": 140, "damage": 13, "attacksPerSecond": 1.02, "projectileSpeed": 500, "pelletCount": 7, "pelletSpreadDegrees": 30, "armorPierce": 1, "upgradeCost": null }
       },
       {
-        "id": "lance_fan", "displayName": "Lance Fan", "shortLabel": "LANCE", "summary": "Tight armor-piercing burst", "upgradeCost": 140,
+        "id": "lance_fan", "displayName": "Lance Fan", "shortLabel": "LANCE", "summary": "Tight burst with high damage and armor pierce", "upgradeCost": 140,
         "level": { "range": 152, "damage": 19, "attacksPerSecond": 0.82, "projectileSpeed": 560, "pelletCount": 4, "pelletSpreadDegrees": 10, "armorPierce": 5, "upgradeCost": null }
       }
     ]
@@ -50,10 +50,10 @@
   {
     "id": "watchtower", "displayName": "Watchtower", "role": "Long range", "behavior": "single_projectile", "purchaseCost": 190, "defaultTargetMode": "Strongest",
     "visual": { "shape": "square", "primary": "#7C53DA", "accent": "#39245F", "radius": 20, "marks": 1, "ring": true },
-    "protocol": { "displayName": "Dead Reckoning", "summary": "Extends reach and marks priority threats", "durationSeconds": 6.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.15, "damageBonus": 0.5, "rangeBonus": 0.2, "armorPierceBonus": 3, "autoTriggerCount": 2, "burstRadius": 220, "burstStatus": "Exposed", "burstStatusMagnitude": 0.18, "burstStatusDuration": 3.5 },
+    "protocol": { "displayName": "Dead Reckoning", "summary": "Extends reach and marks priority threats", "durationSeconds": 6.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.15, "damageBonus": 0.5, "rangeBonus": 0.2, "armorPierceBonus": 3, "autoTriggerMode": "coverage", "autoTriggerCount": 2, "burstRadius": 220, "burstStatus": "Exposed", "burstStatusMagnitude": 0.18, "burstStatusDuration": 3.5 },
     "tier2Doctrines": [
-      { "id": "watch_spotter", "displayName": "Spotter Lens", "shortLabel": "SPOTTER", "summary": "Wider coverage and steadier cadence", "upgradeCost": 120, "damageMultiplier": 0.88, "attackSpeedMultiplier": 1.10, "rangeMultiplier": 1.12, "utilityMultiplier": 0.96 },
-      { "id": "watch_heavy_optics", "displayName": "Heavy Optics", "shortLabel": "HEAVY", "summary": "Higher impact and utility at shorter reach", "upgradeCost": 120, "damageMultiplier": 1.05, "attackSpeedMultiplier": 0.96, "rangeMultiplier": 0.98, "utilityMultiplier": 1.08 }
+      { "id": "watch_spotter", "displayName": "Spotter Lens", "shortLabel": "SPOTTER", "summary": "Favors range and fire rate", "upgradeCost": 120, "damageMultiplier": 0.88, "attackSpeedMultiplier": 1.10, "rangeMultiplier": 1.12, "utilityMultiplier": 0.96 },
+      { "id": "watch_heavy_optics", "displayName": "Impact Optics", "shortLabel": "IMPACT", "summary": "Favors shot damage over range and fire rate", "upgradeCost": 120, "damageMultiplier": 1.05, "attackSpeedMultiplier": 0.96, "rangeMultiplier": 0.98, "utilityMultiplier": 1.08 }
     ],
     "levels": [
       { "range": 250, "damage": 40, "attacksPerSecond": 0.47, "projectileSpeed": 850, "upgradeCost": 120 },
@@ -62,11 +62,11 @@
     ],
     "specializations": [
       {
-        "id": "sentinel_array", "displayName": "Sentinel Array", "shortLabel": "SENTINEL", "summary": "Steady long-range interception", "upgradeCost": 180,
+        "id": "sentinel_array", "displayName": "Sentinel Array", "shortLabel": "SENTINEL", "summary": "Higher fire rate for long-range coverage", "upgradeCost": 180,
         "level": { "range": 285, "damage": 52, "attacksPerSecond": 0.82, "projectileSpeed": 1050, "armorPierce": 2, "upgradeCost": null }
       },
       {
-        "id": "deadeye_post", "displayName": "Deadeye Post", "shortLabel": "DEADEYE", "summary": "Extreme-range priority eliminator", "upgradeCost": 195,
+        "id": "deadeye_post", "displayName": "Deadeye Post", "shortLabel": "DEADEYE", "summary": "Maximum range, damage, and armor pierce", "upgradeCost": 195,
         "level": { "range": 335, "damage": 112, "attacksPerSecond": 0.38, "projectileSpeed": 1250, "armorPierce": 8, "upgradeCost": null }
       }
     ]
@@ -74,10 +74,10 @@
   {
     "id": "frost_spire", "displayName": "Frost Spire", "role": "Control", "behavior": "slow_projectile", "purchaseCost": 140, "defaultTargetMode": "First",
     "visual": { "shape": "diamond", "primary": "#2192AA", "accent": "#18586B", "radius": 18, "marks": 1, "ring": true },
-    "protocol": { "displayName": "Flash Freeze", "summary": "Freezes its field, then widens control", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.45, "rangeBonus": 0.15, "autoTriggerCount": 4, "burstRadius": 170, "burstDamage": 8, "burstStatus": "Slow", "burstStatusMagnitude": 0.5, "burstStatusDuration": 2.5 },
+    "protocol": { "displayName": "Flash Freeze", "summary": "Freezes its field, then widens control", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.45, "rangeBonus": 0.15, "autoTriggerMode": "protocol_area", "autoTriggerCount": 4, "burstRadius": 170, "burstDamage": 8, "burstStatus": "Slow", "burstStatusMagnitude": 0.5, "burstStatusDuration": 2.5 },
     "tier2Doctrines": [
-      { "id": "frost_deep_chill", "displayName": "Deep Chill", "shortLabel": "DEEP", "summary": "Stronger, longer control at lower damage", "upgradeCost": 85, "damageMultiplier": 0.80, "attackSpeedMultiplier": 0.95, "rangeMultiplier": 1.0, "utilityMultiplier": 1.18 },
-      { "id": "frost_ice_needle", "displayName": "Ice Needle", "shortLabel": "NEEDLE", "summary": "Much sharper damage with lighter control", "upgradeCost": 85, "damageMultiplier": 1.35, "attackSpeedMultiplier": 1.05, "rangeMultiplier": 1.02, "utilityMultiplier": 0.75 }
+      { "id": "frost_deep_chill", "displayName": "Deep Chill", "shortLabel": "CHILL", "summary": "Favors slow strength and duration", "upgradeCost": 85, "damageMultiplier": 0.80, "attackSpeedMultiplier": 0.95, "rangeMultiplier": 1.0, "utilityMultiplier": 1.18 },
+      { "id": "frost_ice_needle", "displayName": "Ice Needle", "shortLabel": "ICE", "summary": "Favors direct damage over slow strength", "upgradeCost": 85, "damageMultiplier": 1.35, "attackSpeedMultiplier": 1.05, "rangeMultiplier": 1.02, "utilityMultiplier": 0.75 }
     ],
     "levels": [
       { "range": 150, "damage": 3, "attacksPerSecond": 0.80, "projectileSpeed": 350, "splashRadius": 28, "slowPercent": 0.35, "slowDuration": 2.0, "upgradeCost": 85 },
@@ -86,11 +86,11 @@
     ],
     "specializations": [
       {
-        "id": "permafrost", "displayName": "Permafrost", "shortLabel": "DEEP", "summary": "Maximum slow and duration", "upgradeCost": 140,
+        "id": "permafrost", "displayName": "Permafrost", "shortLabel": "PERMAFROST", "summary": "Maximum slow strength, duration, and area", "upgradeCost": 140,
         "level": { "range": 178, "damage": 5, "attacksPerSecond": 0.82, "projectileSpeed": 410, "splashRadius": 42, "slowPercent": 0.62, "slowDuration": 3.4, "upgradeCost": null }
       },
       {
-        "id": "hail_lancer", "displayName": "Hail Lancer", "shortLabel": "HAIL", "summary": "Fast damage with a lighter area slow", "upgradeCost": 155,
+        "id": "hail_lancer", "displayName": "Hail Lancer", "shortLabel": "HAIL", "summary": "Fast direct damage with weaker, shorter slows", "upgradeCost": 155,
         "level": { "range": 175, "damage": 12, "attacksPerSecond": 1.25, "projectileSpeed": 480, "splashRadius": 32, "slowPercent": 0.35, "slowDuration": 1.8, "upgradeCost": null }
       }
     ]
@@ -98,10 +98,10 @@
   {
     "id": "ember_coil", "displayName": "Ember Coil", "role": "Damage over time", "behavior": "burn_projectile", "purchaseCost": 220, "defaultTargetMode": "First",
     "visual": { "shape": "hexagon", "primary": "#EC5062", "accent": "#6B2631", "radius": 19, "marks": 1, "ring": true },
-    "protocol": { "displayName": "Flashpoint", "summary": "Ignites nearby enemies and boosts burn output", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.45, "damageBonus": 0.3, "autoTriggerCount": 4, "burstRadius": 175, "burstDamage": 12, "burstStatus": "Burn", "burstStatusMagnitude": 10, "burstStatusDuration": 4 },
+    "protocol": { "displayName": "Flashpoint", "summary": "Ignites nearby enemies and boosts burn output", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.45, "damageBonus": 0.3, "autoTriggerMode": "protocol_area", "autoTriggerCount": 4, "burstRadius": 175, "burstDamage": 12, "burstStatus": "Burn", "burstStatusMagnitude": 10, "burstStatusDuration": 4 },
     "tier2Doctrines": [
-      { "id": "ember_kindling", "displayName": "Kindling Coil", "shortLabel": "KINDLE", "summary": "Faster ignition with longer lighter burns", "upgradeCost": 120, "damageMultiplier": 0.82, "attackSpeedMultiplier": 1.08, "rangeMultiplier": 1.0, "utilityMultiplier": 1.18 },
-      { "id": "ember_hot_core", "displayName": "Hot Core", "shortLabel": "HOTCORE", "summary": "Harder focused burns at longer reach", "upgradeCost": 120, "damageMultiplier": 1.08, "attackSpeedMultiplier": 0.92, "rangeMultiplier": 1.05, "utilityMultiplier": 0.90 }
+      { "id": "ember_kindling", "displayName": "Kindling Coil", "shortLabel": "KINDLING", "summary": "Favors fire rate and burn duration", "upgradeCost": 120, "damageMultiplier": 0.82, "attackSpeedMultiplier": 1.08, "rangeMultiplier": 1.0, "utilityMultiplier": 1.18 },
+      { "id": "ember_hot_core", "displayName": "Hot Core", "shortLabel": "HOT CORE", "summary": "Favors direct damage, burn damage, and range", "upgradeCost": 120, "damageMultiplier": 1.08, "attackSpeedMultiplier": 0.92, "rangeMultiplier": 1.05, "utilityMultiplier": 0.90 }
     ],
     "levels": [
       { "range": 155, "damage": 12, "attacksPerSecond": 0.75, "projectileSpeed": 400, "burnDamagePerSecond": 6, "burnDuration": 2.5, "burnTickInterval": 0.5, "upgradeCost": 120 },
@@ -110,11 +110,11 @@
     ],
     "specializations": [
       {
-        "id": "wildfire_matrix", "displayName": "Wildfire Matrix", "shortLabel": "WILDFIRE", "summary": "Wide-area burn propagation", "upgradeCost": 210,
+        "id": "wildfire_matrix", "displayName": "Wildfire Matrix", "shortLabel": "WILDFIRE", "summary": "Large splash spreads long burns across groups", "upgradeCost": 210,
         "level": { "range": 178, "damage": 18, "attacksPerSecond": 0.95, "projectileSpeed": 480, "burnDamagePerSecond": 13, "burnDuration": 4.0, "burnTickInterval": 0.5, "splashRadius": 42, "upgradeCost": null }
       },
       {
-        "id": "searing_brand", "displayName": "Searing Brand", "shortLabel": "SEARING", "summary": "Long-range boss burn with armor pierce", "upgradeCost": 190,
+        "id": "searing_brand", "displayName": "Searing Brand", "shortLabel": "SEARING", "summary": "High burn damage, duration, range, and pierce", "upgradeCost": 190,
         "level": { "range": 210, "damage": 24, "attacksPerSecond": 0.72, "projectileSpeed": 540, "burnDamagePerSecond": 30, "burnDuration": 6.0, "burnTickInterval": 0.5, "armorPierce": 4, "upgradeCost": null }
       }
     ]
@@ -122,10 +122,10 @@
   {
     "id": "breaker_cannon", "displayName": "Breaker Cannon", "role": "Armor counter", "behavior": "armor_projectile", "purchaseCost": 250, "defaultTargetMode": "Strongest",
     "visual": { "shape": "square", "primary": "#E8B637", "accent": "#70561A", "radius": 21, "marks": 1, "ring": true },
-    "protocol": { "displayName": "Breach Order", "summary": "Amplifies shells and fractures nearby armor", "durationSeconds": 5.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.25, "damageBonus": 0.55, "armorPierceBonus": 4, "autoTriggerCount": 2, "burstRadius": 185, "burstDamage": 20, "burstStatus": "ArmorBreak", "burstStatusMagnitude": 4, "burstStatusDuration": 5 },
+    "protocol": { "displayName": "Breach Order", "summary": "Amplifies shells and fractures nearby armor", "durationSeconds": 5.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.25, "damageBonus": 0.55, "armorPierceBonus": 4, "autoTriggerMode": "priority_targets", "autoTriggerCount": 2, "burstRadius": 185, "burstDamage": 20, "burstStatus": "ArmorBreak", "burstStatusMagnitude": 4, "burstStatusDuration": 5 },
     "tier2Doctrines": [
-      { "id": "breaker_repeater", "displayName": "Repeater Breech", "shortLabel": "REPEAT", "summary": "Faster shells with lighter penetration", "upgradeCost": 150, "damageMultiplier": 0.82, "attackSpeedMultiplier": 1.16, "rangeMultiplier": 0.97, "utilityMultiplier": 0.94 },
-      { "id": "breaker_bored", "displayName": "Bored Barrel", "shortLabel": "BORED", "summary": "Heavy penetration and longer reach", "upgradeCost": 150, "damageMultiplier": 1.05, "attackSpeedMultiplier": 0.93, "rangeMultiplier": 1.05, "utilityMultiplier": 1.12 }
+      { "id": "breaker_repeater", "displayName": "Repeater Breech", "shortLabel": "REPEATER", "summary": "Favors fire rate for frequent armor hits", "upgradeCost": 150, "damageMultiplier": 0.82, "attackSpeedMultiplier": 1.16, "rangeMultiplier": 0.97, "utilityMultiplier": 0.94 },
+      { "id": "breaker_bored", "displayName": "Heavy Barrel", "shortLabel": "BARREL", "summary": "Favors damage, armor pierce, and range", "upgradeCost": 150, "damageMultiplier": 1.05, "attackSpeedMultiplier": 0.93, "rangeMultiplier": 1.05, "utilityMultiplier": 1.12 }
     ],
     "levels": [
       { "range": 165, "damage": 26, "attacksPerSecond": 0.72, "projectileSpeed": 520, "armorPierce": 6, "upgradeCost": 150 },
@@ -134,11 +134,11 @@
     ],
     "specializations": [
       {
-        "id": "breach_round", "displayName": "Breach Round", "shortLabel": "BREACH", "summary": "Two-target armored, elite, and boss penetrator", "upgradeCost": 240,
+        "id": "breach_round", "displayName": "Breach Round", "shortLabel": "BREACH", "summary": "Homing two-target hit with high armor pierce", "upgradeCost": 240,
         "level": { "range": 205, "damage": 68, "attacksPerSecond": 0.70, "projectileSpeed": 720, "splashRadius": 20, "splashTargetLimit": 2, "homingSplash": true, "armorPierce": 20, "armorReduction": 5, "armorReductionDuration": 5.0, "priorityDamageMultiplier": 1.5, "upgradeCost": null }
       },
       {
-        "id": "shatter_shell", "displayName": "Shatter Shell", "shortLabel": "SHATTER", "summary": "Area armor-break impact", "upgradeCost": 235,
+        "id": "shatter_shell", "displayName": "Shatter Shell", "shortLabel": "SHATTER", "summary": "Four-target splash with stronger armor break", "upgradeCost": 235,
         "level": { "range": 188, "damage": 38, "attacksPerSecond": 0.9, "projectileSpeed": 590, "splashRadius": 42, "splashTargetLimit": 4, "armorPierce": 9, "armorReduction": 6, "armorReductionDuration": 4.5, "upgradeCost": null }
       }
     ]
@@ -146,10 +146,10 @@
   {
     "id": "arc_relay", "displayName": "Arc Relay", "role": "Chain damage", "behavior": "chain", "purchaseCost": 320, "defaultTargetMode": "First",
     "visual": { "shape": "circle", "primary": "#2AC275", "accent": "#176442", "radius": 20, "marks": 1, "ring": true },
-    "protocol": { "displayName": "Stormcall", "summary": "Discharges a stun pulse and accelerates arcs", "durationSeconds": 5.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.6, "damageBonus": 0.2, "autoTriggerCount": 4, "burstRadius": 180, "burstDamage": 18, "burstStatus": "Stun", "burstStatusMagnitude": 1, "burstStatusDuration": 0.55 },
+    "protocol": { "displayName": "Stormcall", "summary": "Discharges a stun pulse and accelerates arcs", "durationSeconds": 5.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.6, "damageBonus": 0.2, "autoTriggerMode": "protocol_area", "autoTriggerCount": 4, "burstRadius": 180, "burstDamage": 18, "burstStatus": "Stun", "burstStatusMagnitude": 1, "burstStatusDuration": 0.55 },
     "tier2Doctrines": [
-      { "id": "arc_fork", "displayName": "Forked Bus", "shortLabel": "FORK", "summary": "One extra lighter arc for dense groups", "upgradeCost": 220, "damageMultiplier": 0.82, "attackSpeedMultiplier": 1.06, "rangeMultiplier": 0.98, "utilityMultiplier": 0.96, "chainCountBonus": 1 },
-      { "id": "arc_capacitor", "displayName": "Deep Capacitor", "shortLabel": "CAP", "summary": "Harder arcs and stronger control", "upgradeCost": 220, "damageMultiplier": 1.07, "attackSpeedMultiplier": 0.92, "rangeMultiplier": 1.04, "utilityMultiplier": 1.12 }
+      { "id": "arc_fork", "displayName": "Forked Circuit", "shortLabel": "FORK", "summary": "Adds two chain arcs for dense groups", "upgradeCost": 220, "damageMultiplier": 0.82, "attackSpeedMultiplier": 1.06, "rangeMultiplier": 0.98, "utilityMultiplier": 0.96, "chainCountBonus": 1 },
+      { "id": "arc_capacitor", "displayName": "Deep Capacitor", "shortLabel": "CAPACITOR", "summary": "Favors damage and longer chain reach", "upgradeCost": 220, "damageMultiplier": 1.07, "attackSpeedMultiplier": 0.92, "rangeMultiplier": 1.04, "utilityMultiplier": 1.12 }
     ],
     "levels": [
       { "range": 155, "damage": 19, "attacksPerSecond": 0.68, "chainCount": 2, "chainDamage": 14, "chainRange": 95, "upgradeCost": 220 },
@@ -158,11 +158,11 @@
     ],
     "specializations": [
       {
-        "id": "storm_lattice", "displayName": "Storm Lattice", "shortLabel": "STORM", "summary": "Long multi-target damage chain", "upgradeCost": 325,
+        "id": "storm_lattice", "displayName": "Storm Lattice", "shortLabel": "STORM", "summary": "Six arcs with the longest chain reach", "upgradeCost": 325,
         "level": { "range": 180, "damage": 34, "attacksPerSecond": 0.78, "chainCount": 6, "chainDamage": 26, "chainRange": 138, "stunDuration": 0.25, "upgradeCost": null }
       },
       {
-        "id": "lockdown_coil", "displayName": "Lockdown Coil", "shortLabel": "LOCKDOWN", "summary": "Fewer arcs with heavy control", "upgradeCost": 315,
+        "id": "lockdown_coil", "displayName": "Lockdown Coil", "shortLabel": "LOCKDOWN", "summary": "Fewer arcs with a much longer stun", "upgradeCost": 315,
         "level": { "range": 188, "damage": 46, "attacksPerSecond": 0.72, "chainCount": 3, "chainDamage": 30, "chainRange": 125, "stunDuration": 0.85, "upgradeCost": null }
       }
     ]
@@ -170,10 +170,10 @@
   {
     "id": "siege_mortar", "displayName": "Siege Mortar", "role": "Area damage", "behavior": "splash_projectile", "purchaseCost": 360, "defaultTargetMode": "First",
     "visual": { "shape": "circle", "primary": "#384E65", "accent": "#EC5062", "radius": 23, "marks": 1, "ring": true },
-    "protocol": { "displayName": "Fire Mission", "summary": "Calls a sustained high-tempo bombardment", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.5, "damageBonus": 0.2, "rangeBonus": 0.1, "autoTriggerCount": 5 },
+    "protocol": { "displayName": "Fire Mission", "summary": "Calls a sustained high-tempo bombardment", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.5, "damageBonus": 0.2, "rangeBonus": 0.1, "autoTriggerMode": "dense_cluster", "autoTriggerCount": 5 },
     "tier2Doctrines": [
-      { "id": "mortar_loader", "displayName": "Quick Loader", "shortLabel": "LOADER", "summary": "Much faster compact shells at shorter reach", "upgradeCost": 240, "damageMultiplier": 0.80, "attackSpeedMultiplier": 1.28, "rangeMultiplier": 0.93, "utilityMultiplier": 0.82 },
-      { "id": "mortar_survey", "displayName": "Survey Charge", "shortLabel": "SURVEY", "summary": "Longer reach and broader heavy impacts", "upgradeCost": 240, "damageMultiplier": 1.08, "attackSpeedMultiplier": 0.91, "rangeMultiplier": 1.10, "utilityMultiplier": 1.12 }
+      { "id": "mortar_loader", "displayName": "Quick Loader", "shortLabel": "LOADER", "summary": "Faster fire with less range and splash area", "upgradeCost": 240, "damageMultiplier": 0.80, "attackSpeedMultiplier": 1.28, "rangeMultiplier": 0.93, "utilityMultiplier": 0.82 },
+      { "id": "mortar_survey", "displayName": "Rangefinder", "shortLabel": "RANGE", "summary": "More damage, range, and splash area", "upgradeCost": 240, "damageMultiplier": 1.08, "attackSpeedMultiplier": 0.91, "rangeMultiplier": 1.10, "utilityMultiplier": 1.12 }
     ],
     "levels": [
       { "range": 275, "damage": 42, "attacksPerSecond": 0.29, "projectileSpeed": 240, "splashRadius": 45, "splashTargetLimit": 6, "upgradeCost": 240 },
@@ -182,11 +182,11 @@
     ],
     "specializations": [
       {
-        "id": "salvo_rack", "displayName": "Salvo Rack", "shortLabel": "SALVO", "summary": "Frequent compact predictive shells", "upgradeCost": 345,
+        "id": "salvo_rack", "displayName": "Salvo Rack", "shortLabel": "SALVO", "summary": "Fast predictive shots with a compact blast", "upgradeCost": 345,
         "level": { "range": 292, "damage": 60, "attacksPerSecond": 0.48, "projectileSpeed": 310, "splashRadius": 48, "splashTargetLimit": 7, "upgradeCost": null }
       },
       {
-        "id": "quake_shell", "displayName": "Quake Shell", "shortLabel": "QUAKE", "summary": "Wide control impact with lower DPS", "upgradeCost": 365,
+        "id": "quake_shell", "displayName": "Quake Shell", "shortLabel": "QUAKE", "summary": "Wide ten-target blast that slows enemies", "upgradeCost": 365,
         "level": { "range": 315, "damage": 74, "attacksPerSecond": 0.28, "projectileSpeed": 275, "splashRadius": 70, "splashTargetLimit": 10, "slowPercent": 0.25, "slowDuration": 1.4, "upgradeCost": null }
       }
     ]
@@ -194,10 +194,10 @@
   {
     "id": "prism_beam", "displayName": "Prism Beam", "role": "Focused damage", "behavior": "beam", "purchaseCost": 450, "defaultTargetMode": "Strongest",
     "visual": { "shape": "diamond", "primary": "#E04BC5", "accent": "#6A1B63", "radius": 21, "marks": 1, "ring": true },
-    "protocol": { "displayName": "Phase Burn", "summary": "Overclocks the beam and exposes its field", "durationSeconds": 5, "cooldownSeconds": 18, "attackSpeedBonus": 0.85, "damageBonus": 0.15, "autoTriggerCount": 3, "burstRadius": 205, "burstStatus": "Exposed", "burstStatusMagnitude": 0.15, "burstStatusDuration": 3 },
+    "protocol": { "displayName": "Phase Burn", "summary": "Overclocks the beam and exposes its field", "durationSeconds": 5, "cooldownSeconds": 18, "attackSpeedBonus": 0.85, "damageBonus": 0.15, "autoTriggerMode": "protocol_area", "autoTriggerCount": 3, "burstRadius": 205, "burstStatus": "Exposed", "burstStatusMagnitude": 0.15, "burstStatusDuration": 3 },
     "tier2Doctrines": [
-      { "id": "prism_frequency", "displayName": "High Frequency", "shortLabel": "FREQ", "summary": "Higher beam throughput with lighter exposure", "upgradeCost": 300, "damageMultiplier": 0.90, "attackSpeedMultiplier": 1.20, "rangeMultiplier": 0.94, "utilityMultiplier": 0.86 },
-      { "id": "prism_aperture", "displayName": "Wide Aperture", "shortLabel": "APERT", "summary": "Longer, harder beam with deeper exposure", "upgradeCost": 300, "damageMultiplier": 1.12, "attackSpeedMultiplier": 0.88, "rangeMultiplier": 1.08, "utilityMultiplier": 1.12 }
+      { "id": "prism_frequency", "displayName": "High Frequency", "shortLabel": "FREQUENCY", "summary": "Faster beam with shorter Expose duration", "upgradeCost": 300, "damageMultiplier": 0.90, "attackSpeedMultiplier": 1.20, "rangeMultiplier": 0.94, "utilityMultiplier": 0.86 },
+      { "id": "prism_aperture", "displayName": "Wide Aperture", "shortLabel": "APERTURE", "summary": "More damage, range, and Expose strength", "upgradeCost": 300, "damageMultiplier": 1.12, "attackSpeedMultiplier": 0.88, "rangeMultiplier": 1.08, "utilityMultiplier": 1.12 }
     ],
     "levels": [
       { "range": 205, "damage": 6, "attacksPerSecond": 3.5, "armorPierce": 3, "exposePercent": 0.10, "exposeDuration": 2.0, "upgradeCost": 300 },
@@ -206,11 +206,11 @@
     ],
     "specializations": [
       {
-        "id": "core_lance", "displayName": "Core Lance", "shortLabel": "LANCE", "summary": "Shield-bypassing focus beam", "upgradeCost": 440,
+        "id": "core_lance", "displayName": "Core Lance", "shortLabel": "LANCE", "summary": "Bypasses shields with maximum damage and pierce", "upgradeCost": 440,
         "level": { "range": 255, "damage": 17, "attacksPerSecond": 4.0, "armorPierce": 12, "exposePercent": 0.25, "exposeDuration": 2.5, "ignoreShield": true, "upgradeCost": null }
       },
       {
-        "id": "spectrum_split", "displayName": "Spectrum Split", "shortLabel": "SPLIT", "summary": "Beam branches across nearby targets", "upgradeCost": 420,
+        "id": "spectrum_split", "displayName": "Spectrum Split", "shortLabel": "SPLIT", "summary": "Beam branches to two nearby enemies", "upgradeCost": 420,
         "level": { "range": 235, "damage": 9, "attacksPerSecond": 4.8, "armorPierce": 5, "exposePercent": 0.12, "exposeDuration": 1.8, "chainCount": 2, "chainDamage": 8, "chainRange": 90, "upgradeCost": null }
       }
     ]
@@ -218,10 +218,10 @@
   {
     "id": "signal_beacon", "displayName": "Signal Beacon", "role": "Support aura", "behavior": "aura", "purchaseCost": 300, "defaultTargetMode": "First",
     "visual": { "shape": "circle", "primary": "#F6E58D", "accent": "#B7791F", "radius": 19, "marks": 1, "ring": true },
-    "protocol": { "displayName": "Network Surge", "summary": "Temporarily expands and strengthens its aura", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0, "auraAttackSpeedBonus": 0.22, "auraRangeBonus": 0.2, "autoTriggerCount": 6 },
+    "protocol": { "displayName": "Network Surge", "summary": "Temporarily expands and strengthens its aura", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0, "auraAttackSpeedBonus": 0.22, "auraRangeBonus": 0.2, "autoTriggerMode": "engaged_recipients", "autoTriggerCount": 2, "autoTriggerTargetCount": 6 },
     "tier2Doctrines": [
-      { "id": "beacon_amplifier", "displayName": "Field Amplifier", "shortLabel": "AMPLIFY", "summary": "Stronger support inside a tighter field", "upgradeCost": 180, "damageMultiplier": 1.0, "attackSpeedMultiplier": 1.0, "rangeMultiplier": 0.88, "utilityMultiplier": 1.12 },
-      { "id": "beacon_repeater", "displayName": "Range Repeater", "shortLabel": "REPEAT", "summary": "Wider support with lighter bonuses", "upgradeCost": 180, "damageMultiplier": 1.0, "attackSpeedMultiplier": 1.0, "rangeMultiplier": 1.16, "utilityMultiplier": 0.86 }
+      { "id": "beacon_amplifier", "displayName": "Field Amplifier", "shortLabel": "AMPLIFIER", "summary": "Stronger bonuses in the same-sized field", "upgradeCost": 180, "damageMultiplier": 1.0, "attackSpeedMultiplier": 1.0, "rangeMultiplier": 0.88, "utilityMultiplier": 1.12 },
+      { "id": "beacon_repeater", "displayName": "Wideband Relay", "shortLabel": "WIDEBAND", "summary": "Favors field size over bonus strength", "upgradeCost": 180, "damageMultiplier": 1.0, "attackSpeedMultiplier": 1.0, "rangeMultiplier": 1.16, "utilityMultiplier": 0.86 }
     ],
     "levels": [
       { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 145, "auraAttackSpeedBonus": 0.15, "auraRangeBonus": 0.10, "upgradeCost": 180 },
@@ -230,11 +230,11 @@
     ],
     "specializations": [
       {
-        "id": "tempo_beacon", "displayName": "Tempo Beacon", "shortLabel": "TEMPO", "summary": "Maximum attack-rate support", "upgradeCost": 245,
+        "id": "tempo_beacon", "displayName": "Tempo Beacon", "shortLabel": "TEMPO", "summary": "Maximum attack-rate bonus in a medium field", "upgradeCost": 245,
         "level": { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 180, "auraAttackSpeedBonus": 0.45, "auraRangeBonus": 0.12, "upgradeCost": null }
       },
       {
-        "id": "horizon_beacon", "displayName": "Horizon Beacon", "shortLabel": "HORIZON", "summary": "Wide aura and maximum reach", "upgradeCost": 255,
+        "id": "horizon_beacon", "displayName": "Horizon Beacon", "shortLabel": "HORIZON", "summary": "Maximum field and tower-range bonus", "upgradeCost": 255,
         "level": { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 215, "auraAttackSpeedBonus": 0.22, "auraRangeBonus": 0.35, "upgradeCost": null }
       }
     ]

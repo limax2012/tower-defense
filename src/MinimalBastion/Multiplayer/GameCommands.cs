@@ -81,6 +81,11 @@ public static class GameCommandProcessor
     public static GameCommandResult Apply(GameSession session, GameCommand command)
     {
         if (!GameCommandValidator.IsStructurallyValid(command)) return GameCommandResult.Reject("Malformed command");
+        // The pause command itself must remain available, and a StartWave that
+        // both players committed before the pause may finish entering the
+        // deterministic queue. Every mutable battlefield command is locked.
+        if (session.IsCoOpPaused && command.Type is not (GameCommandType.SetPaused or GameCommandType.StartWave))
+            return GameCommandResult.Reject("Shared pause locks battlefield commands");
         var accepted = command.Type switch
         {
             GameCommandType.PlaceTower => session.TryPlaceTower(command.TowerDefinitionId, command.Position, command.PlayerId, false),

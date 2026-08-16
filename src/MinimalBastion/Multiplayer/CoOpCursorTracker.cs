@@ -14,10 +14,12 @@ public sealed class CoOpCursorTracker
     private Vector2 _lastSentPosition;
     private bool _hasSentPosition;
     private int _lastSentEntityId;
+    private string _lastSentPlacementTowerId = "";
 
     public Vector2? RemotePosition { get; private set; }
     public int RemotePlayerId { get; private set; }
     public int RemoteEntityId { get; private set; }
+    public string RemotePlacementTowerId { get; private set; } = "";
 
     public void Advance(float elapsedSeconds)
     {
@@ -30,27 +32,38 @@ public sealed class CoOpCursorTracker
     }
 
     public bool TryCaptureLocal(Vector2 position, bool isMouseOverLogicalCanvas, int selectedEntityId, out Vector2 update)
+        => TryCaptureLocal(position, isMouseOverLogicalCanvas, selectedEntityId, "", out update);
+
+    public bool TryCaptureLocal(Vector2 position, bool isMouseOverLogicalCanvas, int selectedEntityId,
+        string placementTowerId, out Vector2 update)
     {
         update = default;
-        if (selectedEntityId < 0 || _sendRemaining > 0 || !isMouseOverLogicalCanvas || !IsBattlefieldPosition(position)) return false;
-        var changed = !_hasSentPosition || selectedEntityId != _lastSentEntityId ||
+        if (selectedEntityId < 0 || placementTowerId is null || placementTowerId.Length > 128 ||
+            !isMouseOverLogicalCanvas || !IsBattlefieldPosition(position)) return false;
+        var contextChanged = !_hasSentPosition || selectedEntityId != _lastSentEntityId ||
+            !string.Equals(placementTowerId, _lastSentPlacementTowerId, StringComparison.OrdinalIgnoreCase);
+        if (_sendRemaining > 0 && !contextChanged) return false;
+        var changed = contextChanged ||
             Vector2.DistanceSquared(position, _lastSentPosition) >= 4f;
         if (!changed && _heartbeatRemaining > 0) return false;
         _sendRemaining = SendIntervalSeconds;
         _heartbeatRemaining = IdleHeartbeatSeconds;
         _lastSentPosition = position;
         _lastSentEntityId = selectedEntityId;
+        _lastSentPlacementTowerId = placementTowerId;
         _hasSentPosition = true;
         update = position;
         return true;
     }
 
-    public bool Receive(Vector2 position, int playerId, int selectedEntityId = 0)
+    public bool Receive(Vector2 position, int playerId, int selectedEntityId = 0, string placementTowerId = "")
     {
-        if (playerId is < 1 or > 2 || selectedEntityId < 0 || !IsBattlefieldPosition(position)) return false;
+        if (playerId is < 1 or > 2 || selectedEntityId < 0 || placementTowerId is null ||
+            placementTowerId.Length > 128 || !IsBattlefieldPosition(position)) return false;
         RemotePosition = position;
         RemotePlayerId = playerId;
         RemoteEntityId = selectedEntityId;
+        RemotePlacementTowerId = placementTowerId;
         _remoteRemaining = RemoteTimeoutSeconds;
         return true;
     }
@@ -61,6 +74,7 @@ public sealed class CoOpCursorTracker
         _heartbeatRemaining = 0;
         _lastSentPosition = default;
         _lastSentEntityId = 0;
+        _lastSentPlacementTowerId = "";
         _hasSentPosition = false;
         ClearRemote();
     }
@@ -70,6 +84,7 @@ public sealed class CoOpCursorTracker
         RemotePosition = null;
         RemotePlayerId = 0;
         RemoteEntityId = 0;
+        RemotePlacementTowerId = "";
         _remoteRemaining = 0;
     }
 

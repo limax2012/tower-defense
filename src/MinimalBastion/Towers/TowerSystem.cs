@@ -14,6 +14,7 @@ public sealed class TowerSystem
         foreach (var tower in session.Towers)
         {
             tower.TickVisual(deltaSeconds);
+            if (tower.IsSandboxDisabled) continue;
             if (tower.IsSupport) continue;
             tower.CooldownRemaining -= deltaSeconds;
             if (tower.CooldownRemaining > 0) continue;

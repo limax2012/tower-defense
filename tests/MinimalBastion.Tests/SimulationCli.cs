@@ -67,6 +67,8 @@ internal static class SimulationCli
         if (forcedBuilds.Count == 1 && forcedBuilds[0] is { } onlyForcedBuild)
             Console.WriteLine($"Forced requested path: {onlyForcedBuild.TowerId}:{onlyForcedBuild.DoctrineId}>{onlyForcedBuild.SpecializationId}");
         if (!useProtocols) Console.WriteLine("Protocol activations disabled for this control group.");
+        else if (runs.Count > 0 && runs.All(run => !run.ProtocolsEnabled))
+            Console.WriteLine("The selected directive disables Protocol activations.");
         PrintStrategySummary(runs, outcomeLabel);
         PrintDifficultySummary(runs, outcomeLabel);
         PrintChallengeSummary(runs, outcomeLabel);
@@ -113,7 +115,7 @@ internal static class SimulationCli
     internal static IReadOnlyList<string> ResolveChallenges(string? selectedChallenge, GameContent content)
     {
         if (selectedChallenge?.Equals("all", StringComparison.OrdinalIgnoreCase) == true)
-            return content.Challenges.Values.Select(x => x.Id).ToArray();
+            return content.Challenges.Values.Where(x => !x.IsSandbox).Select(x => x.Id).ToArray();
 
         var challengeId = selectedChallenge ?? ChallengeCatalog.DefaultId;
         if (!content.Challenges.ContainsKey(challengeId))

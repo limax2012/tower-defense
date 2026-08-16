@@ -87,6 +87,8 @@ public sealed class ProjectileRuntimeState
     public int Kind { get; set; }
     public float SplashRadius { get; set; }
     public int SplashTargetLimit { get; set; }
+    public float RicochetRange { get; set; }
+    public float RicochetDamageMultiplier { get; set; }
     public float Damage { get; set; }
     public float PriorityDamageMultiplier { get; set; } = 1f;
     public float ArmorPierce { get; set; }

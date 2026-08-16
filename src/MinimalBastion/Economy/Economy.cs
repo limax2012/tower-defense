@@ -18,20 +18,24 @@ public sealed class Economy
     public int SaleCreditsRecovered { get; private set; }
     public int TotalCreditsEarned => (int)Math.Min(int.MaxValue,
         (long)KillCreditsEarned + WaveCreditsEarned + EarlyStartCreditsEarned);
+    public bool UnlimitedCredits { get; }
+    public bool UnlimitedLives { get; }
 
-    public Economy(int startingCredits, int startingLives)
+    public Economy(int startingCredits, int startingLives, bool unlimitedCredits = false, bool unlimitedLives = false)
     {
         StartingCredits = startingCredits;
         Credits = startingCredits;
         Lives = startingLives;
         StartingLives = startingLives;
+        UnlimitedCredits = unlimitedCredits;
+        UnlimitedLives = unlimitedLives;
     }
 
-    public bool CanAfford(int amount) => amount >= 0 && Credits >= amount;
+    public bool CanAfford(int amount) => amount >= 0 && (UnlimitedCredits || Credits >= amount);
     public bool TrySpend(int amount)
     {
         if (!CanAfford(amount)) return false;
-        Credits -= amount;
+        if (!UnlimitedCredits) Credits -= amount;
         TotalCreditsSpent = SaturatingAdd(TotalCreditsSpent, amount);
         return true;
     }
@@ -70,7 +74,7 @@ public sealed class Economy
 
     public void LoseLives(int amount)
     {
-        if (amount <= 0) return;
+        if (amount <= 0 || UnlimitedLives) return;
         Lives = Math.Max(0, Lives - amount);
         EscapedEnemies = SaturatingAdd(EscapedEnemies, 1);
     }

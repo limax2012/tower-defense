@@ -31,6 +31,7 @@ public sealed class EnemyInstance
     public float KnockbackGraceRemaining { get; private set; }
     public bool IsDead { get; private set; }
     public bool HasEscaped { get; private set; }
+    public bool IsSandboxImmortal { get; }
     public float Radius => Definition.Visual.Radius + (IsBoss ? 8 : IsElite ? 3 : 0);
     public float HealthScale => _healthMultiplier;
     public float MovementSpeedScale => _speedMultiplier;
@@ -40,7 +41,8 @@ public sealed class EnemyInstance
     public float SpeedMultiplier => StatusEffects.IsStunned ? 0 : 1f - MathHelper.Clamp(StatusEffects.SlowFactor, 0, 0.60f);
     public float CurrentSpeed => Definition.Speed * _speedMultiplier * _rankSpeedMultiplier * (BossPhaseActive ? 1.28f : 1f) * SpeedMultiplier;
 
-    public EnemyInstance(int id, EnemyDefinition definition, PathRuntime path, float healthMultiplier, float speedMultiplier, string rank = "Standard")
+    public EnemyInstance(int id, EnemyDefinition definition, PathRuntime path, float healthMultiplier, float speedMultiplier,
+        string rank = "Standard", bool sandboxImmortal = false)
     {
         Id = id;
         Definition = definition;
@@ -59,6 +61,7 @@ public sealed class EnemyInstance
         PathProgress = 0;
         _speedMultiplier = speedMultiplier;
         _healthMultiplier = healthMultiplier;
+        IsSandboxImmortal = sandboxImmortal;
     }
 
     private readonly float _healthMultiplier;
@@ -107,6 +110,13 @@ public sealed class EnemyInstance
     public void ApplyHealthDamage(float amount)
     {
         if (amount <= 0 || IsDead || HasEscaped) return;
+        if (IsSandboxImmortal)
+        {
+            // Keep a stable full-health target while still allowing DamageResolver
+            // to report every hit, status application, splash, and assist normally.
+            DamagePauseTimer = 1f;
+            return;
+        }
         Health = MathF.Max(0, Health - amount);
         DamagePauseTimer = 1f;
         if (Health <= 0) IsDead = true;
@@ -116,6 +126,13 @@ public sealed class EnemyInstance
             Shield = MathF.Max(Shield, MaxHealth * 0.12f);
             _bossPhasePulsePending = true;
         }
+    }
+
+    internal void SetSandboxPathDistance(float distanceAlongPath, PathRuntime path)
+    {
+        DistanceAlongPath = MathHelper.Clamp(distanceAlongPath, 0, path.TotalLength);
+        Position = path.GetPosition(DistanceAlongPath);
+        PathProgress = path.GetProgress(DistanceAlongPath);
     }
 
     public void ApplyStatus(StatusApplication application)

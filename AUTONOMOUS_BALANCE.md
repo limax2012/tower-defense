@@ -76,25 +76,28 @@ The current five-seed matrices cover 12 strategies across Foundry Loop, Crosswin
 | Easy | 199/240 | 82.9% | 19.1 | 24.6 |
 | Normal | 186/240 | 77.5% | 18.8 | 17.4 |
 | Hard | 140/240 | 58.3% | 17.5 | 9.0 |
-| Bastion | 33/240 | 13.8% | 12.1 | 1.5 |
+| Bastion | 73/240 | 30.4% | 14.9 | 4.0 |
 
-Hard is the authored uncompromised baseline. Its current map results range from 52% on Surge to 63% on Foundry; Bastion ranges from 5% on Surge to 25% on Foundry and remains deliberately severe. Across every profile, Surge is the lowest aggregate arena (126/240) despite its nine nodes while Foundry is highest (147/240). Easy remains broadly forgiving while the intentionally dysfunctional Economy and indiscriminate level-1 Spam policies still fail, so it does not collapse into an automatic win.
+Hard is the authored uncompromised baseline. Bastion now applies 112% enemy health, 102% speed, full base credits, and 18 lives: its refreshed map results range from 13.3% on Surge to 38.3% on Crosswind/Foundry. The former 115% / 104% / 15-life profile cleared only 13.8% overall and allowed just four purposeful policies to win; the tuned profile clears 30.4% and gives eight purposeful policies plus Randomized at least one success while Economy, Aggressive, and indiscriminate level-1 Spam still fail. Surge therefore remains the decisive expert arena without making Standard Bastion a one-build puzzle.
 
 Current Hard strategy wins are Conservative 14/20, Economy 0/20, Aggressive 2/20, UpgradeFocused 20/20, Spam 0/20, AntiSwarm 16/20, AntiArmor 19/20, LongRange 19/20, Control 15/20, Tactical 14/20, Adaptive 15/20, and Randomized 6/20. A focused 20-seed rerun expanded UpgradeFocused to 74/80 (92.5%): it cleared Crosswind, Foundry, and Prism consistently but only 14/20 Surge cases. Deep upgrades are therefore a strong slot-efficiency plan rather than a universal solution, while AntiArmor, LongRange, AntiSwarm, Control, Adaptive, and Tactical remain credible alternatives. Report: `.build/balance/upgrade-focused-hard-20x.json`.
 
-Current combined report: `.build/balance/overnight-difficulty-5x.json`. Earlier tuning reports remain under `.build/balance` for comparison.
+Current combined Easy/Medium/Hard report: `.build/balance/overnight-difficulty-5x.json`. The refreshed Bastion report is `.build/balance/bastion-tuned-standard-5x-20260816.json`; earlier tuning reports remain under `.build/balance` for comparison.
 
 ## Challenge directive baseline
 
-Hard, three seeds per strategy across all four arenas (144 runs per directive):
+The current five-seed matrices cover Standard and Fundamentals across all 12 policies and four arenas (240 runs each). The latest two-seed Close Quarters/Core Six audits remain included for directive context:
 
 | Directive | Wins | Win rate | Average wave | Purpose |
 | --- | ---: | ---: | ---: | --- |
-| Close Quarters | 77/144 | 53.5% | 16.3 | Removes Watchtower/Mortar and rewards route-adjacent coverage. |
-| Core Six | 50/144 | 34.7% | 15.6 | Advanced compact-roster planning puzzle. |
-| No Reserves | 88/144 | 61.1% | 17.9 | Tower-only defense; fixed +10% opening funds replace tactical spending. |
+| Standard | 140/240 | 58.3% | 17.5 | Full roster and every tactical system. |
+| Close Quarters | 47/96 | 49.0% | 15.9 | Removes Watchtower/Mortar and rewards route-adjacent coverage. |
+| Core Six | 28/96 | 29.2% | 15.6 | Advanced compact-roster planning puzzle. |
+| Fundamentals | 115/240 | 47.9% | 16.3 | Full tower roster, but no Plates, Forge, or manual/automatic Protocols; fixed +25% opening funds. |
 
-Reports: `.build/balance/four-map-hard-close_quarters-3x.json`, `.build/balance/four-map-hard-core_six-3x.json`, and `.build/balance/four-map-hard-no_reserves-3x.json`. Surge Divide remained the hardest arena in every directive. No tower, enemy, or wave stat changes with directive progress; restrictions and opening compensation are fixed at session construction.
+Fundamentals is therefore materially different from Standard without duplicating Core Six: it preserves composition freedom while removing all temporary intervention. At +25% opening funds, its Hard clear rate is 47.9%, 10.4 points below Standard; nine policies clear at least once, while indiscriminate Spam, Economy, and Aggressive remain unsuccessful. The tuned five-seed Bastion matrix clears 48/240 (20.0%), with map results of Crosswind 26.7%, Foundry 28.3%, Prism 20.0%, and Surge 5.0%. Six policies clear Bastion Fundamentals, led by Anti-Armor (13/20), Conservative and Upgrade-Focused (10/20 each), rather than one forced solution. A separate ten-seed Surge stress check confirms 6/120 (5.0%) with Anti-Swarm, Adaptive, and Upgrade-Focused wins; this remains a severe optional combination without being the former 1/120 outlier. Reports: `.build/balance/fundamentals-125-{hard,bastion}-5x-20260816.json` and `.build/balance/fundamentals-125-bastion-surge-10x-20260816.json`.
+
+No tower or enemy stat changes with directive progress. Restrictions and opening compensation are fixed at session construction; the stable internal ID remains `no_reserves` for save compatibility.
 
 ## Endless validation
 
@@ -109,7 +112,7 @@ Reports: `.build/balance/four-map-hard-close_quarters-3x.json`, `.build/balance/
 
 ## Current observations
 
-- The doctrine matrix originally preserved the overall Hard baseline almost exactly (143/240 versus 144/240), but LongRange became seed-perfect. A surgical Watchtower pass trims Heavy Optics reach by roughly 5%, Deadeye reach from 345 to 335, and Deadeye damage from 118 to 112. The resulting 140/240 matrix moves LongRange to 18/20 without changing global enemy stats.
+- The doctrine matrix originally preserved the overall Hard baseline almost exactly (143/240 versus 144/240), but LongRange became seed-perfect. A surgical Watchtower pass trims Impact Optics reach by roughly 5%, Deadeye reach from 345 to 335, and Deadeye damage from 118 to 112. The resulting 140/240 matrix moves LongRange to 18/20 without changing global enemy stats.
 - Crosswind remains the most forgiving doctrine-era arena at 40/60, while Surge remains hardest at 27/60 despite its nodes. Each map moved by no more than one clear from the pre-adjustment matrix.
 - Conservative and LongRange reach 18/20; AntiArmor, UpgradeFocused, Control, and Adaptive reach 17/20. Multiple mixed approaches are therefore credible alternatives rather than one policy being seed-perfect.
 - Economy reaches wave 15.8 on average on Hard without winning; its delayed Forge investment remains meaningful but risky. Spam also remains intentionally nonviable.
@@ -123,6 +126,9 @@ Reports: `.build/balance/four-map-hard-close_quarters-3x.json`, `.build/balance/
 - Damage resolution now calculates actual marginal Expose and Armor Break damage without changing combat. In the full 240-run Hard matrix, Prism Beam adds 2,302,526 Expose assist and reaches 9.7 impact/credit; Breaker adds 3,511,181 Armor Break assist and reaches 29.0. Prism remains a lower credit-efficiency purchase because it buys long-range slot coverage, while the 16/20 Anti-Armor policy remains below the 19/20 leading mixed policies, so neither result justifies a blind stat adjustment.
 - A fresh isolated economy rerun preserved Ember Coil unchanged: its 220-credit level 1 remains a modest persistent setup, while either 120-credit doctrine adds compact area coverage (152-180 dense DPS in the eight-target scenario). Wildfire clears the moving rush and Searing retains the armor/boss role, matching their campaign-conditioned success rather than supporting a global buff.
 - Direct damage/credit still understates pure range coverage, but support and control roles now have reproducible campaign measurements alongside scenario outcomes.
+- A cross-tower benchmark now isolates pair output above the sum of both towers alone. The former binary Arc rule gave the full +35% damage for any nonzero Slow; Frost + Arc produced +20.5% total pair DPS at level 1 and Permafrost + Storm produced +28.2%. Conductive damage now matches the target's Slow strength and caps at +30%, moving those pair bonuses to +17.6% and +24.1%. This preserves the combo while preventing a token Slow from granting its full value. Burn + Needle against armor 8 remains a credible +30.5% pair interaction through Burning's -2 armor, Shatter + Needle adds 8.3%, and Prism + Needle adds 4.2% through Expose.
+- Hard status incompatibilities were rejected. Slow, Burn, Expose, and Armor Break can coexist; strongest-only Slow/Expose/Armor Break, the two-source Burn cap, and strongest-only Beacon/node stats already provide soft diminishing returns without invalidating mixed defenses.
+- Storm Lattice's seven-hop Fork path is not overpowered in the focused audit. It reaches 150.6 dense DPS at 0.174 DPS/credit, below several cheaper area branches and capped Mortar's 159.8-204.1 dense DPS. A 192-run all-strategy/all-arena Hard forced-path sweep produced 29/48 wins for Fork/Storm, exactly tied with Fork/Lockdown; Capacitor/Storm reached 32/48 versus Capacitor/Lockdown's 30/48. Storm buys density coverage while Lockdown retains a competitive control use. Report: `.build/balance/arc-branches-hard-1x-20260815.json`.
 - A paired 240-run Hard control group disabled all Protocol activations while preserving the same maps, strategies, and seeds. Clears moved from 140/240 (58.3%) to 110/240 (45.8%), average wave from 17.4 to 15.4, and average lives from 10.1 to 6.9. LongRange and UpgradeFocused retained 18/20 and 17/20 clears without Protocols, while the disabled matrix still produced 110 wins across multiple policies. Protocols therefore provide a meaningful execution reward without being a universal gate; no Protocol stat change is warranted. Report: `.build/balance/protocol-control-hard-5x.json`.
 
 ## Reproducible cases
@@ -173,6 +179,6 @@ Final report: `.build/balance/all-tier-economy-final2-5x-20260814.json`.
 ## Next experiments
 
 1. Human-playtest branch legibility, late-wave pacing, and direct-internet latency beyond loopback integration tests.
-2. Collect human Normal/Hard/Bastion outcomes before moving any global profile multiplier.
+2. Collect human outcomes on the tuned 112% HP / 102% speed / 18-life Bastion profile before moving it again.
 3. Add another arena only if its placement constraint creates a new strategy rather than duplicating existing route geometry.
 4. Evaluate hosted relay/NAT traversal separately from combat balance; do not couple networking services to deterministic simulation.

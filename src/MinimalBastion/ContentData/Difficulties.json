@@ -33,10 +33,10 @@
     "id": "bastion",
     "displayName": "Bastion",
     "description": "A severe tactical test with tougher, faster threats and little margin.",
-    "enemyHealthMultiplier": 1.15,
-    "enemySpeedMultiplier": 1.04,
+    "enemyHealthMultiplier": 1.12,
+    "enemySpeedMultiplier": 1.02,
     "startingCreditsMultiplier": 1.0,
-    "startingLives": 15,
+    "startingLives": 18,
     "accent": "#7C53DA"
   }
 ]

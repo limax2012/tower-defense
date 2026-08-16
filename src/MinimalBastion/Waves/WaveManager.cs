@@ -25,6 +25,8 @@ public sealed class WaveManager
     public int QueuedEnemies { get; private set; }
     public WaveDefinition? ActiveWave => _activeDefinition;
     public WaveDefinition? NextWave => CurrentWaveNumber == int.MaxValue ? null : ResolveWave(CurrentWaveNumber + 1);
+    public WaveDefinition? GetAuthoredWave(int waveNumber) =>
+        waveNumber >= 1 && waveNumber <= _waves.Count ? _waves[waveNumber - 1] : null;
 
     public WaveManager(IReadOnlyList<WaveDefinition> waves)
     {

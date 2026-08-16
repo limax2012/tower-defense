@@ -45,6 +45,8 @@ public sealed class ProjectileInstance
     public ProjectileKind Kind { get; }
     public float SplashRadius { get; }
     public int SplashTargetLimit { get; }
+    public float RicochetRange { get; }
+    public float RicochetDamageMultiplier { get; }
     public DamagePayload Payload { get; }
     public bool IsExpired { get; private set; }
     public Color Color { get; }
@@ -60,7 +62,9 @@ public sealed class ProjectileInstance
         DamagePayload payload,
         Color color,
         float radius,
-        int splashTargetLimit = 0)
+        int splashTargetLimit = 0,
+        float ricochetRange = 0,
+        float ricochetDamageMultiplier = 0)
     {
         Position = position;
         AimPoint = aimPoint;
@@ -72,6 +76,8 @@ public sealed class ProjectileInstance
         Color = color;
         Radius = radius;
         SplashTargetLimit = Math.Max(0, splashTargetLimit);
+        RicochetRange = MathF.Max(0, ricochetRange);
+        RicochetDamageMultiplier = Math.Clamp(ricochetDamageMultiplier, 0, 1);
     }
 
     public bool Update(float deltaSeconds)
@@ -102,6 +108,8 @@ public sealed class ProjectileInstance
         Kind = (int)Kind,
         SplashRadius = SplashRadius,
         SplashTargetLimit = SplashTargetLimit,
+        RicochetRange = RicochetRange,
+        RicochetDamageMultiplier = RicochetDamageMultiplier,
         Damage = Payload.Damage,
         PriorityDamageMultiplier = Payload.PriorityDamageMultiplier,
         ArmorPierce = Payload.ArmorPierce,
@@ -137,7 +145,9 @@ public sealed class ProjectileInstance
             },
             new Color(data.PackedColor),
             MathF.Max(0, data.Radius),
-            Math.Max(0, data.SplashTargetLimit));
+            Math.Max(0, data.SplashTargetLimit),
+            MathF.Max(0, data.RicochetRange),
+            Math.Clamp(data.RicochetDamageMultiplier, 0, 1));
     }
 }
 
