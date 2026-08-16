@@ -11,7 +11,7 @@ Permanent tower damage is mechanically consistent from wave 1 through wave 20. T
 - Hard difficulty uses each arena's base economy: Foundry Loop 400 credits, Crosswind Basin 390, Prism Circuit 380, and Surge Divide 360, all with 20 lives.
 - Easy and Normal multiply those map-specific credits and provide 30 or 24 lives; Bastion preserves base credits while applying 112% enemy health, 102% enemy speed, and a reduced but recoverable margin of 18 lives.
 - Enemies award kill credits; completed waves award `40 + 10 * wave`.
-- Skipping a live preparation countdown awards 20 credits. The first wave never grants this reward.
+- Skipping a live preparation countdown awards 20 credits. Solo auto-start can call after a configured 0, 3, 5, or 10 seconds and follows the same reward deadline; the first wave always remains manual and never grants this reward.
 - Towers and the Charge Forge sell for 60% of total invested cost.
 - One Pulse Plate begins in storage. Direct replacements are available during active waves. Every wave starts at the same 60-credit price; additional direct purchases within that wave add 15 credits, and the price resets to 60 at the next wave.
 - The 300-credit Charge Forge converts a large current investment into capped future plate inventory, but produces only during active waves.
@@ -68,7 +68,7 @@ Targeting modes are First, Last, Strongest, Weakest, Nearest, Fastest, and Armor
 
 ## Placement and maps
 
-Placement is continuous inside authored build regions. Towers cannot overlap towers/forge, violate route clearance, leave map bounds, or use a placement grid. Build fields use quiet tint and exact corner brackets.
+Placement is continuous inside authored build regions. Towers cannot overlap towers/forge, violate route clearance, leave map bounds, or use a placement grid. Build fields use quiet tint and exact corner brackets; tower and Forge ghosts carry a green check or red X directly at their center.
 
 - Foundry Loop: broad classic road and forgiving fields; the baseline campaign mixes threats progressively.
 - Crosswind Basin: cyan-banked current channel around three crossfire islands; its campaign leads with runner and alternating-speed pressure.

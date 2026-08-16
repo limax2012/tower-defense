@@ -127,7 +127,8 @@ public readonly record struct InputSnapshot(
     bool SandboxResetPressed = false,
     bool SandboxClearTowersPressed = false,
     bool SandboxWavePreviousPressed = false,
-    bool SandboxWaveNextPressed = false);
+    bool SandboxWaveNextPressed = false,
+    bool FullscreenPressed = false);
 
 public sealed class ViewportTransform
 {
@@ -279,7 +280,8 @@ public sealed class InputRouter
             IsPressed(keyboard, _previousKeyboard, Keys.R),
             !controlDown && IsPressed(keyboard, _previousKeyboard, Keys.C),
             IsPressed(keyboard, _previousKeyboard, Keys.OemMinus) || IsPressed(keyboard, _previousKeyboard, Keys.Subtract),
-            IsPressed(keyboard, _previousKeyboard, Keys.OemPlus) || IsPressed(keyboard, _previousKeyboard, Keys.Add));
+            IsPressed(keyboard, _previousKeyboard, Keys.OemPlus) || IsPressed(keyboard, _previousKeyboard, Keys.Add),
+            IsPressed(keyboard, _previousKeyboard, Keys.F11));
         _previousKeyboard = keyboard;
         _previousMouse = mouse;
         _wasWindowActive = true;

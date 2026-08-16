@@ -399,7 +399,8 @@ public sealed class GameRenderer
                              session.PlacementPosition.Y >= GameConstants.TopBarHeight && session.PlacementPosition.Y < GameConstants.LogicalHeight;
         if (placementOnMap && session.PlacementTowerId is { } towerId && session.Content.Towers.TryGetValue(towerId, out var definition))
         {
-            var placementColor = session.ValidatePlacement(towerId, session.PlacementPosition) == PlacementFailure.None
+            var placementValid = session.ValidatePlacement(towerId, session.PlacementPosition) == PlacementFailure.None;
+            var placementColor = placementValid
                 ? ColorPalette.PlacementValid
                 : ColorPalette.PlacementInvalid;
             var placementRange = definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase)
@@ -408,6 +409,7 @@ public sealed class GameRenderer
             p.DashedRing(batch, session.PlacementPosition, placementRange, placementColor, 32, 2);
             p.DrawShape(batch, session.PlacementPosition, definition.Visual.Radius, definition.Visual.Shape,
                 ColorPalette.WithAlpha(definition.Visual.PrimaryColor, 175), definition.Visual.AccentColor, 1, true, levelMarks: true);
+            DrawPlacementValidityMarker(batch, p, session.PlacementPosition, placementValid);
         }
 
         if (!placementOnMap || session.TacticalPlacement == TacticalPlacementKind.None) return;
@@ -430,6 +432,26 @@ public sealed class GameRenderer
             var generator = session.Content.Tactics.Generator;
             p.DrawShape(batch, session.PlacementPosition, generator.Visual.Radius, generator.Visual.Shape,
                 ColorPalette.WithAlpha(generator.Visual.PrimaryColor, 190), generator.Visual.AccentColor, 1, true, levelMarks: true);
+            DrawPlacementValidityMarker(batch, p, session.PlacementPosition,
+                session.PlacementFailure == PlacementFailure.None);
+        }
+    }
+
+    private static void DrawPlacementValidityMarker(SpriteBatch batch, PrimitiveRenderer p, Vector2 position, bool valid)
+    {
+        var source = valid ? ColorPalette.PlacementValid : ColorPalette.PlacementInvalid;
+        var color = new Color(source.R, source.G, source.B);
+        p.Circle(batch, position, 6, color);
+        p.Ring(batch, position, 7, ColorPalette.Paper, 1);
+        if (valid)
+        {
+            p.Line(batch, position + new Vector2(-3, 0), position + new Vector2(-1, 2.5f), ColorPalette.Paper, 1.5f);
+            p.Line(batch, position + new Vector2(-1, 2.5f), position + new Vector2(3.5f, -3), ColorPalette.Paper, 1.5f);
+        }
+        else
+        {
+            p.Line(batch, position + new Vector2(-2.5f, -2.5f), position + new Vector2(2.5f, 2.5f), ColorPalette.Paper, 1.5f);
+            p.Line(batch, position + new Vector2(2.5f, -2.5f), position + new Vector2(-2.5f, 2.5f), ColorPalette.Paper, 1.5f);
         }
     }
 

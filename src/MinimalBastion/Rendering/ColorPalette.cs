@@ -21,6 +21,7 @@ public static class ColorPalette
     public static readonly Color Coral = new(236, 80, 98);
     public static readonly Color Orange = new(229, 138, 50);
     public static readonly Color Gold = new(232, 182, 55);
+    public static readonly Color Amber = new(218, 145, 52);
     public static readonly Color Green = new(42, 194, 117);
     // Dark success ink for text drawn on Paper/PanelAlt. Keep the brighter
     // Green for filled controls, effects, and battlefield state.
@@ -68,6 +69,25 @@ public static class ColorPalette
         return Color.Lerp(accent, target, readableAmount);
     }
 
+    // Keep authored accents intact unless their pale yellow/green luminance is
+    // genuinely difficult to read on a light panel. Orange and the remaining
+    // palette hues deliberately pass through unchanged.
+    public static Color BalancedAccentText(Color accent, Color background)
+    {
+        if (IsYellowAccent(accent)) return ReadableAccent(accent, background, 2.6f);
+        if (IsLightGreenAccent(accent)) return ReadableAccent(accent, background, 2.6f);
+        return accent;
+    }
+
+    public static Color BalancedAccentLine(Color accent, Color background, float minimumContrast = 1.6f)
+    {
+        // Pale authored yellows are excellent fills but need a clearer rule
+        // color. Signal-style pale yellow shifts toward bright amber, while
+        // saturated tactical gold remains gold. Neither is mixed toward brown.
+        var lineAccent = IsPaleYellowAccent(accent) ? Amber : IsYellowAccent(accent) ? Gold : accent;
+        return ReadableAccent(lineAccent, background, minimumContrast);
+    }
+
     public static Color HighContrastText(Color background) =>
         ContrastRatio(Ink, background) >= ContrastRatio(Paper, background) ? Ink : Paper;
 
@@ -90,6 +110,15 @@ public static class ColorPalette
             ? channel / 12.92f
             : MathF.Pow((channel + 0.055f) / 1.055f, 2.4f);
     }
+
+    private static bool IsYellowAccent(Color color) =>
+        color.R >= 180 && color.G >= 145 && color.B <= 165 && color.G >= color.R * 0.68f;
+
+    private static bool IsPaleYellowAccent(Color color) =>
+        IsYellowAccent(color) && color.R >= 235 && color.G >= 210 && color.B >= 100;
+
+    private static bool IsLightGreenAccent(Color color) =>
+        color.G >= 145 && color.G > color.R * 1.18f && color.G > color.B * 1.18f;
 
     public static Color WithAlpha(Color color, byte alpha) => new(color.R, color.G, color.B, alpha);
 

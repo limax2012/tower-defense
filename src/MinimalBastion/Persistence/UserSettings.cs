@@ -5,6 +5,7 @@ namespace MinimalBastion.Persistence;
 public sealed class UserSettings
 {
     public const int CurrentSchemaVersion = 1;
+    public static readonly int[] AutoStartDelayPresets = [0, 3, 5, 10];
     public static readonly (int Width, int Height)[] ResolutionPresets =
     {
         (1280, 720),
@@ -21,6 +22,7 @@ public sealed class UserSettings
     public float MusicVolume { get; set; } = 0.20f;
     public bool ReducedEffects { get; set; }
     public bool AutoStartWaves { get; set; }
+    public int AutoStartDelaySeconds { get; set; }
 
     public void Normalize()
     {
@@ -28,6 +30,31 @@ public sealed class UserSettings
         WindowHeight = Math.Clamp(WindowHeight, 540, 2160);
         SfxVolume = float.IsFinite(SfxVolume) ? Math.Clamp(SfxVolume, 0, 1) : 0.65f;
         MusicVolume = float.IsFinite(MusicVolume) ? Math.Clamp(MusicVolume, 0, 1) : 0.20f;
+        if (!AutoStartDelayPresets.Contains(AutoStartDelaySeconds))
+            AutoStartDelaySeconds = AutoStartDelayPresets.MinBy(delay => Math.Abs(delay - AutoStartDelaySeconds));
+    }
+
+    public void CycleAutoStart()
+    {
+        if (!AutoStartWaves)
+        {
+            AutoStartWaves = true;
+            AutoStartDelaySeconds = AutoStartDelayPresets[0];
+            return;
+        }
+
+        var current = Array.IndexOf(AutoStartDelayPresets, AutoStartDelaySeconds);
+        if (current < 0)
+        {
+            Normalize();
+            current = Array.IndexOf(AutoStartDelayPresets, AutoStartDelaySeconds);
+        }
+        if (current >= AutoStartDelayPresets.Length - 1)
+        {
+            AutoStartWaves = false;
+            return;
+        }
+        AutoStartDelaySeconds = AutoStartDelayPresets[current + 1];
     }
 
     public void CycleResolution(int direction = 1)

@@ -748,6 +748,15 @@ internal static class Program
             ui.HandleSettingsInput(WorldInput(new Vector2(640, 357)) with { LeftPressed = true }),
             "auto-start setting applies immediately");
         Check.True(settings.AutoStartWaves, "auto-start setting toggles on");
+        Check.Equal(0, settings.AutoStartDelaySeconds, "auto-start begins with the instant cadence");
+        ui.HandleSettingsInput(WorldInput(new Vector2(640, 357)) with { LeftPressed = true });
+        Check.Equal(3, settings.AutoStartDelaySeconds, "auto-start cycles to a short planning break");
+        ui.HandleSettingsInput(WorldInput(new Vector2(640, 357)) with { LeftPressed = true });
+        Check.Equal(5, settings.AutoStartDelaySeconds, "auto-start cycles to a medium planning break");
+        ui.HandleSettingsInput(WorldInput(new Vector2(640, 357)) with { LeftPressed = true });
+        Check.Equal(10, settings.AutoStartDelaySeconds, "auto-start preserves the full planning-break option");
+        ui.HandleSettingsInput(WorldInput(new Vector2(640, 357)) with { LeftPressed = true });
+        Check.True(!settings.AutoStartWaves, "auto-start cadence cycle returns to off");
         Check.Equal(6, ui.SelectedSettingsIndex, "clicked auto-start control remains identifiable");
         Check.Equal(UiAction.ApplySettings,
             ui.HandleSettingsInput(WorldInput(new Vector2(640, 485)) with { LeftPressed = true }),
@@ -762,7 +771,7 @@ internal static class Program
         try
         {
             var repository = new UserSettingsRepository(directory);
-            repository.Save(new UserSettings { WindowWidth = 1600, WindowHeight = 900, SfxVolume = 0.25f, MusicVolume = 0.10f, AutoStartWaves = true });
+            repository.Save(new UserSettings { WindowWidth = 1600, WindowHeight = 900, SfxVolume = 0.25f, MusicVolume = 0.10f, AutoStartWaves = true, AutoStartDelaySeconds = 5 });
             repository.Save(new UserSettings { WindowWidth = 1920, WindowHeight = 1080, SfxVolume = 0.75f, MusicVolume = 0.35f });
             Check.Equal(1920, repository.Load().WindowWidth, "settings repository loads its current generation");
             File.WriteAllText(repository.SettingsPath, "{ interrupted");
@@ -771,6 +780,7 @@ internal static class Program
             Check.Nearly(0.25f, recovered.SfxVolume, "settings recovery preserves audio choices");
             Check.Nearly(0.10f, recovered.MusicVolume, "settings recovery preserves music choices");
             Check.True(recovered.AutoStartWaves, "settings recovery preserves auto-start preference");
+            Check.Equal(5, recovered.AutoStartDelaySeconds, "settings recovery preserves auto-start cadence");
 
             repository.Save(new UserSettings { WindowWidth = 2560, WindowHeight = 1440, SfxVolume = float.NaN, MusicVolume = float.NaN });
             Check.Nearly(0.65f, repository.Load().SfxVolume, "nonfinite runtime volume normalizes before persistence");
@@ -796,6 +806,14 @@ internal static class Program
         Check.Equal(new Color(244, 245, 248), ColorPalette.Paper, "soft off-white surface");
         Check.Equal(new Color(33, 146, 170), ColorPalette.Cyan, "controlled cyan accent");
         Check.Equal(new Color(42, 194, 117), ColorPalette.Green, "controlled green accent");
+        Check.Equal(ColorPalette.Orange, ColorPalette.BalancedAccentText(ColorPalette.Orange, ColorPalette.PanelAlt),
+            "orange text retains its authored brightness");
+        Check.True(ColorPalette.ContrastRatio(
+                ColorPalette.BalancedAccentText(ColorPalette.Green, ColorPalette.PanelAlt), ColorPalette.PanelAlt) >= 2.59f,
+            "light green text receives only its targeted readability adjustment");
+        Check.True(ColorPalette.ContrastRatio(
+                ColorPalette.BalancedAccentText(ColorPalette.Gold, ColorPalette.PanelAlt), ColorPalette.PanelAlt) >= 2.59f,
+            "yellow text receives a moderate readability adjustment");
         Check.True(ColorPalette.ContrastRatio(ColorPalette.GreenText, ColorPalette.PanelAlt) >= 4.5f,
             "dark success ink keeps upgrade gains readable on Tower Intel panels");
         Check.True(ColorPalette.ContrastRatio(ColorPalette.Paper, ColorPalette.Berry) >= 4.5f,
@@ -810,6 +828,13 @@ internal static class Program
             Check.True(readable != ColorPalette.Ink,
                 $"{id} library accent text retains tower color identity");
         }
+        foreach (var id in new[] { "shard_fan", "breaker_cannon", "signal_beacon", "arc_relay" })
+            Check.True(ColorPalette.ContrastRatio(
+                    paletteContent.Towers[id].Visual.AccentColor, ColorPalette.PanelAlt) >= 2.99f,
+                $"{id} outer-ring color is readable as Tactical Library text and rules");
+        Check.True(paletteContent.Towers["breaker_cannon"].Visual.AccentColor !=
+                   paletteContent.Towers["signal_beacon"].Visual.AccentColor,
+            "Breaker and Beacon retain distinct outer-ring library accents");
         Check.Equal(new Color(232, 182, 55), ColorPalette.Gold, "controlled gold accent");
         Check.Equal(new Color(236, 80, 98), ColorPalette.Coral, "controlled coral accent");
         Check.Equal(new Color(124, 83, 218), ColorPalette.Violet, "controlled violet accent");
@@ -3224,16 +3249,34 @@ internal static class Program
             "one early ready cannot preserve the bonus after the second player waits too long");
 
         var automatic = SessionWithWaves(3);
-        Check.True(!automatic.TryAutoStartNextWave(true), "auto-start preserves manual opening setup");
-        Check.True(automatic.StartNextWave(), "start auto-start setup wave");
+        Check.True(!automatic.TryAutoStartNextWave(true, 0), "auto-start preserves manual opening setup");
+        Check.True(automatic.StartNextWave(), "start instant auto-start setup wave");
         ResolveSingleEnemyWave(automatic);
-        Check.True(UIManager.SoloWaveButtonLabel(automatic, true).StartsWith("AUTO 10s", StringComparison.Ordinal),
-            "HUD exposes the automatic intermission countdown");
-        Check.True(!automatic.TryAutoStartNextWave(true), "auto-start waits for the full intermission");
-        for (var index = 0; index < 101; index++) automatic.Update(0.1f);
-        Check.True(automatic.TryAutoStartNextWave(true), "auto-start launches the next solo wave after intermission");
-        Check.Equal(0, automatic.Economy.EarlyStartCreditsEarned,
-            "automatic starts after the deadline and does not earn early-call credits");
+        Check.Equal("AUTO STARTING", UIManager.SoloWaveButtonLabel(automatic, true, 0),
+            "HUD exposes an instant automatic call");
+        Check.True(automatic.TryAutoStartNextWave(true, 0), "zero-second auto-start launches immediately");
+        Check.Equal(GameConstants.EarlyStartBonus, automatic.Economy.EarlyStartCreditsEarned,
+            "instant automatic calls earn the normal early reward");
+
+        var shortAutomatic = SessionWithWaves(2);
+        Check.True(shortAutomatic.StartNextWave(), "start short auto-start setup wave");
+        ResolveSingleEnemyWave(shortAutomatic);
+        Check.True(UIManager.SoloWaveButtonLabel(shortAutomatic, true, 3).StartsWith("AUTO 3s", StringComparison.Ordinal),
+            "HUD exposes the configured automatic countdown");
+        for (var index = 0; index < 20; index++) shortAutomatic.Update(0.1f);
+        Check.True(!shortAutomatic.TryAutoStartNextWave(true, 3), "short cadence waits for its configured break");
+        for (var index = 0; index < 11; index++) shortAutomatic.Update(0.1f);
+        Check.True(shortAutomatic.TryAutoStartNextWave(true, 3), "short cadence launches after three seconds");
+        Check.Equal(GameConstants.EarlyStartBonus, shortAutomatic.Economy.EarlyStartCreditsEarned,
+            "short automatic calls retain the early reward");
+
+        var fullBreakAutomatic = SessionWithWaves(2);
+        Check.True(fullBreakAutomatic.StartNextWave(), "start full-break auto-start setup wave");
+        ResolveSingleEnemyWave(fullBreakAutomatic);
+        for (var index = 0; index < 101; index++) fullBreakAutomatic.Update(0.1f);
+        Check.True(fullBreakAutomatic.TryAutoStartNextWave(true, 10), "full-break cadence launches after intermission");
+        Check.Equal(GameConstants.EarlyStartBonus, fullBreakAutomatic.Economy.EarlyStartCreditsEarned,
+            "a configured full-break cadence earns the advance-commitment reward");
 
         var automaticCoOp = SessionWithWaves(2);
         Check.True(automaticCoOp.StartNextWave(), "start co-op auto-start guard setup wave");
@@ -3926,8 +3969,8 @@ internal static class Program
             {
                 var lines = TowerInfo.LibraryStatLines(definition, level);
                 Check.True(lines.Count > 0, $"{definition.Id} level library stats");
-                Check.True(lines.All(line => line.All(character => character is >= ' ' and <= '~')),
-                    $"{definition.Id} library stats use compiled ASCII glyphs");
+                Check.True(lines.All(line => line.All(character => character is >= ' ' and <= '~' or '°')),
+                    $"{definition.Id} library stats use compiled interface glyphs");
             }
 
             foreach (var specialization in definition.Specializations)
@@ -4579,7 +4622,9 @@ internal static class Program
             historyUi.HandleRunHistory(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
             Check.Equal("run-b", historyUi.SelectedRunHistoryId!, "run history Up returns to the previous record");
             historyUi.HandleRunHistory(WorldInput(new Vector2(400, 150)) with { LeftPressed = true });
-            Check.True(historyUi.IsRunHistoryDetailOpen, "clicking a run opens its complete detail view");
+            Check.True(!historyUi.IsRunHistoryDetailOpen, "clicking a run selects it without leaving the history list");
+            historyUi.HandleRunHistory(WorldInput(new Vector2(480, 543)) with { LeftPressed = true });
+            Check.True(historyUi.IsRunHistoryDetailOpen, "the View Run action opens the selected record's complete detail view");
             Check.Equal(UiAction.ViewRunHistoryField,
                 historyUi.HandleRunHistory(WorldInput(new Vector2(480, 671)) with { LeftPressed = true }),
                 "run details expose the archived final layout when one was captured");

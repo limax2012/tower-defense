@@ -185,7 +185,8 @@ public sealed class UIManager
     private readonly Rectangle _saveSlotBackButton = new(500, 582, 280, 44);
     private readonly Rectangle _saveSlotNextButton = new(790, 582, 160, 44);
     private readonly Rectangle _saveSlotHistoryButton = new(990, 62, 190, 38);
-    private readonly Rectangle _runHistoryDeleteButton = new(535, 520, 210, 46);
+    private readonly Rectangle _runHistoryViewButton = new(330, 520, 300, 46);
+    private readonly Rectangle _runHistoryDeleteButton = new(640, 520, 310, 46);
     private readonly Rectangle _runHistoryLayoutButton = new(340, 650, 280, 42);
     private readonly Rectangle _runHistoryDetailBackButton = new(660, 650, 280, 42);
     private readonly Rectangle _hostCoOpButton = new(500, 216, 280, 46);
@@ -294,14 +295,21 @@ public sealed class UIManager
             : $"{action} | {earlyStatus}";
     }
 
-    public static string SoloWaveButtonLabel(MinimalBastion.GameSession session, bool autoStartWaves)
+    public static string SoloWaveButtonLabel(MinimalBastion.GameSession session, bool autoStartWaves,
+        int autoStartDelaySeconds = 0)
     {
         if (!session.CanStartWave) return "IN WAVE";
         if (session.IntermissionRemaining <= 0)
             return autoStartWaves && session.CurrentWave > 0 ? "AUTO STARTING" : "START WAVE";
-        return autoStartWaves && session.CurrentWave > 0
-            ? $"AUTO {MathF.Ceiling(session.IntermissionRemaining):0}s | +{GameConstants.EarlyStartBonus} NOW"
-            : $"EARLY +{GameConstants.EarlyStartBonus}  {MathF.Ceiling(session.IntermissionRemaining):0}s";
+        if (!autoStartWaves || session.CurrentWave <= 0)
+            return $"EARLY +{GameConstants.EarlyStartBonus}  {MathF.Ceiling(session.IntermissionRemaining):0}s";
+
+        var boundedDelay = Math.Clamp(autoStartDelaySeconds, 0, (int)GameConstants.IntermissionSeconds);
+        var elapsedIntermission = GameConstants.IntermissionSeconds - session.IntermissionRemaining;
+        var automaticRemaining = MathF.Max(0, boundedDelay - elapsedIntermission);
+        return automaticRemaining <= 0.001f
+            ? "AUTO STARTING"
+            : $"AUTO {MathF.Ceiling(automaticRemaining):0}s | +{GameConstants.EarlyStartBonus} NOW";
     }
 
     public static string CoOpReadyStatusLabel(int currentWave, int readyMask, bool startQueued,
@@ -617,7 +625,7 @@ public sealed class UIManager
                 _settings.MusicVolume = AdjustVolume(_settings.MusicVolume, direction);
                 break;
             case 6:
-                _settings.AutoStartWaves = !_settings.AutoStartWaves;
+                _settings.CycleAutoStart();
                 break;
             default:
                 return UiAction.None;
@@ -781,7 +789,6 @@ public sealed class UIManager
             if (!_saveSlotRows[index].Contains(point) || index >= pageEntries.Length) continue;
             _selectedRunHistoryId = pageEntries[index].RunId;
             _runHistoryDeleteArmed = false;
-            _runHistoryDetailOpen = true;
             return UiAction.None;
         }
 
@@ -797,6 +804,12 @@ public sealed class UIManager
             _runHistoryPage++;
             _selectedRunHistoryId = _runHistory[_runHistoryPage * _saveSlotRows.Length].RunId;
             _runHistoryDeleteArmed = false;
+            return UiAction.None;
+        }
+        if (_runHistoryViewButton.Contains(point) && _selectedRunHistoryId is not null)
+        {
+            _runHistoryDeleteArmed = false;
+            _runHistoryDetailOpen = true;
             return UiAction.None;
         }
         if (_runHistoryDeleteButton.Contains(point) && _selectedRunHistoryId is not null)
@@ -1899,7 +1912,7 @@ public sealed class UIManager
         _pauseButton = new Rectangle(716, 9, 90, 38);
         var startWaveLabel = session.IsSandbox
             ? session.SandboxWaveActive ? $"DEPLOYING W{_sandboxWaveNumber}" : $"SEND TEST W{_sandboxWaveNumber}"
-            : SoloWaveButtonLabel(session, _settings.AutoStartWaves);
+            : SoloWaveButtonLabel(session, _settings.AutoStartWaves, _settings.AutoStartDelaySeconds);
         var startWaveEnabled = session.CanStartWave && !session.IsCoOpPaused;
         if (session.IsCoOp && session.CanStartWave)
         {
@@ -2097,19 +2110,23 @@ public sealed class UIManager
                 ? session.Towers.Count(tower => tower.Definition.Id == definition.Id)
                 : 0;
             DrawText(batch, _archivedLayoutInspection ? placedCount.ToString() : index == 9 ? "0" : (index + 1).ToString(),
-                new Vector2(rect.Right - 14, rect.Y + 7), selected ? definition.Visual.AccentColor : ColorPalette.Muted, 0.39f, true);
+                new Vector2(rect.Right - 14, rect.Y + 7), selected
+                    ? definition.Visual.AccentColor
+                    : ColorPalette.Muted, 0.39f, true);
             DrawFittedText(batch, definition.DisplayName, new Vector2(rect.X + 38, rect.Y + 5), ColorPalette.Ink, 0.53f, 80);
             var cardSubtitle = _archivedLayoutInspection
                 ? placedCount > 0 ? $"{placedCount} PLACED  {TowerInfo.ShortRole(definition)}" : TowerInfo.ShortRole(definition)
                 : available ? $"{definition.PurchaseCost}  {TowerInfo.ShortRole(definition)}" : "DIRECTIVE OFF";
             DrawFittedText(batch, cardSubtitle, new Vector2(rect.X + 38, rect.Y + 21),
-                _archivedLayoutInspection ? placedCount > 0 ? definition.Visual.PrimaryColor : ColorPalette.Muted
+                _archivedLayoutInspection ? placedCount > 0
+                    ? definition.Visual.AccentColor
+                    : ColorPalette.Muted
                     : available ? affordable ? ColorPalette.Muted : ColorPalette.Coral : ColorPalette.Muted,
                 0.44f, 92);
         }
 
-        p.FillRect(batch, new Rectangle(972, 452, 296, 3), ColorPalette.Violet);
-        DrawText(batch, "TOWER INTEL", new Vector2(980, 458), ColorPalette.Navy, 0.72f);
+        p.FillRect(batch, new Rectangle(972, 450, 296, 3), ColorPalette.Violet);
+        DrawText(batch, "TOWER INTEL", new Vector2(980, 456), ColorPalette.Navy, 0.70f);
         DrawTowerIntel(batch, p, session);
     }
 
@@ -2261,14 +2278,13 @@ public sealed class UIManager
         p.DrawShape(batch, TowerIntelIconCenter, IntelIconRadius(tower.Definition.Visual.Radius), tower.Definition.Visual.Shape,
             tower.Definition.Visual.PrimaryColor, tower.Definition.Visual.AccentColor, tower.LevelIndex + 1, true, levelMarks: true);
         var ownership = session.IsCoOp ? $"   PLACED P{tower.OwnerPlayerId}" : "";
-        var autoArmed = session.AutoOverdriveTowerId == tower.Id;
-        DrawFittedText(batch, tower.Definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f,
-            autoArmed && !session.IsSandbox ? 150 : 228);
-        if (autoArmed && !session.IsSandbox)
-            DrawTextRight(batch, TowerInfo.ProtocolAutoTriggerBadge(tower.Protocol), new Vector2(1260, 488), ColorPalette.Cobalt, 0.39f);
+        DrawFittedText(batch, tower.Definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f, 228);
         var levelTitle = TowerInfo.ProgressionLabel(tower);
-        DrawFittedText(batch, $"{levelTitle}   {TowerInfo.ShortRole(tower.Definition)}{ownership}",
-            new Vector2(1036, 508), ColorPalette.Muted, 0.60f, session.IsSandbox ? 154 : 228);
+        // Role belongs in the Workshop/library comparison surfaces. Live Intel
+        // keeps only progression and co-op ownership, which also preserves room
+        // for Sandbox's Disable control without a special final-tier layout.
+        DrawFittedText(batch, $"{levelTitle}{ownership}", new Vector2(1036, 508), ColorPalette.Muted, 0.60f,
+            session.IsSandbox ? 154 : 228);
         _sandboxToggleTowerButton = session.IsSandbox ? new Rectangle(1196, 502, 68, 24) : Rectangle.Empty;
         if (session.IsSandbox)
             DrawButton(batch, p, _sandboxToggleTowerButton, tower.IsSandboxDisabled ? "ENABLE" : "DISABLE",
@@ -2290,18 +2306,7 @@ public sealed class UIManager
         // The stat grid can use three complete label/value rows. Keep the
         // lifetime telemetry below that rhythm instead of visually attaching it
         // to the final stat cell.
-        DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, 625), ColorPalette.Cobalt, 0.43f, 280);
-        var protocolColor = !session.ProtocolsEnabled ? ColorPalette.Muted : tower.IsOverdriven ? ColorPalette.Coral : autoArmed ? ColorPalette.Cobalt :
-            session.OverdriveCooldownRemaining > 0 ? ColorPalette.Muted : ColorPalette.Green;
-        if (!hasBranchChoice)
-        {
-            DrawFittedText(batch, TowerProtocolState(session, tower, autoArmed), new Vector2(980, 643), protocolColor, 0.43f, 280);
-            DrawFittedText(batch,
-                session.ProtocolsEnabled
-                    ? TowerInfo.ProtocolEffectSummary(tower.Protocol, tower.IsOverdriven)
-                    : "PERMANENT TOWER SYSTEMS ONLY",
-                new Vector2(992, 659), tower.IsOverdriven ? ColorPalette.Coral : ColorPalette.Muted, 0.40f, 268);
-        }
+        DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, 628), ColorPalette.Cobalt, 0.43f, 280);
 
         _targetButton = new Rectangle(980, 678, 88, 30);
         _upgradeButton = new Rectangle(1074, 678, 92, 30);
@@ -2384,29 +2389,9 @@ public sealed class UIManager
 
     internal const float TowerStatGridMinimumScale = 0.36f;
     internal static int TowerStatGridColumns(int statCount) => statCount > 9 ? 4 : 3;
-    internal static int TowerStatGridRowHeight(int statCount) => statCount > 6 ? 23 : 31;
-    internal static float TowerStatGridLabelScale(int statCount) => TowerStatGridColumns(statCount) == 4 ? 0.42f : 0.50f;
-    internal static float TowerStatGridValueScale(int statCount) => TowerStatGridColumns(statCount) == 4 ? 0.50f : 0.60f;
-
-    private static string TowerProtocolState(MinimalBastion.GameSession session, TowerInstance tower, bool autoArmed)
-    {
-        if (!session.ProtocolsEnabled) return "PROTOCOLS OFFLINE  |  FUNDAMENTALS";
-        var name = tower.Protocol.DisplayName.ToUpperInvariant();
-        if (tower.IsOverdriven) return $"PROTOCOL ACTIVE  {name}  {tower.OverdriveRemaining:0.0}s";
-        if (autoArmed)
-        {
-            var readiness = session.OverdriveCooldownRemaining > 0
-                ? $"{session.OverdriveCooldownRemaining:0.0}s CD"
-                : "READY";
-            // The title badge already carries the compact Auto trigger. Keep
-            // this state row focused on protocol readiness so long support-tower
-            // conditions cannot force ellipsis in the live Intel card.
-            return $"PROTOCOL AUTO  {name}  |  {readiness}";
-        }
-        return session.OverdriveCooldownRemaining > 0
-            ? $"PROTOCOL  {name}  |  READY IN {session.OverdriveCooldownRemaining:0.0}s"
-            : $"PROTOCOL READY  {name}";
-    }
+    internal static int TowerStatGridRowHeight(int statCount) => statCount > 6 ? 24 : 32;
+    internal static float TowerStatGridLabelScale(int statCount) => TowerStatGridColumns(statCount) == 4 ? 0.40f : 0.48f;
+    internal static float TowerStatGridValueScale(int statCount) => TowerStatGridColumns(statCount) == 4 ? 0.48f : 0.57f;
 
     private static string TowerLifetimeSummary(TowerInstance tower)
     {
@@ -2481,7 +2466,7 @@ public sealed class UIManager
                 new Vector2(980, nodeTop), powerNodes[0].NodeColor, 0.42f, 280);
         }
         DrawFittedText(batch, placing ? "CLICK MAP TO DEPLOY   |   ESC TO CANCEL" : "CLICK CARD TO PREPARE PLACEMENT",
-            new Vector2(980, instructionTop), placing ? ColorPalette.Green : ColorPalette.Cobalt, 0.42f, 280);
+            new Vector2(980, instructionTop), placing ? ColorPalette.GreenText : ColorPalette.Cobalt, 0.42f, 280);
     }
 
     private static string PowerNodeNames(IReadOnlyList<PowerNodeData> nodes) => nodes.Count == 1
@@ -2755,7 +2740,7 @@ public sealed class UIManager
     {
         DrawMenuFrame(batch, p);
         DrawText(batch, "SETTINGS", new Vector2(640, 112), ColorPalette.Ink, 1.9f, true);
-        DrawText(batch, "Fullscreen uses desktop resolution; windowed output can be selected independently.",
+        DrawText(batch, "F11 toggles fullscreen; windowed output can be selected independently.",
             new Vector2(640, 162), ColorPalette.Muted, 0.58f, true);
 
         DrawButton(batch, p, _windowModeButton, _settings.Fullscreen ? "DISPLAY  FULLSCREEN" : "DISPLAY  WINDOWED",
@@ -2769,8 +2754,8 @@ public sealed class UIManager
             true, ColorPalette.Cyan);
         DrawButton(batch, p, _autoStartButton,
             _settings.AutoStartWaves
-                ? $"AUTO-START WAVES  ON  |  {GameConstants.IntermissionSeconds:0}s BREAK"
-                : "AUTO-START WAVES  OFF  |  SOLO AFTER WAVE 1",
+                ? $"AUTO-START WAVES  ON  |  SOLO  |  {_settings.AutoStartDelaySeconds}s"
+                : "AUTO-START WAVES  OFF",
             true, _settings.AutoStartWaves ? ColorPalette.Green : ColorPalette.Cobalt);
         DrawButton(batch, p, _volumeButton, $"SOUND EFFECTS  {MathF.Round(_settings.SfxVolume * 100):0}%  |  CLICK TO CHANGE",
             true, ColorPalette.Gold, ColorPalette.Ink);
@@ -2780,7 +2765,7 @@ public sealed class UIManager
 
         DrawText(batch, "CLICK A CONTROL TO CHANGE IT   |   ESC BACK",
             new Vector2(640, 596), ColorPalette.Navy, 0.50f, true);
-        DrawText(batch, "Auto-start waits through the normal solo intermission; manual early calls still earn the bonus.",
+        DrawText(batch, "Wave 1 is manual. Auto delays always earn +20; late manual calls do not. Click: OFF / 0 / 3 / 5 / 10s.",
             new Vector2(640, 628), ColorPalette.Muted, 0.49f, true);
         DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 662), ColorPalette.Cobalt, 0.50f, 900);
     }
@@ -2912,6 +2897,8 @@ public sealed class UIManager
                 new Vector2(rect.X + 150, rect.Y + 39), ColorPalette.Muted, 0.44f, rect.Width - 164);
         }
 
+        DrawButton(batch, p, _runHistoryViewButton, "VIEW RUN",
+            _selectedRunHistoryId is not null, ColorPalette.Cobalt);
         DrawButton(batch, p, _runHistoryDeleteButton,
             _runHistoryDeleteArmed ? "CONFIRM DELETE" : "DELETE RUN",
             _selectedRunHistoryId is not null, _runHistoryDeleteArmed ? ColorPalette.Coral : ColorPalette.Orange);
@@ -2969,13 +2956,16 @@ public sealed class UIManager
         DrawText(batch, "TOWER CONTRIBUTION", new Vector2(towerPanel.X + 14, towerPanel.Y + 12), ColorPalette.Navy, 0.68f);
         p.FillRect(batch, new Rectangle(towerPanel.X + 14, towerPanel.Y + 35, towerPanel.Width - 28, 2), ColorPalette.Cyan);
         DrawText(batch, "UNIT", new Vector2(56, 213), ColorPalette.Muted, 0.34f);
-        DrawText(batch, "B/U/S", new Vector2(202, 213), ColorPalette.Muted, 0.34f);
-        DrawText(batch, "DAMAGE", new Vector2(260, 213), ColorPalette.Muted, 0.34f);
-        DrawText(batch, "ASSIST", new Vector2(342, 213), ColorPalette.Muted, 0.34f);
-        DrawText(batch, "HITS", new Vector2(418, 213), ColorPalette.Muted, 0.34f);
-        DrawText(batch, "KILLS", new Vector2(478, 213), ColorPalette.Muted, 0.34f);
-        DrawText(batch, "PROTOCOL", new Vector2(538, 213), ColorPalette.Muted, 0.34f);
-        DrawText(batch, "IMPACT/C", new Vector2(676, 213), ColorPalette.Muted, 0.34f);
+        DrawText(batch, "BUILT", new Vector2(174, 213), ColorPalette.Muted, 0.30f);
+        DrawText(batch, "UPGRADES", new Vector2(211, 213), ColorPalette.Muted, 0.30f);
+        DrawText(batch, "SOLD", new Vector2(265, 213), ColorPalette.Muted, 0.30f);
+        DrawText(batch, "DAMAGE", new Vector2(306, 213), ColorPalette.Muted, 0.30f);
+        DrawText(batch, "ASSIST", new Vector2(376, 213), ColorPalette.Muted, 0.30f);
+        DrawText(batch, "HITS", new Vector2(446, 213), ColorPalette.Muted, 0.30f);
+        DrawText(batch, "KILLS", new Vector2(496, 213), ColorPalette.Muted, 0.30f);
+        DrawText(batch, "PROTOCOLS", new Vector2(540, 213), ColorPalette.Muted, 0.30f);
+        DrawText(batch, "CONTROL", new Vector2(606, 213), ColorPalette.Muted, 0.30f);
+        DrawTextRight(batch, "IMPACT/CREDIT", new Vector2(780, 213), ColorPalette.Muted, 0.30f);
 
         var towers = entry.Towers.OrderByDescending(tower => tower.ContributionDamage).ThenBy(tower => tower.DisplayName).Take(10).ToArray();
         if (towers.Length == 0)
@@ -2988,18 +2978,24 @@ public sealed class UIManager
             var tower = towers[index];
             var y = 234 + index * 38;
             if ((index & 1) == 1) p.FillRect(batch, new Rectangle(50, y - 2, 738, 36), ColorPalette.Panel);
-            DrawFittedText(batch, tower.DisplayName.ToUpperInvariant(), new Vector2(56, y), ColorPalette.Ink, 0.43f, 138);
-            DrawFittedText(batch, $"{tower.Purchases}/{tower.Upgrades}/{tower.Sales}", new Vector2(202, y), ColorPalette.Muted, 0.40f, 52);
-            DrawFittedText(batch, tower.Damage.ToString("0"), new Vector2(260, y), ColorPalette.Cobalt, 0.40f, 76);
-            DrawFittedText(batch, tower.AssistDamageEquivalent.ToString("0"), new Vector2(342, y), ColorPalette.Violet, 0.40f, 70);
-            DrawFittedText(batch, tower.Hits.ToString(), new Vector2(418, y), ColorPalette.Ink, 0.40f, 54);
-            DrawFittedText(batch, tower.Kills.ToString(), new Vector2(478, y), ColorPalette.Ink, 0.40f, 54);
-            DrawFittedText(batch, tower.ProtocolActivations.ToString(), new Vector2(558, y), ColorPalette.GreenText, 0.40f, 70);
+            DrawFittedText(batch, tower.DisplayName.ToUpperInvariant(), new Vector2(56, y), ColorPalette.Ink, 0.43f, 112);
+            DrawFittedText(batch, tower.Purchases.ToString(), new Vector2(174, y), ColorPalette.Muted, 0.38f, 30);
+            DrawFittedText(batch, tower.Upgrades.ToString(), new Vector2(219, y), ColorPalette.Muted, 0.38f, 34);
+            DrawFittedText(batch, tower.Sales.ToString(), new Vector2(265, y), ColorPalette.Muted, 0.38f, 30);
+            DrawFittedText(batch, tower.Damage.ToString("0"), new Vector2(306, y), ColorPalette.Cobalt, 0.38f, 66);
+            DrawFittedText(batch, tower.AssistDamageEquivalent.ToString("0"), new Vector2(376, y), ColorPalette.Violet, 0.38f, 66);
+            DrawFittedText(batch, tower.Hits.ToString(), new Vector2(446, y), ColorPalette.Ink, 0.38f, 46);
+            DrawFittedText(batch, tower.Kills.ToString(), new Vector2(496, y), ColorPalette.Ink, 0.38f, 42);
+            DrawFittedText(batch, tower.ProtocolActivations.ToString(), new Vector2(548, y), ColorPalette.GreenText, 0.38f, 52);
+            DrawFittedText(batch, $"{tower.ControlSeconds:0.0}s", new Vector2(606, y), ColorPalette.Cyan, 0.38f, 72);
             DrawTextRight(batch, tower.ImpactPerCredit.ToString("0.0"), new Vector2(780, y),
-                ColorPalette.ReadableAccent(ColorPalette.Gold, ColorPalette.PanelAlt), 0.40f);
-            DrawFittedText(batch,
-                $"SPENT {tower.CreditsSpent}  RETURN {tower.CreditsRecovered}  CONTROL {tower.ControlSeconds:0.0}s  EXPOSE {tower.ExposeSeconds:0.0}s  BREAK {tower.ArmorBreakSeconds:0.0}s  ARMOR {tower.ArmorAbsorbed:0}  OVERKILL {tower.Overkill:0}",
-                new Vector2(56, y + 17), ColorPalette.Muted, 0.28f, 720);
+                ColorPalette.BalancedAccentText(ColorPalette.Gold, ColorPalette.PanelAlt), 0.38f);
+            DrawTowerContributionSecondary(batch, "SPENT", tower.CreditsSpent.ToString(), 56, y + 17, 106);
+            DrawTowerContributionSecondary(batch, "RETURN", tower.CreditsRecovered.ToString(), 164, y + 17, 96);
+            DrawTowerContributionSecondary(batch, "EXPOSE", $"{tower.ExposeSeconds:0.0}s", 262, y + 17, 108);
+            DrawTowerContributionSecondary(batch, "BREAK", $"{tower.ArmorBreakSeconds:0.0}s", 372, y + 17, 108);
+            DrawTowerContributionSecondary(batch, "ARMOR", tower.ArmorAbsorbed.ToString("0"), 482, y + 17, 108);
+            DrawTowerContributionSecondary(batch, "OVERKILL", tower.Overkill.ToString("0"), 592, y + 17, 188);
         }
 
         var analysisPanel = new Rectangle(818, 170, 422, 460);
@@ -3274,8 +3270,13 @@ public sealed class UIManager
     private void DrawSummaryMetric(SpriteBatch batch, string label, string value, int x, int y, Color valueColor)
     {
         DrawText(batch, label, new Vector2(x, y), ColorPalette.Muted, 0.38f);
-        DrawText(batch, value, new Vector2(x, y + 15), valueColor, 0.58f);
+        DrawText(batch, value, new Vector2(x, y + 15),
+            ColorPalette.BalancedAccentText(valueColor, ColorPalette.PanelAlt), 0.58f);
     }
+
+    private void DrawTowerContributionSecondary(SpriteBatch batch, string label, string value,
+        int x, int y, int width) =>
+        DrawFittedText(batch, $"{label}  {value}", new Vector2(x, y), ColorPalette.Muted, 0.27f, width);
 
     private void DrawOverlay(SpriteBatch batch, PrimitiveRenderer p, string title, string subtitle)
     {
@@ -3420,14 +3421,18 @@ public sealed class UIManager
             var definition = towers[index];
             var row = TowerLibraryRow(index);
             var selected = index == _towerLibraryIndex;
-            p.FillRect(batch, row, selected ? ColorPalette.Tint(definition.Visual.PrimaryColor, 0.78f) : ColorPalette.PanelAlt);
-            p.DrawRect(batch, row, selected ? definition.Visual.PrimaryColor : ColorPalette.CardOutline, selected ? 2 : 1);
+            var selectedFill = ColorPalette.Tint(definition.Visual.PrimaryColor, 0.78f);
+            var towerAccent = TowerLibraryPrimaryAccent(definition);
+            p.FillRect(batch, row, selected ? selectedFill : ColorPalette.PanelAlt);
+            p.DrawRect(batch, row, selected
+                ? towerAccent
+                : ColorPalette.CardOutline, selected ? 2 : 1);
             p.DrawShape(batch, new Vector2(row.X + 22, row.Center.Y), 12, definition.Visual.Shape,
                 definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
             DrawFittedText(batch, definition.DisplayName, new Vector2(row.X + 44, row.Y + 7), ColorPalette.Ink, 0.56f, 142);
             DrawText(batch, $"{definition.PurchaseCost}  {TowerInfo.ShortRole(definition)}", new Vector2(row.X + 44, row.Y + 24), ColorPalette.Muted, 0.43f);
             var hotkeyColor = selected
-                ? ColorPalette.ReadableAccent(definition.Visual.PrimaryColor, ColorPalette.Tint(definition.Visual.PrimaryColor, 0.78f))
+                ? definition.Visual.AccentColor
                 : ColorPalette.Muted;
             DrawTextRight(batch, index == 9 ? "0" : (index + 1).ToString(), new Vector2(row.Right - 9, row.Y + 8), hotkeyColor, 0.43f);
         }
@@ -3462,12 +3467,13 @@ public sealed class UIManager
             DrawFittedText(batch, $"THREAT {map.Challenge}/5  |  BASE {map.StartingCredits}",
                 new Vector2(row.X + 58, row.Y + 39), ColorPalette.Muted, 0.43f, row.Width - 72);
             DrawFittedText(batch, MapPathLabel(map.PathStyle),
-                new Vector2(row.X + 58, row.Y + 57), ColorPalette.ReadableAccent(accent,
+                new Vector2(row.X + 58, row.Y + 57), LibraryAccentText(accent,
                     selected ? ColorPalette.Tint(accent, 0.80f) : ColorPalette.PanelAlt), 0.40f, row.Width - 72);
             DrawFittedText(batch, $"{map.Campaign.TotalContacts:N0} contacts  |  peak {map.Campaign.PeakContacts}  |  boss W{map.Campaign.BossWave}",
-                new Vector2(row.X + 14, row.Y + 78), ColorPalette.ReadableAccent(accent, selected ? ColorPalette.Tint(accent, 0.80f) : ColorPalette.PanelAlt),
+                new Vector2(row.X + 14, row.Y + 78), LibraryAccentText(accent, selected ? ColorPalette.Tint(accent, 0.80f) : ColorPalette.PanelAlt),
                 0.40f, row.Width - 28);
-            DrawTextRight(batch, (index + 1).ToString(), new Vector2(row.Right - 10, row.Y + 9), selected ? accent : ColorPalette.Muted, 0.43f);
+            DrawTextRight(batch, (index + 1).ToString(), new Vector2(row.Right - 10, row.Y + 9),
+                selected ? LibraryAccentText(accent, ColorPalette.Tint(accent, 0.80f)) : ColorPalette.Muted, 0.43f);
         }
 
         var selectedMap = _maps[_campaignLibraryMapIndex];
@@ -3480,9 +3486,10 @@ public sealed class UIManager
         var mapAccent = MapLibraryAccent(selectedMap.PathStyle);
         DrawText(batch, selectedMap.Name.ToUpperInvariant(), new Vector2(detailPanel.X + 18, detailPanel.Y + 16), ColorPalette.Ink, 0.96f);
         DrawTextRight(batch, $"THREAT {selectedMap.Challenge}/5  |  {selectedMap.PowerNodes} SURGE NODES  |  BASE {selectedMap.StartingCredits}",
-            new Vector2(detailPanel.Right - 18, detailPanel.Y + 21), ColorPalette.ReadableAccent(mapAccent, ColorPalette.Panel), 0.50f);
+            new Vector2(detailPanel.Right - 18, detailPanel.Y + 21), LibraryAccentText(mapAccent, ColorPalette.Panel), 0.50f);
         DrawFittedText(batch, selectedMap.Description, new Vector2(detailPanel.X + 18, detailPanel.Y + 48), ColorPalette.Muted, 0.48f, detailPanel.Width - 238);
-        DrawFittedText(batch, selectedMap.Campaign.CompactSummary, new Vector2(detailPanel.X + 18, detailPanel.Y + 72), mapAccent, 0.43f, detailPanel.Width - 238);
+        DrawFittedText(batch, selectedMap.Campaign.CompactSummary, new Vector2(detailPanel.X + 18, detailPanel.Y + 72),
+            LibraryAccentText(mapAccent, ColorPalette.Panel), 0.43f, detailPanel.Width - 238);
         DrawRoutePreview(batch, p, new Rectangle(detailPanel.Right - 202, detailPanel.Y + 39, 184, 54),
             selectedMap.Path, selectedMap.PathBase, selectedMap.PathAccent);
         p.FillRect(batch, new Rectangle(detailPanel.X + 18, detailPanel.Y + 98, detailPanel.Width - 36, 2), mapAccent);
@@ -3733,7 +3740,7 @@ public sealed class UIManager
         p.DrawRect(batch, rect, ColorPalette.CardOutline, 1);
         p.DrawShape(batch, new Vector2(rect.X + 24, rect.Y + 27), 10, shape, accent, ColorPalette.Navy, 1, false);
         DrawFittedText(batch, title, new Vector2(rect.X + 45, rect.Y + 15),
-            ColorPalette.ReadableAccent(accent, ColorPalette.PanelAlt), 0.62f, rect.Width - 58);
+            LibraryAccentText(accent, ColorPalette.PanelAlt), 0.62f, rect.Width - 58);
         p.FillRect(batch, new Rectangle(rect.X + 12, rect.Y + 47, rect.Width - 24, 1), ColorPalette.CardOutline);
         var y = rect.Y + 60;
         foreach (var line in lines)
@@ -3752,7 +3759,7 @@ public sealed class UIManager
         p.DrawRect(batch, rect, ColorPalette.CardOutline, 1);
         DrawFittedText(batch, $"W{wave.Number:00}  {wave.Archetype.ToUpperInvariant()}", new Vector2(rect.X + 10, rect.Y + 4), ColorPalette.Navy, 0.46f, 190);
         DrawTextRight(batch, $"{wave.Contacts} | HP x{wave.HealthMultiplier:0.00} | SPD x{wave.SpeedMultiplier:0.00}",
-            new Vector2(rect.Right - 8, rect.Y + 4), accent, 0.38f);
+            new Vector2(rect.Right - 8, rect.Y + 4), LibraryAccentText(accent, ColorPalette.PanelAlt), 0.38f);
         DrawStrictFittedText(batch, $"{wave.Threats}  |  {wave.Roster}", new Vector2(rect.X + 10, rect.Y + 20),
             ColorPalette.Muted, 0.35f, rect.Width - 20, 0.26f);
     }
@@ -3818,7 +3825,7 @@ public sealed class UIManager
             DrawFittedText(batch, definition.DisplayName, new Vector2(row.X + 62, row.Y + 15), ColorPalette.Ink, 0.63f, 148);
             DrawText(batch, $"HP {definition.MaxHealth:0}  |  SPD {definition.Speed:0}", new Vector2(row.X + 62, row.Y + 43), ColorPalette.Muted, 0.45f);
             DrawTextRight(batch, (index + 1).ToString(), new Vector2(row.Right - 10, row.Y + 9),
-                selected ? ColorPalette.ReadableAccent(definition.Visual.PrimaryColor, selectedFill) : ColorPalette.Muted, 0.43f);
+                selected ? LibraryAccentText(definition.Visual.PrimaryColor, selectedFill) : ColorPalette.Muted, 0.43f);
         }
 
         DrawEnemyLibraryDetails(batch, p, _libraryEnemies[_enemyLibraryIndex], detailPanel);
@@ -3833,7 +3840,7 @@ public sealed class UIManager
             accent, definition.Visual.AccentColor, definition.Visual.Marks, definition.Visual.Ring);
         DrawText(batch, definition.DisplayName.ToUpperInvariant(), new Vector2(panel.X + 84, panel.Y + 17), ColorPalette.Ink, 0.98f);
         DrawText(batch, ThreatRole(definition), new Vector2(panel.X + 84, panel.Y + 49),
-            ColorPalette.ReadableAccent(accent, ColorPalette.Panel), 0.57f);
+            LibraryAccentText(accent, ColorPalette.Panel), 0.57f);
         DrawFittedText(batch, ThreatCounter(definition), new Vector2(panel.X + 18, panel.Y + 82), ColorPalette.Muted, 0.48f, panel.Width - 36);
         p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 103, panel.Width - 36, 2), accent);
 
@@ -3893,7 +3900,7 @@ public sealed class UIManager
         p.FillRect(batch, new Rectangle(rect.X, rect.Y, rect.Width, 5), accent);
         p.DrawRect(batch, rect, ColorPalette.CardOutline, 1);
         DrawFittedText(batch, title, new Vector2(rect.X + 12, rect.Y + 14),
-            ColorPalette.ReadableAccent(accent, ColorPalette.PanelAlt), 0.61f, rect.Width - 24);
+            LibraryAccentText(accent, ColorPalette.PanelAlt), 0.61f, rect.Width - 24);
         var y = rect.Y + 43;
         foreach (var line in lines)
         {
@@ -3915,7 +3922,8 @@ public sealed class UIManager
         else if (shape == "stun") StatusGlyphRenderer.DrawStun(batch, p, center, 2, 0.5f);
         else p.DrawShape(batch, center, 8, shape, accent, ColorPalette.Ink, 0, false);
         DrawText(batch, title, new Vector2(rect.X + 34, rect.Y + 7), ColorPalette.Navy, 0.49f);
-        DrawFittedText(batch, symbol, new Vector2(rect.X + 9, rect.Y + 34), accent, 0.36f, rect.Width - 18);
+        DrawFittedText(batch, symbol, new Vector2(rect.X + 9, rect.Y + 34),
+            LibraryAccentText(accent, ColorPalette.PanelAlt), 0.36f, rect.Width - 18);
         DrawFittedText(batch, meaning, new Vector2(rect.X + 9, rect.Y + 50), ColorPalette.Muted, 0.36f, rect.Width - 18);
     }
 
@@ -3989,6 +3997,7 @@ public sealed class UIManager
     {
         _towerLibraryDoctrineAButton = Rectangle.Empty;
         _towerLibraryDoctrineBButton = Rectangle.Empty;
+        var towerAccent = TowerLibraryPrimaryAccent(definition);
         p.DrawShape(batch, new Vector2(panel.X + 36, panel.Y + 42), 20, definition.Visual.Shape,
             definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
         DrawText(batch, definition.DisplayName.ToUpperInvariant(), new Vector2(panel.X + 72, panel.Y + 16), ColorPalette.Ink, 0.94f);
@@ -4002,8 +4011,9 @@ public sealed class UIManager
         DrawFittedText(batch, TowerInfo.ProtocolAutoTriggerSummary(definition.Protocol),
             new Vector2(panel.X + 72, panel.Y + 79), ColorPalette.Cobalt, 0.41f, panel.Width - 90);
         DrawFittedText(batch, $"{TowerInfo.Strength(definition)}  |  {TowerInfo.Limitation(definition)}",
-            new Vector2(panel.X + 18, panel.Y + 96), ColorPalette.ReadableAccent(definition.Visual.PrimaryColor, ColorPalette.Panel), 0.42f, panel.Width - 36);
-        p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 112, panel.Width - 36, 2), definition.Visual.PrimaryColor);
+            new Vector2(panel.X + 18, panel.Y + 96), towerAccent, 0.42f, panel.Width - 36);
+        p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 112, panel.Width - 36, 2),
+            towerAccent);
 
         var levelOne = definition.Levels[0];
         var levelTwo = definition.Levels.Count > 1 ? definition.Levels[1] : levelOne;
@@ -4016,7 +4026,7 @@ public sealed class UIManager
             _towerLibraryDoctrineAButton = new Rectangle(panel.X + 302, topY, doctrineWidth, 180);
             _towerLibraryDoctrineBButton = new Rectangle(panel.X + 586, topY, doctrineWidth, 180);
             DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, topY, doctrineWidth, 180), definition,
-                levelOne, "LEVEL 1", $"BUILD {definition.PurchaseCost}  |  TOTAL {definition.PurchaseCost}", definition.Visual.PrimaryColor);
+                levelOne, "LEVEL 1", $"BUILD {definition.PurchaseCost}  |  TOTAL {definition.PurchaseCost}", towerAccent);
             var firstDoctrine = definition.Tier2Doctrines[0];
             var secondDoctrine = definition.Tier2Doctrines[1];
             DrawTowerLibraryCard(batch, p, _towerLibraryDoctrineAButton, definition,
@@ -4031,7 +4041,7 @@ public sealed class UIManager
             for (var index = 0; index < 2; index++)
             {
                 var specialization = definition.Specializations[index];
-                var accent = index == 0 ? definition.Visual.PrimaryColor : ColorPalette.Violet;
+                var accent = index == 0 ? towerAccent : ColorPalette.Violet;
                 DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 310, 418, 214), definition,
                     specialization.Level.WithDoctrine(doctrine), specialization.DisplayName.ToUpperInvariant(),
                     $"AFTER {doctrine.DisplayName.ToUpperInvariant()} {specialization.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToSpecialization(definition, doctrine, specialization)}",
@@ -4043,14 +4053,14 @@ public sealed class UIManager
         {
             var topWidth = 418;
             DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, panel.Y + 120, topWidth, 172), definition,
-                levelOne, "LEVEL 1", $"BUILD {definition.PurchaseCost}  |  TOTAL {definition.PurchaseCost}", definition.Visual.PrimaryColor);
+                levelOne, "LEVEL 1", $"BUILD {definition.PurchaseCost}  |  TOTAL {definition.PurchaseCost}", towerAccent);
             DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 454, panel.Y + 120, topWidth, 172), definition,
                 levelTwo, "LEVEL 2", $"UPGRADE {levelOne.UpgradeCost ?? 0}  |  TOTAL {TowerInfo.TotalCostToLevel(definition, 1)}", ColorPalette.Cyan);
 
             for (var index = 0; index < Math.Min(2, definition.Specializations.Count); index++)
             {
                 var specialization = definition.Specializations[index];
-                var accent = index == 0 ? definition.Visual.PrimaryColor : ColorPalette.Violet;
+                var accent = index == 0 ? towerAccent : ColorPalette.Violet;
                 DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 308, topWidth, 216), definition,
                     specialization.Level, specialization.DisplayName.ToUpperInvariant(),
                     $"FINAL {specialization.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToSpecialization(definition, specialization)}",
@@ -4065,7 +4075,7 @@ public sealed class UIManager
             var level = definition.Levels[index];
             var incrementalCost = index == 0 ? definition.PurchaseCost : definition.Levels[index - 1].UpgradeCost ?? 0;
             var costKind = index == 0 ? "BUILD" : "UPGRADE";
-            var accent = index switch { 0 => definition.Visual.PrimaryColor, 1 => ColorPalette.Cyan, _ => ColorPalette.Violet };
+            var accent = index switch { 0 => towerAccent, 1 => ColorPalette.Cyan, _ => ColorPalette.Violet };
             DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 290, panel.Y + 120, cardWidth, 404), definition,
                 level, $"LEVEL {index + 1}", $"{costKind} {incrementalCost}  |  TOTAL {TowerInfo.TotalCostToLevel(definition, index)}", accent);
         }
@@ -4075,11 +4085,12 @@ public sealed class UIManager
         TowerLevelDefinition level, string title, string cost, Color accent, string? summary = null, bool selected = false)
     {
         p.FillRect(batch, rect, ColorPalette.PanelAlt);
-        p.FillRect(batch, new Rectangle(rect.X, rect.Y, rect.Width, 5), accent);
-        p.DrawRect(batch, rect, selected ? accent : ColorPalette.CardOutline, selected ? 3 : 1);
+        var lineAccent = accent;
+        p.FillRect(batch, new Rectangle(rect.X, rect.Y, rect.Width, 5), lineAccent);
+        p.DrawRect(batch, rect, selected ? lineAccent : ColorPalette.CardOutline, selected ? 3 : 1);
         DrawFittedText(batch, title, new Vector2(rect.X + 12, rect.Y + 14), ColorPalette.Navy, 0.66f, rect.Width - 24);
         DrawFittedText(batch, cost, new Vector2(rect.X + 12, rect.Y + 38),
-            ColorPalette.ReadableAccent(accent, ColorPalette.PanelAlt), 0.48f, rect.Width - 24);
+            accent, 0.48f, rect.Width - 24);
         var dividerY = rect.Y + 62;
         if (!string.IsNullOrWhiteSpace(summary))
         {
@@ -4095,6 +4106,17 @@ public sealed class UIManager
             y += 18;
         }
     }
+
+    private static Color LibraryAccentText(Color accent, Color background) =>
+        ColorPalette.BalancedAccentText(accent, background);
+
+    private static Color TowerLibraryPrimaryAccent(TowerDefinition definition) =>
+        definition.Id.ToLowerInvariant() switch
+        {
+            "shard_fan" or "breaker_cannon" or "signal_beacon" or "arc_relay" =>
+                definition.Visual.AccentColor,
+            _ => definition.Visual.PrimaryColor
+        };
 
     private static Rectangle TowerLibraryRow(int index) => new(66, 148 + index * 49, 244, 44);
     private static Rectangle EnemyLibraryRow(int index) => new(66, 148 + index * 96, 244, 82);

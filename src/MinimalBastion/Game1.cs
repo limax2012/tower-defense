@@ -158,6 +158,7 @@ public sealed class Game1 : Game
     {
         _viewportTransform.Update(GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
         var input = _input.Update(IsActive);
+        if (input.FullscreenPressed) ToggleFullscreenFromHotkey();
         var elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
         _audio?.Update(elapsedSeconds);
         _coOpCursor.Advance(elapsedSeconds);
@@ -310,7 +311,7 @@ public sealed class Game1 : Game
         if (_networkRunner is null)
         {
             _session.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
-            _session.TryAutoStartNextWave(_settings.AutoStartWaves);
+            _session.TryAutoStartNextWave(_settings.AutoStartWaves, _settings.AutoStartDelaySeconds);
         }
         else
         {
@@ -1441,6 +1442,27 @@ public sealed class Game1 : Game
             // device already accepted. Keep it live for this process and give
             // the player an actionable persistence warning.
             _ui.SetSettingsStatus($"Settings applied for this session but could not be saved: {exception.GetBaseException().Message}");
+        }
+    }
+
+    private void ToggleFullscreenFromHotkey()
+    {
+        var previousFullscreen = _settings.Fullscreen;
+        _settings.Fullscreen = !previousFullscreen;
+        try
+        {
+            ApplyGraphicsSettings();
+            UserSettingsStore.Save(_settings);
+            _ui.SetSettingsStatus(_settings.Fullscreen
+                ? "Fullscreen enabled with F11."
+                : "Windowed mode restored with F11.");
+        }
+        catch (Exception exception)
+        {
+            _settings.Fullscreen = previousFullscreen;
+            try { ApplyGraphicsSettings(); } catch { }
+            try { UserSettingsStore.Save(_settings); } catch { }
+            _ui.SetSettingsStatus($"F11 display change failed; restored the previous mode. {exception.GetBaseException().Message}");
         }
     }
 

@@ -117,6 +117,24 @@ public sealed class VisualVerificationGame : Game
         Require(changedGhostPixels >= 500,
             $"Remote placement ghost changes a visible cursor-region footprint ({changedGhostPixels} pixels).", assertions);
 
+        var placementSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
+        placementSession.BeginPlacement("needle_turret");
+        placementSession.HandleWorldInput(Pointer(45, 200));
+        Require(placementSession.PlacementFailure == PlacementFailure.None,
+            "Placement-validity scene resolves an authored buildable position.", assertions);
+        var validPlacementPixels = RenderPixels(ui, GameState.Playing, placementSession);
+        scenes.Add(Capture("03a-valid-placement-marker.png", ui, GameState.Playing, placementSession));
+        Require(CountColorPixels(validPlacementPixels, new Rectangle(37, 192, 16, 16), ColorPalette.PlacementValid) >= 40,
+            "A valid tower ghost carries a visible green center marker.", assertions);
+
+        placementSession.HandleWorldInput(Pointer(100, 100));
+        Require(placementSession.PlacementFailure != PlacementFailure.None,
+            "Placement-validity scene resolves an authored invalid position.", assertions);
+        var invalidPlacementPixels = RenderPixels(ui, GameState.Playing, placementSession);
+        scenes.Add(Capture("03b-invalid-placement-marker.png", ui, GameState.Playing, placementSession));
+        Require(CountColorPixels(invalidPlacementPixels, new Rectangle(92, 92, 16, 16), ColorPalette.PlacementInvalid) >= 40,
+            "An invalid tower ghost carries a visible red center marker.", assertions);
+
         var comparisonSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
         Require(comparisonSession.TryPlaceTower("needle_turret", new Vector2(45, 200)),
             "Upgrade comparison scene places a selected Needle Turret.", assertions);
@@ -160,6 +178,55 @@ public sealed class VisualVerificationGame : Game
         ui.HandleGameplayInput(Pointer(0, 0), autoHeaderSession, _ => { }, 2);
         scenes.Add(Capture("05-auto-coop-owner.png", ui, GameState.Playing, autoHeaderSession));
         scenes.Add(Capture("06-protocol-auto-library.png", ui, GameState.TowerLibrary, null));
+        _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 7 });
+        Require(ui.SelectedLibraryTowerId == "signal_beacon",
+            "Tactical Library contrast scene selects Signal Beacon.", assertions);
+        var signalLibraryPixels = RenderPixels(ui, GameState.TowerLibrary, null);
+        scenes.Add(Capture("06a-signal-beacon-library-contrast.png", ui, GameState.TowerLibrary, null));
+        var signalLineColor = content.Towers["signal_beacon"].Visual.AccentColor;
+        var breakerLineColor = content.Towers["breaker_cannon"].Visual.AccentColor;
+        Require(signalLineColor != breakerLineColor &&
+                ColorPalette.ContrastRatio(signalLineColor, ColorPalette.PanelAlt) >= 3f,
+            "Signal Beacon uses its readable outer-ring color, distinct from Breaker Cannon.", assertions);
+        Require(CountColorPixels(signalLibraryPixels, new Rectangle(330, 110, 890, 540),
+                    signalLineColor) >= 1_000,
+            "Signal Beacon text and structural rules share its outer-ring color.", assertions);
+        _ = ui.HandleTitleTowerLibrary(Pointer(760, 57, leftPressed: true));
+        Require(ui.LibraryShowsThreats, "Tactical Library contrast scene opens threat status language.", assertions);
+        scenes.Add(Capture("06b-threat-library-contrast.png", ui, GameState.TowerLibrary, null));
+        _ = ui.HandleTitleTowerLibrary(Pointer(850, 57, leftPressed: true));
+        Require(ui.LibraryShowsCampaign, "Tactical Library contrast scene opens campaign wave scaling.", assertions);
+        scenes.Add(Capture("06c-campaign-library-contrast.png", ui, GameState.TowerLibrary, null));
+        Require(ColorPalette.ContrastRatio(
+            ColorPalette.BalancedAccentText(ColorPalette.Gold, ColorPalette.PanelAlt),
+            ColorPalette.PanelAlt) >= 2.55f,
+            "Small gold Tactical Library text balances readability with palette brightness.", assertions);
+        _ = ui.HandleTitleTowerLibrary(Pointer(666, 57, leftPressed: true));
+        _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 8 });
+        Require(ui.SelectedLibraryTowerId == "arc_relay",
+            "Tactical Library color scene selects Arc Relay.", assertions);
+        var arcLibraryPixels = RenderPixels(ui, GameState.TowerLibrary, null);
+        scenes.Add(Capture("06d-arc-relay-library-color.png", ui, GameState.TowerLibrary, null));
+        Require(CountColorPixels(arcLibraryPixels, new Rectangle(330, 110, 890, 540),
+                    content.Towers["arc_relay"].Visual.AccentColor) >= 1_000,
+            "Arc Relay library text and rules share its outer-ring green.", assertions);
+        _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 6 });
+        Require(ui.SelectedLibraryTowerId == "breaker_cannon",
+            "Tactical Library color scene selects Breaker Cannon.", assertions);
+        var breakerLibraryPixels = RenderPixels(ui, GameState.TowerLibrary, null);
+        scenes.Add(Capture("06e-breaker-library-color.png", ui, GameState.TowerLibrary, null));
+        Require(CountColorPixels(breakerLibraryPixels, new Rectangle(330, 110, 890, 540),
+                    breakerLineColor) >= 1_000,
+            "Breaker Cannon library text and rules share its outer-ring gold.", assertions);
+        _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 3 });
+        Require(ui.SelectedLibraryTowerId == "shard_fan",
+            "Tactical Library color scene selects Shard Fan.", assertions);
+        var shardLibraryPixels = RenderPixels(ui, GameState.TowerLibrary, null);
+        scenes.Add(Capture("06f-shard-library-color.png", ui, GameState.TowerLibrary, null));
+        Require(CountColorPixels(shardLibraryPixels, new Rectangle(330, 110, 890, 540),
+                    content.Towers["shard_fan"].Visual.AccentColor) >= 1_000,
+            "Shard Fan library text and rules share its outer-ring orange.", assertions);
+        _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 1 });
         Require(autoHeaderSession.StartNextWave(), "Live co-op header scene starts an active wave.", assertions);
         scenes.Add(Capture("07-active-coop-header.png", ui, GameState.Playing, autoHeaderSession));
         Require(ui.HandleGameplayInput(Pointer(0, 0) with { TabPressed = true }, autoHeaderSession, _ => { }, 2) == UiAction.None &&
@@ -205,7 +272,25 @@ public sealed class VisualVerificationGame : Game
         _ = ui.HandleGameplayInput(Pointer(1170, 664), prismSession);
         scenes.Add(Capture("10c-prism-shield-old-to-new.png", ui, GameState.Playing, prismSession));
 
-        var settings = new UserSettings { AutoStartWaves = true };
+        var sandboxBreakerSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, "sandbox_lab");
+        Require(sandboxBreakerSession.TryPlaceTower("breaker_cannon", new Vector2(45, 200)) &&
+                sandboxBreakerSession.TryChooseTowerDoctrine(sandboxBreakerSession.SelectedTower!.Id, "breaker_repeater") &&
+                sandboxBreakerSession.TrySpecializeTower(sandboxBreakerSession.SelectedTower!.Id, "breach_round"),
+            "Finalized Sandbox Intel scene advances Breaker Cannon through Breach Round.", assertions);
+        _ = ui.HandleGameplayInput(Pointer(0, 0), sandboxBreakerSession);
+        scenes.Add(Capture("10d-sandbox-final-breaker-intel.png", ui, GameState.Playing, sandboxBreakerSession));
+
+        var finalBreakerSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
+        finalBreakerSession.Economy.AddCredits(2_000);
+        Require(finalBreakerSession.TryPlaceTower("breaker_cannon", new Vector2(45, 200)) &&
+                finalBreakerSession.TryChooseTowerDoctrine(finalBreakerSession.SelectedTower!.Id, "breaker_repeater") &&
+                finalBreakerSession.TrySpecializeTower(finalBreakerSession.SelectedTower!.Id, "breach_round") &&
+                finalBreakerSession.TryToggleAutoProtocol(finalBreakerSession.SelectedTower!.Id),
+            "Finalized standard Intel scene advances and arms Breaker Cannon without duplicating protocol text.", assertions);
+        _ = ui.HandleGameplayInput(Pointer(0, 0), finalBreakerSession);
+        scenes.Add(Capture("10e-standard-final-breaker-intel.png", ui, GameState.Playing, finalBreakerSession));
+
+        var settings = new UserSettings { AutoStartWaves = true, AutoStartDelaySeconds = 10 };
         ui.ConfigureSettings(settings);
         scenes.Add(Capture("11-settings-auto-start.png", ui, GameState.Settings, null));
         Require(ui.HandleSettingsInput(Pointer(640, 357, leftPressed: true)) == UiAction.ApplySettings &&
@@ -276,8 +361,11 @@ public sealed class VisualVerificationGame : Game
             FinalLayout = RunHistoryLayoutSnapshot.FromSession(comparisonSession)
         };
         ui.ConfigureRunHistory([history]);
-        Require(ui.HandleRunHistory(Pointer(400, 150, leftPressed: true)) == UiAction.None && ui.IsRunHistoryDetailOpen,
-            "Selecting a history record opens its complete statistics view.", assertions);
+        Require(ui.HandleRunHistory(Pointer(400, 150, leftPressed: true)) == UiAction.None && !ui.IsRunHistoryDetailOpen,
+            "Selecting a history record keeps the list open until an action is chosen.", assertions);
+        scenes.Add(Capture("13a-run-history-selection.png", ui, GameState.RunHistory, null));
+        Require(ui.HandleRunHistory(Pointer(480, 543, leftPressed: true)) == UiAction.None && ui.IsRunHistoryDetailOpen,
+            "The explicit View Run action opens the complete statistics view.", assertions);
         scenes.Add(Capture("13-run-history-details.png", ui, GameState.RunHistory, null));
         Require(ui.HandleRunHistory(Pointer(480, 671, leftPressed: true)) == UiAction.ViewRunHistoryField,
             "Run details expose their archived defense layout.", assertions);
@@ -451,7 +539,7 @@ public sealed class VisualVerificationGame : Game
                 Check(definition.Id, $"{doctrine.DisplayName.ToUpperInvariant()} {doctrine.UpgradeCost}", 180, 0.38f);
                 var doctrineTower = new TowerInstance(1, definition, Vector2.Zero, 2);
                 if (doctrineTower.TryChooseDoctrine(doctrine.Id))
-                    Check(definition.Id, $"{TowerInfo.ProgressionLabel(doctrineTower)}   {TowerInfo.ShortRole(definition)}   PLACED P2",
+                    Check(definition.Id, $"{TowerInfo.ProgressionLabel(doctrineTower)}   PLACED P2",
                         228, UIManager.TowerStatGridMinimumScale);
 
                 foreach (var specialization in definition.Specializations)
@@ -461,7 +549,7 @@ public sealed class VisualVerificationGame : Game
                     Check(definition.Id, $"{specialization.DisplayName.ToUpperInvariant()} {specialization.UpgradeCost}", 180, 0.38f);
                     var finalTower = new TowerInstance(1, definition, Vector2.Zero, 2);
                     if (finalTower.TryChooseDoctrine(doctrine.Id) && finalTower.TrySpecialize(specialization.Id))
-                        Check(definition.Id, $"{TowerInfo.ProgressionLabel(finalTower)}   {TowerInfo.ShortRole(definition)}   PLACED P2",
+                        Check(definition.Id, $"{TowerInfo.ProgressionLabel(finalTower)}   PLACED P2",
                             228, UIManager.TowerStatGridMinimumScale);
                 }
             }
@@ -578,6 +666,22 @@ public sealed class VisualVerificationGame : Game
         {
             var index = y * GameConstants.RenderWidth + x;
             if (baseline[index] != changed[index]) count++;
+        }
+        return count;
+    }
+
+    private static int CountColorPixels(IReadOnlyList<Color> pixels, Rectangle logicalRegion, Color color)
+    {
+        var count = 0;
+        var left = Math.Max(0, logicalRegion.Left * GameConstants.RenderScale);
+        var top = Math.Max(0, logicalRegion.Top * GameConstants.RenderScale);
+        var right = Math.Min(GameConstants.RenderWidth, logicalRegion.Right * GameConstants.RenderScale);
+        var bottom = Math.Min(GameConstants.RenderHeight, logicalRegion.Bottom * GameConstants.RenderScale);
+        for (var y = top; y < bottom; y++)
+        for (var x = left; x < right; x++)
+        {
+            var pixel = pixels[y * GameConstants.RenderWidth + x];
+            if (pixel.R == color.R && pixel.G == color.G && pixel.B == color.B) count++;
         }
         return count;
     }

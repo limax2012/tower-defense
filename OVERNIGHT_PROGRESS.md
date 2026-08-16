@@ -6,6 +6,7 @@ Updated: 2026-08-16
 
 - Release build: 0 warnings, 0 errors with the workspace-local .NET 10 SDK.
 - Deterministic regression suite: 73/73 passing.
+- Solo auto-start now cycles through OFF, instant, 3s, 5s, and the full 10s planning break; calls before the deadline receive the normal early-start reward. F11 toggles the existing borderless desktop fullscreen path globally.
 - Self-contained Windows x64 publish: `.build/publish/MinimalBastion.exe`.
 - Content: 4 maps with independently authored campaigns, 10 towers with 20 tier-two doctrines and 20 final specializations, 10 distinct Protocols, 5 enemy bases plus elite/boss ranks, difficulty/directive profiles, tactical reserves, and endless continuation.
 - Canonical five-seed Hard matrix: 140/240 wins (58.3%). A fresh three-seed audit on the current executable produced 83/144 wins (57.6%) after the bounded Rapid Array, Breach Round, and Razor Bloom role repairs; the game remains in its demanding target band and Surge Divide retains the lowest average surviving lives.

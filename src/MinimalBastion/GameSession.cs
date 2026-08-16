@@ -835,14 +835,21 @@ public sealed class GameSession
     public bool StartNextWave(bool? earlyStartEligible = null) =>
         !IsSandbox && Waves.TryStartNextWave(this, earlyStartEligible);
 
-    public bool TryAutoStartNextWave(bool enabled)
+    public bool TryAutoStartNextWave(bool enabled, int delaySeconds = 0)
     {
         // Co-op readiness is a shared player decision and must never be
         // bypassed by one peer's local preference. Wave one also remains
         // manual so enabling this option cannot erase opening build time.
-        if (!enabled || IsSandbox || IsCoOp || CurrentWave <= 0 || IntermissionRemaining > 0 || !CanStartWave)
+        if (!enabled || IsSandbox || IsCoOp || CurrentWave <= 0 || !CanStartWave)
             return false;
-        return StartNextWave(false);
+        var boundedDelay = Math.Clamp(delaySeconds, 0, (int)GameConstants.IntermissionSeconds);
+        var elapsedIntermission = GameConstants.IntermissionSeconds - IntermissionRemaining;
+        if (elapsedIntermission + 0.001f < boundedDelay) return false;
+
+        // Selecting an automatic cadence is an advance commitment, so every
+        // configured delay earns the early-call reward. Manual calls continue
+        // to derive eligibility from the live intermission timer.
+        return StartNextWave(true);
     }
 
     public void SetSpeed(float speed) => Speed = speed >= 1.5f ? 2f : 1f;
