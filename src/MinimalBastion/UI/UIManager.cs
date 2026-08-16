@@ -3422,7 +3422,7 @@ public sealed class UIManager
             var row = TowerLibraryRow(index);
             var selected = index == _towerLibraryIndex;
             var selectedFill = ColorPalette.Tint(definition.Visual.PrimaryColor, 0.78f);
-            var towerAccent = TowerLibraryPrimaryAccent(definition);
+            var towerAccent = TowerLibraryAccent(definition);
             p.FillRect(batch, row, selected ? selectedFill : ColorPalette.PanelAlt);
             p.DrawRect(batch, row, selected
                 ? towerAccent
@@ -3997,7 +3997,7 @@ public sealed class UIManager
     {
         _towerLibraryDoctrineAButton = Rectangle.Empty;
         _towerLibraryDoctrineBButton = Rectangle.Empty;
-        var towerAccent = TowerLibraryPrimaryAccent(definition);
+        var towerAccent = TowerLibraryAccent(definition);
         p.DrawShape(batch, new Vector2(panel.X + 36, panel.Y + 42), 20, definition.Visual.Shape,
             definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
         DrawText(batch, definition.DisplayName.ToUpperInvariant(), new Vector2(panel.X + 72, panel.Y + 16), ColorPalette.Ink, 0.94f);
@@ -4110,13 +4110,8 @@ public sealed class UIManager
     private static Color LibraryAccentText(Color accent, Color background) =>
         ColorPalette.BalancedAccentText(accent, background);
 
-    private static Color TowerLibraryPrimaryAccent(TowerDefinition definition) =>
-        definition.Id.ToLowerInvariant() switch
-        {
-            "shard_fan" or "breaker_cannon" or "signal_beacon" or "arc_relay" =>
-                definition.Visual.AccentColor,
-            _ => definition.Visual.PrimaryColor
-        };
+    private static Color TowerLibraryAccent(TowerDefinition definition) =>
+        definition.Visual.AccentColor;
 
     private static Rectangle TowerLibraryRow(int index) => new(66, 148 + index * 49, 244, 44);
     private static Rectangle EnemyLibraryRow(int index) => new(66, 148 + index * 96, 244, 82);

@@ -226,6 +226,14 @@ public sealed class VisualVerificationGame : Game
         Require(CountColorPixels(shardLibraryPixels, new Rectangle(330, 110, 890, 540),
                     content.Towers["shard_fan"].Visual.AccentColor) >= 1_000,
             "Shard Fan library text and rules share its outer-ring orange.", assertions);
+        _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 9 });
+        Require(ui.SelectedLibraryTowerId == "siege_mortar",
+            "Tactical Library color scene selects Siege Mortar.", assertions);
+        var mortarLibraryPixels = RenderPixels(ui, GameState.TowerLibrary, null);
+        scenes.Add(Capture("06g-mortar-library-color.png", ui, GameState.TowerLibrary, null));
+        Require(CountColorPixels(mortarLibraryPixels, new Rectangle(330, 110, 890, 540),
+                    content.Towers["siege_mortar"].Visual.AccentColor) >= 1_000,
+            "Siege Mortar library text and rules share its bright outer-ring coral.", assertions);
         _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 1 });
         Require(autoHeaderSession.StartNextWave(), "Live co-op header scene starts an active wave.", assertions);
         scenes.Add(Capture("07-active-coop-header.png", ui, GameState.Playing, autoHeaderSession));

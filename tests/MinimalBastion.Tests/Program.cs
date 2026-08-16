@@ -828,7 +828,7 @@ internal static class Program
             Check.True(readable != ColorPalette.Ink,
                 $"{id} library accent text retains tower color identity");
         }
-        foreach (var id in new[] { "shard_fan", "breaker_cannon", "signal_beacon", "arc_relay" })
+        foreach (var id in paletteContent.Towers.Keys)
             Check.True(ColorPalette.ContrastRatio(
                     paletteContent.Towers[id].Visual.AccentColor, ColorPalette.PanelAlt) >= 2.99f,
                 $"{id} outer-ring color is readable as Tactical Library text and rules");
