@@ -2,15 +2,26 @@
 
 Minimal Bastion is a colorful, data-driven 2D tower-defense game built with C#, .NET 10, and MonoGame DesktopGL. It includes four strategic maps with authored campaigns, four difficulty profiles, four decision-changing challenge directives plus a solo Sandbox Lab, 20 mixed waves per map, 10 towers with 20 tier-two doctrines, 20 final specializations, and distinct tactical Protocols, elites and phased bosses, an in-game tower/threat/campaign/profile tactical library, Pulse Plates and a Charge Forge, dynamically expanding independent saves, procedural audio, persistent display settings, post-run analysis, deterministic balance agents, and direct two-player online co-op.
 
-## Play the verified build
+## Build and play
 
-Run:
+The repository contains source code, not a prebuilt executable. In particular, `.build` is a generated, gitignored directory, so `.build\publish\MinimalBastion.exe` does not exist in a fresh checkout.
 
-```text
-.build\publish\MinimalBastion.exe
+Install the .NET 10 SDK, open PowerShell in the repository root, and run:
+
+```powershell
+dotnet restore MinimalBastion.sln
+dotnet run --project src\MinimalBastion\MinimalBastion.csproj -c Release
 ```
 
-The publish is self-contained for Windows x64; the .NET SDK is not required to play it.
+If this working copy already has a workspace-local SDK at `.dotnet\dotnet.exe`, but `dotnet` is not installed globally, use:
+
+```powershell
+$env:Path = "$PWD\.dotnet;$env:Path"
+.\.dotnet\dotnet.exe restore MinimalBastion.sln
+.\.dotnet\dotnet.exe run --project src\MinimalBastion\MinimalBastion.csproj -c Release
+```
+
+A normal Release build places the framework-dependent executable at `src\MinimalBastion\bin\Release\net10.0\MinimalBastion.exe`. The self-contained `.build\publish` executable described below is created only after running the publish command.
 
 ## Online co-op
 
@@ -27,7 +38,7 @@ The host can click the large join-code field or press `Ctrl+C` in the waiting lo
 
 The handshake rejects mismatched compiled builds or any recursive JSON gameplay/campaign content before a match starts and times out half-open attempts after ten seconds. Ambiguous duplicate map/campaign identities and campaigns attached to the wrong arena are rejected while loading. Transport messages use bounded length-prefixed frames, a 64-frame send budget, and type/direction/content validation before gameplay dispatch, so malformed traffic cannot request unbounded allocation or enter the simulation. Large authoritative snapshots use bounded Brotli framing (2 MiB on the wire, 8 MiB after decoding), allowing dense endless defenses to reconnect without opening an unbounded decompression path. During play, both peers simulate locally at a deterministic 60 Hz while the host sequences commands and sends one state checksum per second. Variable-rate, local-only presentation smooths motion and effects on 60/120/144 Hz displays without changing synchronized state. A mismatch triggers an authoritative state repair instead of ending the match, while a post-repair fence discards stale checksums that were already in flight. If Player 2 disconnects, the match pauses and remains on the host. Player 2 can restart the game if necessary, join with the same host address and six-character code, and receive the complete current wave, enemy, tower, economy, timer, pause, ready, and active Protocol animation state.
 
-Co-op uses shared credits, lives, plates, waves, and speed. Both players can upgrade, specialize, retarget, activate or automate Protocols, or sell any tower or Charge Forge; the P1/P2 ring records who originally placed it without restricting control. Both players must ready each wave, and the wave button plus sidebar show both ready states and the same early-call countdown. The host locks the +20 reward only when the second player readies before the timer expires; one early ready does not preserve the bonus indefinitely. The sidebar reports live, delayed, stalled, and resynchronizing link states from the age of the latest valid peer traffic before the 15-second reconnect threshold. A compact P1/P2 crosshair shows the other player's live battlefield cursor, their active tower-placement ghost follows that pointer, and four matching corner marks identify their selected deployed tower without replacing its native colors; middle-click creates a more persistent location ping.
+Co-op uses shared credits, lives, plates, waves, and speed. Both players can upgrade, specialize, retarget, activate or automate Protocols, or sell any tower or Charge Forge; the P1/P2 ring records who originally placed it without restricting control. Both players must ready each wave, and the wave button plus sidebar show both ready states and the same early-call countdown. The host locks the +20 reward only when the second player readies before the timer expires; one early ready does not preserve the bonus indefinitely. The sidebar reports live, delayed, stalled, and resynchronizing link states from the age of the latest valid peer traffic before the 15-second reconnect threshold. A compact P1/P2 crosshair shows the other player's live battlefield cursor, a translucent tower or plate ghost shows their snapped placement preview, and a small color-coded P1/P2 tag identifies the deployed tower they are inspecting; middle-click creates a more persistent location ping.
 
 Either player can press Esc, P, or the HUD Pause button to pause/resume the shared deterministic simulation. Both peers stop on the same fixed tick, the compact banner identifies who paused, and a field-preserving sidebar offers Resume, Tactical Library, synchronized Restart, and Main Menu. Building, upgrades, sales, targeting, plates, Forge changes, Protocols, speed, and new ready signals are locked until play resumes; the host also rejects late battlefield commands that reach their deterministic tick during pause. Combat, wave spawning, economy, Forge production, Protocol cooldowns, and visual effects freeze, while an existing between-wave early-call deadline continues so paused planning cannot bank the +20 reward.
 
@@ -37,13 +48,14 @@ At victory or defeat, **Restart Co-op** uses a two-click confirmation, keeps bot
 
 ## Build and test
 
-Install the .NET 10 SDK, or use the workspace-local SDK:
+Install the .NET 10 SDK. The commands below automatically prefer an existing workspace-local SDK when one is available and otherwise use `dotnet` from `PATH`:
 
 ```powershell
-$env:Path = "$PWD\.dotnet;$env:Path"
-dotnet restore MinimalBastion.sln
-dotnet build MinimalBastion.sln -c Release --disable-build-servers /nodeReuse:false /p:UseSharedCompilation=false
-dotnet run --project tests\MinimalBastion.Tests -c Release --no-build
+$dotnet = if (Test-Path .\.dotnet\dotnet.exe) { (Resolve-Path .\.dotnet\dotnet.exe).Path } else { (Get-Command dotnet -ErrorAction Stop).Source }
+$env:Path = "$(Split-Path $dotnet);$env:Path"
+& $dotnet restore MinimalBastion.sln
+& $dotnet build MinimalBastion.sln -c Release --disable-build-servers /nodeReuse:false /p:UseSharedCompilation=false
+& $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build
 ```
 
 To verify without disturbing a game that is already running, use:
@@ -79,15 +91,18 @@ dotnet restore MinimalBastion.sln -r win-x64 --disable-build-servers
 dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --no-restore -o .build\publish --disable-build-servers /nodeReuse:false /p:UseSharedCompilation=false
 ```
 
+This command creates `.build\publish\MinimalBastion.exe`. That output is self-contained for Windows x64, does not require the .NET SDK on the computer that runs it, and is intentionally not committed to Git.
+
 ## Controls
 
 - **Tactical Library** is available from the title screen, solo pause menu, and at any time in co-op by pressing `Tab` or using the compact shared-pause sidebar. Its Towers page previews either tier-two doctrine with exact stats, cumulative cost, and both compatible final roles; Threats explains counters and status glyphs; Campaigns exposes every authored wave, base starting credits, and a compact route preview; Profiles gives exact difficulty multipliers and directive restrictions; and Systems consolidates targeting, progression, status stacking, Protocol automation, Beacon/Surge interaction, and current Pulse Plate/Forge rules. The co-op library is a local overlay: network polling and the shared simulation continue while local battlefield input remains blocked.
-- `Enter`: activate the focused action on the title, settings, pause, result, or save-slot screen. Arrow keys or `Tab` navigate title, pause, and result actions; Left/Right adjusts a focused arena, difficulty, directive, graphics option, effects volume, or music volume. Arrow keys also navigate save slots, run history, Settings, and Tactical Library entries. `Tab` cycles Tactical Library pages and switches between the co-op address/code fields.
+- The title screen, game setup, pause menu, and Settings are intentionally mouse-driven: left click chooses an action or option, while Escape returns or resumes. They do not keep a hidden keyboard focus.
+- Save Slots and Run History support Up/Down selection, Left/Right paging, Enter confirmation/viewing, and mouse controls. Result screens support arrow keys or `Tab` to change the selected action and Enter to activate it.
+- In the Tactical Library, Left/Right changes pages, Up/Down changes the selected entry, and `1`-`0` directly selects a visible tower, threat, or campaign entry. `Tab` opens or closes the library during co-op; Escape, right click, or the Back button closes it elsewhere.
 - Online co-op: Up/Down selects Host, Join, or Back; Enter activates the focused action. Typing or selecting either connection field focuses Join, Ctrl+V pastes, Ctrl+C copies displayed host/rejoin codes, and held Backspace erases continuously. Windows may request firewall access the first time that executable hosts; internet guests still require TCP 28741 forwarding or a shared VPN path.
-- In Settings, Up/Down moves the visible focus, Left/Right adjusts the selected option, and Enter activates it.
 - Left click: select, place, or activate a UI control.
 - Right click or Escape: cancel placement; Escape pauses in solo play.
-- Tower and Charge Forge placement ghosts show a green center check when valid and a red center X when invalid, in addition to their range/border feedback.
+- Tower and Charge Forge placement ghosts snap to the closest legal point within a small assist radius when the cursor is just outside a valid location. Exact legal placement remains continuous rather than grid-based; the translucent ghost, range preview, and placement-status banner show the resolved position and validity. Pulse Plates similarly snap only to nearby legal route positions.
 - `1`-`0`: prepare the corresponding tower.
 - `Q`: prepare a stored Pulse Plate. During an active wave, buy a replacement starting at 60 credits; each additional direct purchase in that same wave costs 15 more, and the price resets to 60 when the next wave starts.
 - `G`: prepare or select the Charge Forge.
@@ -95,7 +110,7 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 - `A`: arm/disarm automatic Protocol use for the selected tower.
 - `U`: upgrade the selected tower or Charge Forge.
 - `Delete`: sell the selected tower or Charge Forge.
-- `T`: cycle the selected tower's targeting mode.
+- `T`: open or close the selected tower's targeting picker. The current mode does not change until a replacement is chosen.
 - `Space`: start/ready the next wave or claim the early-call reward.
 - `S`: toggle 1x/2x speed.
 - `P` or `Escape`: pause/resume in solo play.
@@ -156,7 +171,7 @@ Runtime visuals are generated from crisp geometric primitives. The 1280x720 logi
 
 Enemy defeats use a brief six-segment geometric shatter instead of another generic flash. These cues are deliberately low priority and disappear before tactical area information when the dense-wave effect budget is saturated.
 
-**Settings** is available from both the title and pause menus. It persists windowed/fullscreen mode, 1280x720 through 2560x1440 output presets, VSync, sound-effects/music volume, full/reduced geometric effects, and optional solo wave auto-start under `%LocalAppData%\MinimalBastion\settings.json`; writes are atomic and a last-known-good recovery generation is retained. Auto-start preserves manual setup for wave 1, then offers 0, 3, 5, or 10-second breaks before later solo waves. Automatic calls made inside the normal ten-second deadline earn the same +20 credits as manual early calls; the full 10-second break deliberately forfeits that reward. Co-op continues to require both players. `F11` switches between the saved windowed output and borderless desktop fullscreen without changing logical layout or hitboxes. Output settings never alter the fixed tactical canvas or theme constants. Short UI/combat sounds are synthesized at runtime, including confirm/back/delete interface cues plus distinct boss-phase, victory, defeat, tactical-device, Protocol, and ten tower impact/support signatures. Per-type and global cadence limits reduce those signatures as battlefield density rises, so rapid fire does not become an audio wall. No external audio assets are required, and a missing audio device degrades safely to silent play. JSON under `src\MinimalBastion\ContentData` defines towers, enemies, maps, waves, difficulty profiles, and tactical systems; only the interface font is compiled through MonoGame content.
+**Settings** is available from both the title and pause menus. It persists windowed/fullscreen mode, 1280x720 through 2560x1440 output presets, VSync, sound-effects/music volume, full/reduced geometric effects, and optional solo wave auto-start under `%LocalAppData%\MinimalBastion\settings.json`; writes are atomic and a last-known-good recovery generation is retained. Auto-start preserves manual setup for wave 1, then offers 0, 3, 5, or 10-second breaks before later solo waves. Choosing any automatic cadence is an advance commitment, so every automatic start—including the 10-second option—earns the same +20 credits; a manual call earns it only while the live early-call window remains open. Co-op continues to require both players. `F11` switches between the saved windowed output and borderless desktop fullscreen without changing logical layout or hitboxes. Output settings never alter the fixed tactical canvas or theme constants. Short UI/combat sounds are synthesized at runtime, including confirm/back/delete interface cues plus distinct boss-phase, victory, defeat, tactical-device, Protocol, and ten tower impact/support signatures. Per-type and global cadence limits reduce those signatures as battlefield density rises, so rapid fire does not become an audio wall. No external audio assets are required, and a missing audio device degrades safely to silent play. JSON under `src\MinimalBastion\ContentData` defines towers, enemies, maps, waves, difficulty profiles, and tactical systems; only the interface font is compiled through MonoGame content.
 
 The procedural tactical bed uses a longer, independently voiced arrangement for the menu and each arena instead of pitch-shifting one short loop. It crossfades smoothly from restrained intermission ambience toward full intensity as live contacts accumulate, with a bounded boss peak. This mix response is presentation-only and never enters saves, checksums, or simulation timing.
 

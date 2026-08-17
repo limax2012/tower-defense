@@ -9,7 +9,11 @@ Set-StrictMode -Version Latest
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $dotnetExecutable = Join-Path $repositoryRoot ".dotnet\dotnet.exe"
 if (-not (Test-Path -LiteralPath $dotnetExecutable)) {
-    throw "Bundled .NET executable was not found: $dotnetExecutable"
+    $installedDotnet = Get-Command dotnet -ErrorAction SilentlyContinue
+    if ($null -eq $installedDotnet) {
+        throw "The .NET 10 SDK was not found. Install it or provide a workspace-local SDK at: $dotnetExecutable"
+    }
+    $dotnetExecutable = $installedDotnet.Source
 }
 
 if ([string]::IsNullOrWhiteSpace($ArtifactDirectory)) {
@@ -23,7 +27,7 @@ $uiDirectory = Join-Path $ArtifactDirectory "ui"
 
 New-Item -ItemType Directory -Force -Path $ArtifactDirectory | Out-Null
 New-Item -ItemType Directory -Force -Path $uiDirectory | Out-Null
-$env:PATH = "$(Join-Path $repositoryRoot '.dotnet');$env:PATH"
+$env:PATH = "$(Split-Path -Parent $dotnetExecutable);$env:PATH"
 
 Push-Location $repositoryRoot
 try {
