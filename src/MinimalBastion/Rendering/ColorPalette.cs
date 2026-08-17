@@ -91,9 +91,8 @@ public static class ColorPalette
 
     public static Color BalancedAccentLine(Color accent, Color background, float minimumContrast = 1.6f)
     {
-        // Pale authored yellows are excellent fills but need a clearer rule
-        // color. Signal-style pale yellow shifts toward bright amber, while
-        // saturated tactical gold remains gold. Neither is mixed toward brown.
+        // Pale yellow fills use amber for thin rules; saturated tactical gold
+        // keeps its authored hue.
         var lineAccent = IsPaleYellowAccent(accent) ? Amber : IsYellowAccent(accent) ? Gold : accent;
         return ReadableAccent(lineAccent, background, minimumContrast);
     }

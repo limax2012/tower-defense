@@ -74,8 +74,8 @@ public sealed class GameRenderer
                 break;
 
             case "meadow":
-                // Sparse shrubs and a low basin pool replace the old arrow-like
-                // wind marks. Nothing here implies movement or a gameplay force.
+                // Sparse shrubs and a low basin pool establish a static landscape
+                // without implying movement or a gameplay force.
                 p.Circle(batch, new Vector2(486, 358), 126, Color.Lerp(baseColor, ColorPalette.Cyan, 0.035f));
                 p.Circle(batch, new Vector2(486, 358), 83, Color.Lerp(baseColor, ColorPalette.Cyan, 0.025f));
                 foreach (var center in new[]
@@ -91,8 +91,7 @@ public sealed class GameRenderer
                 break;
 
             case "crystal_field":
-                // A few large translucent facets read as landscape, unlike the
-                // former repeated square-and-dash icon pattern.
+                // Large translucent facets read as landscape behind the build zones.
                 foreach (var facet in new[]
                 {
                     (new Vector2(92, 156), 68f, -0.28f, ColorPalette.Violet),
@@ -109,8 +108,7 @@ public sealed class GameRenderer
                 break;
 
             case "surge_field":
-                // Large overlapping energy basins establish the divide without
-                // the old circuit-trace symbols or directional arrows.
+                // Large overlapping energy basins establish the divide as a static field.
                 p.FillRect(batch, new Rectangle(350, 58, 240, 662), Color.Lerp(baseColor, accent, 0.055f));
                 foreach (var field in new[]
                 {
@@ -316,9 +314,8 @@ public sealed class GameRenderer
 
         if (visual.Style.Equals("surge", StringComparison.OrdinalIgnoreCase))
         {
-            // Surge Divide is a static energy trench. The former moving packet
-            // dashes were purely decorative, but looked like reverse motion and
-            // falsely suggested a slow effect.
+            // Surge Divide uses a static layered energy trench with no
+            // directional movement cue.
             DrawContinuousPath(batch, p, points, visual.BaseColor, pathWidth);
             DrawContinuousPath(batch, p, points, visual.SecondaryColor, Math.Max(14, pathWidth / 2));
             DrawContinuousPath(batch, p, points, ColorPalette.Tint(visual.SecondaryColor, 0.30f), 6);
@@ -379,9 +376,8 @@ public sealed class GameRenderer
     private static void DrawDashedPath(SpriteBatch batch, PrimitiveRenderer p, IReadOnlyList<Vector2> points, Color color,
         float thickness, float dashLength, float gapLength, float phase = 0)
     {
-        // Carry the pattern distance through every right-angle turn. Restarting
-        // it per segment made route corners read like separate road tiles and
-        // caused animated Surge packets to jump instead of flowing around bends.
+        // Carry pattern distance through every right-angle turn so dashes and
+        // animated Surge packets flow continuously around bends.
         var cumulativeDistance = 0f;
         for (var index = 0; index < points.Count - 1; index++)
         {

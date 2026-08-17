@@ -38,7 +38,7 @@ If a build reports a locked executable, inspect `Get-Process MinimalBastion`, ve
 - `TacticalDefenseSystem`, `PulsePlateInstance`, and `ChargeForgeInstance` own emergency defenses and wave-powered production.
 - `UIManager`, `GameRenderer`, and `PrimitiveRenderer` are presentation-only.
 - `GameCommand`, `AuthoritativeCommandHost`, `DeterministicSessionRunner`, and `SessionChecksum` form the multiplayer seam.
-- `LanCoOpHost` now listens dual-stack on all adapters; `LanCoOpClient` accepts DNS, IPv4, or IPv6 endpoints. The legacy class/file name is internal only.
+- `LanCoOpHost` listens dual-stack on all adapters; `LanCoOpClient` accepts DNS, IPv4, or IPv6 endpoints. The transport class and file names are internal implementation details.
 - Definitions and runtime instances must remain separate.
 
 Do not casually replace this with ECS, dependency injection, a physics engine, or a UI framework. Extract narrow services only when they improve deterministic simulation, testing, networking, or maintainability.

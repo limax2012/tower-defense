@@ -14,9 +14,9 @@ namespace MinimalBastion;
 public sealed class Game1 : Game
 {
     private const int OnlineCoOpPort = 28741;
-    // A 200ms host scheduling window tolerates ordinary friend-to-friend jitter
-    // while cutting the previous 300ms command delay. Simulation itself runs
-    // locally on each peer; only commands and periodic checksums cross the link.
+    // Commands are scheduled 200ms ahead to tolerate ordinary friend-to-friend
+    // jitter. Simulation runs locally on each peer; only commands and periodic
+    // checksums cross the link.
     private const int NetworkInputDelayTicks = DeterministicSessionRunner.SimulationTicksPerSecond / 5;
     private const int NetworkChecksumIntervalTicks = DeterministicSessionRunner.SimulationTicksPerSecond;
     private const int NetworkChecksumHistoryTicks = DeterministicSessionRunner.SimulationTicksPerSecond * 12;

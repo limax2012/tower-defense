@@ -2817,7 +2817,7 @@ public sealed class UIManager
         p.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, 10), ColorPalette.Coral);
         p.FillRect(batch, new Rectangle(0, 710, GameConstants.LogicalWidth, 10), ColorPalette.Cobalt);
 
-        // The logo sits fully above the title; it no longer covers the words in the menu.
+        // Keep the logo fully above the title and preserve the menu's vertical rhythm.
         var logo = new Vector2(640, 150);
         p.Circle(batch, logo, 78, ColorPalette.Navy);
         p.DrawShape(batch, logo, 53, "diamond", ColorPalette.Gold, ColorPalette.Paper, 2, true);

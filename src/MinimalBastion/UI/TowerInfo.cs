@@ -106,7 +106,7 @@ public static class TowerInfo
         {
             // Keep the boolean comparison complete in the dense Intel grid.
             // With the SHIELDS label, BLOCK/PASS is both unambiguous and short
-            // enough to preserve the same old -> new syntax as numeric stats.
+            // enough to use the same before -> after syntax as numeric stats.
             var before = current.IgnoreShield ? "PASS" : "BLOCK";
             var after = shown.IgnoreShield ? "PASS" : "BLOCK";
             var direction = preview is null || after == before
