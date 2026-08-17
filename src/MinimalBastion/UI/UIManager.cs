@@ -1841,8 +1841,11 @@ public sealed class UIManager
         if (_remoteCoOpHasPlacementPreview && !string.IsNullOrWhiteSpace(_remoteCoOpPlacementTowerId) &&
             session.Content.Towers.TryGetValue(_remoteCoOpPlacementTowerId, out var placementDefinition))
         {
+            var needlePreview = placementDefinition.Id.Equals("needle_turret", StringComparison.OrdinalIgnoreCase);
             DrawRemotePlacementGhost(batch, p, position, placementDefinition.Visual,
-                placementDefinition.Visual.Marks, true, color);
+                placementDefinition.Visual.Marks, true, color,
+                needlePreview ? ColorPalette.NeedlePlacementGhostPrimaryAlpha : ColorPalette.PlacementGhostPrimaryAlpha,
+                needlePreview ? ColorPalette.NeedlePlacementGhostAccentAlpha : ColorPalette.PlacementGhostAccentAlpha);
         }
         else if (_remoteCoOpHasPlacementPreview && _remoteCoOpTacticalPlacement == TacticalPlacementKind.PulsePlate)
         {
@@ -1894,17 +1897,17 @@ public sealed class UIManager
     }
 
     private void DrawRemotePlacementGhost(SpriteBatch batch, PrimitiveRenderer p, Vector2 cursorPosition,
-        TowerVisualData visual, int marks, bool levelMarks, Color playerColor)
+        TowerVisualData visual, int marks, bool levelMarks, Color playerColor,
+        byte primaryAlpha = ColorPalette.PlacementGhostPrimaryAlpha,
+        byte accentAlpha = ColorPalette.PlacementGhostAccentAlpha)
     {
         var previewPosition = _remoteCoOpPlacementPreviewPosition;
         if (Vector2.DistanceSquared(cursorPosition, previewPosition) > 36f)
             p.Line(batch, cursorPosition, previewPosition, ColorPalette.WithAlpha(playerColor, 115), 1);
         var breath = (MathF.Sin(_visualTimeSeconds * 2.2f) + 1f) * 0.5f;
         var pulse = 0.985f + breath * 0.025f;
-        var ghostPrimary = ColorPalette.WithPremultipliedAlpha(visual.PrimaryColor,
-            ColorPalette.PlacementGhostPrimaryAlpha);
-        var ghostAccent = ColorPalette.WithPremultipliedAlpha(visual.AccentColor,
-            ColorPalette.PlacementGhostAccentAlpha);
+        var ghostPrimary = ColorPalette.WithPremultipliedAlpha(visual.PrimaryColor, primaryAlpha);
+        var ghostAccent = ColorPalette.WithPremultipliedAlpha(visual.AccentColor, accentAlpha);
 
         // Local and remote placement ghosts share the same authored translucency.
         // The subtle breathing scale and remote cursor identify active manipulation

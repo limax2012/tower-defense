@@ -6,6 +6,8 @@ public static class ColorPalette
 {
     public const byte PlacementGhostPrimaryAlpha = 104;
     public const byte PlacementGhostAccentAlpha = 152;
+    public const byte NeedlePlacementGhostPrimaryAlpha = 128;
+    public const byte NeedlePlacementGhostAccentAlpha = 176;
 
     // Central tactical theme. These authored sRGB values are intentionally
     // independent from resolution, DPI, and the scene composite pipeline.

@@ -410,10 +410,11 @@ public sealed class GameRenderer
             // This large ring communicates the tower's eventual attack/aura range.
             // It is intentionally distinct from the compact remote-player handling marker.
             p.DashedRing(batch, position, placementRange, ColorPalette.PlacementValid, 32, 2);
+            var needlePreview = definition.Id.Equals("needle_turret", StringComparison.OrdinalIgnoreCase);
             var previewPrimary = ColorPalette.WithPremultipliedAlpha(definition.Visual.PrimaryColor,
-                ColorPalette.PlacementGhostPrimaryAlpha);
+                needlePreview ? ColorPalette.NeedlePlacementGhostPrimaryAlpha : ColorPalette.PlacementGhostPrimaryAlpha);
             var previewAccent = ColorPalette.WithPremultipliedAlpha(definition.Visual.AccentColor,
-                ColorPalette.PlacementGhostAccentAlpha);
+                needlePreview ? ColorPalette.NeedlePlacementGhostAccentAlpha : ColorPalette.PlacementGhostAccentAlpha);
             p.DrawShape(batch, position, definition.Visual.Radius, definition.Visual.Shape,
                 previewPrimary, previewAccent, 1, true, levelMarks: true);
         }
