@@ -70,6 +70,10 @@ public sealed class UIManager
     private Rectangle _speedButton;
     private Rectangle _pauseButton;
     private Rectangle _targetButton;
+    private readonly Dictionary<TargetMode, Rectangle> _targetModeButtons = new();
+    private Rectangle _targetPickerBounds;
+    private bool _targetPickerOpen;
+    private int _targetPickerTowerId;
     private Rectangle _upgradeButton;
     private Rectangle _sellButton;
     private Rectangle _specializationAButton;
@@ -146,6 +150,12 @@ public sealed class UIManager
     private float _visualTimeSeconds;
 
     public int RemoteCoOpSelectedTowerId => _remoteCoOpSelectedTowerId;
+    internal bool IsTargetPickerOpen => _targetPickerOpen;
+    internal Rectangle TargetPickerBounds => _targetPickerBounds;
+    internal Rectangle TargetButtonBounds => _targetButton;
+    internal Rectangle UpgradeButtonBounds => _upgradeButton;
+    internal Rectangle SellButtonBounds => _sellButton;
+    internal IReadOnlyDictionary<TargetMode, Rectangle> TargetModeButtonBounds => _targetModeButtons;
     private UserSettings _settings = new();
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
     private bool _setupForCoOp;
@@ -1012,6 +1022,7 @@ public sealed class UIManager
     {
         if (_towerLibraryOpen)
         {
+            CloseTargetPicker();
             if (session.IsCoOp && input.TabPressed)
             {
                 _towerLibraryOpen = false;
@@ -1025,11 +1036,23 @@ public sealed class UIManager
         var point = input.MousePosition.ToPoint();
         if (session.IsCoOp && input.TabPressed)
         {
+            CloseTargetPicker();
             _towerLibraryOpen = true;
             return UiAction.None;
         }
         if (session.IsCoOpPaused)
+        {
+            CloseTargetPicker();
             return HandleCoOpPausedInput(input, session, commandSink, playerId);
+        }
+        if (_targetPickerOpen && (session.SelectedTower is not { IsSupport: false } selectedTargetTower ||
+                                  selectedTargetTower.Id != _targetPickerTowerId))
+            CloseTargetPicker();
+        if (_targetPickerOpen && (input.EscapePressed || input.PausePressed || input.RightPressed))
+        {
+            CloseTargetPicker();
+            return UiAction.None;
+        }
         _hoveredTowerCardId = _towerCards.FirstOrDefault(x => x.Value.Contains(point)).Key;
         _hoveredPowerNode = session.Map.Definition.PowerNodes.FirstOrDefault(node =>
             Vector2.DistanceSquared(node.Position.ToVector2(), input.MousePosition) <= node.Radius * node.Radius);
@@ -1074,6 +1097,12 @@ public sealed class UIManager
         _hoveredTacticalPlacement = session.IsSandbox ? TacticalPlacementKind.None :
             _emergencyButton.Contains(point) ? TacticalPlacementKind.PulsePlate :
             _generatorButton.Contains(point) ? TacticalPlacementKind.ChargeForge : TacticalPlacementKind.None;
+        if (_targetPickerOpen)
+        {
+            _hoveredTowerCardId = null;
+            _hoveredPowerNode = null;
+            _hoveredTacticalPlacement = TacticalPlacementKind.None;
+        }
         if ((input.EscapePressed || input.PausePressed) && session.PlacementTowerId is null && session.TacticalPlacement == TacticalPlacementKind.None)
         {
             if (session.IsCoOp && commandSink is not null)
@@ -1086,7 +1115,10 @@ public sealed class UIManager
 
         var towersByCost = session.Content.Towers.Values.OrderBy(x => x.PurchaseCost).ToArray();
         if (input.TowerHotkey > 0 && input.TowerHotkey <= towersByCost.Length)
+        {
+            CloseTargetPicker();
             session.BeginPlacement(towersByCost[input.TowerHotkey - 1].Id);
+        }
         if (input.StartWavePressed)
         {
             if (session.IsSandbox) session.StartSandboxWave(_sandboxWaveNumber);
@@ -1110,7 +1142,11 @@ public sealed class UIManager
                 RequestOverdrive(session, commandSink, playerId);
         }
         if (input.AutoProtocolPressed) RequestAutoProtocol(session, commandSink, playerId);
-        if (input.TargetPressed) RequestTarget(session, commandSink, playerId);
+        if (input.TargetPressed)
+        {
+            ToggleTargetPicker(session);
+            return UiAction.None;
+        }
         if (input.UpgradePressed) RequestUpgrade(session, commandSink, playerId);
         if (input.SellPressed)
         {
@@ -1120,6 +1156,23 @@ public sealed class UIManager
                 RequestSell(session, commandSink, playerId);
         }
         if (!input.LeftPressed) return UiAction.None;
+
+        if (_targetPickerOpen)
+        {
+            var selectedMode = _targetModeButtons.FirstOrDefault(pair => pair.Value.Contains(point));
+            if (!selectedMode.Equals(default(KeyValuePair<TargetMode, Rectangle>)))
+            {
+                RequestTargetMode(session, selectedMode.Key, commandSink, playerId);
+                CloseTargetPicker();
+                return UiAction.None;
+            }
+            if (_targetButton.Contains(point))
+            {
+                CloseTargetPicker();
+                return UiAction.None;
+            }
+            CloseTargetPicker();
+        }
 
         if (_startWaveButton.Contains(point))
         {
@@ -1186,7 +1239,7 @@ public sealed class UIManager
             session.ToggleSandboxTower(session.SelectedTower.Id);
         else if (session.IsSandbox && session.SelectedTower is not null && _sandboxRemoveTowerButton.Contains(point))
             session.RemoveSandboxTower(session.SelectedTower.Id);
-        else if (_targetButton.Contains(point)) RequestTarget(session, commandSink, playerId);
+        else if (_targetButton.Contains(point)) ToggleTargetPicker(session);
         else if (_upgradeButton.Contains(point)) RequestUpgrade(session, commandSink, playerId);
         else if (_sellButton.Contains(point)) RequestSell(session, commandSink, playerId);
 
@@ -1361,17 +1414,42 @@ public sealed class UIManager
     private static void RequestPause(MinimalBastion.GameSession session, Action<GameCommand> sink, int playerId) =>
         sink(new GameCommand { PlayerId = playerId, Type = GameCommandType.SetPaused, Paused = !session.IsCoOpPaused });
 
-    private static void RequestTarget(MinimalBastion.GameSession session, Action<GameCommand>? sink, int playerId)
+    private void ToggleTargetPicker(MinimalBastion.GameSession session)
     {
         if (session.SelectedTower is not { IsSupport: false } tower) return;
-        if (sink is null)
+        if (_targetPickerOpen && _targetPickerTowerId == tower.Id)
         {
-            session.CycleSelectedTarget();
+            CloseTargetPicker();
             return;
         }
-        var modes = Enum.GetValues<TargetMode>();
-        var next = modes[((int)tower.TargetMode + 1) % modes.Length];
-        sink(new GameCommand { PlayerId = playerId, Type = GameCommandType.SetTargetMode, EntityId = tower.Id, TargetMode = next });
+        _targetPickerOpen = true;
+        _targetPickerTowerId = tower.Id;
+    }
+
+    private void CloseTargetPicker()
+    {
+        _targetPickerOpen = false;
+        _targetPickerTowerId = 0;
+        _targetPickerBounds = Rectangle.Empty;
+        _targetModeButtons.Clear();
+    }
+
+    private static void RequestTargetMode(MinimalBastion.GameSession session, TargetMode mode,
+        Action<GameCommand>? sink, int playerId)
+    {
+        if (session.SelectedTower is not { IsSupport: false } tower || tower.TargetMode == mode) return;
+        if (sink is null)
+        {
+            session.TrySetTargetMode(tower.Id, mode, playerId);
+            return;
+        }
+        sink(new GameCommand
+        {
+            PlayerId = playerId,
+            Type = GameCommandType.SetTargetMode,
+            EntityId = tower.Id,
+            TargetMode = mode
+        });
     }
 
     private static void RequestUpgrade(MinimalBastion.GameSession session, Action<GameCommand>? sink, int playerId)
@@ -2273,6 +2351,8 @@ public sealed class UIManager
 
     private void DrawTowerIntel(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
+        _targetModeButtons.Clear();
+        _targetPickerBounds = Rectangle.Empty;
         var tacticalPreview = _hoveredTacticalPlacement != TacticalPlacementKind.None
             ? _hoveredTacticalPlacement
             : session.TacticalPlacement;
@@ -2389,7 +2469,7 @@ public sealed class UIManager
             var secondCost = tower.RequiresDoctrine ? tower.Definition.Tier2Doctrines[1].UpgradeCost : tower.Definition.Specializations[1].UpgradeCost;
             var firstFill = tower.Definition.Visual.PrimaryColor;
             var firstText = TowerIntelPrimaryUpgradeTextColor(tower.Definition);
-            DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), canManage, ColorPalette.Cyan,
+            DrawButton(batch, p, _targetButton, TargetButtonLabel(tower), canManage, ColorPalette.Cyan,
                 session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Cyan) : null);
             DrawButton(batch, p, _specializationAButton, $"{firstLabel.ToUpperInvariant()} {firstCost}", canManage && session.Economy.CanAfford(firstCost),
                 firstFill, firstText);
@@ -2399,10 +2479,11 @@ public sealed class UIManager
                 DrawSandboxButton(batch, p, _sandboxRemoveTowerButton, "REMOVE", canManage, ColorPalette.Coral);
             else
                 DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange);
+            DrawTargetPicker(batch, p, tower, canManage);
             return;
         }
         if (!tower.IsSupport)
-            DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), canManage, ColorPalette.Cyan,
+            DrawButton(batch, p, _targetButton, TargetButtonLabel(tower), canManage, ColorPalette.Cyan,
                 session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Cyan) : null);
         DrawButton(batch, p, _upgradeButton, tower.CanUpgrade ? $"UP {tower.UpgradeCost}" : "MAX",
             canManage && tower.CanUpgrade && session.Economy.CanAfford(tower.UpgradeCost), ColorPalette.Violet,
@@ -2414,6 +2495,45 @@ public sealed class UIManager
         }
         else
             DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange);
+        if (!tower.IsSupport) DrawTargetPicker(batch, p, tower, canManage);
+    }
+
+    private string TargetButtonLabel(TowerInstance tower) =>
+        tower.TargetMode.ToString().ToUpperInvariant();
+
+    private void DrawTargetPicker(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, bool enabled)
+    {
+        if (!_targetPickerOpen || _targetPickerTowerId != tower.Id || tower.IsSupport || _targetButton.IsEmpty) return;
+
+        var modes = Enum.GetValues<TargetMode>();
+        const int columns = 4;
+        const int buttonWidth = 68;
+        const int buttonHeight = 25;
+        const int gap = 3;
+        var rows = (modes.Length + columns - 1) / columns;
+        var contentWidth = columns * buttonWidth + (columns - 1) * gap;
+        var contentHeight = rows * buttonHeight + (rows - 1) * gap;
+        var contentX = 980;
+        var contentY = _targetButton.Top - 4 - contentHeight;
+        _targetPickerBounds = new Rectangle(contentX - 4, contentY - 4, contentWidth + 8, contentHeight + 8);
+        p.FillRect(batch, _targetPickerBounds, ColorPalette.Panel);
+        p.DrawRect(batch, _targetPickerBounds, ColorPalette.Cyan, 2);
+
+        for (var index = 0; index < modes.Length; index++)
+        {
+            var mode = modes[index];
+            var row = index / columns;
+            var column = index % columns;
+            var itemsInRow = Math.Min(columns, modes.Length - row * columns);
+            var rowWidth = itemsInRow * buttonWidth + (itemsInRow - 1) * gap;
+            var rowOffset = (contentWidth - rowWidth) / 2;
+            var bounds = new Rectangle(contentX + rowOffset + column * (buttonWidth + gap),
+                contentY + row * (buttonHeight + gap), buttonWidth, buttonHeight);
+            _targetModeButtons[mode] = bounds;
+            var fill = mode == tower.TargetMode ? ColorPalette.Gold : ColorPalette.Cyan;
+            DrawButton(batch, p, bounds, mode.ToString().ToUpperInvariant(), enabled, fill,
+                ContrastAwareButtonTextColor(fill));
+        }
     }
 
     private void DrawTowerStatGrid(SpriteBatch batch, IReadOnlyList<TowerStatDisplay> stats, int top)
@@ -4099,16 +4219,15 @@ public sealed class UIManager
             DrawTowerLibraryCard(batch, p, _towerLibraryDoctrineBButton, definition,
                 levelTwo.WithDoctrine(secondDoctrine), $"L2 {secondDoctrine.DisplayName.ToUpperInvariant()}",
                 $"UPGRADE {secondDoctrine.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToDoctrine(definition, secondDoctrine)}",
-                ColorPalette.Violet, secondDoctrine.Summary, _towerLibraryDoctrineIndex == 1);
+                ColorPalette.Cyan, secondDoctrine.Summary, _towerLibraryDoctrineIndex == 1);
 
             for (var index = 0; index < 2; index++)
             {
                 var specialization = definition.Specializations[index];
-                var accent = index == 0 ? towerAccent : ColorPalette.Violet;
                 DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 310, 418, 214), definition,
                     specialization.Level.WithDoctrine(doctrine), specialization.DisplayName.ToUpperInvariant(),
                     $"AFTER {doctrine.DisplayName.ToUpperInvariant()} {specialization.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToSpecialization(definition, doctrine, specialization)}",
-                    accent, specialization.Summary);
+                    ColorPalette.Violet, specialization.Summary);
             }
             return;
         }
@@ -4123,11 +4242,10 @@ public sealed class UIManager
             for (var index = 0; index < Math.Min(2, definition.Specializations.Count); index++)
             {
                 var specialization = definition.Specializations[index];
-                var accent = index == 0 ? towerAccent : ColorPalette.Violet;
                 DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 308, topWidth, 216), definition,
                     specialization.Level, specialization.DisplayName.ToUpperInvariant(),
                     $"FINAL {specialization.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToSpecialization(definition, specialization)}",
-                    accent, specialization.Summary);
+                    ColorPalette.Violet, specialization.Summary);
             }
             return;
         }

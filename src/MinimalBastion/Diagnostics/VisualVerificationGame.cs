@@ -196,7 +196,44 @@ public sealed class VisualVerificationGame : Game
         var comparisonSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
         Require(comparisonSession.TryPlaceTower("needle_turret", new Vector2(45, 200)),
             "Upgrade comparison scene places a selected Needle Turret.", assertions);
+        _ = ui.HandleGameplayInput(Pointer(0, 0), comparisonSession);
         scenes.Add(Capture("04a-current-stat-grid.png", ui, GameState.Playing, comparisonSession));
+        var initialTargetMode = comparisonSession.SelectedTower!.TargetMode;
+        var targetButtonCenter = ui.TargetButtonBounds.Center;
+        _ = ui.HandleGameplayInput(Pointer(targetButtonCenter.X, targetButtonCenter.Y, true), comparisonSession);
+        Require(ui.IsTargetPickerOpen && comparisonSession.SelectedTower.TargetMode == initialTargetMode,
+            "Opening the target picker does not cycle or temporarily alter targeting.", assertions);
+        scenes.Add(Capture("04a2-target-picker-drop-up.png", ui, GameState.Playing, comparisonSession));
+        Require(ui.TargetModeButtonBounds.Count == Enum.GetValues<TargetMode>().Length &&
+                ui.TargetPickerBounds.Left >= GameConstants.MapWidth &&
+                ui.TargetPickerBounds.Right <= GameConstants.LogicalWidth &&
+                ui.TargetPickerBounds.Bottom <= ui.TargetButtonBounds.Top &&
+                !ui.TargetPickerBounds.Intersects(ui.UpgradeButtonBounds) &&
+                !ui.TargetPickerBounds.Intersects(ui.SellButtonBounds),
+            "The complete target picker drops upward inside the sidebar without covering management buttons.", assertions);
+        var armoredTargetCenter = ui.TargetModeButtonBounds[TargetMode.Armored].Center;
+        _ = ui.HandleGameplayInput(Pointer(armoredTargetCenter.X, armoredTargetCenter.Y, true), comparisonSession);
+        Require(!ui.IsTargetPickerOpen && comparisonSession.SelectedTower.TargetMode == TargetMode.Armored,
+            "Choosing an explicit target mode applies it once and closes the picker.", assertions);
+
+        var coOpTargetSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
+        coOpTargetSession.ConfigureCoOp(2);
+        Require(coOpTargetSession.TryPlaceTower("needle_turret", new Vector2(45, 200), 1),
+            "Co-op target-picker scene places a shared tower.", assertions);
+        _ = RenderPixels(ui, GameState.Playing, coOpTargetSession);
+        targetButtonCenter = ui.TargetButtonBounds.Center;
+        var targetCommands = new List<GameCommand>();
+        _ = ui.HandleGameplayInput(Pointer(targetButtonCenter.X, targetButtonCenter.Y, true), coOpTargetSession,
+            targetCommands.Add, 2);
+        _ = RenderPixels(ui, GameState.Playing, coOpTargetSession);
+        var fastestTargetCenter = ui.TargetModeButtonBounds[TargetMode.Fastest].Center;
+        _ = ui.HandleGameplayInput(Pointer(fastestTargetCenter.X, fastestTargetCenter.Y, true), coOpTargetSession,
+            targetCommands.Add, 2);
+        Require(targetCommands.Count == 1 && targetCommands[0].Type == GameCommandType.SetTargetMode &&
+                targetCommands[0].TargetMode == TargetMode.Fastest &&
+                coOpTargetSession.SelectedTower!.TargetMode != TargetMode.Fastest,
+            "Co-op target picking emits one exact authoritative command without speculative target cycling.", assertions);
+
         ui.HandleGameplayInput(Pointer(1170, 700), comparisonSession);
         scenes.Add(Capture("04b-upgrade-old-to-new.png", ui, GameState.Playing, comparisonSession));
         var calibratedFeed = content.Towers["needle_turret"].Tier2Doctrines
@@ -205,7 +242,7 @@ public sealed class VisualVerificationGame : Game
             content.Towers["needle_turret"].Levels[0],
             content.Towers["needle_turret"].Levels[1].WithDoctrine(calibratedFeed));
         Require(calibratedStats.Single(stat => stat.Label == "RATE").Direction == TowerStatDirection.Unchanged,
-            "Calibrated Feed does not color an unchanged displayed rate as an increase.", assertions);
+            "Precision Feed does not color an unchanged displayed rate as an increase.", assertions);
         Require(TowerInfo.ComparisonStatText(calibratedStats.Single(stat => stat.Label == "DAMAGE")) == "DAMAGE 8 -> 11",
             "Changed preview stats show old and new values.", assertions);
         Require(TowerInfo.ComparisonStatValueText(calibratedStats.Single(stat => stat.Label == "DAMAGE")) == "8 -> 11",
@@ -417,7 +454,7 @@ public sealed class VisualVerificationGame : Game
         Require(sandboxBreakerSession.TryPlaceTower("breaker_cannon", new Vector2(45, 200)) &&
                 sandboxBreakerSession.TryChooseTowerDoctrine(sandboxBreakerSession.SelectedTower!.Id, "breaker_repeater") &&
                 sandboxBreakerSession.TrySpecializeTower(sandboxBreakerSession.SelectedTower!.Id, "breach_round"),
-            "Finalized Sandbox Intel scene advances Breaker Cannon through Breach Round.", assertions);
+            "Finalized Sandbox Intel scene advances Breaker Cannon through Piercing Round.", assertions);
         _ = ui.HandleGameplayInput(Pointer(0, 0), sandboxBreakerSession);
         _ = RenderPixels(ui, GameState.Playing, sandboxBreakerSession);
         _ = ui.HandleGameplayInput(Pointer(1247, 112, leftPressed: true), sandboxBreakerSession);

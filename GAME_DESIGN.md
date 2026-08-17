@@ -20,16 +20,16 @@ Permanent tower damage is mechanically consistent from wave 1 through wave 20. T
 
 | Tower | Identity | Final specialization choice |
 | --- | --- | --- |
-| Needle Turret | Cheap, reliable short-range generalist. | Rapid Array for swarm cadence or Rail Pin for heavy armor-piercing shots. |
-| Frost Spire | Low-damage area control that extends exposure time. | Permafrost for maximum slow strength and duration or Hail Lancer for faster direct damage with a weaker, shorter slow. |
-| Shard Fan | Short-range multi-projectile swarm control. | Razor Bloom for wide seven-shard clear or Lance Fan for a tight armor-piercing burst. |
-| Watchtower | Long-range priority damage for runners and durable targets. | Sentinel Array for steady interception or Deadeye Post for extreme-range priority shots. |
-| Ember Coil | Persistent burn pressure after range contact. | Wildfire Matrix for crowded-route burn or Searing Brand for long-range, armor-piercing boss burn. |
-| Breaker Cannon | Heavy anti-armor hit and armor reduction. | Breach Round for elite/boss penetration or Shatter Shell for area armor-break. |
-| Arc Relay | Density-dependent chaining with late stun. | Storm Lattice for long damage chains or Lockdown Coil for fewer, heavier control arcs. |
-| Siege Mortar | Slow, long-range area burst against packed groups. | Salvo Rack for frequent compact shells or Quake Shell for wider control at lower DPS. |
-| Prism Beam | Rapid focused damage and Exposed amplification. | Core Lance for shield-bypassing focus or Spectrum Split for branched beams. |
-| Signal Beacon | Position-dependent range and attack-speed support. | Tempo Beacon for maximum cadence or Horizon Beacon for wider reach. |
+| Needle Turret | Cheap, reliable short-range generalist. | Ricochet Array for two-target pressure or Piercing Rail for heavy armor-piercing shots. |
+| Frost Spire | Low-damage area control that extends exposure time. | Permafrost for maximum slow strength and duration or Hail Barrage for faster direct damage with a weaker, shorter slow. |
+| Shard Fan | Short-range multi-projectile swarm control. | Shard Barrage for wide seven-shard clear or Piercing Fan for a tight armor-piercing burst. |
+| Watchtower | Long-range priority damage for runners and durable targets. | Rapid Sentinel for steady interception or Piercing Sniper for extreme-range priority shots. |
+| Ember Coil | Persistent burn pressure after range contact. | Wildfire Splash for crowded-route burn or Piercing Burn for long-range, armor-piercing boss burn. |
+| Breaker Cannon | Heavy anti-armor hit and armor reduction. | Piercing Round for elite/boss penetration or Armor Shatter for area armor-break. |
+| Arc Relay | Density-dependent chaining with late stun. | Chain Storm for long damage chains or Stun Coil for fewer, heavier control arcs. |
+| Siege Mortar | Slow, long-range area burst against packed groups. | Rapid Salvo for frequent compact shells or Shockwave Shell for wider control at lower DPS. |
+| Prism Beam | Rapid focused damage and Exposed amplification. | Shield Piercer for shield-bypassing focus or Split Beam for branched beams. |
+| Signal Beacon | Position-dependent range and attack-speed support. | Rapid Field for maximum cadence or Extended Field for wider reach. |
 
 Branch choices occur after level 2, are mutually exclusive and permanent, and preview exact role/stat changes. Every placed tower uses the same integrated level language: one top spoke at level 1, a second at 120 degrees for level 2, and a third at 240 degrees for level 3.
 

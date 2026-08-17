@@ -327,7 +327,7 @@ public sealed class AutoPlayer
 
                     // A doctrine is both an immediate tier-two upgrade and a commitment
                     // to one of several final builds. Preserve short-term discipline while
-                    // allowing deliberate sidegrades (for example Ice Needle) to be chosen
+                    // allowing deliberate sidegrades (for example Frost Bolt) to be chosen
                     // when their completed build fits the current threat profile.
                     var doctrineValue = immediateGainPerCredit * 0.72f + finalGainPerCredit * 0.28f;
                     var doctrineWeight = DoctrineWeight(doctrine, threat);

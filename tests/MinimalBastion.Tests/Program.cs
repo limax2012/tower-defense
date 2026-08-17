@@ -338,7 +338,7 @@ internal static class Program
         Check.True(permafrost.SlowPercent >= hail.SlowPercent + 0.20f && permafrost.SlowDuration >= hail.SlowDuration + 1f,
             "Permafrost owns sustained control");
         Check.True(TowerInfo.RawDps(hail) >= TowerInfo.RawDps(permafrost) * 3f,
-            "Hail Lancer owns direct area damage");
+            "Hail Barrage owns direct area damage");
 
         var ember = content.Towers["ember_coil"];
         var wildfire = ember.Specializations.Single(x => x.Id == "wildfire_matrix").Level;
@@ -362,11 +362,11 @@ internal static class Program
         var breaker = content.Towers["breaker_cannon"];
         var breach = breaker.Specializations.Single(x => x.Id == "breach_round").Level;
         Check.Nearly(1.5f, breach.PriorityDamageMultiplier,
-            "Breach Round has an explicit armored, elite, and boss role");
+            "Piercing Round has an explicit armored, elite, and boss role");
         Check.True(breach.HomingSplash && breach.SplashTargetLimit == 2 && breach.SplashRadius == 20,
-            "Breach Round gains tightly capped tracking punch-through without matching Shatter crowd coverage");
+            "Piercing Round gains tightly capped tracking punch-through without matching Armor Shatter crowd coverage");
         Check.Equal(4, breaker.Specializations.Single(x => x.Id == "shatter_shell").Level.SplashTargetLimit,
-            "Shatter Shell crowd throughput is bounded");
+            "Armor Shatter crowd throughput is bounded");
         var beacon = content.Towers["signal_beacon"];
         Check.True(beacon.Specializations.Any(x => x.Level.AuraAttackSpeedBonus >= 0.45f) &&
             beacon.Specializations.Any(x => x.Level.AuraRangeBonus >= 0.35f),
@@ -3716,9 +3716,9 @@ internal static class Program
         Check.Nearly(0.6f, projectileState.RicochetDamageMultiplier, "Rapid ricochet damage survives active-projectile snapshots");
         var rapid = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load()
             .Towers["needle_turret"].Specializations.Single(specialization => specialization.Id == "rapid_array");
-        Check.Nearly(72, rapid.Level.RicochetRange, "Rapid Array content provides useful follow-up reach");
-        Check.Nearly(0.6f, rapid.Level.RicochetDamageMultiplier, "Rapid Array keeps its follow-up below full primary damage");
-        Check.Nearly(0, rapid.Level.SplashRadius, "Rapid Array no longer presents a misleading area splash");
+        Check.Nearly(72, rapid.Level.RicochetRange, "Ricochet Array content provides useful follow-up reach");
+        Check.Nearly(0.6f, rapid.Level.RicochetDamageMultiplier, "Ricochet Array keeps its follow-up below full primary damage");
+        Check.Nearly(0, rapid.Level.SplashRadius, "Ricochet Array no longer presents a misleading area splash");
     }
 
     private static void BreakerBreachPunchThrough()
@@ -3728,7 +3728,7 @@ internal static class Program
         var definition = content.Towers["breaker_cannon"];
         var tower = new TowerInstance(19, definition, new Vector2(100, 150));
         Check.True(tower.TryChooseDoctrine("breaker_bored") && tower.TrySpecialize("breach_round"),
-            "create completed Breach Round path");
+            "create completed Piercing Round path");
         var crowd = Enumerable.Range(0, 3)
             .Select(index => new EnemyInstance(60 + index, session.Content.Enemies["armored"], session.Map.Path, 1, 1))
             .ToArray();
@@ -3744,11 +3744,11 @@ internal static class Program
             Session = session
         });
         var shell = session.Projectiles.Projectiles.Single();
-        Check.Equal(ProjectileKind.Homing, shell.Kind, "Breach Round tracks its priority target instead of firing at stale ground");
-        Check.Equal(2, shell.CaptureCoOpState().SplashTargetLimit, "Breach Round forwards its strict two-target cap");
+        Check.Equal(ProjectileKind.Homing, shell.Kind, "Piercing Round tracks its priority target instead of firing at stale ground");
+        Check.Equal(2, shell.CaptureCoOpState().SplashTargetLimit, "Piercing Round forwards its strict two-target cap");
         session.Projectiles.Update(1, session);
         Check.Equal(2, crowd.Count(enemy => enemy.Health < enemy.MaxHealth),
-            "Breach Round punches through only one nearby escort");
+            "Piercing Round punches through only one nearby escort");
         Check.True(crowd.Take(2).All(enemy => enemy.Health < enemy.MaxHealth) && crowd[2].Health == crowd[2].MaxHealth,
             "Breach punch-through resolves the nearest packed targets without becoming Shatter crowd splash");
     }
@@ -3828,8 +3828,8 @@ internal static class Program
                    progressionTower.TrySpecialize("searing_brand"),
             "create completed Ember progression label fixture");
         var progressionLabel = TowerInfo.ProgressionLabel(progressionTower);
-        Check.True(progressionLabel.IndexOf("HOT CORE", StringComparison.Ordinal) <
-                   progressionLabel.IndexOf("SEARING BRAND", StringComparison.Ordinal),
+        Check.True(progressionLabel.IndexOf("INTENSE", StringComparison.Ordinal) <
+                   progressionLabel.IndexOf("PIERCING BURN", StringComparison.Ordinal),
             "Tower Intel lists the Tier 2 doctrine before the Tier 3 specialization");
         var breachLevel = content.Towers["breaker_cannon"].Specializations.Single(x => x.Id == "breach_round").Level;
         Check.True(TowerInfo.Special(content.Towers["breaker_cannon"], breachLevel).Contains("2 targets max", StringComparison.Ordinal),
@@ -3877,7 +3877,7 @@ internal static class Program
             content.Towers["needle_turret"].Levels[1].WithDoctrine(calibratedFeed));
         var calibratedRate = calibratedPreview.Single(stat => stat.Label == "RATE");
         Check.Equal(TowerStatDirection.Unchanged, calibratedRate.Direction,
-            "Calibrated Feed rate stays neutral when both values display as 2/s");
+            "Precision Feed rate stays neutral when both values display as 2/s");
         Check.Equal("RATE 2/s", TowerInfo.ComparisonStatText(calibratedRate),
             "unchanged upgrade stats do not imply a hidden delta");
         var calibratedDamage = calibratedPreview.Single(stat => stat.Label == "DAMAGE");
@@ -3988,7 +3988,7 @@ internal static class Program
             needle.Specializations.Single(x => x.Id == "rapid_array"), cycler, signalBuff);
         Check.True(specializationSummary.Contains("RICOCHET 0%>60%", StringComparison.Ordinal) &&
             specializationSummary.Contains("REACH 0>72", StringComparison.Ordinal),
-            "tier-three branch preview explains Rapid Array's bounded ricochet");
+            "tier-three branch preview explains Ricochet Array's bounded ricochet");
         Check.True(specializationSummary.Contains("RATE 3.15>4.44", StringComparison.Ordinal),
             "tier-three branch preview includes beacon-adjusted rate");
         var beaconUpgrade = TowerInfo.UpgradeSummary(beacon, 0);
