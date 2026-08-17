@@ -19,6 +19,8 @@ namespace MinimalBastion;
 
 public sealed class GameSession
 {
+    private const float BuildPlacementAssistRadius = 64f;
+    private const float BuildPlacementAssistStep = 2f;
     private readonly GameContent _content;
     private readonly EnemySystem _enemySystem = new();
     private readonly TowerSystem _towerSystem;
@@ -76,7 +78,7 @@ public sealed class GameSession
     public TacticalPlacementKind TacticalPlacement { get; private set; }
     public Vector2 PlacementPosition { get; private set; }
     public Vector2 PlacementPreviewPosition { get; private set; }
-    public bool HasTacticalPlacementPreview { get; private set; }
+    public bool HasPlacementPreview { get; private set; }
     public PlacementFailure PlacementFailure { get; private set; }
     public float Speed { get; private set; } = 1f;
     public float OverdriveCooldownRemaining { get; private set; }
@@ -210,7 +212,7 @@ public sealed class GameSession
     {
         PlacementPosition = input.MousePosition;
         PlacementPreviewPosition = PlacementPosition;
-        HasTacticalPlacementPreview = TacticalPlacement != TacticalPlacementKind.None;
+        HasPlacementPreview = false;
         HoveredTower = null;
         HoveredGenerator = null;
         if (TacticalPlacement != TacticalPlacementKind.None)
@@ -218,20 +220,24 @@ public sealed class GameSession
             var tacticalPosition = PlacementPosition;
             if (TacticalPlacement == TacticalPlacementKind.PulsePlate)
             {
-                HasTacticalPlacementPreview = TryResolvePulsePlatePlacement(PlacementPosition, out tacticalPosition);
-                if (HasTacticalPlacementPreview) PlacementPreviewPosition = tacticalPosition;
-                PlacementFailure = ResolvePulsePlatePlacementFailure(PlacementPosition, tacticalPosition, HasTacticalPlacementPreview);
+                HasPlacementPreview = TryResolvePulsePlatePlacement(PlacementPosition, out tacticalPosition);
+                if (HasPlacementPreview) PlacementPreviewPosition = tacticalPosition;
+                PlacementFailure = ResolvePulsePlatePlacementFailure(PlacementPosition, tacticalPosition, HasPlacementPreview);
             }
             else
             {
-                PlacementFailure = ValidateTacticalPlacement(TacticalPlacement, tacticalPosition);
+                HasPlacementPreview = TryResolveChargeForgePlacement(PlacementPosition, out tacticalPosition);
+                if (HasPlacementPreview) PlacementPreviewPosition = tacticalPosition;
+                PlacementFailure = HasPlacementPreview
+                    ? PlacementFailure.None
+                    : ValidateTacticalPlacement(TacticalPlacement, PlacementPosition);
             }
             if (input.RightPressed || input.EscapePressed)
             {
                 CancelPlacement();
                 return;
             }
-            if (input.LeftPressed && PlacementFailure == PlacementFailure.None && HasTacticalPlacementPreview)
+            if (input.LeftPressed && PlacementFailure == PlacementFailure.None && HasPlacementPreview)
             {
                 if (commandSink is null)
                 {
@@ -254,22 +260,26 @@ public sealed class GameSession
         }
         if (PlacementTowerId is not null)
         {
-            PlacementFailure = ValidatePlacement(PlacementTowerId, PlacementPosition);
+            HasPlacementPreview = TryResolveTowerPlacement(PlacementTowerId, PlacementPosition, out var towerPosition);
+            if (HasPlacementPreview) PlacementPreviewPosition = towerPosition;
+            PlacementFailure = HasPlacementPreview
+                ? PlacementFailure.None
+                : ValidatePlacement(PlacementTowerId, PlacementPosition);
             if (input.RightPressed || input.EscapePressed)
             {
                 CancelPlacement();
                 return;
             }
-            if (input.LeftPressed && PlacementFailure == PlacementFailure.None)
+            if (input.LeftPressed && PlacementFailure == PlacementFailure.None && HasPlacementPreview)
             {
-                if (commandSink is null) TryPlaceTower(PlacementTowerId, PlacementPosition);
+                if (commandSink is null) TryPlaceTower(PlacementTowerId, towerPosition);
                 else commandSink(new GameCommand
                 {
                     PlayerId = playerId,
                     Type = GameCommandType.PlaceTower,
                     TowerDefinitionId = PlacementTowerId,
-                    X = PlacementPosition.X,
-                    Y = PlacementPosition.Y
+                    X = towerPosition.X,
+                    Y = towerPosition.Y
                 });
                 CancelPlacement();
             }
@@ -340,6 +350,7 @@ public sealed class GameSession
         PlacementTowerId = towerId;
         TacticalPlacement = TacticalPlacementKind.None;
         PlacementFailure = PlacementFailure.None;
+        HasPlacementPreview = false;
         SelectedTower = null;
         SelectedGenerator = null;
     }
@@ -350,7 +361,7 @@ public sealed class GameSession
         PlacementTowerId = null;
         TacticalPlacement = TacticalPlacementKind.PulsePlate;
         PlacementFailure = PlacementFailure.None;
-        HasTacticalPlacementPreview = false;
+        HasPlacementPreview = false;
         SelectedTower = null;
         SelectedGenerator = null;
     }
@@ -367,7 +378,7 @@ public sealed class GameSession
         PlacementTowerId = null;
         TacticalPlacement = TacticalPlacementKind.ChargeForge;
         PlacementFailure = PlacementFailure.None;
-        HasTacticalPlacementPreview = false;
+        HasPlacementPreview = false;
         SelectedTower = null;
         SelectedGenerator = null;
     }
@@ -377,7 +388,7 @@ public sealed class GameSession
         PlacementTowerId = null;
         TacticalPlacement = TacticalPlacementKind.None;
         PlacementFailure = PlacementFailure.None;
-        HasTacticalPlacementPreview = false;
+        HasPlacementPreview = false;
     }
 
     public void ConfigureCoOp(int localPlayerId)
@@ -415,6 +426,12 @@ public sealed class GameSession
         if (_nextTowerId >= int.MaxValue) return PlacementFailure.IdentityCapacityReached;
         if (!IsTowerAvailable(towerId)) return PlacementFailure.TowerUnavailable;
         if (!Economy.CanAfford(definition.PurchaseCost)) return PlacementFailure.InsufficientCredits;
+        return ValidateTowerPlacementGeometry(position);
+    }
+
+    private PlacementFailure ValidateTowerPlacementGeometry(Vector2 position)
+    {
+        if (!float.IsFinite(position.X) || !float.IsFinite(position.Y)) return PlacementFailure.TooCloseToEdge;
         if (position.X < GameConstants.TowerRadius || position.X > GameConstants.MapWidth - GameConstants.TowerRadius ||
             position.Y < GameConstants.TopBarHeight + GameConstants.TowerRadius || position.Y > GameConstants.LogicalHeight - GameConstants.TowerRadius)
             return PlacementFailure.TooCloseToEdge;
@@ -453,7 +470,14 @@ public sealed class GameSession
         if (Generator is not null) return PlacementFailure.GeneratorAlreadyBuilt;
         var generator = _content.Tactics.Generator;
         if (!Economy.CanAfford(generator.PurchaseCost)) return PlacementFailure.InsufficientCredits;
+        return ValidateChargeForgePlacementGeometry(position);
+    }
+
+    private PlacementFailure ValidateChargeForgePlacementGeometry(Vector2 position)
+    {
+        var generator = _content.Tactics.Generator;
         var radius = generator.Visual.Radius;
+        if (!float.IsFinite(position.X) || !float.IsFinite(position.Y)) return PlacementFailure.TooCloseToEdge;
         if (position.X < radius || position.X > GameConstants.MapWidth - radius ||
             position.Y < GameConstants.TopBarHeight + radius || position.Y > GameConstants.LogicalHeight - radius)
             return PlacementFailure.TooCloseToEdge;
@@ -462,6 +486,120 @@ public sealed class GameSession
         if (Towers.Any(x => Vector2.DistanceSquared(x.Position, position) < 48f * 48f)) return PlacementFailure.OverlapsTower;
         return PlacementFailure.None;
     }
+
+    /// <summary>
+    /// Resolves an imprecise tower cursor to the closest legal build point within a
+    /// small local assist radius. Exact legal positions remain continuous and unchanged;
+    /// snapping only engages around build-zone edges, roads, and occupied tower gaps.
+    /// </summary>
+    public bool TryResolveTowerPlacement(string towerId, Vector2 cursorPosition, out Vector2 placementPosition)
+    {
+        placementPosition = cursorPosition;
+        var failure = ValidatePlacement(towerId, cursorPosition);
+        if (failure == PlacementFailure.None) return true;
+        if (!IsSpatialPlacementFailure(failure) || !IsInteractiveBattlefieldPosition(cursorPosition)) return false;
+        return TryResolveNearbyBuildPosition(cursorPosition,
+            candidate => ValidateTowerPlacementGeometry(candidate) == PlacementFailure.None,
+            out placementPosition);
+    }
+
+    public bool TryResolveChargeForgePlacement(Vector2 cursorPosition, out Vector2 placementPosition)
+    {
+        placementPosition = cursorPosition;
+        var failure = ValidateTacticalPlacement(TacticalPlacementKind.ChargeForge, cursorPosition);
+        if (failure == PlacementFailure.None) return true;
+        if (!IsSpatialPlacementFailure(failure) || !IsInteractiveBattlefieldPosition(cursorPosition)) return false;
+        return TryResolveNearbyBuildPosition(cursorPosition,
+            candidate => ValidateChargeForgePlacementGeometry(candidate) == PlacementFailure.None,
+            out placementPosition);
+    }
+
+    private bool TryResolveNearbyBuildPosition(Vector2 cursorPosition, Func<Vector2, bool> isLegal,
+        out Vector2 placementPosition)
+    {
+        const float distanceTieEpsilon = 0.001f;
+        var assistRadiusSquared = BuildPlacementAssistRadius * BuildPlacementAssistRadius;
+        var bestDistanceSquared = assistRadiusSquared + distanceTieEpsilon;
+        var nearestZoneDistanceSquared = float.MaxValue;
+        var bestPosition = cursorPosition;
+        var found = false;
+
+        // Seed the search with the mathematically nearest point in each authored
+        // build zone. The fine local search below then handles roads and occupied gaps.
+        foreach (var region in Map.BuildableRegions)
+        {
+            var candidate = new Vector2(
+                MathHelper.Clamp(cursorPosition.X, region.Left, region.Right - 0.01f),
+                MathHelper.Clamp(cursorPosition.Y, region.Top, region.Bottom - 0.01f));
+            var distanceSquared = Vector2.DistanceSquared(cursorPosition, candidate);
+            if (distanceSquared > assistRadiusSquared) continue;
+            nearestZoneDistanceSquared = MathF.Min(nearestZoneDistanceSquared, distanceSquared);
+            ConsiderAtDistance(candidate, distanceSquared);
+        }
+        if (found && bestDistanceSquared <= nearestZoneDistanceSquared + distanceTieEpsilon)
+        {
+            placementPosition = bestPosition;
+            return true;
+        }
+
+        var steps = (int)MathF.Ceiling(BuildPlacementAssistRadius / BuildPlacementAssistStep);
+        for (var y = -steps; y <= steps; y++)
+        {
+            for (var x = -steps; x <= steps; x++)
+            {
+                if (x == 0 && y == 0) continue;
+                var offset = new Vector2(x * BuildPlacementAssistStep, y * BuildPlacementAssistStep);
+                if (offset.LengthSquared() > assistRadiusSquared) continue;
+                Consider(cursorPosition + offset);
+            }
+        }
+
+        placementPosition = bestPosition;
+        return found;
+
+        void Consider(Vector2 candidate)
+        {
+            var distanceSquared = Vector2.DistanceSquared(cursorPosition, candidate);
+            ConsiderAtDistance(candidate, distanceSquared);
+        }
+
+        void ConsiderAtDistance(Vector2 candidate, float distanceSquared)
+        {
+            if (distanceSquared > assistRadiusSquared || !IsBetterCandidate(candidate, distanceSquared) ||
+                !isLegal(candidate)) return;
+            bestDistanceSquared = distanceSquared;
+            bestPosition = candidate;
+            found = true;
+        }
+
+        bool IsBetterCandidate(Vector2 candidate, float distanceSquared)
+        {
+            if (!found || distanceSquared < bestDistanceSquared - distanceTieEpsilon) return true;
+            if (MathF.Abs(distanceSquared - bestDistanceSquared) > distanceTieEpsilon) return false;
+
+            // Exact distance ties should remain stable regardless of build-zone or
+            // lattice iteration order. Prefer the candidate requiring less vertical
+            // correction, then less horizontal correction, then screen order.
+            var candidateVerticalOffset = MathF.Abs(candidate.Y - cursorPosition.Y);
+            var bestVerticalOffset = MathF.Abs(bestPosition.Y - cursorPosition.Y);
+            if (candidateVerticalOffset < bestVerticalOffset - distanceTieEpsilon) return true;
+            if (candidateVerticalOffset > bestVerticalOffset + distanceTieEpsilon) return false;
+
+            var candidateHorizontalOffset = MathF.Abs(candidate.X - cursorPosition.X);
+            var bestHorizontalOffset = MathF.Abs(bestPosition.X - cursorPosition.X);
+            if (candidateHorizontalOffset < bestHorizontalOffset - distanceTieEpsilon) return true;
+            if (candidateHorizontalOffset > bestHorizontalOffset + distanceTieEpsilon) return false;
+            if (candidate.Y < bestPosition.Y - distanceTieEpsilon) return true;
+            return MathF.Abs(candidate.Y - bestPosition.Y) <= distanceTieEpsilon &&
+                   candidate.X < bestPosition.X - distanceTieEpsilon;
+        }
+    }
+
+    private static bool IsSpatialPlacementFailure(PlacementFailure failure) => failure is
+        PlacementFailure.TooCloseToEdge or
+        PlacementFailure.OutsideBuildableRegion or
+        PlacementFailure.BlocksPath or
+        PlacementFailure.OverlapsTower;
 
     /// <summary>
     /// Resolves a cursor near the road to the closest legal pulse-plate slot. This keeps

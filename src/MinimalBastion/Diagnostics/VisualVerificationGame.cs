@@ -105,36 +105,94 @@ public sealed class VisualVerificationGame : Game
                 !UIManager.CoOpTacticalTitleBounds.Intersects(UIManager.CoOpReadyStatusBounds) &&
                 !UIManager.CoOpLinkStatusBounds.Intersects(UIManager.CoOpReadyStatusBounds),
             "Co-op player status has dedicated space outside the Tactical Systems title.", assertions);
+        Require(UIManager.CoOpLinkStatusBounds.Left > UIManager.CoOpTacticalTitleBounds.Right &&
+                UIManager.CoOpReadyStatusBounds.Left > UIManager.CoOpTacticalTitleBounds.Right &&
+                UIManager.CoOpLinkStatusBounds.X == UIManager.CoOpReadyStatusBounds.X &&
+                UIManager.CoOpLinkStatusBounds.Width == UIManager.CoOpReadyStatusBounds.Width &&
+                UIManager.CoOpLinkStatusBounds.Bottom <= UIManager.CoOpReadyStatusBounds.Top,
+            "Co-op connection and ready states form a dedicated two-row column to the title's right.", assertions);
+        var compactReadyStatus = UIManager.CoOpReadyStatusLabel(1, 0b01, false, false, 7.1f);
+        Require(font.MeasureString(compactReadyStatus).X * 0.30f * GameConstants.FontDrawScale <=
+                UIManager.CoOpReadyStatusBounds.Width - 8,
+            "The co-op ready and early-bonus status fits its sidebar row without ellipsis.", assertions);
         Require(!UIManager.HudThreatBounds.Intersects(UIManager.HudRunSetupBounds),
             "The active threat summary cannot enter the Run Setup region.", assertions);
         var baseline = RenderPixels(ui, GameState.Playing, session);
         var remotePosition = new Vector2(245, 380);
-        ui.SetRemoteCoOpCursor(remotePosition, 2, placementTowerId: "needle_turret");
+        var remotePreviewPosition = new Vector2(280, 410);
+        ui.SetRemoteCoOpCursor(remotePosition, 2, placementTowerId: "needle_turret",
+            hasPlacementPreview: true, placementPreviewPosition: remotePreviewPosition);
         scenes.Add(Capture("03-remote-tower-placement.png", ui, GameState.Playing, session));
         var withGhost = RenderPixels(ui, GameState.Playing, session);
         var changedGhostPixels = CountChangedPixels(baseline, withGhost,
-            new Rectangle((int)remotePosition.X - 40, (int)remotePosition.Y - 40, 80, 80));
-        Require(changedGhostPixels >= 500,
-            $"Remote placement ghost changes a visible cursor-region footprint ({changedGhostPixels} pixels).", assertions);
+            new Rectangle((int)remotePreviewPosition.X - 40, (int)remotePreviewPosition.Y - 40, 80, 80));
+        Require(changedGhostPixels >= 150,
+            $"Remote filled placement ghost has a clear visible footprint ({changedGhostPixels} pixels).", assertions);
+        Require(CountChangedPixels(baseline, withGhost,
+                    new Rectangle((int)remotePreviewPosition.X - 5, (int)remotePreviewPosition.Y - 5, 11, 11)) >= 80,
+            "Remote placement retains a recognizable filled tower interior.", assertions);
+        ui.AdvanceVisualTime(0.25f);
+        ui.AdvanceVisualTime(0.25f);
+        ui.AdvanceVisualTime(0.25f);
+        var breathedGhost = RenderPixels(ui, GameState.Playing, session);
+        Require(CountChangedPixels(withGhost, breathedGhost,
+                    new Rectangle((int)remotePreviewPosition.X - 32, (int)remotePreviewPosition.Y - 32, 64, 64)) >= 8,
+            "Remote placement silhouette has a subtle breathing pulse without a placed-owner ring.", assertions);
+        Require(Vector2.Distance(remotePosition, remotePreviewPosition) > 20,
+            "Remote raw cursor and snapped build ghost retain separate coordinates.", assertions);
+
+        var remotePlatePosition = new Vector2(360, 250);
+        ui.SetRemoteCoOpCursor(remotePosition, 2, tacticalPlacement: TacticalPlacementKind.PulsePlate,
+            hasPlacementPreview: true, placementPreviewPosition: remotePlatePosition);
+        var withPlateGhost = RenderPixels(ui, GameState.Playing, session);
+        Require(CountChangedPixels(baseline, withPlateGhost,
+                    new Rectangle((int)remotePlatePosition.X - 24, (int)remotePlatePosition.Y - 24, 48, 48)) >= 120,
+            "Remote pulse-plate placement renders a recognizable snapped tactical ghost.", assertions);
+        scenes.Add(Capture("03a-remote-pulse-plate-placement.png", ui, GameState.Playing, session));
+        ui.SetRemoteCoOpCursor(null, 0);
 
         var placementSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
+        var placementBaselinePixels = RenderPixels(ui, GameState.Playing, placementSession);
         placementSession.BeginPlacement("needle_turret");
         placementSession.HandleWorldInput(Pointer(45, 200));
         Require(placementSession.PlacementFailure == PlacementFailure.None,
             "Placement-validity scene resolves an authored buildable position.", assertions);
         var validPlacementPixels = RenderPixels(ui, GameState.Playing, placementSession);
-        scenes.Add(Capture("03a-valid-placement-marker.png", ui, GameState.Playing, placementSession));
-        Require(CountColorPixels(validPlacementPixels, new Rectangle(37, 192, 16, 16), ColorPalette.PlacementValid) >= 40,
-            "A valid tower ghost carries a visible green center marker.", assertions);
+        scenes.Add(Capture("03a-valid-placement-ghost.png", ui, GameState.Playing, placementSession));
+        Require(CountChangedPixels(placementBaselinePixels, validPlacementPixels,
+                    new Rectangle(130, 75, 48, 250)) >= 35,
+            "Tower placement retains the full dashed attack/aura range preview.", assertions);
+        Require(CountColorPixels(validPlacementPixels, new Rectangle(37, 192, 16, 16), ColorPalette.PlacementValid) < 10,
+            "Tower placement no longer overlays a green check icon at its center.", assertions);
+        placementSession.HandleWorldInput(Pointer(100, 200));
+        Require(placementSession.PlacementFailure == PlacementFailure.None && placementSession.HasPlacementPreview &&
+                Vector2.Distance(placementSession.PlacementPosition, placementSession.PlacementPreviewPosition) > 20,
+            "An imprecise cursor beside a build zone snaps to a nearby legal tower position.", assertions);
+        scenes.Add(Capture("03b-assisted-placement-snap.png", ui, GameState.Playing, placementSession));
+
+        var cornerSnapSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId,
+            ChallengeCatalog.DefaultId);
+        cornerSnapSession.BeginPlacement("needle_turret");
+        cornerSnapSession.HandleWorldInput(Pointer(321, 451));
+        Require(cornerSnapSession.HasPlacementPreview && cornerSnapSession.PlacementFailure == PlacementFailure.None &&
+                cornerSnapSession.PlacementPreviewPosition.X < 320 && cornerSnapSession.PlacementPreviewPosition.Y < 450 &&
+                Vector2.Distance(cornerSnapSession.PlacementPosition, cornerSnapSession.PlacementPreviewPosition) < 4,
+            "A Foundry corner cursor snaps to the truly nearest upper zone instead of a later-authored lower zone.", assertions);
+        scenes.Add(Capture("03b-nearest-zone-corner-snap.png", ui, GameState.Playing, cornerSnapSession));
 
         placementSession.HandleWorldInput(Pointer(100, 100));
-        Require(placementSession.PlacementFailure != PlacementFailure.None,
-            "Placement-validity scene resolves an authored invalid position.", assertions);
+        Require(placementSession.PlacementFailure != PlacementFailure.None && !placementSession.HasPlacementPreview,
+            "A cursor too far from every legal build point does not show an invalid ghost.", assertions);
         var invalidPlacementPixels = RenderPixels(ui, GameState.Playing, placementSession);
-        scenes.Add(Capture("03b-invalid-placement-marker.png", ui, GameState.Playing, placementSession));
-        Require(CountColorPixels(invalidPlacementPixels, new Rectangle(92, 92, 16, 16), ColorPalette.PlacementInvalid) >= 40,
-            "An invalid tower ghost carries a visible red center marker.", assertions);
+        scenes.Add(Capture("03c-no-invalid-placement-ghost.png", ui, GameState.Playing, placementSession));
+        Require(CountColorPixels(invalidPlacementPixels, new Rectangle(92, 92, 16, 16), ColorPalette.PlacementInvalid) < 10,
+            "Tower placement no longer overlays a red X icon at an illegal cursor.", assertions);
 
+        var preparePlacementSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
+        _ = RenderPixels(ui, GameState.Playing, preparePlacementSession);
+        _ = ui.HandleGameplayInput(Pointer(1042, 247), preparePlacementSession);
+        var preparePlacementPixels = RenderPixels(ui, GameState.Playing, preparePlacementSession);
+        scenes.Add(Capture("03d-prepare-placement-guidance.png", ui, GameState.Playing, preparePlacementSession));
         var comparisonSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
         Require(comparisonSession.TryPlaceTower("needle_turret", new Vector2(45, 200)),
             "Upgrade comparison scene places a selected Needle Turret.", assertions);
@@ -161,15 +219,19 @@ public sealed class VisualVerificationGame : Game
         Require(autoHeaderSession.TryPlaceTower("frost_spire", new Vector2(230, 175), 2),
             "Auto foreground scene places a later neighboring tower whose art overlaps the marker area.", assertions);
         var laterTower = autoHeaderSession.SelectedTower!;
+        autoHeaderSession.HandleInspectionInput(Pointer(190, 175, leftPressed: true));
         var withoutAutoMarker = RenderPixels(ui, GameState.Playing, autoHeaderSession);
         Require(autoHeaderSession.TryToggleAutoProtocol(autoTower.Id, 2),
             "Auto header scene arms the earlier tower beneath its later neighbor.", assertions);
-        autoHeaderSession.HandleInspectionInput(Pointer(190, 175, leftPressed: true));
         var withAutoMarker = RenderPixels(ui, GameState.Playing, autoHeaderSession);
         var changedAutoMarkerPixels = CountChangedPixels(withoutAutoMarker, withAutoMarker,
-            new Rectangle(150, 135, 120, 80));
-        Require(changedAutoMarkerPixels >= 1_000,
-            $"Arming Auto adds a prominent battlefield marker ({changedAutoMarkerPixels} changed pixels).", assertions);
+            new Rectangle(160, 176, 30, 30));
+        Require(changedAutoMarkerPixels >= 90,
+            $"Arming Auto adds a compact, legible badge ({changedAutoMarkerPixels} changed pixels).", assertions);
+        var changedOutsideBadge = CountChangedPixels(withoutAutoMarker, withAutoMarker,
+            new Rectangle(155, 140, 75, 75)) - changedAutoMarkerPixels;
+        Require(changedOutsideBadge >= 40,
+            $"Auto restores compact L-shaped corner brackets around its tower ({changedOutsideBadge} changed pixels outside badge).", assertions);
         Require(autoHeaderSession.TryToggleAutoProtocol(laterTower.Id, 2) &&
                 autoHeaderSession.AutoOverdriveTowerId == laterTower.Id &&
                 autoHeaderSession.TryToggleAutoProtocol(autoTower.Id, 2) &&
@@ -177,6 +239,53 @@ public sealed class VisualVerificationGame : Game
             "Moving Auto transfers foreground priority; the previous tower immediately returns to normal order.", assertions);
         ui.HandleGameplayInput(Pointer(0, 0), autoHeaderSession, _ => { }, 2);
         scenes.Add(Capture("05-auto-coop-owner.png", ui, GameState.Playing, autoHeaderSession));
+        ui.SetRemoteCoOpCursor(new Vector2(330, 220), 1);
+        var withoutRemoteSelection = RenderPixels(ui, GameState.Playing, autoHeaderSession);
+        ui.SetRemoteCoOpCursor(new Vector2(330, 220), 1, selectedTowerId: autoTower.Id);
+        var withRemoteSelection = RenderPixels(ui, GameState.Playing, autoHeaderSession);
+        Require(CountChangedPixels(withoutRemoteSelection, withRemoteSelection, new Rectangle(165, 130, 50, 35)) >= 160,
+            "Remote inspection uses an opaque high-contrast player flag instead of Auto-like square corners.", assertions);
+        scenes.Add(Capture("05a-remote-selected-player-flag.png", ui, GameState.Playing, autoHeaderSession));
+        ui.SetRemoteCoOpCursor(new Vector2(330, 220), 2, selectedTowerId: autoTower.Id);
+        var playerTwoSelection = RenderPixels(ui, GameState.Playing, autoHeaderSession);
+        Require(CountColorPixels(playerTwoSelection, new Rectangle(165, 130, 50, 35), ColorPalette.Coral) >= 250,
+            "P2 uses the same centered selection-flag geometry as P1 with its own opaque color.", assertions);
+        scenes.Add(Capture("05a2-remote-selected-player-two-flag.png", ui, GameState.Playing, autoHeaderSession));
+        ui.SetRemoteCoOpCursor(null, 0);
+
+        var crowdedMarkerSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId,
+            ChallengeCatalog.DefaultId);
+        crowdedMarkerSession.ConfigureCoOp(2);
+        crowdedMarkerSession.Economy.AddCredits(5_000);
+        var crowdedTowerIds = new[]
+        {
+            "needle_turret", "frost_spire", "shard_fan",
+            "watchtower", "ember_coil", "breaker_cannon",
+            "signal_beacon", "arc_relay", "prism_beam"
+        };
+        var crowdedIndex = 0;
+        foreach (var y in new[] { 330f, 370f, 410f })
+        foreach (var x in new[] { 190f, 230f, 270f })
+        {
+            Require(crowdedMarkerSession.TryPlaceTower(crowdedTowerIds[crowdedIndex++], new Vector2(x, y),
+                    crowdedIndex % 2 + 1, selectPlaced: false),
+                "Crowded co-op marker scene places a legal tower cluster.", assertions);
+        }
+        var crowdedAutoTower = crowdedMarkerSession.Towers[4];
+        var crowdedRemoteTower = crowdedMarkerSession.Towers[5];
+        Require(crowdedMarkerSession.TryToggleAutoProtocol(crowdedAutoTower.Id, 2),
+            "Crowded co-op marker scene arms its center Auto tower.", assertions);
+        ui.SetRemoteCoOpCursor(new Vector2(500, 600), 1);
+        var crowdedWithoutSelection = RenderPixels(ui, GameState.Playing, crowdedMarkerSession);
+        ui.SetRemoteCoOpCursor(new Vector2(500, 600), 1, selectedTowerId: crowdedRemoteTower.Id);
+        var crowdedWithSelection = RenderPixels(ui, GameState.Playing, crowdedMarkerSession);
+        var crowdedTagRegion = new Rectangle((int)crowdedRemoteTower.Position.X - 22,
+            (int)crowdedRemoteTower.Position.Y - crowdedRemoteTower.Definition.Visual.Radius - 25, 44, 24);
+        Require(CountChangedPixels(crowdedWithoutSelection, crowdedWithSelection, crowdedTagRegion) >= 160,
+            "The P1 remote-selection flag remains fully visible above a dense tower cluster.", assertions);
+        scenes.Add(Capture("05b-crowded-auto-and-remote-selection.png", ui, GameState.Playing, crowdedMarkerSession));
+        ui.SetRemoteCoOpCursor(null, 0);
+
         scenes.Add(Capture("06-protocol-auto-library.png", ui, GameState.TowerLibrary, null));
         _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 7 });
         Require(ui.SelectedLibraryTowerId == "signal_beacon",
@@ -241,7 +350,15 @@ public sealed class VisualVerificationGame : Game
                 ui.IsGameplayOverlayOpen && !autoHeaderSession.IsCoOpPaused,
             "Tab opens the Tactical Library over an unpaused co-op wave without pausing it.", assertions);
         scenes.Add(Capture("08-live-coop-library.png", ui, GameState.Playing, autoHeaderSession));
-        _ = ui.HandleGameplayInput(Pointer(0, 0) with { EscapePressed = true }, autoHeaderSession, _ => { }, 2);
+        _ = ui.HandleGameplayInput(Pointer(0, 0) with { NavigateRightPressed = true }, autoHeaderSession, _ => { }, 2);
+        Require(ui.LibraryShowsThreats,
+            "Right Arrow changes Tactical Library pages while the co-op simulation remains live.", assertions);
+        _ = ui.HandleGameplayInput(Pointer(0, 0) with { NavigateLeftPressed = true }, autoHeaderSession, _ => { }, 2);
+        Require(!ui.LibraryShowsThreats && !ui.LibraryShowsCampaign && !ui.LibraryShowsProfiles && !ui.LibraryShowsSystems,
+            "Left Arrow changes Tactical Library pages in the reverse direction.", assertions);
+        _ = ui.HandleGameplayInput(Pointer(0, 0) with { TabPressed = true }, autoHeaderSession, _ => { }, 2);
+        Require(!ui.IsGameplayOverlayOpen,
+            "Tab toggles the live co-op Tactical Library closed.", assertions);
         Require(autoHeaderSession.SetCoOpPaused(true, 1),
             "Shared-pause visual scene enters authoritative pause.", assertions);
         Require(!UIManager.CoOpPauseResumeBounds.Intersects(UIManager.CoOpPauseLibraryBounds) &&
@@ -252,11 +369,18 @@ public sealed class VisualVerificationGame : Game
             "Compact co-op pause controls are separated and contained entirely in the sidebar.", assertions);
         scenes.Add(Capture("09-compact-coop-pause.png", ui, GameState.Playing, autoHeaderSession));
 
+        var pauseSpecsSession = new GameSession(content, "crosswind_basin", DifficultyCatalog.DefaultId, "no_reserves");
+        var pauseSpecsPixels = RenderPixels(ui, GameState.Paused, pauseSpecsSession);
+        Require(CountColorPixels(pauseSpecsPixels, new Rectangle(390, 570, 500, 24), ColorPalette.Muted) >= 50,
+            "Solo pause run specifications use the surrounding muted blue-gray text color.", assertions);
+        scenes.Add(Capture("09a-solo-pause-run-specs.png", ui, GameState.Paused, pauseSpecsSession));
+
         var beaconSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
         beaconSession.Economy.AddCredits(1_000);
         _ = RenderPixels(ui, GameState.Playing, beaconSession);
         _ = ui.HandleGameplayInput(Pointer(1042, 379, leftPressed: true), beaconSession);
         scenes.Add(Capture("10a-signal-beacon-placement-intel.png", ui, GameState.Playing, beaconSession));
+        beaconSession.CancelPlacement();
         Require(beaconSession.TryPlaceTower("signal_beacon", new Vector2(45, 200)),
             "Signal Beacon contrast scene places the support tower.", assertions);
         _ = RenderPixels(ui, GameState.Playing, beaconSession);
@@ -266,9 +390,13 @@ public sealed class VisualVerificationGame : Game
         Require(beaconSession.TryChooseTowerDoctrine(beaconSession.SelectedTower!.Id, "beacon_amplifier"),
             "Signal Beacon contrast scene reaches its final choices.", assertions);
         var beaconFill = content.Towers["signal_beacon"].Visual.PrimaryColor;
-        var beaconText = ColorPalette.HighContrastText(beaconFill);
-        Require(beaconText == ColorPalette.Ink && ColorPalette.ContrastRatio(beaconText, beaconFill) >= 7f,
-            "Signal Beacon's pale upgrade control receives accessible dark text.", assertions);
+        var beaconText = UIManager.TowerIntelPrimaryUpgradeTextColor(content.Towers["signal_beacon"]);
+        Require(ColorPalette.ContrastRatio(ColorPalette.Paper, beaconFill) < UIManager.ColoredButtonWhiteContrastThreshold &&
+                beaconText == ColorPalette.Ink && ColorPalette.ContrastRatio(beaconText, beaconFill) >= 7f,
+            "Signal Beacon's pale upgrade control falls below the white threshold and receives dark text.", assertions);
+        var beaconUpgradePixels = RenderPixels(ui, GameState.Playing, beaconSession);
+        Require(CountColorPixels(beaconUpgradePixels, new Rectangle(1074, 650, 192, 28), ColorPalette.Ink) >= 20,
+            "Signal Beacon's upper Tower Intel upgrade label renders in black.", assertions);
         scenes.Add(Capture("10b-signal-beacon-upgrade-contrast.png", ui, GameState.Playing, beaconSession));
 
         var prismSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
@@ -278,6 +406,11 @@ public sealed class VisualVerificationGame : Game
             "Dense Intel scene advances Prism Beam to its final-role previews.", assertions);
         _ = RenderPixels(ui, GameState.Playing, prismSession);
         _ = ui.HandleGameplayInput(Pointer(1170, 664), prismSession);
+        Require(UIManager.TowerIntelPrimaryUpgradeTextColor(content.Towers["prism_beam"]) == ColorPalette.Paper,
+            "Prism Beam keeps white upgrade text above the authored contrast threshold.", assertions);
+        var prismUpgradePixels = RenderPixels(ui, GameState.Playing, prismSession);
+        Require(CountColorPixels(prismUpgradePixels, new Rectangle(1074, 650, 192, 28), ColorPalette.Paper) >= 20,
+            "Prism Beam's upper Tower Intel upgrade label renders in white.", assertions);
         scenes.Add(Capture("10c-prism-shield-old-to-new.png", ui, GameState.Playing, prismSession));
 
         var sandboxBreakerSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, "sandbox_lab");
@@ -286,6 +419,19 @@ public sealed class VisualVerificationGame : Game
                 sandboxBreakerSession.TrySpecializeTower(sandboxBreakerSession.SelectedTower!.Id, "breach_round"),
             "Finalized Sandbox Intel scene advances Breaker Cannon through Breach Round.", assertions);
         _ = ui.HandleGameplayInput(Pointer(0, 0), sandboxBreakerSession);
+        _ = RenderPixels(ui, GameState.Playing, sandboxBreakerSession);
+        _ = ui.HandleGameplayInput(Pointer(1247, 112, leftPressed: true), sandboxBreakerSession);
+        var sandboxBreakerPixels = RenderPixels(ui, GameState.Playing, sandboxBreakerSession);
+        Require(CountColorPixels(sandboxBreakerPixels, new Rectangle(455, 14, 160, 28), ColorPalette.Paper) >= 20,
+            "Sandbox SEND TEST remains a deliberate white-text exception.", assertions);
+        Require(CountColorPixels(sandboxBreakerPixels, new Rectangle(1018, 102, 200, 20), ColorPalette.Paper) >= 20,
+            "Sandbox Crawler selector keeps its requested white label.", assertions);
+        Require(CountColorPixels(sandboxBreakerPixels, new Rectangle(1192, 506, 60, 16), ColorPalette.Ink) >= 20,
+            "Sandbox DISABLE renders dark text on its orange button.", assertions);
+        Require(CountColorPixels(sandboxBreakerPixels, new Rectangle(1257, 503, 9, 22), ColorPalette.PanelAlt) >= 150,
+            "Sandbox DISABLE leaves a clear inset before the Tower Intel outline.", assertions);
+        Require(CountColorPixels(sandboxBreakerPixels, new Rectangle(1180, 170, 84, 20), ColorPalette.Paper) >= 20,
+            "Sandbox Protocol retains white text on its violet button.", assertions);
         scenes.Add(Capture("10d-sandbox-final-breaker-intel.png", ui, GameState.Playing, sandboxBreakerSession));
 
         var finalBreakerSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
@@ -359,7 +505,13 @@ public sealed class VisualVerificationGame : Game
                 new RunHistoryTowerEntry { TowerId = "siege_mortar", DisplayName = "Siege Mortar", Purchases = 5, Upgrades = 10, CreditsSpent = 8_500, Hits = 3_208, Kills = 1_442, ProtocolActivations = 18, Damage = 285_000, SupportDamageEquivalent = 17_400, Overkill = 21_300 },
                 new RunHistoryTowerEntry { TowerId = "prism_beam", DisplayName = "Prism Beam", Purchases = 6, Upgrades = 12, CreditsSpent = 11_200, Hits = 4_010, Kills = 822, ProtocolActivations = 24, Damage = 198_400, ExposeDamageEquivalent = 54_300, ExposeSeconds = 880 },
                 new RunHistoryTowerEntry { TowerId = "breaker_cannon", DisplayName = "Breaker Cannon", Purchases = 8, Upgrades = 14, Sales = 1, CreditsSpent = 12_600, CreditsRecovered = 1_200, Hits = 5_400, Kills = 990, ProtocolActivations = 30, Damage = 216_700, ArmorBreakDamageEquivalent = 34_100, ArmorBreakSeconds = 640, ArmorAbsorbed = 22_000 },
-                new RunHistoryTowerEntry { TowerId = "frost_spire", DisplayName = "Frost Spire", Purchases = 7, Upgrades = 13, CreditsSpent = 9_800, Hits = 6_800, Kills = 420, ProtocolActivations = 20, Damage = 112_000, ControlSeconds = 1_340 }
+                new RunHistoryTowerEntry { TowerId = "frost_spire", DisplayName = "Frost Spire", Purchases = 7, Upgrades = 13, CreditsSpent = 9_800, Hits = 6_800, Kills = 420, ProtocolActivations = 20, Damage = 112_000, ControlSeconds = 1_340 },
+                new RunHistoryTowerEntry { TowerId = "arc_relay", DisplayName = "Arc Relay", Purchases = 14, Upgrades = 26, Sales = 1, CreditsSpent = 11_535, Hits = 156_845, Kills = 2_187, ProtocolActivations = 83, Damage = 5_261_791, ControlSeconds = 7_365.7f },
+                new RunHistoryTowerEntry { TowerId = "ember_coil", DisplayName = "Ember Coil", Purchases = 7, Upgrades = 12, Sales = 1, CreditsSpent = 3_460, Hits = 395_281, Kills = 805, ProtocolActivations = 3, Damage = 3_408_446 },
+                new RunHistoryTowerEntry { TowerId = "watchtower", DisplayName = "Watchtower", Purchases = 35, Upgrades = 64, Sales = 5, CreditsSpent = 16_685, Hits = 26_955, Kills = 137, Damage = 3_329_775 },
+                new RunHistoryTowerEntry { TowerId = "shard_fan", DisplayName = "Shard Fan", Purchases = 1, Upgrades = 2, CreditsSpent = 375, Hits = 17_473, Kills = 103, Damage = 259_702 },
+                new RunHistoryTowerEntry { TowerId = "needle_turret", DisplayName = "Needle Turret", Purchases = 5, Upgrades = 10, Sales = 5, CreditsSpent = 1_115, Hits = 12_205, Kills = 503, ProtocolActivations = 5, Damage = 208_163 },
+                new RunHistoryTowerEntry { TowerId = "signal_beacon", DisplayName = "Signal Beacon", Purchases = 9, Upgrades = 16, Sales = 2, CreditsSpent = 6_110, ProtocolActivations = 144, SupportDamageEquivalent = 10_846_800 }
             ],
             Enemies =
             [
@@ -374,6 +526,12 @@ public sealed class VisualVerificationGame : Game
         scenes.Add(Capture("13a-run-history-selection.png", ui, GameState.RunHistory, null));
         Require(ui.HandleRunHistory(Pointer(480, 543, leftPressed: true)) == UiAction.None && ui.IsRunHistoryDetailOpen,
             "The explicit View Run action opens the complete statistics view.", assertions);
+        var runDetailPixels = RenderPixels(ui, GameState.RunHistory, null);
+        Require(CountColorPixels(runDetailPixels, new Rectangle(50, 232, 738, 370), ColorPalette.Muted) < 10,
+            "Tower Contribution body contains no unheaded gray diagnostic lines.", assertions);
+        Require(CountColorPixels(runDetailPixels, new Rectangle(818, 285, 422, 245), ColorPalette.GreenText) >= 20 &&
+                CountColorPixels(runDetailPixels, new Rectangle(818, 285, 422, 245), ColorPalette.Green) < 10,
+            "Run Analysis success values use the darker readable green text color.", assertions);
         scenes.Add(Capture("13-run-history-details.png", ui, GameState.RunHistory, null));
         Require(ui.HandleRunHistory(Pointer(480, 671, leftPressed: true)) == UiAction.ViewRunHistoryField,
             "Run details expose their archived defense layout.", assertions);
@@ -655,7 +813,8 @@ public sealed class VisualVerificationGame : Game
         GraphicsDevice.Clear(ColorPalette.Paper);
         _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp,
             null, null, null, Matrix.CreateScale(GameConstants.RenderScale));
-        if (session is not null) _renderer.Draw(_batch, _primitives, session);
+        if (session is not null) _renderer.Draw(_batch, _primitives, session,
+            foregroundTowerId: state == GameState.Playing ? ui.RemoteCoOpSelectedTowerId : 0);
         ui.Draw(_batch, _primitives, state, session);
         _batch.End();
         GraphicsDevice.SetRenderTarget(null);

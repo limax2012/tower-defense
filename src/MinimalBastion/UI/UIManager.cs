@@ -51,9 +51,9 @@ public sealed class UIManager
 {
     internal static readonly Rectangle HudThreatBounds = new(820, 6, 140, 44);
     internal static readonly Rectangle HudRunSetupBounds = new(974, 6, 288, 44);
-    internal static readonly Rectangle CoOpTacticalTitleBounds = new(980, 58, 168, 15);
-    internal static readonly Rectangle CoOpLinkStatusBounds = new(1160, 58, 104, 15);
-    internal static readonly Rectangle CoOpReadyStatusBounds = new(980, 76, 284, 12);
+    internal static readonly Rectangle CoOpTacticalTitleBounds = new(980, 56, 178, 34);
+    internal static readonly Rectangle CoOpLinkStatusBounds = new(1164, 58, 96, 14);
+    internal static readonly Rectangle CoOpReadyStatusBounds = new(1164, 74, 96, 14);
     internal static readonly Rectangle CoOpPauseResumeBounds = new(986, 196, 268, 44);
     internal static readonly Rectangle CoOpPauseLibraryBounds = new(986, 248, 268, 44);
     internal static readonly Rectangle CoOpPauseRestartBounds = new(986, 316, 268, 44);
@@ -123,6 +123,9 @@ public sealed class UIManager
     private int _remoteCoOpCursorPlayerId;
     private int _remoteCoOpSelectedTowerId;
     private string _remoteCoOpPlacementTowerId = "";
+    private TacticalPlacementKind _remoteCoOpTacticalPlacement;
+    private bool _remoteCoOpHasPlacementPreview;
+    private Vector2 _remoteCoOpPlacementPreviewPosition;
     private bool _saveAvailable;
     private string _persistenceStatus = "One rolling autosave plus protected manual slots are available between waves.";
     private IReadOnlyList<SaveSlotInfo> _saveSlots = Array.Empty<SaveSlotInfo>();
@@ -140,6 +143,9 @@ public sealed class UIManager
     private bool _readOnlyInspection;
     private bool _archivedLayoutInspection;
     private bool _towerLibraryOpen;
+    private float _visualTimeSeconds;
+
+    public int RemoteCoOpSelectedTowerId => _remoteCoOpSelectedTowerId;
     private UserSettings _settings = new();
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
     private bool _setupForCoOp;
@@ -261,6 +267,12 @@ public sealed class UIManager
     public void ConfigureSettings(UserSettings settings) => _settings = settings;
     public void SetSettingsStatus(string status) => _settingsStatus = status;
 
+    public void AdvanceVisualTime(float elapsedSeconds)
+    {
+        if (!float.IsFinite(elapsedSeconds) || elapsedSeconds <= 0) return;
+        _visualTimeSeconds = (_visualTimeSeconds + Math.Min(elapsedSeconds, 0.25f)) % 120f;
+    }
+
     public void PreparePauseScreen()
     {
         _restartArmed = false;
@@ -317,12 +329,15 @@ public sealed class UIManager
     {
         var p1 = (readyMask & 0b01) != 0 ? "READY" : "WAIT";
         var p2 = (readyMask & 0b10) != 0 ? "READY" : "WAIT";
+        if (currentWave <= 0 || (!startQueued && intermissionRemaining <= 0))
+            return $"P1 {p1} | P2 {p2}";
+
+        var compactP1 = p1 == "READY" ? "R" : "W";
+        var compactP2 = p2 == "READY" ? "R" : "W";
         var earlyStatus = startQueued
-            ? earlyBonusQueued ? $"+{GameConstants.EarlyStartBonus} LOCKED" : "NO BONUS"
-            : EarlyCallStatus(currentWave, intermissionRemaining);
-        return string.IsNullOrEmpty(earlyStatus)
-            ? $"P1 {p1} | P2 {p2}"
-            : $"P1 {p1} | P2 {p2} | {earlyStatus}";
+            ? earlyBonusQueued ? $"+{GameConstants.EarlyStartBonus} LOCK" : "NO +20"
+            : $"+{GameConstants.EarlyStartBonus} {MathF.Ceiling(intermissionRemaining):0}s";
+        return $"P1{compactP1} | P2{compactP2} | {earlyStatus}";
     }
 
     public static string CoOpLinkStatusLabel(bool connected, bool resyncing, float silenceSeconds)
@@ -980,18 +995,28 @@ public sealed class UIManager
         _coOpLinkSilenceSeconds = float.IsFinite(silenceSeconds) ? MathF.Max(0, silenceSeconds) : 0;
 
     public void SetRemoteCoOpCursor(Vector2? position, int playerId, int selectedTowerId = 0,
-        string placementTowerId = "")
+        string placementTowerId = "", TacticalPlacementKind tacticalPlacement = TacticalPlacementKind.None,
+        bool hasPlacementPreview = false,
+        Vector2 placementPreviewPosition = default)
     {
         _remoteCoOpCursor = position;
         _remoteCoOpCursorPlayerId = position is null ? 0 : playerId;
         _remoteCoOpSelectedTowerId = position is null ? 0 : Math.Max(0, selectedTowerId);
         _remoteCoOpPlacementTowerId = position is null ? "" : placementTowerId ?? "";
+        _remoteCoOpTacticalPlacement = position is null ? TacticalPlacementKind.None : tacticalPlacement;
+        _remoteCoOpHasPlacementPreview = position is not null && hasPlacementPreview;
+        _remoteCoOpPlacementPreviewPosition = placementPreviewPosition;
     }
 
     public UiAction HandleGameplayInput(InputSnapshot input, MinimalBastion.GameSession session, Action<GameCommand>? commandSink = null, int playerId = 1)
     {
         if (_towerLibraryOpen)
         {
+            if (session.IsCoOp && input.TabPressed)
+            {
+                _towerLibraryOpen = false;
+                return UiAction.None;
+            }
             if (!session.IsCoOp || HandleTowerLibraryInput(input))
                 _towerLibraryOpen = false;
             return UiAction.None;
@@ -1507,7 +1532,8 @@ public sealed class UIManager
         _enemyLibraryIndex = Math.Clamp(_enemyLibraryIndex, 0, Math.Max(0, _libraryEnemies.Count - 1));
         if (input.EscapePressed || input.PausePressed || input.RightPressed) return true;
         _campaignLibraryMapIndex = Math.Clamp(_campaignLibraryMapIndex, 0, Math.Max(0, _maps.Count - 1));
-        if (input.TabPressed) CycleTowerLibraryTab();
+        if (input.NavigateLeftPressed) CycleTowerLibraryTab(-1);
+        else if (input.NavigateRightPressed) CycleTowerLibraryTab(1);
         if (input.NavigateUpPressed || input.NavigateDownPressed)
             MoveTowerLibrarySelection(input.NavigateUpPressed ? -1 : 1);
         var activeCount = _libraryShowsSystems || _libraryShowsProfiles
@@ -1604,40 +1630,19 @@ public sealed class UIManager
         return false;
     }
 
-    private void CycleTowerLibraryTab()
+    private void CycleTowerLibraryTab(int direction)
     {
-        if (!_libraryShowsThreats && !_libraryShowsCampaign && !_libraryShowsProfiles && !_libraryShowsSystems && _libraryEnemies.Count > 0)
-        {
-            _libraryShowsThreats = true;
-            return;
-        }
-        if (_libraryShowsThreats && _libraryCampaignWaves.Count > 0)
-        {
-            _libraryShowsThreats = false;
-            _libraryShowsCampaign = true;
-            return;
-        }
-        if (_libraryShowsCampaign)
-        {
-            _libraryShowsCampaign = false;
-            _libraryShowsProfiles = true;
-            return;
-        }
-        if (_libraryShowsProfiles)
-        {
-            _libraryShowsProfiles = false;
-            _libraryShowsSystems = true;
-            return;
-        }
-        if (_libraryShowsSystems)
-        {
-            _libraryShowsSystems = false;
-            return;
-        }
-        _libraryShowsThreats = false;
-        _libraryShowsCampaign = false;
-        _libraryShowsProfiles = false;
-        _libraryShowsSystems = false;
+        const int pageCount = 5;
+        var currentPage = _libraryShowsThreats ? 1
+            : _libraryShowsCampaign ? 2
+            : _libraryShowsProfiles ? 3
+            : _libraryShowsSystems ? 4
+            : 0;
+        var nextPage = (currentPage + Math.Sign(direction) + pageCount) % pageCount;
+        _libraryShowsThreats = nextPage == 1 && _libraryEnemies.Count > 0;
+        _libraryShowsCampaign = nextPage == 2 && _libraryCampaignWaves.Count > 0;
+        _libraryShowsProfiles = nextPage == 3 && _difficulties.Count > 0 && _challenges.Count > 0;
+        _libraryShowsSystems = nextPage == 4;
     }
 
     private void MoveSaveSlotSelection(int delta)
@@ -1833,31 +1838,51 @@ public sealed class UIManager
     {
         if (_remoteCoOpCursor is not { } position || _remoteCoOpCursorPlayerId is < 1 or > 2) return;
         var color = _remoteCoOpCursorPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral;
-        if (!string.IsNullOrWhiteSpace(_remoteCoOpPlacementTowerId) &&
+        if (_remoteCoOpHasPlacementPreview && !string.IsNullOrWhiteSpace(_remoteCoOpPlacementTowerId) &&
             session.Content.Towers.TryGetValue(_remoteCoOpPlacementTowerId, out var placementDefinition))
         {
-            p.DrawShape(batch, position, placementDefinition.Visual.Radius, placementDefinition.Visual.Shape,
-                ColorPalette.WithAlpha(placementDefinition.Visual.PrimaryColor, 155),
-                ColorPalette.WithAlpha(placementDefinition.Visual.AccentColor, 205), 1, true, levelMarks: true);
-            p.DashedRing(batch, position, placementDefinition.Visual.Radius + 8,
-                ColorPalette.WithAlpha(color, 210), 12, 2);
+            DrawRemotePlacementGhost(batch, p, position, placementDefinition.Visual,
+                placementDefinition.Visual.Marks, true, color);
+        }
+        else if (_remoteCoOpHasPlacementPreview && _remoteCoOpTacticalPlacement == TacticalPlacementKind.PulsePlate)
+        {
+            var plate = session.Content.Tactics.EmergencyDefense;
+            DrawRemotePlacementGhost(batch, p, position, plate.Visual, plate.Charges, false, color);
+        }
+        else if (_remoteCoOpHasPlacementPreview && _remoteCoOpTacticalPlacement == TacticalPlacementKind.ChargeForge)
+        {
+            var forge = session.Content.Tactics.Generator;
+            DrawRemotePlacementGhost(batch, p, position, forge.Visual, 1, true, color);
         }
         if (_remoteCoOpSelectedTowerId > 0 && session.Towers.FirstOrDefault(tower => tower.Id == _remoteCoOpSelectedTowerId) is { } tower)
         {
-            var radius = tower.Definition.Visual.Radius + 15;
-            const float mark = 7;
-            var left = tower.Position.X - radius;
-            var right = tower.Position.X + radius;
-            var top = tower.Position.Y - radius;
-            var bottom = tower.Position.Y + radius;
-            p.Line(batch, new Vector2(left, top), new Vector2(left + mark, top), color, 2);
-            p.Line(batch, new Vector2(left, top), new Vector2(left, top + mark), color, 2);
-            p.Line(batch, new Vector2(right, top), new Vector2(right - mark, top), color, 2);
-            p.Line(batch, new Vector2(right, top), new Vector2(right, top + mark), color, 2);
-            p.Line(batch, new Vector2(left, bottom), new Vector2(left + mark, bottom), color, 2);
-            p.Line(batch, new Vector2(left, bottom), new Vector2(left, bottom - mark), color, 2);
-            p.Line(batch, new Vector2(right, bottom), new Vector2(right - mark, bottom), color, 2);
-            p.Line(batch, new Vector2(right, bottom), new Vector2(right, bottom - mark), color, 2);
+            var radius = tower.Definition.Visual.Radius;
+            const int tagWidth = 34;
+            const int tagHeight = 15;
+            var tagY = (int)MathF.Round(tower.Position.Y - radius - tagHeight - 6f);
+            if (tagY < GameConstants.TopBarHeight + 2)
+                tagY = (int)MathF.Round(tower.Position.Y + radius + 7f);
+            var tag = new Rectangle((int)MathF.Round(tower.Position.X - tagWidth * 0.5f), tagY,
+                tagWidth, tagHeight);
+            var shadow = new Rectangle(tag.X - 2, tag.Y - 2, tag.Width + 4, tag.Height + 4);
+            p.FillRect(batch, shadow, ColorPalette.WithAlpha(ColorPalette.Navy, 245));
+            p.FillRect(batch, tag, color);
+            p.DrawRect(batch, tag, ColorPalette.Paper, 1);
+            // SpriteFont exposes line bounds rather than tight glyph ink bounds.
+            // Each short label needs its own optical correction; keep these
+            // independent so tuning one player never shifts the other.
+            var playerLabelOffsetY = _remoteCoOpCursorPlayerId == 2 ? 1.25f : 0.25f;
+            DrawFittedCenteredText(batch, $"P{_remoteCoOpCursorPlayerId}",
+                tag.Center.ToVector2() + new Vector2(0, playerLabelOffsetY),
+                ColorPalette.HighContrastText(color), 0.34f, tag.Width - 6);
+
+            var tagAboveTower = tag.Center.Y < tower.Position.Y;
+            var tagAnchor = new Vector2(tag.Center.X, tagAboveTower ? tag.Bottom : tag.Top);
+            var towerAnchor = tower.Position + new Vector2(0, tagAboveTower ? -radius - 2f : radius + 2f);
+            p.Line(batch, tagAnchor, towerAnchor, color, 2);
+            var pointerCenter = tagAnchor + new Vector2(0, tagAboveTower ? 3f : -3f);
+            p.DrawPolygon(batch, pointerCenter, 4.5f, 3, false, color,
+                tagAboveTower ? MathHelper.PiOver2 : -MathHelper.PiOver2);
         }
         p.Ring(batch, position, 8, color, 2);
         p.Circle(batch, position, 2.5f, color);
@@ -1866,6 +1891,26 @@ public sealed class UIManager
         p.Line(batch, position + new Vector2(0, -15), position + new Vector2(0, -10), color, 2);
         p.Line(batch, position + new Vector2(0, 10), position + new Vector2(0, 15), color, 2);
         DrawText(batch, $"P{_remoteCoOpCursorPlayerId}", position + new Vector2(13, -17), color, 0.36f);
+    }
+
+    private void DrawRemotePlacementGhost(SpriteBatch batch, PrimitiveRenderer p, Vector2 cursorPosition,
+        TowerVisualData visual, int marks, bool levelMarks, Color playerColor)
+    {
+        var previewPosition = _remoteCoOpPlacementPreviewPosition;
+        if (Vector2.DistanceSquared(cursorPosition, previewPosition) > 36f)
+            p.Line(batch, cursorPosition, previewPosition, ColorPalette.WithAlpha(playerColor, 115), 1);
+        var breath = (MathF.Sin(_visualTimeSeconds * 2.2f) + 1f) * 0.5f;
+        var pulse = 0.985f + breath * 0.025f;
+        var ghostPrimary = ColorPalette.WithPremultipliedAlpha(visual.PrimaryColor,
+            ColorPalette.PlacementGhostPrimaryAlpha);
+        var ghostAccent = ColorPalette.WithPremultipliedAlpha(visual.AccentColor,
+            ColorPalette.PlacementGhostAccentAlpha);
+
+        // Local and remote placement ghosts share the same authored translucency.
+        // The subtle breathing scale and remote cursor identify active manipulation
+        // without making the uncommitted tower look placed.
+        p.DrawShape(batch, previewPosition, visual.Radius, visual.Shape, ghostPrimary, ghostAccent,
+            marks, true, pulse, levelMarks);
     }
 
     private void DrawHud(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -1922,18 +1967,21 @@ public sealed class UIManager
                 _coOpWaveReadyMask, _coOpWaveStartQueued, _coOpEarlyBonusQueued, session.IntermissionRemaining);
             startWaveEnabled = !_coOpWaveStartQueued && !localReady;
         }
-        DrawButton(batch, p, _startWaveButton, startWaveLabel, startWaveEnabled, ColorPalette.Green);
-        DrawButton(batch, p, _speedButton, session.Speed >= 1.5f ? "[S] 2x" : "[S] 1x", !session.IsCoOpPaused, ColorPalette.Violet);
+        DrawButton(batch, p, _startWaveButton, startWaveLabel, startWaveEnabled, ColorPalette.Green,
+            session.IsSandbox ? ColorPalette.Paper : null);
+        DrawButton(batch, p, _speedButton, session.Speed >= 1.5f ? "[S] 2x" : "[S] 1x", !session.IsCoOpPaused, ColorPalette.Violet,
+            session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Violet) : null);
         var pauseLabel = session.IsCoOpPaused ? "RESUME" : "PAUSE";
-        DrawButton(batch, p, _pauseButton, pauseLabel, !session.IsCoOp || _coOpPeerConnected,
-            session.IsCoOpPaused ? ColorPalette.Green : ColorPalette.Coral);
+        var pauseFill = session.IsCoOpPaused ? ColorPalette.Green : ColorPalette.Coral;
+        DrawButton(batch, p, _pauseButton, pauseLabel, !session.IsCoOp || _coOpPeerConnected, pauseFill,
+            session.IsSandbox ? ContrastAwareButtonTextColor(pauseFill) : null);
 
         if (session.IsSandbox)
         {
             _sandboxWavePreviousButton = new Rectangle(820, 9, 62, 38);
             _sandboxWaveNextButton = new Rectangle(890, 9, 62, 38);
-            DrawButton(batch, p, _sandboxWavePreviousButton, "[-] WAVE", true, ColorPalette.Cyan);
-            DrawButton(batch, p, _sandboxWaveNextButton, "[+] WAVE", true, ColorPalette.Cyan);
+            DrawSandboxButton(batch, p, _sandboxWavePreviousButton, "[-] WAVE", true, ColorPalette.Cyan);
+            DrawSandboxButton(batch, p, _sandboxWaveNextButton, "[+] WAVE", true, ColorPalette.Cyan);
         }
         else
         {
@@ -2036,7 +2084,7 @@ public sealed class UIManager
             armedAutoTower is not null ? "[A] ARMED" : "[A] ARM";
         DrawButton(batch, p, _autoProtocolButton, autoLabel,
             session.ProtocolsEnabled && selected is not null,
-            autoActive ? ColorPalette.Green : ColorPalette.Cobalt);
+            ColorPalette.Auto);
     }
 
     private void DrawSidebar(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -2046,8 +2094,8 @@ public sealed class UIManager
         p.FillRect(batch, new Rectangle(972, 56, 296, 34), ColorPalette.Navy);
         if (session.IsCoOp && !session.IsSandbox)
         {
-            DrawStrictFittedText(batch, "TACTICAL SYSTEMS", CoOpTacticalTitleBounds.Location.ToVector2(),
-                ColorPalette.Paper, 0.70f, CoOpTacticalTitleBounds.Width, 0.58f);
+            DrawFittedCenteredText(batch, "TACTICAL SYSTEMS", CoOpTacticalTitleBounds.Center.ToVector2(),
+                ColorPalette.Paper, 0.82f, CoOpTacticalTitleBounds.Width);
         }
         else
         {
@@ -2062,14 +2110,17 @@ public sealed class UIManager
             var linkLabel = CoOpSidebarLinkStatusLabel(_coOpPeerConnected, _coOpResyncing, _coOpLinkSilenceSeconds);
             var linkColor = !_coOpPeerConnected ? ColorPalette.Coral : _coOpResyncing ? ColorPalette.Cyan :
                 _coOpLinkSilenceSeconds >= 5 ? ColorPalette.Coral : _coOpLinkSilenceSeconds >= 1.5f ? ColorPalette.Gold : ColorPalette.Green;
+            p.FillRect(batch, CoOpLinkStatusBounds, ColorPalette.WithAlpha(ColorPalette.Ink, 120));
+            p.DrawRect(batch, CoOpLinkStatusBounds, ColorPalette.WithAlpha(linkColor, 190), 1);
             DrawFittedCenteredText(batch, linkLabel, CoOpLinkStatusBounds.Center.ToVector2(), linkColor, 0.37f,
-                CoOpLinkStatusBounds.Width);
+                CoOpLinkStatusBounds.Width - 6);
             var readyStatus = session.CanStartWave
                 ? CoOpReadyStatusLabel(session.CurrentWave, _coOpWaveReadyMask, _coOpWaveStartQueued,
                     _coOpEarlyBonusQueued, session.IntermissionRemaining)
                 : "SHARED WAVE ACTIVE";
+            p.FillRect(batch, CoOpReadyStatusBounds, ColorPalette.WithAlpha(ColorPalette.Ink, 72));
             DrawFittedCenteredText(batch, readyStatus, CoOpReadyStatusBounds.Center.ToVector2(), ColorPalette.Gold, 0.30f,
-                CoOpReadyStatusBounds.Width);
+                CoOpReadyStatusBounds.Width - 8);
         }
         p.FillRect(batch, new Rectangle(972, 90, 296, 3), ColorPalette.Gold);
 
@@ -2173,11 +2224,11 @@ public sealed class UIManager
         _sandboxEnemyPreviousButton = new Rectangle(972, 98, 38, 28);
         var enemyDisplay = new Rectangle(1014, 98, 208, 28);
         _sandboxEnemyNextButton = new Rectangle(1226, 98, 42, 28);
-        DrawButton(batch, p, _sandboxEnemyPreviousButton, "<", enemies.Count > 1, ColorPalette.Cyan);
+        DrawSandboxButton(batch, p, _sandboxEnemyPreviousButton, "<", enemies.Count > 1, ColorPalette.Cyan);
+        var enemyFill = enemy?.Visual.PrimaryColor ?? ColorPalette.Cyan;
         DrawButton(batch, p, enemyDisplay, enemy?.DisplayName.ToUpperInvariant() ?? "NO TARGETS", enemy is not null,
-            enemy?.Visual.PrimaryColor ?? ColorPalette.Cyan,
-            enemy is null ? ColorPalette.Muted : ColorPalette.ReadableAccent(ColorPalette.Paper, enemy.Visual.PrimaryColor));
-        DrawButton(batch, p, _sandboxEnemyNextButton, ">", enemies.Count > 1, ColorPalette.Cyan);
+            enemyFill, enemy is null ? ColorPalette.Muted : SandboxEnemyButtonTextColor(enemy));
+        DrawSandboxButton(batch, p, _sandboxEnemyNextButton, ">", enemies.Count > 1, ColorPalette.Cyan);
 
         _sandboxGroupButton = new Rectangle(972, 132, 94, 28);
         _sandboxRankButton = new Rectangle(1070, 132, 94, 28);
@@ -2196,12 +2247,11 @@ public sealed class UIManager
             3 => "IMMORTAL",
             _ => "BASE HP"
         };
-        DrawButton(batch, p, _sandboxGroupButton, groupLabel, true, ColorPalette.Cobalt);
-        DrawButton(batch, p, _sandboxRankButton, rankLabel, true,
+        DrawSandboxButton(batch, p, _sandboxGroupButton, groupLabel, true, ColorPalette.Cobalt);
+        DrawSandboxButton(batch, p, _sandboxRankButton, rankLabel, true,
             SandboxRanks[_sandboxRankIndex] == EnemyRank.Boss ? ColorPalette.Coral : ColorPalette.Violet);
-        DrawButton(batch, p, _sandboxHealthButton, healthLabel, true,
-            _sandboxHealthIndex == 3 ? ColorPalette.Gold : ColorPalette.Cyan,
-            _sandboxHealthIndex == 3 ? ColorPalette.Ink : null);
+        DrawSandboxButton(batch, p, _sandboxHealthButton, healthLabel, true,
+            _sandboxHealthIndex == 3 ? ColorPalette.Gold : ColorPalette.Cyan);
 
         _sandboxSpawnButton = new Rectangle(972, 166, 48, 28);
         _sandboxResetButton = new Rectangle(1024, 166, 68, 28);
@@ -2209,10 +2259,10 @@ public sealed class UIManager
         _sandboxProtocolButton = new Rectangle(1176, 166, 92, 28);
         var protocolNeedsReset = HasSandboxProtocolTestState(session);
         var protocolCanStart = session.SelectedTower is { IsSandboxDisabled: false };
-        DrawTwoLineButton(batch, p, _sandboxSpawnButton, "[F]", "SPAWN", enemy is not null, ColorPalette.Green);
-        DrawTwoLineButton(batch, p, _sandboxResetButton, "[R]", "RESET TEST", true, ColorPalette.Orange, ColorPalette.Paper);
-        DrawTwoLineButton(batch, p, _sandboxClearTowersButton, "[C]", "CLEAR TOWERS", session.Towers.Count > 0, ColorPalette.Coral);
-        DrawTwoLineButton(batch, p, _sandboxProtocolButton,
+        DrawSandboxTwoLineButton(batch, p, _sandboxSpawnButton, "[F]", "SPAWN", enemy is not null, ColorPalette.Green);
+        DrawSandboxTwoLineButton(batch, p, _sandboxResetButton, "[R]", "RESET TEST", true, ColorPalette.Orange);
+        DrawSandboxTwoLineButton(batch, p, _sandboxClearTowersButton, "[C]", "CLEAR TOWERS", session.Towers.Count > 0, ColorPalette.Coral);
+        DrawSandboxTwoLineButton(batch, p, _sandboxProtocolButton,
             protocolNeedsReset ? "[E] RESET" : protocolCanStart ? "[E] TEST" : "[E] SELECT",
             protocolCanStart || protocolNeedsReset ? "PROTOCOL" : "TOWER",
             protocolNeedsReset || protocolCanStart, ColorPalette.Violet);
@@ -2284,11 +2334,14 @@ public sealed class UIManager
         // keeps only progression and co-op ownership, which also preserves room
         // for Sandbox's Disable control without a special final-tier layout.
         DrawFittedText(batch, $"{levelTitle}{ownership}", new Vector2(1036, 508), ColorPalette.Muted, 0.60f,
-            session.IsSandbox ? 154 : 228);
-        _sandboxToggleTowerButton = session.IsSandbox ? new Rectangle(1196, 502, 68, 24) : Rectangle.Empty;
+            session.IsSandbox ? 144 : 228);
+        _sandboxToggleTowerButton = session.IsSandbox ? new Rectangle(1188, 502, 68, 24) : Rectangle.Empty;
         if (session.IsSandbox)
-            DrawButton(batch, p, _sandboxToggleTowerButton, tower.IsSandboxDisabled ? "ENABLE" : "DISABLE",
-                !_readOnlyInspection, tower.IsSandboxDisabled ? ColorPalette.Green : ColorPalette.Orange);
+        {
+            var toggleFill = tower.IsSandboxDisabled ? ColorPalette.Green : ColorPalette.Orange;
+            DrawSandboxButton(batch, p, _sandboxToggleTowerButton, tower.IsSandboxDisabled ? "ENABLE" : "DISABLE",
+                !_readOnlyInspection, toggleFill);
+        }
         var power = session.Map.GetPowerBuff(tower.Position);
         var powerNodes = session.Map.GetPowerNodes(tower.Position);
         var supportBuff = session.GetSupportBuff(tower);
@@ -2332,23 +2385,29 @@ public sealed class UIManager
             var firstCost = tower.RequiresDoctrine ? tower.Definition.Tier2Doctrines[0].UpgradeCost : tower.Definition.Specializations[0].UpgradeCost;
             var secondCost = tower.RequiresDoctrine ? tower.Definition.Tier2Doctrines[1].UpgradeCost : tower.Definition.Specializations[1].UpgradeCost;
             var firstFill = tower.Definition.Visual.PrimaryColor;
-            var firstText = ColorPalette.HighContrastText(firstFill);
-            DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), canManage, ColorPalette.Cyan);
+            var firstText = TowerIntelPrimaryUpgradeTextColor(tower.Definition);
+            DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), canManage, ColorPalette.Cyan,
+                session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Cyan) : null);
             DrawButton(batch, p, _specializationAButton, $"{firstLabel.ToUpperInvariant()} {firstCost}", canManage && session.Economy.CanAfford(firstCost),
                 firstFill, firstText);
-            DrawButton(batch, p, _specializationBButton, $"{secondLabel.ToUpperInvariant()} {secondCost}", canManage && session.Economy.CanAfford(secondCost), ColorPalette.Violet);
+            DrawButton(batch, p, _specializationBButton, $"{secondLabel.ToUpperInvariant()} {secondCost}", canManage && session.Economy.CanAfford(secondCost),
+                ColorPalette.Violet, session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Violet) : null);
             if (session.IsSandbox)
-                DrawButton(batch, p, _sandboxRemoveTowerButton, "REMOVE", canManage, ColorPalette.Coral);
+                DrawSandboxButton(batch, p, _sandboxRemoveTowerButton, "REMOVE", canManage, ColorPalette.Coral);
             else
                 DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange);
             return;
         }
-        if (!tower.IsSupport) DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), canManage, ColorPalette.Cyan);
-        DrawButton(batch, p, _upgradeButton, tower.CanUpgrade ? $"UP {tower.UpgradeCost}" : "MAX", canManage && tower.CanUpgrade && session.Economy.CanAfford(tower.UpgradeCost), ColorPalette.Violet);
+        if (!tower.IsSupport)
+            DrawButton(batch, p, _targetButton, tower.TargetMode.ToString().ToUpperInvariant(), canManage, ColorPalette.Cyan,
+                session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Cyan) : null);
+        DrawButton(batch, p, _upgradeButton, tower.CanUpgrade ? $"UP {tower.UpgradeCost}" : "MAX",
+            canManage && tower.CanUpgrade && session.Economy.CanAfford(tower.UpgradeCost), ColorPalette.Violet,
+            session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Violet) : null);
         if (session.IsSandbox)
         {
             _sandboxRemoveTowerButton = _sellButton;
-            DrawButton(batch, p, _sandboxRemoveTowerButton, "REMOVE", canManage, ColorPalette.Coral);
+            DrawSandboxButton(batch, p, _sandboxRemoveTowerButton, "REMOVE", canManage, ColorPalette.Coral);
         }
         else
             DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange);
@@ -2388,6 +2447,17 @@ public sealed class UIManager
     }
 
     internal const float TowerStatGridMinimumScale = 0.36f;
+    public const float ColoredButtonWhiteContrastThreshold = 3f;
+    public static Color ContrastAwareButtonTextColor(Color fillColor) =>
+        ColorPalette.ContrastRatio(ColorPalette.Paper, fillColor) >= ColoredButtonWhiteContrastThreshold
+            ? ColorPalette.Paper
+            : ColorPalette.Ink;
+    public static Color TowerIntelPrimaryUpgradeTextColor(TowerDefinition definition) =>
+        ContrastAwareButtonTextColor(definition.Visual.PrimaryColor);
+    public static Color SandboxEnemyButtonTextColor(EnemyDefinition definition) =>
+        definition.Id.Equals("t1_crawler", StringComparison.OrdinalIgnoreCase)
+            ? ColorPalette.Paper
+            : ContrastAwareButtonTextColor(definition.Visual.PrimaryColor);
     internal static int TowerStatGridColumns(int statCount) => statCount > 9 ? 4 : 3;
     internal static int TowerStatGridRowHeight(int statCount) => statCount > 6 ? 24 : 32;
     internal static float TowerStatGridLabelScale(int statCount) => TowerStatGridColumns(statCount) == 4 ? 0.40f : 0.48f;
@@ -2415,9 +2485,14 @@ public sealed class UIManager
     private void DrawDefinitionIntel(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session, TowerDefinition definition, bool placing)
     {
         var level = definition.Levels[0];
-        var powerNodes = placing ? session.Map.GetPowerNodes(session.PlacementPosition) : Array.Empty<PowerNodeData>();
+        var placementIntelPosition = placing && session.HasPlacementPreview
+            ? session.PlacementPreviewPosition
+            : session.PlacementPosition;
+        var powerNodes = placing && session.HasPlacementPreview
+            ? session.Map.GetPowerNodes(placementIntelPosition)
+            : Array.Empty<PowerNodeData>();
         var hasPlacementModifier = powerNodes.Count > 0;
-        var power = hasPlacementModifier ? session.Map.GetPowerBuff(session.PlacementPosition) : default;
+        var power = hasPlacementModifier ? session.Map.GetPowerBuff(placementIntelPosition) : default;
         var comparisonStats = TowerInfo.ComparisonStats(definition, level, null, default, power);
         var statColumns = TowerStatGridColumns(comparisonStats.Count);
         var statRows = (comparisonStats.Count + statColumns - 1) / statColumns;
@@ -2431,8 +2506,7 @@ public sealed class UIManager
         var detailCursor = protocolTop + (session.ProtocolsEnabled ? 2 + protocolBonusRows.Count : 2) * detailStep;
         var nodeTop = detailCursor;
         if (hasPlacementModifier) detailCursor += detailStep;
-        var instructionTop = detailCursor + 3;
-        var cardBottom = Math.Min(719, instructionTop + 16);
+        var cardBottom = Math.Min(719, detailCursor + 8);
         var intelCard = new Rectangle(972, 474, 296, cardBottom - 474);
         p.FillRect(batch, intelCard, ColorPalette.PanelAlt);
         p.DrawRect(batch, intelCard, definition.Visual.PrimaryColor, 1);
@@ -2450,7 +2524,7 @@ public sealed class UIManager
                 TowerInfo.ProtocolTimingCompact(definition.Protocol),
                 new Vector2(980, protocolTop), ColorPalette.Coral, 0.40f, 280);
             DrawFittedText(batch, $"AUTO  {TowerInfo.ProtocolAutoTriggerCompact(definition.Protocol)}",
-                new Vector2(992, protocolTop + detailStep), ColorPalette.Cobalt, 0.39f, 268);
+                new Vector2(992, protocolTop + detailStep), ColorPalette.Auto, 0.39f, 268);
             for (var index = 0; index < protocolBonusRows.Count; index++)
                 DrawFittedText(batch, protocolBonusRows[index], new Vector2(992, protocolTop + (2 + index) * detailStep),
                     ColorPalette.Coral, 0.39f, 268);
@@ -2465,8 +2539,6 @@ public sealed class UIManager
             DrawFittedText(batch, $"ON {PowerNodeNames(powerNodes)}  {string.Join("  ", powerNodes.Select(TowerInfo.PowerNodeBonus))}",
                 new Vector2(980, nodeTop), powerNodes[0].NodeColor, 0.42f, 280);
         }
-        DrawFittedText(batch, placing ? "CLICK MAP TO DEPLOY   |   ESC TO CANCEL" : "CLICK CARD TO PREPARE PLACEMENT",
-            new Vector2(980, instructionTop), placing ? ColorPalette.GreenText : ColorPalette.Cobalt, 0.42f, 280);
     }
 
     private static string PowerNodeNames(IReadOnlyList<PowerNodeData> nodes) => nodes.Count == 1
@@ -2575,7 +2647,7 @@ public sealed class UIManager
     private void DrawPlacementStatus(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
         var pointerOnMap = IsPointerOnMap(session.PlacementPosition);
-        var valid = pointerOnMap && session.PlacementFailure == PlacementFailure.None;
+        var valid = pointerOnMap && session.HasPlacementPreview && session.PlacementFailure == PlacementFailure.None;
         var color = valid ? ColorPalette.Green : ColorPalette.Coral;
         var rect = new Rectangle(292, 64, 376, 28);
         p.FillRect(batch, rect, ColorPalette.WithAlpha(ColorPalette.Navy, 232));
@@ -2756,7 +2828,7 @@ public sealed class UIManager
             _settings.AutoStartWaves
                 ? $"AUTO-START WAVES  ON  |  SOLO  |  {_settings.AutoStartDelaySeconds}s"
                 : "AUTO-START WAVES  OFF",
-            true, _settings.AutoStartWaves ? ColorPalette.Green : ColorPalette.Cobalt);
+            true, ColorPalette.Auto);
         DrawButton(batch, p, _volumeButton, $"SOUND EFFECTS  {MathF.Round(_settings.SfxVolume * 100):0}%  |  CLICK TO CHANGE",
             true, ColorPalette.Gold, ColorPalette.Ink);
         DrawButton(batch, p, _musicVolumeButton, $"TACTICAL MUSIC  {MathF.Round(_settings.MusicVolume * 100):0}%  |  CLICK TO CHANGE",
@@ -2956,16 +3028,15 @@ public sealed class UIManager
         DrawText(batch, "TOWER CONTRIBUTION", new Vector2(towerPanel.X + 14, towerPanel.Y + 12), ColorPalette.Navy, 0.68f);
         p.FillRect(batch, new Rectangle(towerPanel.X + 14, towerPanel.Y + 35, towerPanel.Width - 28, 2), ColorPalette.Cyan);
         DrawText(batch, "UNIT", new Vector2(56, 213), ColorPalette.Muted, 0.34f);
-        DrawText(batch, "BUILT", new Vector2(174, 213), ColorPalette.Muted, 0.30f);
-        DrawText(batch, "UPGRADES", new Vector2(211, 213), ColorPalette.Muted, 0.30f);
-        DrawText(batch, "SOLD", new Vector2(265, 213), ColorPalette.Muted, 0.30f);
-        DrawText(batch, "DAMAGE", new Vector2(306, 213), ColorPalette.Muted, 0.30f);
-        DrawText(batch, "ASSIST", new Vector2(376, 213), ColorPalette.Muted, 0.30f);
-        DrawText(batch, "HITS", new Vector2(446, 213), ColorPalette.Muted, 0.30f);
-        DrawText(batch, "KILLS", new Vector2(496, 213), ColorPalette.Muted, 0.30f);
-        DrawText(batch, "PROTOCOLS", new Vector2(540, 213), ColorPalette.Muted, 0.30f);
-        DrawText(batch, "CONTROL", new Vector2(606, 213), ColorPalette.Muted, 0.30f);
-        DrawTextRight(batch, "IMPACT/CREDIT", new Vector2(780, 213), ColorPalette.Muted, 0.30f);
+        DrawFittedText(batch, "BUILT", new Vector2(176, 213), ColorPalette.Muted, 0.30f, 38);
+        DrawFittedText(batch, "UPGRADES", new Vector2(216, 213), ColorPalette.Muted, 0.30f, 54);
+        DrawFittedText(batch, "SOLD", new Vector2(272, 213), ColorPalette.Muted, 0.30f, 34);
+        DrawFittedText(batch, "DAMAGE", new Vector2(310, 213), ColorPalette.Muted, 0.30f, 70);
+        DrawFittedText(batch, "ASSIST", new Vector2(383, 213), ColorPalette.Muted, 0.30f, 70);
+        DrawFittedText(batch, "KILLS", new Vector2(456, 213), ColorPalette.Muted, 0.30f, 44);
+        DrawFittedText(batch, "PROTOCOLS", new Vector2(504, 213), ColorPalette.Muted, 0.30f, 64);
+        DrawFittedText(batch, "CONTROL", new Vector2(572, 213), ColorPalette.Muted, 0.30f, 74);
+        DrawTextRight(batch, "IMPACT / CREDIT", new Vector2(780, 213), ColorPalette.Muted, 0.30f);
 
         var towers = entry.Towers.OrderByDescending(tower => tower.ContributionDamage).ThenBy(tower => tower.DisplayName).Take(10).ToArray();
         if (towers.Length == 0)
@@ -2976,26 +3047,19 @@ public sealed class UIManager
         for (var index = 0; index < towers.Length; index++)
         {
             var tower = towers[index];
-            var y = 234 + index * 38;
-            if ((index & 1) == 1) p.FillRect(batch, new Rectangle(50, y - 2, 738, 36), ColorPalette.Panel);
-            DrawFittedText(batch, tower.DisplayName.ToUpperInvariant(), new Vector2(56, y), ColorPalette.Ink, 0.43f, 112);
-            DrawFittedText(batch, tower.Purchases.ToString(), new Vector2(174, y), ColorPalette.Muted, 0.38f, 30);
-            DrawFittedText(batch, tower.Upgrades.ToString(), new Vector2(219, y), ColorPalette.Muted, 0.38f, 34);
-            DrawFittedText(batch, tower.Sales.ToString(), new Vector2(265, y), ColorPalette.Muted, 0.38f, 30);
-            DrawFittedText(batch, tower.Damage.ToString("0"), new Vector2(306, y), ColorPalette.Cobalt, 0.38f, 66);
-            DrawFittedText(batch, tower.AssistDamageEquivalent.ToString("0"), new Vector2(376, y), ColorPalette.Violet, 0.38f, 66);
-            DrawFittedText(batch, tower.Hits.ToString(), new Vector2(446, y), ColorPalette.Ink, 0.38f, 46);
-            DrawFittedText(batch, tower.Kills.ToString(), new Vector2(496, y), ColorPalette.Ink, 0.38f, 42);
-            DrawFittedText(batch, tower.ProtocolActivations.ToString(), new Vector2(548, y), ColorPalette.GreenText, 0.38f, 52);
-            DrawFittedText(batch, $"{tower.ControlSeconds:0.0}s", new Vector2(606, y), ColorPalette.Cyan, 0.38f, 72);
+            var y = 239 + index * 36;
+            if ((index & 1) == 1) p.FillRect(batch, new Rectangle(50, y - 5, 738, 32), ColorPalette.Panel);
+            DrawFittedText(batch, tower.DisplayName.ToUpperInvariant(), new Vector2(56, y), ColorPalette.Ink, 0.43f, 116);
+            DrawFittedText(batch, tower.Purchases.ToString(), new Vector2(176, y), ColorPalette.Ink, 0.40f, 38);
+            DrawFittedText(batch, tower.Upgrades.ToString(), new Vector2(216, y), ColorPalette.Ink, 0.40f, 54);
+            DrawFittedText(batch, tower.Sales.ToString(), new Vector2(272, y), ColorPalette.Ink, 0.40f, 34);
+            DrawFittedText(batch, tower.Damage.ToString("0"), new Vector2(310, y), ColorPalette.Cobalt, 0.40f, 70);
+            DrawFittedText(batch, tower.AssistDamageEquivalent.ToString("0"), new Vector2(383, y), ColorPalette.Violet, 0.40f, 70);
+            DrawFittedText(batch, tower.Kills.ToString(), new Vector2(456, y), ColorPalette.Ink, 0.40f, 44);
+            DrawFittedText(batch, tower.ProtocolActivations.ToString(), new Vector2(504, y), ColorPalette.GreenText, 0.40f, 64);
+            DrawFittedText(batch, $"{tower.ControlSeconds:0.0}s", new Vector2(572, y), ColorPalette.Cyan, 0.40f, 74);
             DrawTextRight(batch, tower.ImpactPerCredit.ToString("0.0"), new Vector2(780, y),
-                ColorPalette.BalancedAccentText(ColorPalette.Gold, ColorPalette.PanelAlt), 0.38f);
-            DrawTowerContributionSecondary(batch, "SPENT", tower.CreditsSpent.ToString(), 56, y + 17, 106);
-            DrawTowerContributionSecondary(batch, "RETURN", tower.CreditsRecovered.ToString(), 164, y + 17, 96);
-            DrawTowerContributionSecondary(batch, "EXPOSE", $"{tower.ExposeSeconds:0.0}s", 262, y + 17, 108);
-            DrawTowerContributionSecondary(batch, "BREAK", $"{tower.ArmorBreakSeconds:0.0}s", 372, y + 17, 108);
-            DrawTowerContributionSecondary(batch, "ARMOR", tower.ArmorAbsorbed.ToString("0"), 482, y + 17, 108);
-            DrawTowerContributionSecondary(batch, "OVERKILL", tower.Overkill.ToString("0"), 592, y + 17, 188);
+                ColorPalette.BalancedAccentText(ColorPalette.Gold, ColorPalette.PanelAlt), 0.40f);
         }
 
         var analysisPanel = new Rectangle(818, 170, 422, 460);
@@ -3008,7 +3072,7 @@ public sealed class UIManager
         DrawSummaryMetric(batch, "EARNED", entry.CreditsEarned.ToString(), 1038, 213, ColorPalette.Gold);
         DrawSummaryMetric(batch, "SPENT", entry.CreditsSpent.ToString(), 834, 253, ColorPalette.Ink);
         DrawSummaryMetric(batch, "SALE RETURN", entry.SaleCreditsRecovered.ToString(), 1038, 253, ColorPalette.Orange);
-        DrawSummaryMetric(batch, "EARLY BONUS", entry.EarlyCallCredits.ToString(), 834, 293, ColorPalette.Green);
+        DrawSummaryMetric(batch, "EARLY BONUS", entry.EarlyCallCredits.ToString(), 834, 293, ColorPalette.GreenText);
         DrawSummaryMetric(batch, "DEFENSE TIME", elapsed, 1038, 293, ColorPalette.Cobalt);
 
         DrawText(batch, "TACTICAL SYSTEMS", new Vector2(834, 338), ColorPalette.Navy, 0.58f);
@@ -3018,15 +3082,15 @@ public sealed class UIManager
         DrawSummaryMetric(batch, "PLATES / TRIGGERS", $"{entry.PlateDeployments} / {entry.PlateTriggers}", 834, 413, ColorPalette.Coral);
         DrawSummaryMetric(batch, "PLATE HITS / KILLS", $"{entry.PlateHits} / {entry.PlateKills}", 1038, 413, ColorPalette.Coral);
         DrawSummaryMetric(batch, "PLATE DAMAGE", entry.PlateDamage.ToString("0"), 834, 453, ColorPalette.Coral);
-        DrawSummaryMetric(batch, "FORGED CHARGES", entry.ForgedCharges.ToString(), 1038, 453, ColorPalette.Green);
-        DrawSummaryMetric(batch, "FORGES BUILT", entry.ForgePurchases.ToString(), 834, 493, ColorPalette.Green);
-        DrawSummaryMetric(batch, "FORGE UPGRADES", entry.ForgeUpgrades.ToString(), 1038, 493, ColorPalette.Green);
+        DrawSummaryMetric(batch, "FORGED CHARGES", entry.ForgedCharges.ToString(), 1038, 453, ColorPalette.GreenText);
+        DrawSummaryMetric(batch, "FORGES BUILT", entry.ForgePurchases.ToString(), 834, 493, ColorPalette.GreenText);
+        DrawSummaryMetric(batch, "FORGE UPGRADES", entry.ForgeUpgrades.ToString(), 1038, 493, ColorPalette.GreenText);
 
         DrawText(batch, "GREATEST LEAK THREAT", new Vector2(834, 548), ColorPalette.Muted, 0.40f);
         var leakThreat = entry.GreatestLeakThreatLivesLost <= 0
             ? "NONE"
             : $"{entry.GreatestLeakThreatName.ToUpperInvariant()}  -{entry.GreatestLeakThreatLivesLost} LIVES";
-        DrawFittedText(batch, leakThreat, new Vector2(834, 568), entry.GreatestLeakThreatLivesLost <= 0 ? ColorPalette.Green : ColorPalette.Coral, 0.52f, 390);
+        DrawFittedText(batch, leakThreat, new Vector2(834, 568), entry.GreatestLeakThreatLivesLost <= 0 ? ColorPalette.GreenText : ColorPalette.Coral, 0.52f, 390);
         var enemySummary = entry.Enemies.Count == 0
             ? "NO DETAILED THREAT TELEMETRY"
             : string.Join("  |  ", entry.Enemies.Where(enemy => enemy.Escapes > 0).Take(3)
@@ -3256,14 +3320,14 @@ public sealed class UIManager
         var right = rect.X + 134;
         DrawSummaryMetric(batch, "CREDITS EARNED", economy.TotalCreditsEarned.ToString(), left, rect.Y + 53, ColorPalette.Gold);
         DrawSummaryMetric(batch, "CREDITS SPENT", economy.TotalCreditsSpent.ToString(), right, rect.Y + 53, ColorPalette.Ink);
-        DrawSummaryMetric(batch, "EARLY BONUS", economy.EarlyStartCreditsEarned.ToString(), left, rect.Y + 91, ColorPalette.Green);
+        DrawSummaryMetric(batch, "EARLY BONUS", economy.EarlyStartCreditsEarned.ToString(), left, rect.Y + 91, ColorPalette.GreenText);
         DrawSummaryMetric(batch, "SALE RETURN", economy.SaleCreditsRecovered.ToString(), right, rect.Y + 91, ColorPalette.Orange);
         DrawSummaryMetric(batch, "PROTOCOLS", stats.ProtocolActivations.ToString(), left, rect.Y + 129, ColorPalette.Violet);
         DrawSummaryMetric(batch, "PLATES", stats.EmergencyDeployments.ToString(), right, rect.Y + 129, ColorPalette.Coral);
         DrawSummaryMetric(batch, "PLATE DAMAGE", stats.EmergencyDamage.ToString("0"), left, rect.Y + 167, ColorPalette.Coral);
-        DrawSummaryMetric(batch, "FORGED", stats.GeneratedCharges.ToString(), right, rect.Y + 167, ColorPalette.Green);
+        DrawSummaryMetric(batch, "FORGED", stats.GeneratedCharges.ToString(), right, rect.Y + 167, ColorPalette.GreenText);
         DrawText(batch, "GREATEST LEAK THREAT", new Vector2(rect.X + 14, rect.Y + 210), ColorPalette.Muted, 0.44f);
-        DrawText(batch, threat is null ? "NONE" : $"{threat.DisplayName.ToUpperInvariant()}  -{threat.LivesLost} LIVES", new Vector2(rect.X + 14, rect.Y + 228), threat is null ? ColorPalette.Green : ColorPalette.Coral, 0.52f);
+        DrawText(batch, threat is null ? "NONE" : $"{threat.DisplayName.ToUpperInvariant()}  -{threat.LivesLost} LIVES", new Vector2(rect.X + 14, rect.Y + 228), threat is null ? ColorPalette.GreenText : ColorPalette.Coral, 0.52f);
         DrawText(batch, $"DEFENSE TIME  {elapsed.Minutes:00}:{elapsed.Seconds:00}", new Vector2(rect.X + 14, rect.Bottom - 27), ColorPalette.Cobalt, 0.52f);
     }
 
@@ -3273,10 +3337,6 @@ public sealed class UIManager
         DrawText(batch, value, new Vector2(x, y + 15),
             ColorPalette.BalancedAccentText(valueColor, ColorPalette.PanelAlt), 0.58f);
     }
-
-    private void DrawTowerContributionSecondary(SpriteBatch batch, string label, string value,
-        int x, int y, int width) =>
-        DrawFittedText(batch, $"{label}  {value}", new Vector2(x, y), ColorPalette.Muted, 0.27f, width);
 
     private void DrawOverlay(SpriteBatch batch, PrimitiveRenderer p, string title, string subtitle)
     {
@@ -3325,7 +3385,7 @@ public sealed class UIManager
             _restartArmed
                 ? RestartPreservationLabel
                 : $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
-            new Vector2(640, 580), _restartArmed ? ColorPalette.Coral : session.Challenge.AccentColor, 0.50f, 500);
+            new Vector2(640, 580), _restartArmed ? ColorPalette.Coral : ColorPalette.Muted, 0.50f, 500);
         DrawText(batch, "LEFT CLICK A COMMAND  |  ESC RESUMES", new Vector2(640, 612), ColorPalette.Muted, 0.44f, true);
     }
 
@@ -3653,10 +3713,10 @@ public sealed class UIManager
             "CORE CONTROLS", ColorPalette.Cobalt, "triangle",
         [
             "SPACE: START / READY WAVE    S: 1x / 2x SPEED",
-            "ESC OR P: PAUSE    TAB: LIBRARY PAGE",
-            "1-0: SELECT TOWER    U: UPGRADE",
-            "T: TARGET MODE    DELETE: SELL",
-            "Q: PULSE PLATE    G: CHARGE FORGE",
+            "ESC/P: PAUSE    TAB: CO-OP LIBRARY",
+            "LEFT/RIGHT: CHANGE LIBRARY PAGE",
+            "1-0: SELECT    U: UPGRADE    T: TARGET",
+            "DELETE: SELL    Q: PLATE    G: FORGE",
             "E: ACTIVATE PROTOCOL    A: TOGGLE AUTO",
             "MIDDLE CLICK: CO-OP LOCATION PING"
         ]);
@@ -3686,7 +3746,7 @@ public sealed class UIManager
         ]);
 
         DrawSystemCard(batch, p, new Rectangle(firstX, secondY, cardWidth, cardHeight),
-            "TOWER PROTOCOLS", ColorPalette.Violet, "square",
+            "TOWER PROTOCOLS", ColorPalette.Auto, "square",
         [
             "E: ACTIVATE THE SELECTED TOWER MANUALLY",
             "A OR AUTO: ARM ONE TOWER FOR PRESSURE-AWARE USE",
@@ -4009,7 +4069,7 @@ public sealed class UIManager
         DrawFittedText(batch, TowerInfo.ProtocolLibraryEffectSummary(definition),
             new Vector2(panel.X + 72, panel.Y + 62), ColorPalette.Coral, 0.42f, panel.Width - 90);
         DrawFittedText(batch, TowerInfo.ProtocolAutoTriggerSummary(definition.Protocol),
-            new Vector2(panel.X + 72, panel.Y + 79), ColorPalette.Cobalt, 0.41f, panel.Width - 90);
+            new Vector2(panel.X + 72, panel.Y + 79), ColorPalette.Auto, 0.41f, panel.Width - 90);
         DrawFittedText(batch, $"{TowerInfo.Strength(definition)}  |  {TowerInfo.Limitation(definition)}",
             new Vector2(panel.X + 18, panel.Y + 96), towerAccent, 0.42f, panel.Width - 36);
         p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 112, panel.Width - 36, 2),
@@ -4116,6 +4176,14 @@ public sealed class UIManager
     private static Rectangle TowerLibraryRow(int index) => new(66, 148 + index * 49, 244, 44);
     private static Rectangle EnemyLibraryRow(int index) => new(66, 148 + index * 96, 244, 82);
     private static Rectangle CampaignLibraryMapRow(int index) => new(66, 148 + index * 116, 244, 102);
+
+    private void DrawSandboxButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string text, bool enabled,
+        Color fillColor) =>
+        DrawButton(batch, p, rect, text, enabled, fillColor, ContrastAwareButtonTextColor(fillColor));
+
+    private void DrawSandboxTwoLineButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string shortcut,
+        string action, bool enabled, Color fillColor) =>
+        DrawTwoLineButton(batch, p, rect, shortcut, action, enabled, fillColor, ContrastAwareButtonTextColor(fillColor));
 
     private void DrawButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string text, bool enabled, Color fillColor, Color? textColor = null)
     {

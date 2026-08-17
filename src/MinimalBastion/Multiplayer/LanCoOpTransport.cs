@@ -5,6 +5,7 @@ using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Text.Json;
 using System.Threading.Channels;
+using MinimalBastion.Core;
 
 namespace MinimalBastion.Multiplayer;
 
@@ -30,7 +31,7 @@ public enum CoOpMessageType
 
 public sealed record CoOpEnvelope
 {
-    public const int CurrentProtocolVersion = 10;
+    public const int CurrentProtocolVersion = 12;
     public CoOpMessageType Type { get; init; }
     public int ProtocolVersion { get; init; } = CurrentProtocolVersion;
     public string JoinCode { get; init; } = "";
@@ -48,6 +49,10 @@ public sealed record CoOpEnvelope
     public float Y { get; init; }
     public int EntityId { get; init; }
     public string TowerDefinitionId { get; init; } = "";
+    public TacticalPlacementKind TacticalPlacement { get; init; }
+    public bool HasPlacementPreview { get; init; }
+    public float PlacementX { get; init; }
+    public float PlacementY { get; init; }
     public CoOpStateSnapshot? State { get; init; }
 }
 
@@ -162,7 +167,9 @@ public static class CoOpEnvelopeValidator
             envelope.Checksum.Length > MaximumFingerprintLength || envelope.PlayerId is < 0 or > 2 ||
             envelope.Tick < 0 || (envelope.ReadyMask & ~0b11) != 0 ||
             !float.IsFinite(envelope.X) || !float.IsFinite(envelope.Y) || envelope.EntityId < 0 ||
-            envelope.TowerDefinitionId is null || envelope.TowerDefinitionId.Length > 128)
+            !float.IsFinite(envelope.PlacementX) || !float.IsFinite(envelope.PlacementY) ||
+            envelope.TowerDefinitionId is null || envelope.TowerDefinitionId.Length > 128 ||
+            !Enum.IsDefined(envelope.TacticalPlacement))
             return false;
 
         return envelope.Type switch
@@ -188,7 +195,15 @@ public static class CoOpEnvelopeValidator
             CoOpMessageType.RestartRequest => envelope.PlayerId == 2,
             CoOpMessageType.Disconnect => envelope.PlayerId is 1 or 2,
             CoOpMessageType.Cursor => envelope.PlayerId is 1 or 2 && IsReasonablePosition(envelope) &&
-                (envelope.EntityId == 0 || string.IsNullOrWhiteSpace(envelope.TowerDefinitionId)),
+                !(envelope.TacticalPlacement != TacticalPlacementKind.None &&
+                  !string.IsNullOrWhiteSpace(envelope.TowerDefinitionId)) &&
+                (envelope.EntityId == 0 ||
+                 (envelope.TacticalPlacement == TacticalPlacementKind.None &&
+                  string.IsNullOrWhiteSpace(envelope.TowerDefinitionId))) &&
+                (!envelope.HasPlacementPreview ||
+                 ((envelope.TacticalPlacement != TacticalPlacementKind.None ||
+                   !string.IsNullOrWhiteSpace(envelope.TowerDefinitionId)) &&
+                  IsReasonablePlacementPosition(envelope))),
             _ => false
         };
     }
@@ -249,6 +264,9 @@ public static class CoOpEnvelopeValidator
 
     private static bool IsReasonablePosition(CoOpEnvelope envelope) =>
         MathF.Abs(envelope.X) <= 100_000 && MathF.Abs(envelope.Y) <= 100_000;
+
+    private static bool IsReasonablePlacementPosition(CoOpEnvelope envelope) =>
+        MathF.Abs(envelope.PlacementX) <= 100_000 && MathF.Abs(envelope.PlacementY) <= 100_000;
 
     private static bool IsHex(string value)
     {

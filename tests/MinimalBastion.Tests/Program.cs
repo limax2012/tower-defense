@@ -839,6 +839,11 @@ internal static class Program
         Check.Equal(new Color(236, 80, 98), ColorPalette.Coral, "controlled coral accent");
         Check.Equal(new Color(124, 83, 218), ColorPalette.Violet, "controlled violet accent");
         Check.Equal(new Color(44, 122, 231), ColorPalette.Cobalt, "controlled blue accent");
+        Check.Equal(ColorPalette.Paper, ColorPalette.AutoMarker, "automation uses a neutral white battlefield marker");
+        Check.Equal(new Color(61, 75, 143), ColorPalette.Auto, "automation controls use a dedicated deep indigo accent");
+        Check.True(ColorPalette.Auto != ColorPalette.Cyan && ColorPalette.Auto != ColorPalette.Coral &&
+                   ColorPalette.Auto != ColorPalette.Cobalt,
+            "automation remains distinct from both co-op players and the primary blue interaction color");
 
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
@@ -1010,10 +1015,10 @@ internal static class Program
             coOpLibraryUi.HandleGameplayInput(WorldInput(Vector2.Zero), coOpSession, _ => { }, 2),
             "an open live co-op library remains open and silent on subsequent frames");
         Check.Equal(UiAction.None,
-            coOpLibraryUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { EscapePressed = true }, coOpSession, _ => { }, 2),
-            "closing the co-op library consumes Escape instead of resuming or touching the field");
+            coOpLibraryUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { TabPressed = true }, coOpSession, _ => { }, 2),
+            "pressing Tab again closes the co-op library without touching the field");
         Check.True(!coOpLibraryUi.IsGameplayOverlayOpen,
-            "closing the co-op library clears its battlefield-input block");
+            "Tab toggles the co-op library closed and clears its battlefield-input block");
         Check.True(coOpSession.SetCoOpPaused(true, 1), "co-op library test enters authoritative pause");
         GameCommand? blockedPauseCommand = null;
         Check.Equal(UiAction.None,
@@ -2570,27 +2575,59 @@ internal static class Program
             "tower selection changes send without waiting for the idle heartbeat");
         Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, "needle_turret", out _),
             "starting tower placement sends its ghost without waiting for the cursor cadence");
+        var snappedPreview = new Vector2(340, 250);
+        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, "needle_turret", true,
+                snappedPreview, out var snappedPresence),
+            "acquiring a legal snapped preview sends without waiting for the cursor cadence");
+        Check.Equal(new Vector2(302, 222), snappedPresence.Position,
+            "co-op presence keeps the raw pointer coordinate");
+        Check.Equal(snappedPreview, snappedPresence.PlacementPreviewPosition,
+            "co-op presence separately carries the legal tower coordinate");
+        Check.Equal(TacticalPlacementKind.None, snappedPresence.TacticalPlacement,
+            "tower placement presence remains distinct from tactical placement");
         Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, "frost_spire", out _),
             "switching placement towers updates the remote ghost immediately");
+        var platePreview = new Vector2(360, 250);
+        Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, "",
+                TacticalPlacementKind.PulsePlate, true, platePreview, out var platePresence),
+            "starting pulse-plate placement sends its snapped ghost immediately");
+        Check.Equal(TacticalPlacementKind.PulsePlate, platePresence.TacticalPlacement,
+            "pulse-plate context survives local presence capture");
+        Check.Equal(platePreview, platePresence.PlacementPreviewPosition,
+            "pulse-plate presence carries the snapped road coordinate");
         Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, "", out _),
-            "canceling placement clears the remote ghost immediately");
+            "canceling tower or tactical placement clears the remote ghost immediately");
         tracker.Advance(CoOpCursorTracker.IdleHeartbeatSeconds);
         Check.True(tracker.TryCaptureLocal(new Vector2(302, 222), true, 0, "", out _),
             "stationary cursor heartbeat keeps remote presence alive");
         Check.True(!tracker.TryCaptureLocal(new Vector2(GameConstants.MapWidth + 10, 220), true, 0, out _),
             "sidebar positions are excluded from battlefield presence traffic");
 
-        Check.True(tracker.Receive(new Vector2(400, 300), 2, 0, "needle_turret"), "valid remote cursor is accepted");
+        var remotePreview = new Vector2(430, 330);
+        Check.True(tracker.Receive(new Vector2(400, 300), 2, 0, "needle_turret", true, remotePreview),
+            "valid remote cursor and snapped placement are accepted");
         Check.Equal(new Vector2(400, 300), tracker.RemotePosition!.Value, "remote cursor position is exposed for drawing");
         Check.Equal(2, tracker.RemotePlayerId, "remote cursor retains player identity");
         Check.Equal("needle_turret", tracker.RemotePlacementTowerId, "remote cursor retains placement ghost context");
+        Check.True(tracker.RemoteHasPlacementPreview, "remote placement reports that its ghost is legal");
+        Check.Equal(remotePreview, tracker.RemotePlacementPreviewPosition,
+            "remote placement ghost remains separate from the pointer");
+        Check.True(tracker.Receive(new Vector2(400, 300), 2, 0, "", TacticalPlacementKind.PulsePlate,
+                true, platePreview),
+            "valid remote pulse-plate cursor and snapped placement are accepted");
+        Check.Equal(TacticalPlacementKind.PulsePlate, tracker.RemoteTacticalPlacement,
+            "remote pulse-plate context is exposed for drawing");
+        Check.Equal(platePreview, tracker.RemotePlacementPreviewPosition,
+            "remote pulse-plate ghost retains its snapped road position");
         Check.True(tracker.Receive(new Vector2(400, 300), 2, 17), "selected deployed tower replaces placement context");
         Check.Equal(17, tracker.RemoteEntityId, "remote cursor retains selected tower context");
         Check.Equal("", tracker.RemotePlacementTowerId, "selected deployed tower clears the placement ghost");
         Check.True(!tracker.Receive(new Vector2(float.NaN, 300), 2), "nonfinite remote cursor is ignored");
         tracker.Advance(CoOpCursorTracker.RemoteTimeoutSeconds + 0.01f);
         Check.True(tracker.RemotePosition is null && tracker.RemotePlayerId == 0 && tracker.RemoteEntityId == 0 &&
-                   tracker.RemotePlacementTowerId.Length == 0,
+                   tracker.RemotePlacementTowerId.Length == 0 &&
+                   tracker.RemoteTacticalPlacement == TacticalPlacementKind.None &&
+                   !tracker.RemoteHasPlacementPreview,
             "stale remote presence disappears instead of freezing on the battlefield");
     }
 
@@ -2617,7 +2654,10 @@ internal static class Program
             PlayerId = 2,
             X = 321,
             Y = 222,
-            TowerDefinitionId = "needle_turret"
+            TowerDefinitionId = "needle_turret",
+            HasPlacementPreview = true,
+            PlacementX = 345,
+            PlacementY = 250
         }, timeout.Token);
         var cursor = await server.ReceiveAsync(timeout.Token);
         Check.Equal(CoOpMessageType.Cursor, cursor!.Type, "remote cursor update survives transport");
@@ -2625,6 +2665,26 @@ internal static class Program
         Check.Nearly(222, cursor.Y, "remote cursor y survives transport");
         Check.Equal(0, cursor.EntityId, "placement presence stays distinct from deployed-tower selection");
         Check.Equal("needle_turret", cursor.TowerDefinitionId, "remote placement ghost survives presence transport");
+        Check.True(cursor.HasPlacementPreview, "remote legal-preview flag survives presence transport");
+        Check.Nearly(345, cursor.PlacementX, "remote snapped placement x survives transport");
+        Check.Nearly(250, cursor.PlacementY, "remote snapped placement y survives transport");
+        await client.SendAsync(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.Cursor,
+            PlayerId = 2,
+            X = 350,
+            Y = 240,
+            TacticalPlacement = TacticalPlacementKind.PulsePlate,
+            HasPlacementPreview = true,
+            PlacementX = 360,
+            PlacementY = 250
+        }, timeout.Token);
+        var plateCursor = await server.ReceiveAsync(timeout.Token);
+        Check.Equal(TacticalPlacementKind.PulsePlate, plateCursor!.TacticalPlacement,
+            "remote pulse-plate identity survives transport");
+        Check.True(plateCursor.HasPlacementPreview, "remote pulse-plate legal-preview flag survives transport");
+        Check.Nearly(360, plateCursor.PlacementX, "remote pulse-plate snapped x survives transport");
+        Check.Nearly(250, plateCursor.PlacementY, "remote pulse-plate snapped y survives transport");
         var pause = new GameCommand
         {
             ClientRequestId = 8,
@@ -2716,6 +2776,36 @@ internal static class Program
             Y = 200,
             TowerDefinitionId = new string('X', 129)
         }), "oversized placement presence identifiers are rejected before dispatch");
+        Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.Cursor,
+            PlayerId = 2,
+            X = 200,
+            Y = 200,
+            HasPlacementPreview = true,
+            PlacementX = 240,
+            PlacementY = 240
+        }), "snapped placement coordinates require a tower or tactical placement identity");
+        Check.True(CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.Cursor,
+            PlayerId = 2,
+            X = 200,
+            Y = 200,
+            TacticalPlacement = TacticalPlacementKind.PulsePlate,
+            HasPlacementPreview = true,
+            PlacementX = 240,
+            PlacementY = 240
+        }), "pulse-plate presence accepts a finite snapped tactical preview");
+        Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.Cursor,
+            PlayerId = 2,
+            X = 200,
+            Y = 200,
+            TowerDefinitionId = "needle_turret",
+            TacticalPlacement = TacticalPlacementKind.PulsePlate
+        }), "presence cannot claim tower and tactical placement simultaneously");
         Check.True(!CoOpEnvelopeValidator.IsStructurallyValid(new CoOpEnvelope
         {
             Type = CoOpMessageType.ResyncRequest,
@@ -2883,9 +2973,9 @@ internal static class Program
         Check.Equal("JOIN P1 | EARLY +20 | 8s",
             UIManager.CoOpWaveButtonLabel(2, 1, 0b01, false, false, 7.1f),
             "joining player sees the same early timer");
-        Check.Equal("P1 READY | P2 WAIT | EARLY +20 | 8s",
+        Check.Equal("P1R | P2W | +20 8s",
             UIManager.CoOpReadyStatusLabel(1, 0b01, false, false, 7.1f),
-            "sidebar ready state retains the same early timer");
+            "compact sidebar ready state retains the same early timer without truncation");
         Check.Equal("STARTING | +20 LOCKED",
             UIManager.CoOpWaveButtonLabel(1, 1, 0b11, true, true, 0),
             "queued start communicates the locked reward");
@@ -3103,6 +3193,19 @@ internal static class Program
 
     private static void PlacementRules()
     {
+        var authoredContent = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        var foundryCorner = new GameSession(authoredContent, "foundry_loop", DifficultyCatalog.DefaultId,
+            ChallengeCatalog.DefaultId);
+        foundryCorner.BeginPlacement("needle_turret");
+        var justPastUpperCorner = new Vector2(321, 451);
+        foundryCorner.HandleWorldInput(WorldInput(justPastUpperCorner));
+        Check.True(foundryCorner.HasPlacementPreview && foundryCorner.PlacementFailure == PlacementFailure.None,
+            "Foundry corner cursor resolves to a legal assisted placement");
+        Check.True(foundryCorner.PlacementPreviewPosition.X < 320 && foundryCorner.PlacementPreviewPosition.Y < 450,
+            $"Foundry corner assist keeps the preview in the truly nearest upper build zone (resolved {foundryCorner.PlacementPreviewPosition})");
+        Check.True(Vector2.Distance(justPastUpperCorner, foundryCorner.PlacementPreviewPosition) < 4,
+            "Foundry corner assist chooses the nearest legal point rather than a later-authored zone");
+
         var session = Session();
         Check.Equal(PlacementFailure.BlocksPath, session.ValidatePlacement("tower", new Vector2(50, 78)), "path rejection");
         Check.Equal(PlacementFailure.OutsideBuildableRegion, session.ValidatePlacement("tower", new Vector2(700, 500)), "buildable rejection");
@@ -3110,6 +3213,28 @@ internal static class Program
         Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "place tower");
         Check.Equal(1, session.Towers.Count, "tower count");
         Check.Equal(PlacementFailure.OverlapsTower, session.ValidatePlacement("tower", new Vector2(75, 200)), "overlap rejection");
+        session.BeginPlacement("tower");
+        session.HandleWorldInput(WorldInput(new Vector2(75, 200)));
+        Check.True(session.HasPlacementPreview && session.PlacementFailure == PlacementFailure.None,
+            "tower cursor overlapping a defense resolves to a nearby legal preview");
+        Check.True(Vector2.Distance(session.Towers[0].Position, session.PlacementPreviewPosition) >=
+                   GameConstants.TowerMinimumGap,
+            "assisted tower preview respects the authored minimum gap");
+        var snappedPosition = session.PlacementPreviewPosition;
+        var placementCommands = new List<GameCommand>();
+        session.HandleWorldInput(WorldInput(new Vector2(75, 200)) with { LeftPressed = true }, placementCommands.Add, 2);
+        Check.Equal(1, placementCommands.Count, "assisted tower click emits one network command");
+        Check.Nearly(snappedPosition.X, placementCommands[0].X,
+            "network tower command uses the visible snapped x position");
+        Check.Nearly(snappedPosition.Y, placementCommands[0].Y,
+            "network tower command uses the visible snapped y position");
+        session.BeginPlacement("tower");
+        session.HandleWorldInput(WorldInput(new Vector2(500, 500)));
+        Check.True(!session.HasPlacementPreview,
+            "cursor far from authored build zones does not create a misleading invalid ghost");
+        Check.True(session.PlacementFailure != PlacementFailure.None,
+            "cursor far from authored build zones retains an actionable placement failure");
+        session.CancelPlacement();
         session.HandleWorldInput(WorldInput(new Vector2(50, 200)) with { LeftPressed = true });
         Check.True(ReferenceEquals(session.Towers[0], session.SelectedTower), "battlefield click selects tower");
         session.HandleWorldInput(WorldInput(new Vector2(-20, 200)) with { LeftPressed = true, IsMouseOverLogicalCanvas = false });
@@ -3640,12 +3765,50 @@ internal static class Program
         Check.True(content.Towers.Values.All(x => x.Visual.Marks == 1), "every tower begins with one level mark");
         Check.True(content.Towers.Values.All(x => x.Visual.Ring), "every tower has a consistent outer ring");
         var beaconUpgradeFill = content.Towers["signal_beacon"].Visual.PrimaryColor;
-        var beaconUpgradeText = ColorPalette.HighContrastText(beaconUpgradeFill);
+        var beaconUpgradeText = UIManager.TowerIntelPrimaryUpgradeTextColor(content.Towers["signal_beacon"]);
         Check.True(beaconUpgradeText == ColorPalette.Ink &&
                    ColorPalette.ContrastRatio(beaconUpgradeText, beaconUpgradeFill) >= 7f &&
                    ColorPalette.ContrastRatio(beaconUpgradeText, beaconUpgradeFill) >
                    ColorPalette.ContrastRatio(ColorPalette.Paper, beaconUpgradeFill),
             "Signal Beacon's pale first upgrade button receives higher-contrast text");
+        Check.True(content.Towers.Values.All(tower =>
+                UIManager.TowerIntelPrimaryUpgradeTextColor(tower) ==
+                (ColorPalette.ContrastRatio(ColorPalette.Paper, tower.Visual.PrimaryColor) >=
+                 UIManager.ColoredButtonWhiteContrastThreshold
+                    ? ColorPalette.Paper
+                    : ColorPalette.Ink)),
+            "upper Tower Intel upgrade text follows the authored 3:1 white-contrast threshold");
+        var darkUpgradeLabels = content.Towers.Values
+            .Where(tower => UIManager.TowerIntelPrimaryUpgradeTextColor(tower) == ColorPalette.Ink)
+            .Select(tower => tower.Id)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToArray();
+        Check.True(darkUpgradeLabels.SequenceEqual(
+                ["arc_relay", "breaker_cannon", "shard_fan", "signal_beacon"],
+                StringComparer.Ordinal),
+            "only bright green, gold, yellow, and orange upper upgrade buttons use dark text");
+        var sandboxButtonFills = new[]
+        {
+            ColorPalette.Cobalt, ColorPalette.Cyan, ColorPalette.Violet, ColorPalette.Coral,
+            ColorPalette.Orange, ColorPalette.Gold, ColorPalette.Green
+        };
+        Check.True(sandboxButtonFills.All(fill => UIManager.ContrastAwareButtonTextColor(fill) ==
+                (ColorPalette.ContrastRatio(ColorPalette.Paper, fill) >= UIManager.ColoredButtonWhiteContrastThreshold
+                    ? ColorPalette.Paper
+                    : ColorPalette.Ink)),
+            "every Sandbox Lab semantic button fill follows the same 3:1 white-text threshold");
+        Check.True(UIManager.ContrastAwareButtonTextColor(ColorPalette.Orange) == ColorPalette.Ink &&
+                   UIManager.ContrastAwareButtonTextColor(ColorPalette.Green) == ColorPalette.Ink &&
+                   UIManager.ContrastAwareButtonTextColor(ColorPalette.Violet) == ColorPalette.Paper,
+            "Sandbox Disable, Enable, Spawn, and Protocol controls receive the intended contrast treatment");
+        var darkEnemyLabels = content.Enemies.Values
+            .Where(enemy => UIManager.SandboxEnemyButtonTextColor(enemy) == ColorPalette.Ink)
+            .Select(enemy => enemy.Id)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToArray();
+        Check.True(UIManager.SandboxEnemyButtonTextColor(content.Enemies["t1_crawler"]) == ColorPalette.Paper &&
+                   darkEnemyLabels.SequenceEqual(["t2_runner"], StringComparer.Ordinal),
+            "Sandbox Crawler is a white-label exception while bright Runner retains dark text");
         var upgradeChoices = content.Towers.Values
             .SelectMany(tower => tower.Tier2Doctrines.Select(choice => (tower.Id, choice.DisplayName, choice.ShortLabel, choice.Summary))
                 .Concat(tower.Specializations.Select(choice => (tower.Id, choice.DisplayName, choice.ShortLabel, choice.Summary))))
@@ -3902,19 +4065,21 @@ internal static class Program
         tabUi.ConfigureDifficulties(content.Difficulties.Values);
         tabUi.ConfigureChallenges(content.Challenges.Values);
         tabUi.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values, content.Tactics);
-        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
-        Check.True(tabUi.LibraryShowsThreats, "Tactical Library Tab advances from towers to threats");
-        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
-        Check.True(tabUi.LibraryShowsCampaign, "Tactical Library Tab advances from threats to campaigns");
-        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
+        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateRightPressed = true });
+        Check.True(tabUi.LibraryShowsThreats, "Tactical Library Right advances from towers to threats");
+        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateRightPressed = true });
+        Check.True(tabUi.LibraryShowsCampaign, "Tactical Library Right advances from threats to campaigns");
+        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateRightPressed = true });
         Check.True(tabUi.LibraryShowsProfiles,
-            "Tactical Library Tab advances from campaigns to profiles");
-        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
+            "Tactical Library Right advances from campaigns to profiles");
+        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateRightPressed = true });
         Check.True(tabUi.LibraryShowsSystems,
-            "Tactical Library Tab advances from profiles to systems");
-        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TabPressed = true });
+            "Tactical Library Right advances from profiles to systems");
+        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateRightPressed = true });
         Check.True(!tabUi.LibraryShowsThreats && !tabUi.LibraryShowsCampaign && !tabUi.LibraryShowsProfiles && !tabUi.LibraryShowsSystems,
-            "Tactical Library Tab wraps from systems to towers");
+            "Tactical Library Right wraps from systems to towers");
+        tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateLeftPressed = true });
+        Check.True(tabUi.LibraryShowsSystems, "Tactical Library Left moves backward from towers to systems");
         var normalReference = UIManager.DifficultyReferenceLines(content.Difficulties["normal"]);
         Check.True(normalReference.Contains("ENEMY HEALTH x0.90") && normalReference.Contains("STARTING LIVES 24"),
             "profile reference exposes exact difficulty combat and economy values");

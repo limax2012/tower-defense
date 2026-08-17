@@ -160,6 +160,7 @@ public sealed class Game1 : Game
         var input = _input.Update(IsActive);
         if (input.FullscreenPressed) ToggleFullscreenFromHotkey();
         var elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        _ui.AdvanceVisualTime(elapsedSeconds);
         _audio?.Update(elapsedSeconds);
         _coOpCursor.Advance(elapsedSeconds);
         SyncRemoteCoOpCursor();
@@ -267,18 +268,6 @@ public sealed class Game1 : Game
             input.MousePosition.X >= 0 && input.MousePosition.X < GameConstants.MapWidth &&
             input.MousePosition.Y >= GameConstants.TopBarHeight && input.MousePosition.Y <= GameConstants.LogicalHeight)
             SendCoOpPing(input.MousePosition);
-        if (_networkRunner is not null && _networkStarted &&
-            _coOpCursor.TryCaptureLocal(input.MousePosition, input.IsMouseOverLogicalCanvas,
-                _session.SelectedTower?.Id ?? 0, _session.PlacementTowerId ?? "", out var cursorPosition))
-            QueueSend(new CoOpEnvelope
-            {
-                Type = CoOpMessageType.Cursor,
-                PlayerId = _localPlayerId,
-                X = cursorPosition.X,
-                Y = cursorPosition.Y,
-                EntityId = _session.SelectedTower?.Id ?? 0,
-                TowerDefinitionId = _session.PlacementTowerId ?? ""
-            });
         _debug.Update(input);
         Action<GameCommand>? commandSink = _networkRunner is null ? null : SubmitLocalNetworkCommand;
         var gameplayOverlayWasOpen = _ui.IsGameplayOverlayOpen;
@@ -308,6 +297,7 @@ public sealed class Game1 : Game
         if (!gameplayOverlayWasOpen && !_ui.IsGameplayOverlayOpen && action != UiAction.TowerLibrary &&
             !(_session.IsCoOp && _session.IsCoOpPaused))
             _session.HandleWorldInput(input, commandSink, _localPlayerId);
+        SendLocalCoOpCursor(input);
         if (_networkRunner is null)
         {
             _session.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
@@ -643,7 +633,8 @@ public sealed class Game1 : Game
                 break;
             case CoOpMessageType.Cursor when envelope.PlayerId != _localPlayerId:
                 if (_coOpCursor.Receive(new Vector2(envelope.X, envelope.Y), envelope.PlayerId, envelope.EntityId,
-                        envelope.TowerDefinitionId))
+                        envelope.TowerDefinitionId, envelope.TacticalPlacement, envelope.HasPlacementPreview,
+                        new Vector2(envelope.PlacementX, envelope.PlacementY)))
                     SyncRemoteCoOpCursor();
                 break;
             case CoOpMessageType.CommandRequest when _isNetworkHost && _networkStarted && envelope.Command is not null:
@@ -755,7 +746,9 @@ public sealed class Game1 : Game
 
     private void SyncRemoteCoOpCursor() =>
         _ui?.SetRemoteCoOpCursor(_coOpCursor.RemotePosition, _coOpCursor.RemotePlayerId, _coOpCursor.RemoteEntityId,
-            _coOpCursor.RemotePlacementTowerId);
+            _coOpCursor.RemotePlacementTowerId, _coOpCursor.RemoteTacticalPlacement,
+            _coOpCursor.RemoteHasPlacementPreview,
+            _coOpCursor.RemotePlacementPreviewPosition);
 
     private void QueueAuthoritativeCommand(GameCommand request)
     {
@@ -1380,7 +1373,8 @@ public sealed class Game1 : Game
                     showTransientCombat: _state is not (GameState.DefeatField or GameState.RunHistoryField),
                     presentationLeadSeconds: _state == GameState.Playing
                         ? _networkRunner?.PresentationLeadSeconds ?? 0
-                        : 0);
+                        : 0,
+                    foregroundTowerId: _state == GameState.Playing ? _ui.RemoteCoOpSelectedTowerId : 0);
                 if (_state == GameState.Playing || _state == GameState.Paused)
                     _debug.Draw(_spriteBatch, _primitives, presentedSession, gameTime.ElapsedGameTime.TotalSeconds > 0 ? (float)(1 / gameTime.ElapsedGameTime.TotalSeconds) : 0);
             }
@@ -1443,6 +1437,32 @@ public sealed class Game1 : Game
             // the player an actionable persistence warning.
             _ui.SetSettingsStatus($"Settings applied for this session but could not be saved: {exception.GetBaseException().Message}");
         }
+    }
+
+    private void SendLocalCoOpCursor(InputSnapshot input)
+    {
+        if (_session is null || _networkRunner is null || !_networkStarted) return;
+        var placementTowerId = _session.PlacementTowerId ?? "";
+        var tacticalPlacement = _session.TacticalPlacement;
+        var hasPlacementPreview = (placementTowerId.Length > 0 || tacticalPlacement != TacticalPlacementKind.None) &&
+                                  _session.HasPlacementPreview &&
+                                  !_ui.IsGameplayOverlayOpen && !_session.IsCoOpPaused;
+        if (!_coOpCursor.TryCaptureLocal(input.MousePosition, input.IsMouseOverLogicalCanvas,
+                _session.SelectedTower?.Id ?? 0, placementTowerId, tacticalPlacement, hasPlacementPreview,
+                _session.PlacementPreviewPosition, out var cursor)) return;
+        QueueSend(new CoOpEnvelope
+        {
+            Type = CoOpMessageType.Cursor,
+            PlayerId = _localPlayerId,
+            X = cursor.Position.X,
+            Y = cursor.Position.Y,
+            EntityId = _session.SelectedTower?.Id ?? 0,
+            TowerDefinitionId = placementTowerId,
+            TacticalPlacement = cursor.TacticalPlacement,
+            HasPlacementPreview = cursor.HasPlacementPreview,
+            PlacementX = cursor.PlacementPreviewPosition.X,
+            PlacementY = cursor.PlacementPreviewPosition.Y
+        });
     }
 
     private void ToggleFullscreenFromHotkey()

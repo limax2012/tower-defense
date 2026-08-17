@@ -104,6 +104,39 @@ public sealed class PrimitiveRenderer : IDisposable
         if (ring) Ring(batch, center, scaledRadius + 6, accent, 3);
     }
 
+    public void DrawShapeOutline(SpriteBatch batch, Vector2 center, int radius, string shape, Color color,
+        int marks = 0, float pulse = 1f, bool levelMarks = false, float thickness = 2f)
+    {
+        radius = Math.Max(4, radius);
+        var scaledRadius = radius * pulse;
+        var normalizedShape = shape.ToLowerInvariant();
+        var sides = normalizedShape switch
+        {
+            "triangle" => 3,
+            "square" => 4,
+            "diamond" => 4,
+            "hexagon" => 6,
+            "octagon" => 8,
+            "star" => 5,
+            _ => 0
+        };
+        var rotation = normalizedShape == "diamond" ? MathHelper.PiOver4 : -MathHelper.PiOver2;
+        if (sides == 0)
+            Ring(batch, center, scaledRadius, color, Math.Max(1, (int)MathF.Round(thickness)));
+        else
+            DrawPolygonOutline(batch, center, scaledRadius, sides, normalizedShape == "star", color, rotation,
+                thickness);
+
+        for (var index = 0; index < marks; index++)
+        {
+            var markSlots = levelMarks ? 3 : Math.Max(1, marks);
+            var angle = MathHelper.TwoPi * index / markSlots - MathHelper.PiOver2;
+            var direction = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+            Line(batch, center + direction * scaledRadius * 0.20f,
+                center + direction * scaledRadius * 0.76f, color, thickness);
+        }
+    }
+
     public void HealthBar(SpriteBatch batch, Vector2 center, float width, float ratio, Color fillColor, Color trackColor, Color outlineColor)
     {
         ratio = MathHelper.Clamp(ratio, 0, 1);

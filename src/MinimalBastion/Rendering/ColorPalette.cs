@@ -4,6 +4,9 @@ namespace MinimalBastion.Rendering;
 
 public static class ColorPalette
 {
+    public const byte PlacementGhostPrimaryAlpha = 104;
+    public const byte PlacementGhostAccentAlpha = 152;
+
     // Central tactical theme. These authored sRGB values are intentionally
     // independent from resolution, DPI, and the scene composite pipeline.
     public static readonly Color Ink = new(18, 27, 43);
@@ -18,6 +21,11 @@ public static class ColorPalette
     public static readonly Color Cyan = new(33, 146, 170);
     public static readonly Color Berry = new(188, 47, 138);
     public static readonly Color Violet = new(124, 83, 218);
+    // Automation uses a neutral white battlefield marker so it cannot be mistaken
+    // for either co-op player. Deep indigo keeps its controls/reference text
+    // readable on light panels without returning to P1's cyan language.
+    public static readonly Color AutoMarker = Paper;
+    public static readonly Color Auto = new(61, 75, 143);
     public static readonly Color Coral = new(236, 80, 98);
     public static readonly Color Orange = new(229, 138, 50);
     public static readonly Color Gold = new(232, 182, 55);
@@ -121,6 +129,12 @@ public static class ColorPalette
         color.G >= 145 && color.G > color.R * 1.18f && color.G > color.B * 1.18f;
 
     public static Color WithAlpha(Color color, byte alpha) => new(color.R, color.G, color.B, alpha);
+
+    // SpriteBatch's default AlphaBlend state expects premultiplied tint colors.
+    // Use this for translucent geometry that must visibly fade its RGB as well
+    // as its alpha, such as uncommitted placement ghosts.
+    public static Color WithPremultipliedAlpha(Color color, byte alpha) =>
+        Color.FromNonPremultiplied(color.R, color.G, color.B, alpha);
 
     public static Color Health(float ratio)
     {

@@ -13,7 +13,7 @@ public sealed class GameRenderer
     public bool ReducedEffects { get; set; }
 
     public void Draw(SpriteBatch batch, PrimitiveRenderer primitives, MinimalBastion.GameSession session,
-        bool showTransientCombat = true, float presentationLeadSeconds = 0)
+        bool showTransientCombat = true, float presentationLeadSeconds = 0, int foregroundTowerId = 0)
     {
         var presentation = PresentationFrame.Create(session, presentationLeadSeconds);
         primitives.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight), session.Map.Definition.Background.BaseColor);
@@ -29,7 +29,7 @@ public sealed class GameRenderer
             DrawProjectiles(batch, primitives, session, presentation);
             DrawEffects(batch, primitives, session, presentation);
         }
-        DrawAutoProtocolOverlay(batch, primitives, session, presentation.TimeSeconds);
+        DrawForegroundTowerOverlays(batch, primitives, session, presentation, foregroundTowerId);
     }
 
     private static void DrawTerrain(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -42,8 +42,11 @@ public sealed class GameRenderer
 
         foreach (var region in session.Map.BuildableRegions)
         {
-            var pointerInside = region.Contains(session.PlacementPosition.ToPoint());
             var placementActive = session.PlacementTowerId is not null || session.TacticalPlacement == TacticalPlacementKind.ChargeForge;
+            var placementPointer = placementActive && session.HasPlacementPreview
+                ? session.PlacementPreviewPosition
+                : session.PlacementPosition;
+            var pointerInside = region.Contains(placementPointer.ToPoint());
             var emphasized = placementActive && pointerInside;
             DrawBuildZone(batch, p, region, session.Map.Definition.Background.Motif, baseColor, accentColor,
                 session.Map.Definition.PathVisual, emphasized);
@@ -397,19 +400,22 @@ public sealed class GameRenderer
 
         var placementOnMap = session.PlacementPosition.X >= 0 && session.PlacementPosition.X < GameConstants.MapWidth &&
                              session.PlacementPosition.Y >= GameConstants.TopBarHeight && session.PlacementPosition.Y < GameConstants.LogicalHeight;
-        if (placementOnMap && session.PlacementTowerId is { } towerId && session.Content.Towers.TryGetValue(towerId, out var definition))
+        if (placementOnMap && session.HasPlacementPreview && session.PlacementTowerId is { } towerId &&
+            session.Content.Towers.TryGetValue(towerId, out var definition))
         {
-            var placementValid = session.ValidatePlacement(towerId, session.PlacementPosition) == PlacementFailure.None;
-            var placementColor = placementValid
-                ? ColorPalette.PlacementValid
-                : ColorPalette.PlacementInvalid;
+            var position = session.PlacementPreviewPosition;
             var placementRange = definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase)
                 ? definition.Levels[0].AuraRange
                 : definition.Levels[0].Range;
-            p.DashedRing(batch, session.PlacementPosition, placementRange, placementColor, 32, 2);
-            p.DrawShape(batch, session.PlacementPosition, definition.Visual.Radius, definition.Visual.Shape,
-                ColorPalette.WithAlpha(definition.Visual.PrimaryColor, 175), definition.Visual.AccentColor, 1, true, levelMarks: true);
-            DrawPlacementValidityMarker(batch, p, session.PlacementPosition, placementValid);
+            // This large ring communicates the tower's eventual attack/aura range.
+            // It is intentionally distinct from the compact remote-player handling marker.
+            p.DashedRing(batch, position, placementRange, ColorPalette.PlacementValid, 32, 2);
+            var previewPrimary = ColorPalette.WithPremultipliedAlpha(definition.Visual.PrimaryColor,
+                ColorPalette.PlacementGhostPrimaryAlpha);
+            var previewAccent = ColorPalette.WithPremultipliedAlpha(definition.Visual.AccentColor,
+                ColorPalette.PlacementGhostAccentAlpha);
+            p.DrawShape(batch, position, definition.Visual.Radius, definition.Visual.Shape,
+                previewPrimary, previewAccent, 1, true, levelMarks: true);
         }
 
         if (!placementOnMap || session.TacticalPlacement == TacticalPlacementKind.None) return;
@@ -418,40 +424,27 @@ public sealed class GameRenderer
             : ColorPalette.PlacementInvalid;
         if (session.TacticalPlacement == TacticalPlacementKind.PulsePlate)
         {
-            if (!session.HasTacticalPlacementPreview) return;
+            if (!session.HasPlacementPreview) return;
             var tactical = session.Content.Tactics.EmergencyDefense;
             var position = session.PlacementPreviewPosition;
             var previewPrimary = session.PlacementFailure == PlacementFailure.None
-                ? ColorPalette.WithAlpha(tactical.Visual.PrimaryColor, 190)
-                : ColorPalette.WithAlpha(tacticalColor, 190);
+                ? ColorPalette.WithPremultipliedAlpha(tactical.Visual.PrimaryColor, ColorPalette.PlacementGhostPrimaryAlpha)
+                : ColorPalette.WithPremultipliedAlpha(tacticalColor, ColorPalette.PlacementGhostPrimaryAlpha);
+            var previewAccent = ColorPalette.WithPremultipliedAlpha(tactical.Visual.AccentColor,
+                ColorPalette.PlacementGhostAccentAlpha);
             p.DrawShape(batch, position, tactical.Visual.Radius, tactical.Visual.Shape,
-                previewPrimary, tactical.Visual.AccentColor, tactical.Charges, true);
+                previewPrimary, previewAccent, tactical.Charges, true);
         }
         else if (session.TacticalPlacement == TacticalPlacementKind.ChargeForge)
         {
+            if (!session.HasPlacementPreview) return;
             var generator = session.Content.Tactics.Generator;
-            p.DrawShape(batch, session.PlacementPosition, generator.Visual.Radius, generator.Visual.Shape,
-                ColorPalette.WithAlpha(generator.Visual.PrimaryColor, 190), generator.Visual.AccentColor, 1, true, levelMarks: true);
-            DrawPlacementValidityMarker(batch, p, session.PlacementPosition,
-                session.PlacementFailure == PlacementFailure.None);
-        }
-    }
-
-    private static void DrawPlacementValidityMarker(SpriteBatch batch, PrimitiveRenderer p, Vector2 position, bool valid)
-    {
-        var source = valid ? ColorPalette.PlacementValid : ColorPalette.PlacementInvalid;
-        var color = new Color(source.R, source.G, source.B);
-        p.Circle(batch, position, 6, color);
-        p.Ring(batch, position, 7, ColorPalette.Paper, 1);
-        if (valid)
-        {
-            p.Line(batch, position + new Vector2(-3, 0), position + new Vector2(-1, 2.5f), ColorPalette.Paper, 1.5f);
-            p.Line(batch, position + new Vector2(-1, 2.5f), position + new Vector2(3.5f, -3), ColorPalette.Paper, 1.5f);
-        }
-        else
-        {
-            p.Line(batch, position + new Vector2(-2.5f, -2.5f), position + new Vector2(2.5f, 2.5f), ColorPalette.Paper, 1.5f);
-            p.Line(batch, position + new Vector2(2.5f, -2.5f), position + new Vector2(-2.5f, 2.5f), ColorPalette.Paper, 1.5f);
+            var previewPrimary = ColorPalette.WithPremultipliedAlpha(generator.Visual.PrimaryColor,
+                ColorPalette.PlacementGhostPrimaryAlpha);
+            var previewAccent = ColorPalette.WithPremultipliedAlpha(generator.Visual.AccentColor,
+                ColorPalette.PlacementGhostAccentAlpha);
+            p.DrawShape(batch, session.PlacementPreviewPosition, generator.Visual.Radius, generator.Visual.Shape,
+                previewPrimary, previewAccent, 1, true, levelMarks: true);
         }
     }
 
@@ -555,14 +548,26 @@ public sealed class GameRenderer
             p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + (session.IsCoOp ? 12 : 8), ColorPalette.Gold, 3);
     }
 
-    private static void DrawAutoProtocolOverlay(SpriteBatch batch, PrimitiveRenderer p,
-        MinimalBastion.GameSession session, float time)
+    private void DrawForegroundTowerOverlays(SpriteBatch batch, PrimitiveRenderer p,
+        MinimalBastion.GameSession session, PresentationFrame presentation, int foregroundTowerId)
     {
         var autoTower = session.Towers.FirstOrDefault(tower => tower.Id == session.AutoOverdriveTowerId);
-        if (autoTower is null || autoTower.IsSandboxDisabled) return;
-        // This final overlay pass keeps the brackets and A badge above towers,
-        // enemies, projectiles, and geometric attack effects.
-        DrawAutoProtocolEffect(batch, p, autoTower, time);
+        var remoteSelectedTower = foregroundTowerId > 0
+            ? session.Towers.FirstOrDefault(tower => tower.Id == foregroundTowerId)
+            : null;
+
+        // Towers carrying temporary interaction state remain readable above dense
+        // units and attack effects. Once the state moves or clears, normal authored
+        // tower order resumes automatically.
+        if (autoTower is not null && !autoTower.IsSandboxDisabled)
+            DrawTower(batch, p, session, presentation, autoTower, presentation.TimeSeconds);
+        if (remoteSelectedTower is not null && remoteSelectedTower != autoTower && !remoteSelectedTower.IsSandboxDisabled)
+            DrawTower(batch, p, session, presentation, remoteSelectedTower, presentation.TimeSeconds);
+
+        // Auto's brackets and literal badge are the final battlefield marks, so
+        // neither enemies nor a foreground remote selection can obscure them.
+        if (autoTower is not null && !autoTower.IsSandboxDisabled)
+            DrawAutoProtocolEffect(batch, p, autoTower, presentation.TimeSeconds);
     }
 
     private static void DrawProtocolSignature(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)
@@ -643,34 +648,30 @@ public sealed class GameRenderer
     private static void DrawAutoProtocolEffect(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)
     {
         var pulse = (MathF.Sin(time * 3.5f + tower.Id) + 1f) * 0.5f;
-        var color = ColorPalette.WithAlpha(ColorPalette.Cobalt, (byte)(190 + pulse * 55));
-        var bracketRadius = tower.Definition.Visual.Radius + 11.5f + pulse;
-        const float bracketLength = 6f;
+        var color = ColorPalette.WithAlpha(ColorPalette.AutoMarker, (byte)(190 + pulse * 55));
 
-        // Four open brackets read as an armed targeting frame without replacing
-        // the tower's authored identity ring, co-op ownership ring, or Beacon pip.
-        for (var xIndex = 0; xIndex < 2; xIndex++)
-        for (var yIndex = 0; yIndex < 2; yIndex++)
+        var bracketExtent = tower.Definition.Visual.Radius + 9f + pulse;
+        const float bracketLength = 6f;
+        foreach (var horizontalDirection in new[] { -1f, 1f })
+        foreach (var verticalDirection in new[] { -1f, 1f })
         {
-            var xSign = xIndex == 0 ? -1f : 1f;
-            var ySign = yIndex == 0 ? -1f : 1f;
-            var corner = tower.Position + new Vector2(xSign * bracketRadius, ySign * bracketRadius);
-            p.Line(batch, corner, corner - new Vector2(xSign * bracketLength, 0), color, 3);
-            p.Line(batch, corner, corner - new Vector2(0, ySign * bracketLength), color, 3);
+            var corner = tower.Position + new Vector2(horizontalDirection * bracketExtent,
+                verticalDirection * bracketExtent);
+            p.Line(batch, corner, corner - new Vector2(horizontalDirection * bracketLength, 0), color, 2.5f);
+            p.Line(batch, corner, corner - new Vector2(0, verticalDirection * bracketLength), color, 2.5f);
         }
 
-        // A literal geometric A remains legible during the active Protocol, when
-        // the tower's separate animated Protocol signature is also visible.
+        // A compact literal badge reinforces the corner-bracket Auto language.
         var badgeDirection = Vector2.Normalize(new Vector2(-1f, 1f));
-        var marker = tower.Position + badgeDirection * (tower.Definition.Visual.Radius + 9f);
-        p.Circle(batch, marker, 8f, ColorPalette.WithAlpha(ColorPalette.Cobalt, 238));
-        p.Ring(batch, marker, 8f, ColorPalette.Navy, 2);
-        var top = marker + new Vector2(0, -4f);
-        var lowerLeft = marker + new Vector2(-3.4f, 3.5f);
-        var lowerRight = marker + new Vector2(3.4f, 3.5f);
-        p.Line(batch, lowerLeft, top, ColorPalette.Paper, 2);
-        p.Line(batch, top, lowerRight, ColorPalette.Paper, 2);
-        p.Line(batch, marker + new Vector2(-1.8f, 0.8f), marker + new Vector2(1.8f, 0.8f), ColorPalette.Paper, 2);
+        var marker = tower.Position + badgeDirection * (tower.Definition.Visual.Radius + 7f);
+        p.Circle(batch, marker, 7f, ColorPalette.WithAlpha(ColorPalette.AutoMarker, 245));
+        p.Ring(batch, marker, 7f, ColorPalette.Navy, 2);
+        var top = marker + new Vector2(0, -3.7f);
+        var lowerLeft = marker + new Vector2(-3.1f, 3.2f);
+        var lowerRight = marker + new Vector2(3.1f, 3.2f);
+        p.Line(batch, lowerLeft, top, ColorPalette.Navy, 2);
+        p.Line(batch, top, lowerRight, ColorPalette.Navy, 2);
+        p.Line(batch, marker + new Vector2(-1.7f, 0.7f), marker + new Vector2(1.7f, 0.7f), ColorPalette.Navy, 2);
     }
 
     private static void DrawSignalBeaconEffect(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)
