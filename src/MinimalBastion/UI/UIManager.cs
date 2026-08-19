@@ -2436,11 +2436,13 @@ public sealed class UIManager
         var supportBuff = session.GetSupportBuff(tower);
         var statHeader = tower.IsSandboxDisabled
             ? "TOWER DISABLED"
-            : _hoveredUpgradePreviewLabel ?? "CURRENT STATS";
+            : _hoveredUpgradePreviewLabel ?? TowerInfo.CurrentStatsLabel(tower);
         if (!tower.IsSandboxDisabled && (supportBuff.IsActive || powerNodes.Count > 0))
             statHeader += _hoveredUpgradePreview is null ? "  |  ACTIVE BOOSTS INCLUDED" : "  |  BOOSTS INCLUDED";
         DrawFittedText(batch, statHeader, new Vector2(980, 531),
-            tower.IsSandboxDisabled ? ColorPalette.Coral : _hoveredUpgradePreview is null ? ColorPalette.Muted : ColorPalette.Violet,
+            tower.IsSandboxDisabled ? ColorPalette.Coral : _hoveredUpgradePreview is not null || tower.IsApex
+                ? ColorPalette.Violet
+                : ColorPalette.Muted,
             0.45f, 280);
         var comparisonStats = TowerInfo.ComparisonStats(tower.Definition, tower.Level, _hoveredUpgradePreview,
             supportBuff, power, tower.IsOverdriven ? tower.Protocol : null);

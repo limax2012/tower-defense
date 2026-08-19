@@ -496,6 +496,13 @@ public sealed class VisualVerificationGame : Game
         _ = RenderPixels(ui, GameState.Playing, apexSession);
         _ = ui.HandleGameplayInput(Pointer(1120, 693), apexSession);
         scenes.Add(Capture("10f-apex-upgrade-preview.png", ui, GameState.Playing, apexSession));
+        Require(apexSession.TryUpgradeSelectedTower(),
+            "Wave-31 Fundamentals scene purchases the Apex promotion.", assertions);
+        _ = ui.HandleGameplayInput(Pointer(0, 0), apexSession);
+        var promotedApexPixels = RenderPixels(ui, GameState.Playing, apexSession);
+        Require(CountColorPixels(promotedApexPixels, new Rectangle(978, 528, 90, 18), ColorPalette.Violet) >= 10,
+            "Promoted Tower Intel identifies Apex in the stat heading instead of crowding progression.", assertions);
+        scenes.Add(Capture("10g-apex-current-intel.png", ui, GameState.Playing, apexSession));
 
         var settings = new UserSettings { AutoStartWaves = true, AutoStartDelaySeconds = 10 };
         ui.ConfigureSettings(settings);

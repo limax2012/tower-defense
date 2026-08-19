@@ -25,14 +25,14 @@ public static class TowerInfo
         if (tower.Specialization is { } specialization)
         {
             var finalRole = specialization.DisplayName.ToUpperInvariant();
-            var progression = string.IsNullOrWhiteSpace(doctrine) ? finalRole : $"{doctrine}  >  {finalRole}";
-            return tower.IsApex ? $"APEX  {progression}" : progression;
+            return string.IsNullOrWhiteSpace(doctrine) ? finalRole : $"{doctrine}  >  {finalRole}";
         }
-        var level = string.IsNullOrWhiteSpace(doctrine)
+        return string.IsNullOrWhiteSpace(doctrine)
             ? $"LEVEL {tower.LevelIndex + 1}"
             : $"LEVEL {tower.LevelIndex + 1}  {doctrine}";
-        return tower.IsApex ? $"APEX  {level}" : level;
     }
+
+    public static string CurrentStatsLabel(TowerInstance tower) => tower.IsApex ? "APEX STATS" : "CURRENT STATS";
 
     public static string ApexLibrarySummary(TowerDefinition definition)
     {
