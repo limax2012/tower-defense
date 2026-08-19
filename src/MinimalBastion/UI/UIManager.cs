@@ -2454,7 +2454,7 @@ public sealed class UIManager
             DrawFittedText(batch, "APEX", new Vector2(980, apexStatusTop), ColorPalette.Violet, 0.43f, 80);
         // Lifetime telemetry keeps its established baseline for ordinary
         // towers, then yields one compact status row to promoted towers.
-        var lifetimeTop = tower.IsApex ? Math.Max(628, apexStatusTop + 20) : 628;
+        var lifetimeTop = tower.IsApex ? Math.Max(627, apexStatusTop + 19) : 627;
         DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, lifetimeTop), ColorPalette.Cobalt, 0.43f, 280);
 
         _targetButton = new Rectangle(980, 678, 88, 30);
