@@ -710,6 +710,12 @@ public sealed class GameSession
     public bool IsTowerAvailable(string towerId) =>
         !Challenge.ExcludedTowerIds.Contains(towerId, StringComparer.OrdinalIgnoreCase);
 
+    public bool ApexUpgradesUnlocked => IsSandbox || IsEndlessMode && CurrentWave >= GameConstants.ApexUnlockWave - 1;
+
+    public bool CanApexUpgrade(TowerInstance tower) => ApexUpgradesUnlocked && !tower.IsApex &&
+        tower.Definition.Apex is not null && tower.LevelIndex == tower.Definition.Levels.Count - 1 &&
+        !tower.RequiresSpecialization;
+
     public bool TryUpgradeSelectedTower()
     {
         return SelectedTower is not null ? TryUpgradeTower(SelectedTower.Id) : TryUpgradeGenerator();
@@ -723,9 +729,11 @@ public sealed class GameSession
     public bool TryUpgradeTower(int towerId, int requestingPlayerId = 1)
     {
         var tower = Towers.FirstOrDefault(x => x.Id == towerId);
-        if (requestingPlayerId is < 1 or > 2 || tower is null || !tower.CanUpgrade) return false;
-        var cost = tower.UpgradeCost;
-        if (!Economy.TrySpend(cost) || !tower.TryUpgrade()) return false;
+        if (requestingPlayerId is < 1 or > 2 || tower is null) return false;
+        var apex = CanApexUpgrade(tower);
+        if (!tower.CanUpgrade && !apex) return false;
+        var cost = apex ? tower.ApexUpgradeCost : tower.UpgradeCost;
+        if (!Economy.TrySpend(cost) || !(apex ? tower.TryApexUpgrade() : tower.TryUpgrade())) return false;
         TowerUpgraded?.Invoke(tower, cost);
         return true;
     }
@@ -1274,10 +1282,13 @@ public sealed class GameSession
 
     public void OnWaveCompleted(int waveNumber)
     {
-        AnnouncementTitle = $"WAVE {waveNumber} CLEARED";
-        AnnouncementSubtitle = $"+{EconomyService.CalculateWaveReward(waveNumber)} completion credits";
+        var apexUnlocked = IsEndlessMode && waveNumber == GameConstants.ApexUnlockWave - 1;
+        AnnouncementTitle = apexUnlocked ? "APEX UPGRADES ONLINE" : $"WAVE {waveNumber} CLEARED";
+        AnnouncementSubtitle = apexUnlocked
+            ? "Maximum-level towers can now receive one permanent Apex upgrade."
+            : $"+{EconomyService.CalculateWaveReward(waveNumber)} completion credits";
         AnnouncementPositive = true;
-        AnnouncementRemaining = 2.2f;
+        AnnouncementRemaining = apexUnlocked ? 3.2f : 2.2f;
         WaveCompleted?.Invoke(waveNumber);
     }
 

@@ -59,6 +59,7 @@ public sealed class TowerSaveData
     public int LevelIndex { get; set; }
     public string? DoctrineId { get; set; }
     public string? SpecializationId { get; set; }
+    public bool IsApex { get; set; }
     public float CooldownRemaining { get; set; }
     public TargetMode TargetMode { get; set; }
     public int InvestedCredits { get; set; }

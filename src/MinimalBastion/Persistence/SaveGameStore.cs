@@ -292,6 +292,7 @@ public sealed class SaveSlotRepository
                 tower.DefinitionId.Length > 128 || tower.DoctrineId is { Length: > 128 } ||
                 tower.SpecializationId is { Length: > 128 } ||
                 !float.IsFinite(tower.X) || !float.IsFinite(tower.Y) || tower.LevelIndex < 0 ||
+                tower.IsApex && (tower.LevelIndex != 2 || string.IsNullOrWhiteSpace(tower.SpecializationId)) ||
                 !Enum.IsDefined(tower.TargetMode) || tower.InvestedCredits < 0 || !float.IsFinite(tower.CooldownRemaining) ||
                 !IsNonnegativeFinite(tower.OverdriveRemaining) || !IsNonnegativeFinite(tower.LifetimeDamage) ||
                 tower.LifetimeKills < 0 || !IsNonnegativeFinite(tower.LifetimeSupportDamageEquivalent) ||

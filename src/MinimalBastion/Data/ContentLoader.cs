@@ -232,6 +232,11 @@ public static class DataValidator
         {
             var tower = towers[i];
             if (tower.PurchaseCost <= 0 || tower.Levels.Count != 3) throw new InvalidDataException($"Invalid tower: {tower.Id}");
+            if (tower.Apex is { } apex && (apex.UpgradeCost <= 0 ||
+                apex.DamageMultiplier is < 1f or > 2f || apex.AttackSpeedMultiplier is < 1f or > 2f ||
+                apex.RangeMultiplier is < 1f or > 1.5f || apex.ProjectileSpeedMultiplier is < 1f or > 2f ||
+                apex.UtilityMultiplier is < 1f or > 1.5f))
+                throw new InvalidDataException($"Invalid tower Apex upgrade: {tower.Id}");
             if (tower.Levels.Any(x => x.Range < 0 || (!tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) && x.Range <= 0) || x.AttacksPerSecond < 0 || x.Damage < 0 || x.SplashTargetLimit < 0 || x.RicochetRange < 0 || x.RicochetDamageMultiplier is < 0f or > 1f || (x.RicochetRange > 0) != (x.RicochetDamageMultiplier > 0) || x.PriorityDamageMultiplier is < 1f or > 3f ||
                 x.HomingSplash && (x.SplashRadius <= 0 || x.SplashTargetLimit <= 0)))
                 throw new InvalidDataException($"Invalid tower levels: {tower.Id}");

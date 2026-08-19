@@ -166,6 +166,7 @@ public static class SessionChecksum
             Add(ref hash, tower.LevelIndex);
             Add(ref hash, tower.DoctrineId ?? "");
             Add(ref hash, tower.SpecializationId ?? "");
+            Add(ref hash, tower.IsApex ? 1 : 0);
             Add(ref hash, tower.InvestedCredits);
             Add(ref hash, tower.CooldownRemaining);
             Add(ref hash, tower.OverdriveRemaining);

@@ -26,6 +26,7 @@ public sealed class TowerInstance
     public int LevelIndex { get; private set; }
     public string? DoctrineId { get; private set; }
     public string? SpecializationId { get; private set; }
+    public bool IsApex { get; private set; }
     public float CooldownRemaining { get; set; }
     public TargetMode TargetMode { get; set; }
     public int InvestedCredits { get; private set; }
@@ -53,7 +54,9 @@ public sealed class TowerInstance
     public TowerDoctrineDefinition? Doctrine => DoctrineId is null
         ? null
         : Definition.Tier2Doctrines.FirstOrDefault(x => x.Id.Equals(DoctrineId, StringComparison.OrdinalIgnoreCase));
-    public TowerLevelDefinition Level => _effectiveLevel ??= (Specialization?.Level ?? Definition.Levels[LevelIndex]).WithDoctrine(Doctrine);
+    public TowerLevelDefinition BaseLevel => (Specialization?.Level ?? Definition.Levels[LevelIndex]).WithDoctrine(Doctrine);
+    public TowerLevelDefinition Level => _effectiveLevel ??= IsApex ? BaseLevel.WithApex(Definition.Apex) : BaseLevel;
+    public TowerLevelDefinition ApexPreviewLevel => BaseLevel.WithApex(Definition.Apex);
 
     public TowerInstance(int id, TowerDefinition definition, Vector2 position, int ownerPlayerId = 1)
     {
@@ -70,6 +73,7 @@ public sealed class TowerInstance
     public bool RequiresSpecialization => LevelIndex == 1 && SpecializationId is null && Definition.Specializations.Count > 0;
     public bool CanUpgrade => !RequiresDoctrine && !RequiresSpecialization && LevelIndex < Definition.Levels.Count - 1 && Level.UpgradeCost.HasValue;
     public int UpgradeCost => Level.UpgradeCost ?? 0;
+    public int ApexUpgradeCost => Definition.Apex?.UpgradeCost ?? 0;
     public int SellValue => (int)MathF.Floor(InvestedCredits * GameConstants.SellRatio);
     public float VisualScale => VisualScaleAt(0);
 
@@ -114,6 +118,16 @@ public sealed class TowerInstance
         InvestedCredits += specialization.UpgradeCost;
         SpecializationId = specialization.Id;
         LevelIndex = Definition.Levels.Count - 1;
+        _effectiveLevel = null;
+        return true;
+    }
+
+    public bool TryApexUpgrade()
+    {
+        if (IsApex || Definition.Apex is null || LevelIndex != Definition.Levels.Count - 1 || RequiresSpecialization)
+            return false;
+        InvestedCredits += Definition.Apex.UpgradeCost;
+        IsApex = true;
         _effectiveLevel = null;
         return true;
     }
@@ -189,6 +203,7 @@ public sealed class TowerInstance
         LevelIndex = LevelIndex,
         DoctrineId = DoctrineId,
         SpecializationId = SpecializationId,
+        IsApex = IsApex,
         CooldownRemaining = CooldownRemaining,
         TargetMode = TargetMode,
         InvestedCredits = InvestedCredits,
@@ -217,12 +232,16 @@ public sealed class TowerInstance
             throw new InvalidDataException($"Saved specialization is invalid for {definition.Id}.");
         if (data.SpecializationId is not null && data.LevelIndex != definition.Levels.Count - 1)
             throw new InvalidDataException($"Saved specialization progression is invalid for {definition.Id}.");
+        if (data.IsApex && (definition.Apex is null || data.LevelIndex != definition.Levels.Count - 1 ||
+                           definition.Specializations.Count > 0 && data.SpecializationId is null))
+            throw new InvalidDataException($"Saved Apex progression is invalid for {definition.Id}.");
 
         var tower = new TowerInstance(data.Id, definition, new Vector2(data.X, data.Y), data.OwnerPlayerId)
         {
             LevelIndex = data.LevelIndex,
             DoctrineId = data.DoctrineId,
             SpecializationId = data.SpecializationId,
+            IsApex = data.IsApex,
             CooldownRemaining = MathF.Max(0, data.CooldownRemaining),
             TargetMode = data.TargetMode,
             InvestedCredits = Math.Max(definition.PurchaseCost, data.InvestedCredits),

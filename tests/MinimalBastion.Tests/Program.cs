@@ -103,6 +103,7 @@ internal static class Program
             ("tower tier two doctrines", TowerTierTwoDoctrines),
             ("balance benchmark doctrine coverage", BalanceBenchmarkDoctrineCoverage),
             ("tower specializations", TowerSpecializations),
+            ("endless Apex upgrades", EndlessApexUpgrades),
             ("tower overdrive", TowerOverdrive),
             ("authored tower protocols", AuthoredTowerProtocols),
             ("emergency pulse plates", EmergencyPulsePlates),
@@ -314,6 +315,8 @@ internal static class Program
         Check.True(content.Towers.Values.All(x => x.Specializations.Count == 2), "every tower has two final roles");
         Check.Equal(20, content.Towers.Values.Sum(x => x.Tier2Doctrines.Count), "tier two doctrine count");
         Check.True(content.Towers.Values.All(x => x.Tier2Doctrines.Count == 2), "every tower has two tier two doctrines");
+        Check.True(content.Towers.Values.All(x => x.Apex is { UpgradeCost: > 0 }),
+            "every tower has an authored Apex upgrade");
         Check.True(content.Towers.Values.All(tower => tower.Tier2Doctrines.Any(x => x.AttackSpeedMultiplier > 1 || x.UtilityMultiplier > 1) &&
                                                      tower.Tier2Doctrines.Any(x => x.DamageMultiplier > 1 || x.RangeMultiplier > 1)),
             "doctrines offer distinct tempo/utility and power/reach tradeoffs");
@@ -4916,6 +4919,64 @@ internal static class Program
         Check.Equal(1, branchMetrics.Doctrines["tempo"], "simulation telemetry records doctrine choice");
         Check.Equal(1, branchMetrics.Specializations["alpha"], "simulation telemetry records final choice");
         Check.Equal(1, branchMetrics.BuildPaths["tempo>alpha"], "simulation telemetry records completed cross-tree path");
+    }
+
+    private static void EndlessApexUpgrades()
+    {
+        var seed = SessionWithWaves(20);
+        seed.Content.Towers["tower"].Apex = new TowerApexDefinition
+        {
+            UpgradeCost = 800,
+            DamageMultiplier = 1.25f,
+            AttackSpeedMultiplier = 1.20f,
+            RangeMultiplier = 1.08f,
+            ProjectileSpeedMultiplier = 1.10f,
+            UtilityMultiplier = 1.12f
+        };
+        seed.Content.Challenges["no_reserves"] = new ChallengeDefinition
+        {
+            Id = "no_reserves",
+            DisplayName = "Fundamentals",
+            TacticalSystemsEnabled = false,
+            ProtocolsEnabled = false
+        };
+        var fundamentals = new GameSession(seed.Content, challengeId: "no_reserves");
+        var save = fundamentals.CaptureSaveGame();
+        save.Economy.Credits = 10_000;
+        save.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 1;
+        save.Waves.IsFinalWaveCleared = true;
+        save.Waves.EndlessModeEnabled = true;
+        var session = GameSession.RestoreSaveGame(seed.Content, save);
+
+        Check.True(session.ApexUpgradesUnlocked, "Apex unlocks during the intermission after wave 30");
+        Check.True(!session.ProtocolsEnabled && !session.TacticalSystemsEnabled,
+            "Fundamentals restrictions remain active alongside permanent Apex progression");
+        Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "place Apex test tower");
+        var tower = session.Towers.Single();
+        Check.True(session.TryUpgradeTower(tower.Id), "reach the tier two branch point");
+        Check.True(session.TrySpecializeTower(tower.Id, "alpha"), "complete the tower's final role");
+        var damageBefore = tower.Level.Damage;
+        var rateBefore = tower.Level.AttacksPerSecond;
+        var rangeBefore = tower.Level.Range;
+        var investedBefore = tower.InvestedCredits;
+        Check.True(session.CanApexUpgrade(tower), "maximum-level tower exposes its Apex promotion");
+        Check.True(session.TryUpgradeTower(tower.Id, 2), "either co-op player can buy the shared Apex promotion");
+        Check.True(tower.IsApex, "Apex identity is stored on the tower");
+        Check.Nearly(damageBefore * 1.25f, tower.Level.Damage, "Apex damage multiplier");
+        Check.Nearly(rateBefore * 1.20f, tower.Level.AttacksPerSecond, "Apex fire-rate multiplier");
+        Check.Nearly(rangeBefore * 1.08f, tower.Level.Range, "Apex range multiplier");
+        Check.Equal(investedBefore + 800, tower.InvestedCredits, "Apex cost contributes to investment and sale value");
+        Check.True(!session.TryUpgradeTower(tower.Id), "Apex promotion is a one-time final upgrade");
+        Check.True(TowerInfo.ProgressionLabel(tower).StartsWith("APEX", StringComparison.Ordinal),
+            "Tower Intel identifies the Apex tower");
+
+        var restored = GameSession.RestoreSaveGame(seed.Content, session.CaptureSaveGame());
+        Check.True(restored.Towers.Single().IsApex, "checkpoint preserves Apex progression");
+        Check.Nearly(tower.Level.Damage, restored.Towers.Single().Level.Damage, "checkpoint restores Apex stats");
+        var peer = GameSession.RestoreCoOpState(seed.Content, session.CaptureCoOpState(41, 0, false), 2);
+        Check.True(peer.Towers.Single().IsApex, "co-op resynchronization preserves Apex progression");
+        Check.Equal(SessionChecksum.Compute(session, 41), SessionChecksum.Compute(peer, 41),
+            "Apex progression participates in deterministic co-op state");
     }
 
     private static void TowerOverdrive()

@@ -1094,6 +1094,12 @@ public sealed class UIManager
                 .WithDoctrine(upgradePreview.Doctrine);
             _hoveredUpgradePreviewLabel = $"PREVIEW LEVEL {upgradePreview.LevelIndex + 2}  {upgradePreview.UpgradeCost}";
         }
+        else if (session.SelectedTower is { } apexPreview && session.CanApexUpgrade(apexPreview) &&
+                 _upgradeButton.Contains(point))
+        {
+            _hoveredUpgradePreview = apexPreview.ApexPreviewLevel;
+            _hoveredUpgradePreviewLabel = $"PREVIEW APEX  {apexPreview.ApexUpgradeCost}";
+        }
         _hoveredTacticalPlacement = session.IsSandbox ? TacticalPlacementKind.None :
             _emergencyButton.Contains(point) ? TacticalPlacementKind.PulsePlate :
             _generatorButton.Contains(point) ? TacticalPlacementKind.ChargeForge : TacticalPlacementKind.None;
@@ -2485,8 +2491,15 @@ public sealed class UIManager
         if (!tower.IsSupport)
             DrawButton(batch, p, _targetButton, TargetButtonLabel(tower), canManage, ColorPalette.Cyan,
                 session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Cyan) : null);
-        DrawButton(batch, p, _upgradeButton, tower.CanUpgrade ? $"UP {tower.UpgradeCost}" : "MAX",
-            canManage && tower.CanUpgrade && session.Economy.CanAfford(tower.UpgradeCost), ColorPalette.Violet,
+        var apexAvailable = session.CanApexUpgrade(tower);
+        var upgradeCost = apexAvailable ? tower.ApexUpgradeCost : tower.UpgradeCost;
+        var upgradeLabel = tower.CanUpgrade ? $"UP {tower.UpgradeCost}"
+            : apexAvailable ? $"APEX {tower.ApexUpgradeCost}"
+            : tower.IsApex ? "APEX"
+            : session.IsEndlessMode && tower.Definition.Apex is not null ? $"APEX W{GameConstants.ApexUnlockWave}"
+            : "MAX";
+        DrawButton(batch, p, _upgradeButton, upgradeLabel,
+            canManage && (tower.CanUpgrade || apexAvailable) && session.Economy.CanAfford(upgradeCost), ColorPalette.Violet,
             session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Violet) : null);
         if (session.IsSandbox)
         {
@@ -4195,7 +4208,9 @@ public sealed class UIManager
             new Vector2(panel.X + 72, panel.Y + 79), ColorPalette.Auto, 0.41f, panel.Width - 90);
         DrawFittedText(batch, $"{TowerInfo.Strength(definition)}  |  {TowerInfo.Limitation(definition)}",
             new Vector2(panel.X + 18, panel.Y + 96), towerAccent, 0.42f, panel.Width - 36);
-        p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 112, panel.Width - 36, 2),
+        DrawFittedText(batch, TowerInfo.ApexLibrarySummary(definition),
+            new Vector2(panel.X + 18, panel.Y + 113), ColorPalette.Violet, 0.40f, panel.Width - 36);
+        p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 130, panel.Width - 36, 2),
             towerAccent);
 
         var levelOne = definition.Levels[0];
@@ -4205,10 +4220,10 @@ public sealed class UIManager
             _towerLibraryDoctrineIndex = Math.Clamp(_towerLibraryDoctrineIndex, 0, 1);
             var doctrine = definition.Tier2Doctrines[_towerLibraryDoctrineIndex];
             const int doctrineWidth = 270;
-            var topY = panel.Y + 120;
-            _towerLibraryDoctrineAButton = new Rectangle(panel.X + 302, topY, doctrineWidth, 180);
-            _towerLibraryDoctrineBButton = new Rectangle(panel.X + 586, topY, doctrineWidth, 180);
-            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, topY, doctrineWidth, 180), definition,
+            var topY = panel.Y + 138;
+            _towerLibraryDoctrineAButton = new Rectangle(panel.X + 302, topY, doctrineWidth, 170);
+            _towerLibraryDoctrineBButton = new Rectangle(panel.X + 586, topY, doctrineWidth, 170);
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, topY, doctrineWidth, 170), definition,
                 levelOne, "LEVEL 1", $"BUILD {definition.PurchaseCost}  |  TOTAL {definition.PurchaseCost}", towerAccent);
             var firstDoctrine = definition.Tier2Doctrines[0];
             var secondDoctrine = definition.Tier2Doctrines[1];
@@ -4224,7 +4239,7 @@ public sealed class UIManager
             for (var index = 0; index < 2; index++)
             {
                 var specialization = definition.Specializations[index];
-                DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 310, 418, 214), definition,
+                DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 318, 418, 206), definition,
                     specialization.Level.WithDoctrine(doctrine), specialization.DisplayName.ToUpperInvariant(),
                     $"AFTER {doctrine.DisplayName.ToUpperInvariant()} {specialization.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToSpecialization(definition, doctrine, specialization)}",
                     ColorPalette.Violet, specialization.Summary);
@@ -4234,15 +4249,15 @@ public sealed class UIManager
         if (definition.Specializations.Count > 0)
         {
             var topWidth = 418;
-            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, panel.Y + 120, topWidth, 172), definition,
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, panel.Y + 138, topWidth, 162), definition,
                 levelOne, "LEVEL 1", $"BUILD {definition.PurchaseCost}  |  TOTAL {definition.PurchaseCost}", towerAccent);
-            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 454, panel.Y + 120, topWidth, 172), definition,
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 454, panel.Y + 138, topWidth, 162), definition,
                 levelTwo, "LEVEL 2", $"UPGRADE {levelOne.UpgradeCost ?? 0}  |  TOTAL {TowerInfo.TotalCostToLevel(definition, 1)}", ColorPalette.Cyan);
 
             for (var index = 0; index < Math.Min(2, definition.Specializations.Count); index++)
             {
                 var specialization = definition.Specializations[index];
-                DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 308, topWidth, 216), definition,
+                DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 318, topWidth, 206), definition,
                     specialization.Level, specialization.DisplayName.ToUpperInvariant(),
                     $"FINAL {specialization.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToSpecialization(definition, specialization)}",
                     ColorPalette.Violet, specialization.Summary);
@@ -4257,7 +4272,7 @@ public sealed class UIManager
             var incrementalCost = index == 0 ? definition.PurchaseCost : definition.Levels[index - 1].UpgradeCost ?? 0;
             var costKind = index == 0 ? "BUILD" : "UPGRADE";
             var accent = index switch { 0 => towerAccent, 1 => ColorPalette.Cyan, _ => ColorPalette.Violet };
-            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 290, panel.Y + 120, cardWidth, 404), definition,
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 290, panel.Y + 138, cardWidth, 386), definition,
                 level, $"LEVEL {index + 1}", $"{costKind} {incrementalCost}  |  TOTAL {TowerInfo.TotalCostToLevel(definition, index)}", accent);
         }
     }

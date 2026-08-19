@@ -159,6 +159,17 @@ public sealed class TowerDefinition
     public List<TowerLevelDefinition> Levels { get; set; } = new();
     public List<TowerDoctrineDefinition> Tier2Doctrines { get; set; } = new();
     public List<TowerSpecializationDefinition> Specializations { get; set; } = new();
+    public TowerApexDefinition? Apex { get; set; }
+}
+
+public sealed class TowerApexDefinition
+{
+    public int UpgradeCost { get; set; }
+    public float DamageMultiplier { get; set; } = 1f;
+    public float AttackSpeedMultiplier { get; set; } = 1f;
+    public float RangeMultiplier { get; set; } = 1f;
+    public float ProjectileSpeedMultiplier { get; set; } = 1f;
+    public float UtilityMultiplier { get; set; } = 1f;
 }
 
 public sealed class TowerProtocolDefinition
@@ -300,6 +311,49 @@ public sealed class TowerLevelDefinition
             ExposePercent = ExposePercent * utility,
             ExposeDuration = ExposeDuration * utility,
             StunDuration = StunDuration * utility,
+            AuraRange = AuraRange * range,
+            AuraAttackSpeedBonus = AuraAttackSpeedBonus * utility,
+            AuraRangeBonus = AuraRangeBonus * utility,
+            IgnoreShield = IgnoreShield
+        };
+    }
+
+    public TowerLevelDefinition WithApex(TowerApexDefinition? apex)
+    {
+        if (apex is null) return this;
+        var damage = MathF.Max(0.01f, apex.DamageMultiplier);
+        var rate = MathF.Max(0.01f, apex.AttackSpeedMultiplier);
+        var range = MathF.Max(0.01f, apex.RangeMultiplier);
+        var projectileSpeed = MathF.Max(0.01f, apex.ProjectileSpeedMultiplier);
+        var utility = MathF.Max(0.01f, apex.UtilityMultiplier);
+        return new TowerLevelDefinition
+        {
+            Range = Range * range,
+            Damage = Damage * damage,
+            AttacksPerSecond = AttacksPerSecond * rate,
+            ProjectileSpeed = ProjectileSpeed * projectileSpeed,
+            PelletCount = PelletCount,
+            PelletSpreadDegrees = PelletSpreadDegrees,
+            SplashRadius = SplashRadius * utility,
+            SplashTargetLimit = SplashTargetLimit,
+            HomingSplash = HomingSplash,
+            RicochetRange = RicochetRange * utility,
+            RicochetDamageMultiplier = MathF.Min(1f, RicochetDamageMultiplier * utility),
+            ChainCount = ChainCount,
+            ChainDamage = ChainDamage * damage,
+            ChainRange = ChainRange * range,
+            SlowPercent = MathF.Min(0.75f, SlowPercent * utility),
+            SlowDuration = SlowDuration * utility,
+            BurnDamagePerSecond = BurnDamagePerSecond * damage,
+            BurnDuration = BurnDuration * utility,
+            BurnTickInterval = BurnTickInterval,
+            ArmorPierce = ArmorPierce * utility,
+            ArmorReduction = ArmorReduction * utility,
+            ArmorReductionDuration = ArmorReductionDuration * utility,
+            PriorityDamageMultiplier = PriorityDamageMultiplier,
+            ExposePercent = MathF.Min(0.50f, ExposePercent * utility),
+            ExposeDuration = ExposeDuration * utility,
+            StunDuration = MathF.Min(1.5f, StunDuration * utility),
             AuraRange = AuraRange * range,
             AuraAttackSpeedBonus = AuraAttackSpeedBonus * utility,
             AuraRangeBonus = AuraRangeBonus * utility,

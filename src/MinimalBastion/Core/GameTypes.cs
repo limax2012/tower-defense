@@ -25,6 +25,7 @@ public static class GameConstants
     public const float OverdriveCooldownSeconds = 18f;
     public const float OverdriveAttackSpeedBonus = 0.75f;
     public const float SellRatio = 0.60f;
+    public const int ApexUnlockWave = 31;
     public const int PulsePlateDamageSourceOffset = 100_000;
     public const int MaximumPulsePlateId = int.MaxValue - PulsePlateDamageSourceOffset + 1;
     public const int ExhaustedPulsePlateNextId = MaximumPulsePlateId + 1;

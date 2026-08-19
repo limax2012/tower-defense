@@ -362,6 +362,14 @@ public sealed class AutoPlayer
                 }
                 continue;
             }
+            if (session.CanApexUpgrade(tower) && tower.ApexUpgradeCost <= spendable)
+            {
+                var apexNext = UpgradeValue(session, tower, tower.ApexPreviewLevel, threat);
+                Consider(new UpgradeOption(tower, null, null,
+                    MathF.Max(0.01f, apexNext - current) * StrategyWeight(tower.Definition.Id, threat) /
+                    tower.ApexUpgradeCost));
+                continue;
+            }
             if (!tower.CanUpgrade || tower.UpgradeCost > spendable) continue;
             var linearNext = UpgradeValue(session, tower, tower.Definition.Levels[tower.LevelIndex + 1], threat);
             Consider(new UpgradeOption(tower, null, null,

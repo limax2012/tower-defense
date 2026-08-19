@@ -481,6 +481,22 @@ public sealed class VisualVerificationGame : Game
         _ = ui.HandleGameplayInput(Pointer(0, 0), finalBreakerSession);
         scenes.Add(Capture("10e-standard-final-breaker-intel.png", ui, GameState.Playing, finalBreakerSession));
 
+        var apexSeed = new GameSession(content, "foundry_loop", "bastion", "no_reserves");
+        var apexSave = apexSeed.CaptureSaveGame();
+        apexSave.Economy.Credits = 8_000;
+        apexSave.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 1;
+        apexSave.Waves.IsFinalWaveCleared = true;
+        apexSave.Waves.EndlessModeEnabled = true;
+        var apexSession = GameSession.RestoreSaveGame(content, apexSave);
+        Require(apexSession.TryPlaceTower("needle_turret", new Vector2(45, 200)) &&
+                apexSession.TryChooseTowerDoctrine(apexSession.SelectedTower!.Id, "needle_cycler") &&
+                apexSession.TrySpecializeTower(apexSession.SelectedTower!.Id, "rapid_array") &&
+                apexSession.CanApexUpgrade(apexSession.SelectedTower),
+            "Wave-31 Fundamentals scene exposes Apex on a completed tower.", assertions);
+        _ = RenderPixels(ui, GameState.Playing, apexSession);
+        _ = ui.HandleGameplayInput(Pointer(1120, 693), apexSession);
+        scenes.Add(Capture("10f-apex-upgrade-preview.png", ui, GameState.Playing, apexSession));
+
         var settings = new UserSettings { AutoStartWaves = true, AutoStartDelaySeconds = 10 };
         ui.ConfigureSettings(settings);
         scenes.Add(Capture("11-settings-auto-start.png", ui, GameState.Settings, null));

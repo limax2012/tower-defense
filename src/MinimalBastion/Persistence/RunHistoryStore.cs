@@ -218,6 +218,7 @@ public sealed record RunHistoryLayoutSnapshot
         LevelIndex = tower.LevelIndex,
         DoctrineId = tower.DoctrineId,
         SpecializationId = tower.SpecializationId,
+        IsApex = tower.IsApex,
         CooldownRemaining = tower.CooldownRemaining,
         TargetMode = tower.TargetMode,
         InvestedCredits = tower.InvestedCredits,
@@ -453,6 +454,7 @@ public sealed class RunHistoryRepository
     private static bool IsValidPlacedTower(TowerSaveData tower) =>
         tower.Id is > 0 and < int.MaxValue && tower.OwnerPlayerId is 1 or 2 && IsValidLabel(tower.DefinitionId) &&
         IsBattlefieldPosition(tower.X, tower.Y) && tower.LevelIndex is >= 0 and <= 2 &&
+        (!tower.IsApex || tower.LevelIndex == 2 && !string.IsNullOrWhiteSpace(tower.SpecializationId)) &&
         (tower.DoctrineId is null || IsValidLabel(tower.DoctrineId)) &&
         (tower.SpecializationId is null || IsValidLabel(tower.SpecializationId)) &&
         Enum.IsDefined(tower.TargetMode) && tower.InvestedCredits >= 0 &&

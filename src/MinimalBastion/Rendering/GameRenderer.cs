@@ -508,6 +508,8 @@ public sealed class GameRenderer
         var accent = tower.IsSandboxDisabled ? ColorPalette.MapBoundary : tower.Definition.Visual.AccentColor;
         p.DrawShape(batch, tower.Position, tower.Definition.Visual.Radius, tower.Definition.Visual.Shape,
             primary, accent, tower.LevelIndex + 1, true, pulse, true);
+        if (tower.IsApex)
+            p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 4, ColorPalette.Paper, 2);
         if (tower.IsSandboxDisabled)
         {
             var slash = tower.Definition.Visual.Radius * 0.58f;

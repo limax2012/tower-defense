@@ -25,11 +25,24 @@ public static class TowerInfo
         if (tower.Specialization is { } specialization)
         {
             var finalRole = specialization.DisplayName.ToUpperInvariant();
-            return string.IsNullOrWhiteSpace(doctrine) ? finalRole : $"{doctrine}  >  {finalRole}";
+            var progression = string.IsNullOrWhiteSpace(doctrine) ? finalRole : $"{doctrine}  >  {finalRole}";
+            return tower.IsApex ? $"APEX  {progression}" : progression;
         }
-        return string.IsNullOrWhiteSpace(doctrine)
+        var level = string.IsNullOrWhiteSpace(doctrine)
             ? $"LEVEL {tower.LevelIndex + 1}"
             : $"LEVEL {tower.LevelIndex + 1}  {doctrine}";
+        return tower.IsApex ? $"APEX  {level}" : level;
+    }
+
+    public static string ApexLibrarySummary(TowerDefinition definition)
+    {
+        if (definition.Apex is not { } apex) return "";
+        var effects = new List<string>();
+        if (apex.DamageMultiplier > 1f) effects.Add($"DAMAGE +{apex.DamageMultiplier - 1:P0}");
+        if (apex.AttackSpeedMultiplier > 1f) effects.Add($"RATE +{apex.AttackSpeedMultiplier - 1:P0}");
+        if (apex.RangeMultiplier > 1f) effects.Add($"RANGE +{apex.RangeMultiplier - 1:P0}");
+        if (apex.UtilityMultiplier > 1f) effects.Add($"UTILITY +{apex.UtilityMultiplier - 1:P0}");
+        return $"APEX AFTER W30  |  UPGRADE {apex.UpgradeCost}  |  {string.Join("  ", effects)}";
     }
 
     public static float RawDps(TowerLevelDefinition level) => level.Damage * level.AttacksPerSecond * Math.Max(1, level.PelletCount);
