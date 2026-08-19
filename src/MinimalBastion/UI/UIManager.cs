@@ -2449,7 +2449,7 @@ public sealed class UIManager
                        TowerStatGridColumns(comparisonStats.Count);
         var lastStatValueTop = 548 + Math.Max(0, statRows - 1) * TowerStatGridRowHeight(comparisonStats.Count) +
                                (comparisonStats.Count > 6 ? 10 : 12);
-        var apexStatusTop = lastStatValueTop + 20;
+        var apexStatusTop = lastStatValueTop + 21;
         if (tower.IsApex)
             DrawFittedText(batch, "APEX", new Vector2(980, apexStatusTop), ColorPalette.Violet, 0.43f, 80);
         // Lifetime telemetry keeps its established baseline for ordinary
