@@ -2417,7 +2417,15 @@ public sealed class UIManager
         p.DrawShape(batch, TowerIntelIconCenter, IntelIconRadius(tower.Definition.Visual.Radius), tower.Definition.Visual.Shape,
             tower.Definition.Visual.PrimaryColor, tower.Definition.Visual.AccentColor, tower.LevelIndex + 1, true, levelMarks: true);
         var ownership = session.IsCoOp ? $"   PLACED P{tower.OwnerPlayerId}" : "";
-        DrawFittedText(batch, tower.Definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f, 228);
+        DrawFittedText(batch, tower.Definition.DisplayName, new Vector2(1036, 486), ColorPalette.Ink, 0.86f,
+            tower.IsApex ? 164 : 228);
+        if (tower.IsApex)
+        {
+            const string apexLabel = "APEX";
+            const float apexScale = 0.43f;
+            var apexWidth = _font.MeasureString(apexLabel).X * apexScale * GameConstants.FontDrawScale;
+            DrawText(batch, apexLabel, new Vector2(intelCard.Right - 8 - apexWidth, 491), ColorPalette.Violet, apexScale);
+        }
         var levelTitle = TowerInfo.ProgressionLabel(tower);
         // Role belongs in the Workshop/library comparison surfaces. Live Intel
         // keeps only progression and co-op ownership, which also preserves room
@@ -2445,17 +2453,10 @@ public sealed class UIManager
         var comparisonStats = TowerInfo.ComparisonStats(tower.Definition, tower.Level, _hoveredUpgradePreview,
             supportBuff, power, tower.IsOverdriven ? tower.Protocol : null);
         DrawTowerStatGrid(batch, comparisonStats, 548);
-        var statRows = (comparisonStats.Count + TowerStatGridColumns(comparisonStats.Count) - 1) /
-                       TowerStatGridColumns(comparisonStats.Count);
-        var lastStatValueTop = 548 + Math.Max(0, statRows - 1) * TowerStatGridRowHeight(comparisonStats.Count) +
-                               (comparisonStats.Count > 6 ? 10 : 12);
-        var apexStatusTop = lastStatValueTop + 24;
-        if (tower.IsApex)
-            DrawFittedText(batch, "APEX", new Vector2(980, apexStatusTop), ColorPalette.Violet, 0.43f, 80);
-        // Lifetime telemetry keeps its established baseline for ordinary
-        // towers, then yields one compact status row to promoted towers.
-        var lifetimeTop = tower.IsApex ? Math.Max(624, apexStatusTop + 13) : 624;
-        DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, lifetimeTop), ColorPalette.Cobalt, 0.43f, 280);
+        // The stat grid can use three complete label/value rows. Keep the
+        // lifetime telemetry below that rhythm instead of visually attaching it
+        // to the final stat cell.
+        DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, 628), ColorPalette.Cobalt, 0.43f, 280);
 
         _targetButton = new Rectangle(980, 678, 88, 30);
         _upgradeButton = new Rectangle(1074, 678, 92, 30);

@@ -500,8 +500,8 @@ public sealed class VisualVerificationGame : Game
             "Wave-31 Fundamentals scene purchases the Apex promotion.", assertions);
         _ = ui.HandleGameplayInput(Pointer(0, 0), apexSession);
         var promotedApexPixels = RenderPixels(ui, GameState.Playing, apexSession);
-        Require(CountColorPixels(promotedApexPixels, new Rectangle(978, 614, 90, 24), ColorPalette.Violet) >= 10,
-            "Promoted Tower Intel identifies Apex between the stat grid and lifetime telemetry.", assertions);
+        Require(CountColorPixels(promotedApexPixels, new Rectangle(1204, 484, 58, 22), ColorPalette.Violet) >= 10,
+            "Promoted Tower Intel identifies Apex in a reserved top-right header gutter.", assertions);
         scenes.Add(Capture("10g-apex-current-intel.png", ui, GameState.Playing, apexSession));
 
         var settings = new UserSettings { AutoStartWaves = true, AutoStartDelaySeconds = 10 };
