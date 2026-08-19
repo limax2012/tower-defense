@@ -2449,12 +2449,12 @@ public sealed class UIManager
                        TowerStatGridColumns(comparisonStats.Count);
         var lastStatValueTop = 548 + Math.Max(0, statRows - 1) * TowerStatGridRowHeight(comparisonStats.Count) +
                                (comparisonStats.Count > 6 ? 10 : 12);
-        var apexStatusTop = lastStatValueTop + 21;
+        var apexStatusTop = lastStatValueTop + 24;
         if (tower.IsApex)
             DrawFittedText(batch, "APEX", new Vector2(980, apexStatusTop), ColorPalette.Violet, 0.43f, 80);
         // Lifetime telemetry keeps its established baseline for ordinary
         // towers, then yields one compact status row to promoted towers.
-        var lifetimeTop = tower.IsApex ? Math.Max(627, apexStatusTop + 19) : 627;
+        var lifetimeTop = tower.IsApex ? Math.Max(624, apexStatusTop + 13) : 624;
         DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, lifetimeTop), ColorPalette.Cobalt, 0.43f, 280);
 
         _targetButton = new Rectangle(980, 678, 88, 30);
