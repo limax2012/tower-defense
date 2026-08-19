@@ -4980,8 +4980,6 @@ internal static class Program
         Check.True(!session.TryUpgradeTower(tower.Id), "Apex promotion is a one-time final upgrade");
         Check.True(!TowerInfo.ProgressionLabel(tower).StartsWith("APEX", StringComparison.Ordinal),
             "Apex status does not displace the authored progression path");
-        Check.Equal("APEX STATS", TowerInfo.CurrentStatsLabel(tower),
-            "Tower Intel identifies Apex separately from progression");
 
         var restored = GameSession.RestoreSaveGame(seed.Content, session.CaptureSaveGame());
         Check.True(restored.Towers.Single().IsApex, "checkpoint preserves Apex progression");

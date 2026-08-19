@@ -2436,21 +2436,26 @@ public sealed class UIManager
         var supportBuff = session.GetSupportBuff(tower);
         var statHeader = tower.IsSandboxDisabled
             ? "TOWER DISABLED"
-            : _hoveredUpgradePreviewLabel ?? TowerInfo.CurrentStatsLabel(tower);
+            : _hoveredUpgradePreviewLabel ?? "CURRENT STATS";
         if (!tower.IsSandboxDisabled && (supportBuff.IsActive || powerNodes.Count > 0))
             statHeader += _hoveredUpgradePreview is null ? "  |  ACTIVE BOOSTS INCLUDED" : "  |  BOOSTS INCLUDED";
         DrawFittedText(batch, statHeader, new Vector2(980, 531),
-            tower.IsSandboxDisabled ? ColorPalette.Coral : _hoveredUpgradePreview is not null || tower.IsApex
-                ? ColorPalette.Violet
-                : ColorPalette.Muted,
+            tower.IsSandboxDisabled ? ColorPalette.Coral : _hoveredUpgradePreview is not null ? ColorPalette.Violet : ColorPalette.Muted,
             0.45f, 280);
         var comparisonStats = TowerInfo.ComparisonStats(tower.Definition, tower.Level, _hoveredUpgradePreview,
             supportBuff, power, tower.IsOverdriven ? tower.Protocol : null);
         DrawTowerStatGrid(batch, comparisonStats, 548);
-        // The stat grid can use three complete label/value rows. Keep the
-        // lifetime telemetry below that rhythm instead of visually attaching it
-        // to the final stat cell.
-        DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, 628), ColorPalette.Cobalt, 0.43f, 280);
+        var statRows = (comparisonStats.Count + TowerStatGridColumns(comparisonStats.Count) - 1) /
+                       TowerStatGridColumns(comparisonStats.Count);
+        var lastStatValueTop = 548 + Math.Max(0, statRows - 1) * TowerStatGridRowHeight(comparisonStats.Count) +
+                               (comparisonStats.Count > 6 ? 10 : 12);
+        var apexStatusTop = lastStatValueTop + 16;
+        if (tower.IsApex)
+            DrawFittedText(batch, "APEX", new Vector2(980, apexStatusTop), ColorPalette.Violet, 0.43f, 80);
+        // Lifetime telemetry keeps its established baseline for ordinary
+        // towers, then yields one compact status row to promoted towers.
+        var lifetimeTop = tower.IsApex ? Math.Max(628, apexStatusTop + 20) : 628;
+        DrawFittedText(batch, TowerLifetimeSummary(tower), new Vector2(980, lifetimeTop), ColorPalette.Cobalt, 0.43f, 280);
 
         _targetButton = new Rectangle(980, 678, 88, 30);
         _upgradeButton = new Rectangle(1074, 678, 92, 30);

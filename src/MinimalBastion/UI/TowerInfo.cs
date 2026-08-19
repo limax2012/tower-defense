@@ -32,8 +32,6 @@ public static class TowerInfo
             : $"LEVEL {tower.LevelIndex + 1}  {doctrine}";
     }
 
-    public static string CurrentStatsLabel(TowerInstance tower) => tower.IsApex ? "APEX STATS" : "CURRENT STATS";
-
     public static string ApexLibrarySummary(TowerDefinition definition)
     {
         if (definition.Apex is not { } apex) return "";
