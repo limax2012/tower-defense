@@ -1,15 +1,21 @@
 using MinimalBastion.Combat;
 using MinimalBastion.Enemies;
 using MinimalBastion.Core;
+using MinimalBastion.Persistence;
 using MinimalBastion.Towers;
 
 namespace MinimalBastion.Simulation;
 
 public static class HeadlessSimulation
 {
-    public static SimulationRunResult Run(Data.GameContent content, SimulationOptions options)
+    public static SimulationRunResult Run(Data.GameContent content, SimulationOptions options) =>
+        Run(new GameSession(content, options.MapId, options.DifficultyId, options.ChallengeId), options);
+
+    public static SimulationRunResult Run(Data.GameContent content, SaveGameData save, SimulationOptions options) =>
+        Run(GameSession.RestoreSaveGame(content, save), options);
+
+    private static SimulationRunResult Run(GameSession session, SimulationOptions options)
     {
-        var session = new GameSession(content, options.MapId, options.DifficultyId, options.ChallengeId);
         var player = new AutoPlayer(session, options.Strategy, options.Seed, options);
         var telemetry = new RunTelemetry(session);
         var step = Math.Clamp(options.StepSeconds, 0.01f, 0.1f);
@@ -100,6 +106,7 @@ public static class HeadlessSimulation
             session.GeneratorPlaced += _ => _generatorPurchases++;
             session.GeneratorUpgraded += (_, _) => _generatorUpgrades++;
             session.EmergencyChargeProduced += () => _generatedCharges++;
+            foreach (var tower in session.Towers) TrackExistingTower(tower);
         }
 
         public void BeginWave(GameSession session, float elapsed)
@@ -171,7 +178,8 @@ public static class HeadlessSimulation
                 GeneratorUpgrades = _generatorUpgrades,
                 GeneratedCharges = _generatedCharges,
                 Overdrives = _overdrives,
-                ProtocolsEnabled = options.UseProtocols && session.ProtocolsEnabled
+                ProtocolsEnabled = options.UseProtocols && session.ProtocolsEnabled,
+                ApexUpgradesEnabled = options.UseApexUpgrades
             };
         }
 
@@ -209,13 +217,46 @@ public static class HeadlessSimulation
             metrics.CreditsSpent += tower.Definition.PurchaseCost;
         }
 
+        private void TrackExistingTower(TowerInstance tower)
+        {
+            _towerIdToDefinition[tower.Id] = tower.Definition.Id;
+            _towerInstances[tower.Id] = tower;
+            _towerLevels[tower.Id] = tower.LevelIndex + 1;
+            var metrics = GetTower(tower.Definition.Id);
+            metrics.Purchases++;
+            metrics.Upgrades += tower.LevelIndex + (tower.IsApex ? 1 : 0);
+            metrics.CreditsSpent += tower.InvestedCredits;
+            if (tower.DoctrineId is { } doctrineId)
+                metrics.Doctrines[doctrineId] = metrics.Doctrines.GetValueOrDefault(doctrineId) + 1;
+            if (tower.SpecializationId is { } specializationId)
+            {
+                metrics.Specializations[specializationId] = metrics.Specializations.GetValueOrDefault(specializationId) + 1;
+                if (tower.DoctrineId is { } completedDoctrineId)
+                {
+                    var path = $"{completedDoctrineId}>{specializationId}";
+                    metrics.BuildPaths[path] = metrics.BuildPaths.GetValueOrDefault(path) + 1;
+                }
+            }
+            if (tower.IsApex)
+            {
+                metrics.ApexUpgrades++;
+                metrics.ApexCreditsSpent += tower.ApexUpgradeCost;
+            }
+        }
+
         private void OnTowerUpgraded(TowerInstance tower, int cost)
         {
             _towerLevels[tower.Id] = tower.LevelIndex + 1;
             var metrics = GetTower(tower.Definition.Id);
             metrics.Upgrades++;
             metrics.CreditsSpent += cost;
-            metrics.RecordBranchUpgrade(tower);
+            if (tower.IsApex)
+            {
+                metrics.ApexUpgrades++;
+                metrics.ApexCreditsSpent += cost;
+            }
+            else
+                metrics.RecordBranchUpgrade(tower);
         }
 
         private void OnTowerSold(TowerInstance tower, int value)

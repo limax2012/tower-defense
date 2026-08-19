@@ -35,6 +35,7 @@ public sealed class SimulationOptions
     public string? ForcedDoctrineId { get; init; }
     public string? ForcedSpecializationId { get; init; }
     public bool UseProtocols { get; init; } = true;
+    public bool UseApexUpgrades { get; init; } = true;
 }
 
 public sealed class SimulationRunResult
@@ -78,6 +79,7 @@ public sealed class SimulationRunResult
     public int GeneratedCharges { get; init; }
     public int Overdrives { get; init; }
     public bool ProtocolsEnabled { get; init; } = true;
+    public bool ApexUpgradesEnabled { get; init; } = true;
     public int EndlessDepth => CampaignCleared ? Math.Max(0, WaveReached - CampaignWaveCount) : 0;
     public bool Won => Result is "Victory" or "WaveLimit";
 }
@@ -87,6 +89,8 @@ public sealed class TowerRunMetrics
     public string TowerId { get; init; } = "";
     public int Purchases { get; set; }
     public int Upgrades { get; set; }
+    public int ApexUpgrades { get; set; }
+    public int ApexCreditsSpent { get; set; }
     public int Sales { get; set; }
     public int CreditsSpent { get; set; }
     public int CreditsRecovered { get; set; }

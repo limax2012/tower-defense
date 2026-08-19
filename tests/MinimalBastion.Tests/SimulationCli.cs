@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MinimalBastion.Data;
+using MinimalBastion.Persistence;
 using MinimalBastion.Simulation;
 
 namespace MinimalBastion.Tests;
@@ -10,6 +11,8 @@ internal static class SimulationCli
     public static int Run(GameContent content, string[] args, bool deep)
     {
         var selectedStrategy = ReadValue(args, "--strategy");
+        var saveFile = ReadValue(args, "--save-file");
+        var saveData = saveFile is null ? null : ReadSaveFile(saveFile);
         var strategies = selectedStrategy is not null && Enum.TryParse<AutoPlayerStrategy>(selectedStrategy, true, out var parsed)
             ? new[] { parsed }
             : Enum.GetValues<AutoPlayerStrategy>();
@@ -17,15 +20,16 @@ internal static class SimulationCli
         var runsPerStrategy = int.TryParse(ReadValue(args, "--runs"), out var parsedRuns)
             ? Math.Clamp(parsedRuns, 1, 100)
             : deep ? 5 : 1;
-        var selectedMap = ReadValue(args, "--map");
+        var selectedMap = saveData?.MapId ?? ReadValue(args, "--map");
         var maps = selectedMap is not null && content.Maps.ContainsKey(selectedMap)
             ? new[] { selectedMap }
             : deep ? content.Maps.Keys.OrderBy(x => x).ToArray() : new[] { content.Map.Id };
         var maximumWave = ResolveMaximumWave(args, content.Waves.Waves.Count);
-        var difficulties = ResolveDifficulties(ReadValue(args, "--difficulty"), content);
-        var challenges = ResolveChallenges(ReadValue(args, "--challenge"), content);
+        var difficulties = ResolveDifficulties(saveData?.DifficultyId ?? ReadValue(args, "--difficulty"), content);
+        var challenges = ResolveChallenges(saveData?.ChallengeId ?? ReadValue(args, "--challenge"), content);
         var forcedBuilds = ResolveForcedBuilds(ReadValue(args, "--force-build"), content);
         var useProtocols = !args.Any(arg => arg.Equals("--no-protocols", StringComparison.OrdinalIgnoreCase));
+        var useApexUpgrades = !args.Any(arg => arg.Equals("--no-apex", StringComparison.OrdinalIgnoreCase));
         var summaryOnly = args.Any(arg => arg.Equals("--summary-only", StringComparison.OrdinalIgnoreCase));
 
         var runs = new List<SimulationRunResult>();
@@ -38,7 +42,7 @@ internal static class SimulationCli
                 for (var index = 0; index < runsPerStrategy; index++)
                 {
                     var seed = baseSeed + index * 7919;
-                    var result = HeadlessSimulation.Run(content, new SimulationOptions
+                    var options = new SimulationOptions
                     {
                         Strategy = strategy,
                         Seed = seed,
@@ -50,8 +54,12 @@ internal static class SimulationCli
                         ForcedTowerId = forcedBuild?.TowerId,
                         ForcedDoctrineId = forcedBuild?.DoctrineId,
                         ForcedSpecializationId = forcedBuild?.SpecializationId,
-                        UseProtocols = useProtocols
-                    });
+                        UseProtocols = useProtocols,
+                        UseApexUpgrades = useApexUpgrades
+                    };
+                    var result = saveData is null
+                        ? HeadlessSimulation.Run(content, options)
+                        : HeadlessSimulation.Run(content, saveData, options);
                     runs.Add(result);
                     if (!summaryOnly)
                         Console.WriteLine($"{mapId,-15} {difficultyId,-8} {challengeId,-14} {strategy,-16} seed {seed,7}  {result.Result,-7}  wave {result.WaveReached,2}  lives {result.LivesRemaining,2}  spent {result.CreditsSpent,5}  towers {result.Towers.Values.Sum(x => x.Purchases),2}  plates {result.EmergencyDeployments,2}");
@@ -69,6 +77,8 @@ internal static class SimulationCli
         if (!useProtocols) Console.WriteLine("Protocol activations disabled for this control group.");
         else if (runs.Count > 0 && runs.All(run => !run.ProtocolsEnabled))
             Console.WriteLine("The selected directive disables Protocol activations.");
+        if (!useApexUpgrades) Console.WriteLine("Apex purchases disabled for this control group.");
+        if (saveFile is not null) Console.WriteLine($"Simulation started from checkpoint: {Path.GetFullPath(saveFile)}");
         PrintStrategySummary(runs, outcomeLabel);
         PrintDifficultySummary(runs, outcomeLabel);
         PrintChallengeSummary(runs, outcomeLabel);
@@ -412,6 +422,8 @@ internal static class SimulationCli
                 Id = group.Key,
                 Picks = group.Sum(x => x.Purchases),
                 Upgrades = group.Sum(x => x.Upgrades),
+                ApexUpgrades = group.Sum(x => x.ApexUpgrades),
+                ApexSpent = group.Sum(x => x.ApexCreditsSpent),
                 Damage = group.Sum(x => x.Damage),
                 Assist = group.Sum(x => x.SupportDamageEquivalent + x.ExposeDamageEquivalent + x.ArmorBreakDamageEquivalent),
                 SlowSeconds = group.Sum(x => x.StatusEnemySeconds.GetValueOrDefault("Slow")),
@@ -424,7 +436,7 @@ internal static class SimulationCli
             })
             .OrderByDescending(x => x.Damage + x.Assist);
         foreach (var row in towerRows)
-            Console.WriteLine($"{row.Id,-20} picks {row.Picks,3}  upgrades {row.Upgrades,3}  protocols {row.Overdrives,4}  direct {row.Damage,10:0}  assist {row.Assist,8:0}  control {row.SlowSeconds + row.StunSeconds,7:0}s  expose {row.ExposeSeconds,7:0}s  break {row.BreakSeconds,7:0}s  supported {row.SupportedSeconds,8:0}s  impact/credit {(row.Spent == 0 ? 0 : (row.Damage + row.Assist) / row.Spent),6:0.0}");
+            Console.WriteLine($"{row.Id,-20} picks {row.Picks,3}  upgrades {row.Upgrades,3}  apex {row.ApexUpgrades,3}/{row.ApexSpent,-6}  protocols {row.Overdrives,4}  direct {row.Damage,10:0}  assist {row.Assist,8:0}  control {row.SlowSeconds + row.StunSeconds,7:0}s  expose {row.ExposeSeconds,7:0}s  break {row.BreakSeconds,7:0}s  supported {row.SupportedSeconds,8:0}s  impact/credit {(row.Spent == 0 ? 0 : (row.Damage + row.Assist) / row.Spent),6:0.0}");
     }
 
     private static void PrintSpecializationSummary(IEnumerable<SimulationRunResult> runs)
@@ -513,6 +525,15 @@ internal static class SimulationCli
             if (args[index].Equals(name, StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length) return args[index + 1];
         }
         return null;
+    }
+
+    private static SaveGameData ReadSaveFile(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        if (!File.Exists(fullPath)) throw new FileNotFoundException("Simulation checkpoint was not found.", fullPath);
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };
+        return JsonSerializer.Deserialize<SaveGameData>(File.ReadAllText(fullPath), options) ??
+            throw new InvalidDataException("Simulation checkpoint is empty or malformed.");
     }
 
     private static string FindProjectRoot()

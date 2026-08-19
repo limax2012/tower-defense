@@ -4941,6 +4941,15 @@ internal static class Program
             ProtocolsEnabled = false
         };
         var fundamentals = new GameSession(seed.Content, challengeId: "no_reserves");
+        var activeWaveSave = fundamentals.CaptureSaveGame();
+        activeWaveSave.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 2;
+        activeWaveSave.Waves.IsFinalWaveCleared = true;
+        activeWaveSave.Waves.EndlessModeEnabled = true;
+        var activeWave = GameSession.RestoreSaveGame(seed.Content, activeWaveSave);
+        Check.True(activeWave.StartNextWave(), "start the final pre-Apex wave");
+        Check.Equal(GameConstants.ApexUnlockWave - 1, activeWave.CurrentWave, "wave 30 is active");
+        Check.True(!activeWave.ApexUpgradesUnlocked, "Apex remains locked while wave 30 is active");
+
         var save = fundamentals.CaptureSaveGame();
         save.Economy.Credits = 10_000;
         save.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 1;
@@ -4966,6 +4975,8 @@ internal static class Program
         Check.Nearly(rateBefore * 1.20f, tower.Level.AttacksPerSecond, "Apex fire-rate multiplier");
         Check.Nearly(rangeBefore * 1.08f, tower.Level.Range, "Apex range multiplier");
         Check.Equal(investedBefore + 800, tower.InvestedCredits, "Apex cost contributes to investment and sale value");
+        Check.Equal(1, session.Statistics.Towers.Single().Specializations["alpha"],
+            "Apex telemetry does not duplicate the completed specialization");
         Check.True(!session.TryUpgradeTower(tower.Id), "Apex promotion is a one-time final upgrade");
         Check.True(TowerInfo.ProgressionLabel(tower).StartsWith("APEX", StringComparison.Ordinal),
             "Tower Intel identifies the Apex tower");

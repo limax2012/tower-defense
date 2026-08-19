@@ -239,6 +239,11 @@ public sealed class RunStatistics
         var metrics = GetTower(tower.Definition.Id, tower.Definition.DisplayName);
         metrics.Upgrades = MetricMath.Add(metrics.Upgrades);
         metrics.CreditsSpent = MetricMath.Add(metrics.CreditsSpent, cost);
+        if (tower.IsApex)
+        {
+            _towerByInstance[tower.Id] = metrics;
+            return;
+        }
         if (tower.SpecializationId is { } specializationId)
             metrics.Specializations[specializationId] = MetricMath.Add(metrics.Specializations.GetValueOrDefault(specializationId));
         else if (tower.DoctrineId is { } doctrineId)

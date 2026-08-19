@@ -14,6 +14,7 @@ public sealed class AutoPlayer
     private readonly string? _forcedDoctrineId;
     private readonly string? _forcedSpecializationId;
     private readonly bool _useProtocols;
+    private readonly bool _useApexUpgrades;
     private int _lastRebalanceWave = -1;
     private int _directEmergencyPurchasesThisWave;
 
@@ -26,6 +27,7 @@ public sealed class AutoPlayer
         _forcedDoctrineId = options?.ForcedDoctrineId;
         _forcedSpecializationId = options?.ForcedSpecializationId;
         _useProtocols = options?.UseProtocols ?? true;
+        _useApexUpgrades = options?.UseApexUpgrades ?? true;
     }
 
     public void PrepareForWave(GameSession session)
@@ -362,7 +364,7 @@ public sealed class AutoPlayer
                 }
                 continue;
             }
-            if (session.CanApexUpgrade(tower) && tower.ApexUpgradeCost <= spendable)
+            if (_useApexUpgrades && session.CanApexUpgrade(tower) && tower.ApexUpgradeCost <= spendable)
             {
                 var apexNext = UpgradeValue(session, tower, tower.ApexPreviewLevel, threat);
                 Consider(new UpgradeOption(tower, null, null,

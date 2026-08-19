@@ -710,7 +710,9 @@ public sealed class GameSession
     public bool IsTowerAvailable(string towerId) =>
         !Challenge.ExcludedTowerIds.Contains(towerId, StringComparer.OrdinalIgnoreCase);
 
-    public bool ApexUpgradesUnlocked => IsSandbox || IsEndlessMode && CurrentWave >= GameConstants.ApexUnlockWave - 1;
+    public bool ApexUpgradesUnlocked => IsSandbox || IsEndlessMode &&
+        (CurrentWave >= GameConstants.ApexUnlockWave ||
+         CurrentWave == GameConstants.ApexUnlockWave - 1 && !Waves.IsActive);
 
     public bool CanApexUpgrade(TowerInstance tower) => ApexUpgradesUnlocked && !tower.IsApex &&
         tower.Definition.Apex is not null && tower.LevelIndex == tower.Definition.Levels.Count - 1 &&
