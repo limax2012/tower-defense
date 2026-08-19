@@ -2424,7 +2424,7 @@ public sealed class UIManager
             const string apexLabel = "APEX";
             const float apexScale = 0.43f;
             var apexWidth = _font.MeasureString(apexLabel).X * apexScale * GameConstants.FontDrawScale;
-            DrawText(batch, apexLabel, new Vector2(intelCard.Right - 8 - apexWidth, 487.5f), ColorPalette.Violet, apexScale);
+            DrawText(batch, apexLabel, new Vector2(intelCard.Right - 15 - apexWidth, 487.5f), ColorPalette.Violet, apexScale);
         }
         var levelTitle = TowerInfo.ProgressionLabel(tower);
         // Role belongs in the Workshop/library comparison surfaces. Live Intel
