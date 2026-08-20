@@ -15,6 +15,7 @@ public enum AutoPlayerStrategy
     AntiArmor,
     LongRange,
     Control,
+    Synergy,
     Tactical,
     Adaptive,
     Randomized
@@ -36,6 +37,7 @@ public sealed class SimulationOptions
     public string? ForcedSpecializationId { get; init; }
     public bool UseProtocols { get; init; } = true;
     public bool UseApexUpgrades { get; init; } = true;
+    public bool HoldBuild { get; init; }
 }
 
 public sealed class SimulationRunResult

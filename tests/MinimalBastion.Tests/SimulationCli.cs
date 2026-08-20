@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using MinimalBastion.Core;
 using MinimalBastion.Data;
 using MinimalBastion.Persistence;
 using MinimalBastion.Simulation;
@@ -24,12 +25,13 @@ internal static class SimulationCli
         var maps = selectedMap is not null && content.Maps.ContainsKey(selectedMap)
             ? new[] { selectedMap }
             : deep ? content.Maps.Keys.OrderBy(x => x).ToArray() : new[] { content.Map.Id };
-        var maximumWave = ResolveMaximumWave(args, content.Waves.Waves.Count);
+        var maximumWave = ResolveMaximumWave(args, GameConstants.CampaignWaveCount);
         var difficulties = ResolveDifficulties(saveData?.DifficultyId ?? ReadValue(args, "--difficulty"), content);
         var challenges = ResolveChallenges(saveData?.ChallengeId ?? ReadValue(args, "--challenge"), content);
         var forcedBuilds = ResolveForcedBuilds(ReadValue(args, "--force-build"), content);
         var useProtocols = !args.Any(arg => arg.Equals("--no-protocols", StringComparison.OrdinalIgnoreCase));
         var useApexUpgrades = !args.Any(arg => arg.Equals("--no-apex", StringComparison.OrdinalIgnoreCase));
+        var holdBuild = args.Any(arg => arg.Equals("--hold-build", StringComparison.OrdinalIgnoreCase));
         var summaryOnly = args.Any(arg => arg.Equals("--summary-only", StringComparison.OrdinalIgnoreCase));
 
         var runs = new List<SimulationRunResult>();
@@ -50,12 +52,13 @@ internal static class SimulationCli
                         DifficultyId = difficultyId,
                         ChallengeId = challengeId,
                         MaximumWave = maximumWave,
-                        ContinueEndless = maximumWave > content.Waves.Waves.Count,
+                        ContinueEndless = maximumWave > GameConstants.CampaignWaveCount,
                         ForcedTowerId = forcedBuild?.TowerId,
                         ForcedDoctrineId = forcedBuild?.DoctrineId,
                         ForcedSpecializationId = forcedBuild?.SpecializationId,
                         UseProtocols = useProtocols,
-                        UseApexUpgrades = useApexUpgrades
+                        UseApexUpgrades = useApexUpgrades,
+                        HoldBuild = holdBuild
                     };
                     var result = saveData is null
                         ? HeadlessSimulation.Run(content, options)
@@ -68,16 +71,17 @@ internal static class SimulationCli
 
         var batch = new SimulationBatchResult { Runs = runs };
         Console.WriteLine();
-        var endlessAudit = maximumWave > content.Waves.Waves.Count;
-        var outcomeLabel = endlessAudit ? $"reach wave {maximumWave}" : "wins";
-        Console.WriteLine($"Runs {runs.Count}, {(endlessAudit ? $"wave-{maximumWave} targets reached" : "wins")} {batch.Wins}, rate {batch.WinRate:P1}, average wave {batch.AverageWaveReached:0.0}, average lives {batch.AverageLivesRemaining:0.0}.");
-        if (endlessAudit) PrintEndlessProgress(runs);
+        var extendedAudit = maximumWave > GameConstants.CampaignWaveCount;
+        var outcomeLabel = extendedAudit ? $"reach wave {maximumWave}" : "wins";
+        Console.WriteLine($"Runs {runs.Count}, {(extendedAudit ? $"wave-{maximumWave} targets reached" : "wins")} {batch.Wins}, rate {batch.WinRate:P1}, average wave {batch.AverageWaveReached:0.0}, average lives {batch.AverageLivesRemaining:0.0}.");
+        if (extendedAudit) PrintExtendedProgress(runs, maximumWave);
         if (forcedBuilds.Count == 1 && forcedBuilds[0] is { } onlyForcedBuild)
             Console.WriteLine($"Forced requested path: {onlyForcedBuild.TowerId}:{onlyForcedBuild.DoctrineId}>{onlyForcedBuild.SpecializationId}");
         if (!useProtocols) Console.WriteLine("Protocol activations disabled for this control group.");
         else if (runs.Count > 0 && runs.All(run => !run.ProtocolsEnabled))
             Console.WriteLine("The selected directive disables Protocol activations.");
         if (!useApexUpgrades) Console.WriteLine("Apex purchases disabled for this control group.");
+        if (holdBuild) Console.WriteLine("Checkpoint defenses held without purchases, upgrades, sales, or tactical actions.");
         if (saveFile is not null) Console.WriteLine($"Simulation started from checkpoint: {Path.GetFullPath(saveFile)}");
         PrintStrategySummary(runs, outcomeLabel);
         PrintDifficultySummary(runs, outcomeLabel);
@@ -186,12 +190,14 @@ internal static class SimulationCli
             campaignClears.Length == 0 ? 0 : (float)campaignClears.Average(run => run.EndlessDepth));
     }
 
-    private static void PrintEndlessProgress(IEnumerable<SimulationRunResult> runs)
+    private static void PrintExtendedProgress(IEnumerable<SimulationRunResult> runs, int maximumWave)
     {
         var materialized = runs.ToArray();
         var total = SummarizeEndlessProgress(materialized);
         Console.WriteLine();
-        Console.WriteLine("ENDLESS PROGRESSION");
+        Console.WriteLine(maximumWave <= GameConstants.MasteryFinalWave
+            ? "MASTERY PROGRESSION"
+            : "APEX ENDLESS PROGRESSION");
         Console.WriteLine($"Campaign clears {total.CampaignClears}/{total.Runs}; target reaches {total.TargetReaches}; deepest wave {total.DeepestWave}; average depth after a clear {total.AverageEndlessDepth:0.0}.");
         Console.WriteLine("BY ARENA (campaign clears / deepest wave / average clear depth)");
         foreach (var group in materialized.GroupBy(run => run.MapId).OrderBy(group => group.Key))

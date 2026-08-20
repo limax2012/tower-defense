@@ -17,7 +17,7 @@ dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simul
 dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --difficulty hard --strategy LongRange "--force-build=siege_mortar:mortar_loader>quake_shell"
 ```
 
-CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, `--no-protocols`, and `--output`. `--force-build` accepts `tower:doctrine>specialization` and is intended for controlled branch-viability diagnostics; `--no-protocols` creates a matched active-ability control group. A `--max-wave` above 20 explicitly enters deterministic endless mode; ordinary simulation remains the authored campaign. `--simulate-full` evaluates every map unless a map is supplied.
+CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--challenge`, `--max-wave`, `--force-build`, `--no-protocols`, `--no-apex`, `--save-file`, `--hold-build`, `--summary-only`, and `--output`. `--force-build` accepts `tower:doctrine>specialization` and is intended for controlled branch-viability diagnostics; `--no-protocols` and `--no-apex` create matched feature-control groups. `--save-file` starts every run from one read-only checkpoint, and `--hold-build` leaves that checkpoint's defenses unchanged. Waves 21-30 are authored Mastery waves; generated Apex Endless begins at wave 31. `--simulate-full` evaluates every map unless a map is supplied.
 
 ## Architecture
 
@@ -39,6 +39,7 @@ CLI filters are `--strategy`, `--seed`, `--runs`, `--map`, `--difficulty`, `--ch
 - AntiArmor: Breaker/Prism/Watchtower and penetration branches.
 - LongRange: route coverage through Watchtower/Mortar/Prism.
 - Control: Frost/Ember/Arc/Beacon and control/burn branches.
+- Synergy: node-first Needle/Frost foundation, staged Arc and anti-shield counters, then broader Ember/Mortar/Watch coverage for the late campaign.
 - Tactical: forge and Pulse Plate usage alongside a compact defense.
 - Adaptive: reads upcoming armor, speed, swarm, shields, durability, elites, and bosses; may sell mismatched specialists.
 - Randomized: seeded weighted legal choices for unusual-strategy discovery.
@@ -62,31 +63,31 @@ Batch summaries derive win rate, average wave/lives, map/strategy outcomes, and 
 
 ## Test hierarchy
 
-- Fast: 68 deterministic mechanics, content, transport, command, persistence, history, directive, doctrine, effect-budget, and simulation regressions.
+- Fast: 74 deterministic mechanics, content, transport, command, persistence, history, directive, doctrine, effect-budget, and simulation regressions.
 - Medium: isolated `--balance` benchmark plus focused strategy/map batches.
-- Deep: `--simulate-full` across 12 strategies, all four maps, four difficulties, and multiple seeds.
+- Deep: `--simulate-full` across 13 strategies, all four maps, four difficulties, and multiple seeds.
 - Player-facing: self-contained native build inspection of menus, online setup, battlefield, workshop, tactical states, Surge Node hover, level marks, Protocols, forge timing, and result screens.
 
-## Current baseline
+## Campaign control baseline
 
-The current five-seed matrices cover 12 strategies across Foundry Loop, Crosswind Basin, Prism Circuit, and Surge Divide: 240 deterministic runs per difficulty. Easy's only consistent failures are the intentionally under-defending Economy and indiscriminate level-1 Spam policies.
+The retained five-seed control matrices cover the original 12 broad strategies across Foundry Loop, Crosswind Basin, Prism Circuit, and Surge Divide: 240 deterministic runs per difficulty. Easy's only consistent failures are the intentionally under-defending Economy and indiscriminate level-1 Spam policies. Focused Synergy results are reported separately because that policy deliberately encodes the node/control/anti-shield plan.
 
 | Difficulty | Wins | Win rate | Average wave | Average lives |
 | --- | ---: | ---: | ---: | ---: |
 | Easy | 199/240 | 82.9% | 19.1 | 24.6 |
-| Normal | 186/240 | 77.5% | 18.8 | 17.4 |
+| Medium | 186/240 | 77.5% | 18.8 | 17.4 |
 | Hard | 140/240 | 58.3% | 17.5 | 9.0 |
 | Bastion | 73/240 | 30.4% | 14.9 | 4.0 |
 
-Hard is the authored uncompromised baseline. Bastion now applies 112% enemy health, 102% speed, full base credits, and 18 lives: its refreshed map results range from 13.3% on Surge to 38.3% on Crosswind/Foundry. The former 115% / 104% / 15-life profile cleared only 13.8% overall and allowed just four purposeful policies to win; the tuned profile clears 30.4% and gives eight purposeful policies plus Randomized at least one success while Economy, Aggressive, and indiscriminate level-1 Spam still fail. Surge therefore remains the decisive expert arena without making Standard Bastion a one-build puzzle.
+Hard is the authored uncompromised baseline. Bastion applies 112% enemy health, 102% speed, full base credits, and 18 lives. The broad control profile clears 30.4% and gives eight purposeful policies plus Randomized at least one success while Economy, Aggressive, and indiscriminate level-1 Spam still fail. Its map results range from 13.3% on Surge to 38.3% on Crosswind/Foundry, so Surge remains the decisive expert arena without making Standard Bastion a one-build puzzle.
 
-Current Hard strategy wins are Conservative 14/20, Economy 0/20, Aggressive 2/20, UpgradeFocused 20/20, Spam 0/20, AntiSwarm 16/20, AntiArmor 19/20, LongRange 19/20, Control 15/20, Tactical 14/20, Adaptive 15/20, and Randomized 6/20. A focused 20-seed rerun expanded UpgradeFocused to 74/80 (92.5%): it cleared Crosswind, Foundry, and Prism consistently but only 14/20 Surge cases. Deep upgrades are therefore a strong slot-efficiency plan rather than a universal solution, while AntiArmor, LongRange, AntiSwarm, Control, Adaptive, and Tactical remain credible alternatives. Report: `.build/balance/upgrade-focused-hard-20x.json`.
+The Hard control strategy wins are Conservative 14/20, Economy 0/20, Aggressive 2/20, UpgradeFocused 20/20, Spam 0/20, AntiSwarm 16/20, AntiArmor 19/20, LongRange 19/20, Control 15/20, Tactical 14/20, Adaptive 15/20, and Randomized 6/20. A focused 20-seed UpgradeFocused run clears 74/80 (92.5%): it clears Crosswind, Foundry, and Prism consistently but only 14/20 Surge cases. Deep upgrades are therefore a strong slot-efficiency plan rather than a universal solution, while AntiArmor, LongRange, AntiSwarm, Control, Adaptive, and Tactical remain credible alternatives. Report: `.build/balance/upgrade-focused-hard-20x.json`.
 
 Current combined Easy/Medium/Hard report: `.build/balance/overnight-difficulty-5x.json`. The refreshed Bastion report is `.build/balance/bastion-tuned-standard-5x-20260816.json`; earlier tuning reports remain under `.build/balance` for comparison.
 
 ## Challenge directive baseline
 
-The current five-seed matrices cover Standard and Fundamentals across all 12 policies and four arenas (240 runs each). The latest two-seed Close Quarters/Core Six audits remain included for directive context:
+The established five-seed campaign controls cover Standard and Fundamentals across the original 12 broad policies and four arenas (240 runs each). The two-seed Close Quarters/Core Six audits provide directive context:
 
 | Directive | Wins | Win rate | Average wave | Purpose |
 | --- | ---: | ---: | ---: | --- |
@@ -95,20 +96,22 @@ The current five-seed matrices cover Standard and Fundamentals across all 12 pol
 | Core Six | 28/96 | 29.2% | 15.6 | Advanced compact-roster planning puzzle. |
 | Fundamentals | 115/240 | 47.9% | 16.3 | Full tower roster, but no Plates, Forge, or manual/automatic Protocols; fixed +25% opening funds. |
 
-Fundamentals is therefore materially different from Standard without duplicating Core Six: it preserves composition freedom while removing all temporary intervention. At +25% opening funds, its Hard clear rate is 47.9%, 10.4 points below Standard; nine policies clear at least once, while indiscriminate Spam, Economy, and Aggressive remain unsuccessful. The tuned five-seed Bastion matrix clears 48/240 (20.0%), with map results of Crosswind 26.7%, Foundry 28.3%, Prism 20.0%, and Surge 5.0%. Six policies clear Bastion Fundamentals, led by Anti-Armor (13/20), Conservative and Upgrade-Focused (10/20 each), rather than one forced solution. A separate ten-seed Surge stress check confirms 6/120 (5.0%) with Anti-Swarm, Adaptive, and Upgrade-Focused wins; this remains a severe optional combination without being the former 1/120 outlier. Reports: `.build/balance/fundamentals-125-{hard,bastion}-5x-20260816.json` and `.build/balance/fundamentals-125-bastion-surge-10x-20260816.json`.
+Fundamentals is materially different from Standard without duplicating Core Six: it preserves composition freedom while removing all temporary intervention. At +25% opening funds, its Hard control clear rate is 47.9%, 10.4 points below Standard; nine broad policies clear at least once, while indiscriminate Spam, Economy, and Aggressive remain unsuccessful.
+
+The current 13-policy, ten-seed Bastion/Fundamentals campaign audit clears 113/520 runs (21.7%): Crosswind 40/130, Foundry 37/130, Prism 29/130, and Surge 7/130. All seven Surge clears come from the ten purpose-built Synergy runs. A separate 100-seed Synergy audit clears Surge 86/100. The 7/130 aggregate therefore measures how often a deliberately varied policy set happens to use the map's intended node/control/anti-shield answer; it is not a 5.4% estimate of human success after learning that answer. Reports: `.build/balance/mastery-final-broad-w20.json` and `.build/balance/surge-bastion-fundamentals-synergy-final-w20.json`.
 
 No tower or enemy stat changes with directive progress. Restrictions and opening compensation are fixed at session construction; the stable internal ID remains `no_reserves` for save compatibility.
 
-## Endless validation
+## Mastery and Apex Endless validation
 
-- A doctrine/range-era 144-run Hard matrix continued all 12 strategies across all four arenas toward wave 40. No defense reached the cap. Across all campaigns, average failure was wave 20.9; among the 83 runs that reached wave 20, average depth was 26.5. Control survivors averaged 34.2 and peaked at 39. Map survivor averages were Crosswind 28.2, Prism 26.3, Foundry 26.1, and Surge 24.9. Report: `.build/balance/doctrine-range-hard-endless40-3x.json`.
-- A fresh wave-60 audit on the current executable ran all 12 policies once across all four maps on Easy, Normal, and Hard. None of 144 runs reached wave 60: Easy peaked at 43 (14 reached 30), Normal at 39 (7 reached 30), and Hard at 39 (5 reached 30). Control led the survivors but still failed on every map, confirming quadratic health escalation eventually breaks stabilized range/control economies rather than only increasing roster count. Reports: `.build/balance/overnight-endless60-{easy,normal,hard}-1x.json`.
-- A later three-seed Easy stress run aimed the Adaptive policy at wave 100 on every arena. All 12 defenses failed naturally at waves 24-29 (27.0 average), with Surge earliest at 24.3; generation and reporting stayed bounded. Report: `.build/balance/endless100-adaptive-easy-3x.json`.
+Each arena has ten authored Mastery waves after the wave-20 campaign result. They use arena-specific formations and a steeper health curve, require continued spending and coverage, and lead into generated Apex Endless at wave 31. Apex promotions remain unavailable until Mastery wave 30 is cleared.
 
-- Five Foundry Adaptive seeds targeted wave 30. One failed the authored campaign at wave 14; the four campaign-clearing runs reached waves 23, 24, 24, and 28 rather than encountering an artificial wave-21 wall.
-- A 12-strategy Surge Divide pass produced three wave-30 survivors: AntiSwarm and Control with 10 lives, and Tactical with 12. Adaptive reached 28 and LongRange reached 25.
-- Extending the three wave-30 survivors toward wave 40 defeated all three on wave 33. This confirms the curve continues rising after max-level defenses are established.
-- Reports: `.build/balance/endless-wave30-adaptive-5x-20260814.json`, `.build/balance/endless-wave30-surge-strategies-20260814.json`, and `.build/balance/endless-wave40-*-20260814.json`.
+- The full 13-policy, ten-seed Bastion/Fundamentals audit records 115/520 campaign clears, no wave-30 targets, and a deepest run of wave 29. Deepest waves by arena are Crosswind 28, Foundry 29, Prism 28, and Surge 26. This intentionally broad matrix includes many policies that are poor fits for the arena and is a regression baseline, not a player completion forecast. Report: `.build/balance/mastery-final-broad-w30.json`.
+- The Synergy policy across all four arenas and four difficulties reaches wave 30 in 13/40 Easy, 4/40 Medium, 0/40 Hard, and 0/40 Bastion runs. This keeps Mastery optional and demanding even below the premier profile. Report: `.build/balance/mastery-final-difficulties.json`.
+- Across the four Bastion directives, Synergy reaches wave 30 in 2/40 Close Quarters runs and none of the Standard, Core Six, or Fundamentals fresh-start runs. Standard and Fundamentals still average well beyond the campaign among their campaign clears; Core Six remains the most restrictive composition puzzle. Report: `.build/balance/mastery-final-directives.json`.
+- A saved perfect-clear Surge/Bastion/Fundamentals defense fails at wave 27 when frozen. Starting every run from that same checkpoint and allowing continued purchases and upgrades reaches wave 30 in 6/10 seeds, averaging 10.8 lives. The authored extension therefore tests redevelopment rather than merely replaying the solved campaign layout. Reports: `.build/balance/user-save-hold-final-w30.json` and `.build/balance/user-save-synergy-final-w30.json`.
+
+Generated Apex Endless begins after this authored gate and inherits the wave-30 arena roster before adding its rotating density, elite, health, and recurring-boss escalation. Simulation targets above 30 exercise that generator independently of campaign and Mastery completion rates.
 
 ## Current observations
 

@@ -1,4 +1,5 @@
 using MinimalBastion.Data;
+using MinimalBastion.Core;
 
 namespace MinimalBastion.Waves;
 
@@ -32,12 +33,12 @@ public static class WaveIntel
 {
     public static CampaignIntelInfo AnalyzeCampaign(WaveSetDefinition campaign, IReadOnlyDictionary<string, EnemyDefinition> enemies)
     {
-        var waves = campaign.Waves;
-        if (waves.Count == 0) return new CampaignIntelInfo(0, 0, "STANDARD", 1f, 0);
+        var waves = campaign.Waves.Take(GameConstants.CampaignWaveCount).ToArray();
+        if (waves.Length == 0) return new CampaignIntelInfo(0, 0, "STANDARD", 1f, 0);
         var total = waves.Sum(wave => wave.Groups.Sum(group => group.Count));
         var peak = waves.Max(wave => wave.Groups.Sum(group => group.Count));
         var opening = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (var group in waves.Take(Math.Min(5, waves.Count)).SelectMany(wave => wave.Groups))
+        foreach (var group in waves.Take(Math.Min(5, waves.Length)).SelectMany(wave => wave.Groups))
         {
             if (!enemies.TryGetValue(group.EnemyId, out var enemy)) continue;
             var category = enemy.RegenerationPerSecond > 0 ? "REGEN"

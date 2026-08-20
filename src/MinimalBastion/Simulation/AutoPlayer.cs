@@ -15,6 +15,7 @@ public sealed class AutoPlayer
     private readonly string? _forcedSpecializationId;
     private readonly bool _useProtocols;
     private readonly bool _useApexUpgrades;
+    private readonly bool _holdBuild;
     private int _lastRebalanceWave = -1;
     private int _directEmergencyPurchasesThisWave;
 
@@ -28,11 +29,13 @@ public sealed class AutoPlayer
         _forcedSpecializationId = options?.ForcedSpecializationId;
         _useProtocols = options?.UseProtocols ?? true;
         _useApexUpgrades = options?.UseApexUpgrades ?? true;
+        _holdBuild = options?.HoldBuild ?? false;
     }
 
     public void PrepareForWave(GameSession session)
     {
         _directEmergencyPurchasesThisWave = 0;
+        if (_holdBuild) return;
         var threat = ThreatProfile.From(session.Waves.NextWave, session.Content.Enemies);
         TryRebalance(session, threat);
         ManageGenerator(session);
@@ -41,6 +44,7 @@ public sealed class AutoPlayer
 
     public void ReactDuringWave(GameSession session)
     {
+        if (_holdBuild) return;
         var threat = ThreatProfile.From(session.Waves.ActiveWave, session.Content.Enemies);
         if (_useProtocols) TryUseOverdrive(session, threat);
         TryUseEmergencyDefense(session);
@@ -98,6 +102,7 @@ public sealed class AutoPlayer
             AutoPlayerStrategy.AntiArmor => new[] { "needle_turret", "needle_turret", "needle_turret" },
             AutoPlayerStrategy.LongRange => new[] { "needle_turret", "needle_turret", "watchtower" },
             AutoPlayerStrategy.Control => new[] { "needle_turret", "needle_turret", "needle_turret", "frost_spire" },
+            AutoPlayerStrategy.Synergy => new[] { "needle_turret", "needle_turret", "needle_turret", "frost_spire" },
             AutoPlayerStrategy.Randomized => session.Content.Towers.Values.Where(x => session.IsTowerAvailable(x.Id) && !x.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) && x.PurchaseCost <= 250).OrderBy(_ => _random.Next()).Select(x => x.Id).ToArray(),
             _ => new[] { "needle_turret", "shard_fan" }
         };
@@ -156,6 +161,18 @@ public sealed class AutoPlayer
                 ids = new[] { "frost_spire", "ember_coil", "arc_relay", "breaker_cannon" };
                 desired = 2 + wave / 2;
                 break;
+            case AutoPlayerStrategy.Synergy:
+                ids = wave switch
+                {
+                    < 6 => new[] { "needle_turret", "frost_spire" },
+                    < 8 => new[] { "needle_turret", "frost_spire", "arc_relay" },
+                    < 10 => new[] { "needle_turret", "frost_spire", "arc_relay", "breaker_cannon" },
+                    < 14 => new[] { "needle_turret", "frost_spire", "arc_relay", "breaker_cannon", "prism_beam" },
+                    < 18 => new[] { "needle_turret", "frost_spire", "arc_relay", "breaker_cannon", "prism_beam", "ember_coil", "siege_mortar" },
+                    _ => new[] { "needle_turret", "frost_spire", "arc_relay", "breaker_cannon", "prism_beam", "ember_coil", "siege_mortar", "watchtower" }
+                };
+                desired = 4 + wave * 3 / 4;
+                break;
             case AutoPlayerStrategy.Tactical:
                 ids = new[] { "frost_spire", "watchtower", "breaker_cannon" };
                 desired = 1 + wave / 3;
@@ -202,7 +219,7 @@ public sealed class AutoPlayer
         }
 
     SupportPriority:
-        var wantsSupport = _strategy is AutoPlayerStrategy.Conservative or AutoPlayerStrategy.UpgradeFocused or AutoPlayerStrategy.LongRange or AutoPlayerStrategy.Control or AutoPlayerStrategy.Adaptive;
+        var wantsSupport = _strategy is AutoPlayerStrategy.Conservative or AutoPlayerStrategy.UpgradeFocused or AutoPlayerStrategy.LongRange or AutoPlayerStrategy.Control or AutoPlayerStrategy.Synergy or AutoPlayerStrategy.Adaptive;
         var combatTowers = session.Towers.Count(x => !x.IsSupport);
         var desiredBeacons = combatTowers >= 12 ? 2 : combatTowers >= 6 ? 1 : 0;
         if (wantsSupport && session.Towers.Count(x => x.Definition.Id == "signal_beacon") < desiredBeacons)
@@ -296,6 +313,7 @@ public sealed class AutoPlayer
             AutoPlayerStrategy.AntiArmor => towerId is "needle_turret" or "watchtower" or "breaker_cannon" or "prism_beam" or "signal_beacon",
             AutoPlayerStrategy.LongRange => towerId is "needle_turret" or "watchtower" or "siege_mortar" or "prism_beam" or "signal_beacon",
             AutoPlayerStrategy.Control => towerId is "needle_turret" or "frost_spire" or "ember_coil" or "arc_relay" or "breaker_cannon" or "signal_beacon",
+            AutoPlayerStrategy.Synergy => towerId is "needle_turret" or "frost_spire" or "arc_relay" or "breaker_cannon" or "prism_beam" or "ember_coil" or "siege_mortar" or "watchtower" or "signal_beacon",
             AutoPlayerStrategy.Tactical => towerId is "needle_turret" or "frost_spire" or "watchtower" or "breaker_cannon" or "signal_beacon",
             _ => true
         };
@@ -421,6 +439,12 @@ public sealed class AutoPlayer
             if (session.ValidatePlacement(definition.Id, position) != PlacementFailure.None) continue;
             var score = PositionScore(session, definition, position);
             if (_strategy == AutoPlayerStrategy.Conservative) score *= 1f + PathProgressNear(session, position) * 0.18f;
+            if (_strategy == AutoPlayerStrategy.Synergy)
+            {
+                var power = session.Map.GetPowerBuff(position);
+                var nodeValue = power.AttackSpeedBonus + power.RangeBonus + power.DamageBonus + power.ArmorPierceBonus * 0.04f;
+                score *= 1f + nodeValue * 2.2f;
+            }
             if (threat.Fast > 0.30f) score *= 1f + PathProgressNear(session, position) * 0.12f;
             eligible.Add((position, score));
         }
@@ -512,6 +536,7 @@ public sealed class AutoPlayer
             AutoPlayerStrategy.AntiArmor => towerId switch { "breaker_cannon" => 1.65f, "watchtower" => 1.28f, "prism_beam" => 1.18f, _ => 0.65f },
             AutoPlayerStrategy.LongRange => towerId switch { "watchtower" => 1.55f, "siege_mortar" => 1.35f, "prism_beam" => 1.18f, "signal_beacon" => 1.05f, _ => 0.62f },
             AutoPlayerStrategy.Control => towerId switch { "frost_spire" => 1.55f, "ember_coil" => 1.35f, "arc_relay" => 1.35f, "signal_beacon" => 1.08f, _ => 0.68f },
+            AutoPlayerStrategy.Synergy => towerId switch { "needle_turret" => 1.28f, "frost_spire" => 1.48f, "arc_relay" => 1.52f, "breaker_cannon" => 1.38f, "prism_beam" => 1.28f, "ember_coil" => 1.04f, "siege_mortar" => 1.12f, "watchtower" => 0.98f, "signal_beacon" => 1.15f, _ => 0.58f },
             AutoPlayerStrategy.Tactical => towerId switch { "needle_turret" => 1.30f, "frost_spire" => 1.22f, "watchtower" => 1.16f, "breaker_cannon" => 1.08f, _ => 0.82f },
             AutoPlayerStrategy.Adaptive => AdaptiveWeight(towerId, threat),
             AutoPlayerStrategy.Randomized => 0.75f + (float)_random.NextDouble() * 0.5f,
@@ -558,6 +583,14 @@ public sealed class AutoPlayer
             ("prism_beam", "spectrum_split", AutoPlayerStrategy.AntiSwarm or AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.Control) => 1.45f,
             ("signal_beacon", "tempo_beacon", AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.UpgradeFocused or AutoPlayerStrategy.Tactical) => 1.35f,
             ("signal_beacon", "horizon_beacon", AutoPlayerStrategy.LongRange or AutoPlayerStrategy.Conservative or AutoPlayerStrategy.Control) => 1.70f,
+            ("frost_spire", "permafrost", AutoPlayerStrategy.Synergy) => 1.55f,
+            ("arc_relay", "storm_lattice", AutoPlayerStrategy.Synergy) => 1.60f,
+            ("breaker_cannon", "breach_round", AutoPlayerStrategy.Synergy) => 1.55f,
+            ("prism_beam", "core_lance", AutoPlayerStrategy.Synergy) when threat.HasBoss || threat.HasElite || threat.Shielded > 0.2f => 1.50f,
+            ("signal_beacon", "tempo_beacon", AutoPlayerStrategy.Synergy) => 1.45f,
+            ("ember_coil", "wildfire_matrix", AutoPlayerStrategy.Synergy) => 1.35f,
+            ("siege_mortar", "quake_shell", AutoPlayerStrategy.Synergy) => 1.35f,
+            ("watchtower", "deadeye_post", AutoPlayerStrategy.Synergy) => 1.25f,
             (_, "rail_pin" or "breach_round", AutoPlayerStrategy.Adaptive) when threat.HasBoss || threat.HasElite || threat.Armored > 0.35f => 1.55f,
             (_, "rapid_array" or "shatter_shell", AutoPlayerStrategy.Adaptive) when threat.Swarm > 0.45f => 1.45f,
             (_, "permafrost", AutoPlayerStrategy.Adaptive) when threat.Fast > 0.25f => 1.35f,
@@ -598,6 +631,15 @@ public sealed class AutoPlayer
             ("prism_aperture", AutoPlayerStrategy.AntiArmor or AutoPlayerStrategy.LongRange or AutoPlayerStrategy.UpgradeFocused) => 1.35f,
             ("beacon_amplifier", AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.UpgradeFocused or AutoPlayerStrategy.Tactical) => 1.35f,
             ("beacon_repeater", AutoPlayerStrategy.LongRange or AutoPlayerStrategy.Control or AutoPlayerStrategy.Conservative) => 1.45f,
+            ("needle_calibrator", AutoPlayerStrategy.Synergy) => 1.25f,
+            ("frost_deep_chill", AutoPlayerStrategy.Synergy) => 1.55f,
+            ("arc_fork", AutoPlayerStrategy.Synergy) => 1.60f,
+            ("breaker_bored", AutoPlayerStrategy.Synergy) => 1.45f,
+            ("prism_aperture", AutoPlayerStrategy.Synergy) => 1.40f,
+            ("beacon_amplifier", AutoPlayerStrategy.Synergy) => 1.35f,
+            ("ember_kindling", AutoPlayerStrategy.Synergy) => 1.25f,
+            ("mortar_survey", AutoPlayerStrategy.Synergy) => 1.25f,
+            ("watch_heavy_optics", AutoPlayerStrategy.Synergy) => 1.20f,
             _ => 1f
         };
         if (_strategy is AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.Spam or AutoPlayerStrategy.AntiSwarm)
@@ -667,7 +709,7 @@ public sealed class AutoPlayer
 
     private int FoundationSize() => _strategy switch
     {
-        AutoPlayerStrategy.Conservative or AutoPlayerStrategy.Spam or AutoPlayerStrategy.Control => 4,
+        AutoPlayerStrategy.Conservative or AutoPlayerStrategy.Spam or AutoPlayerStrategy.Control or AutoPlayerStrategy.Synergy => 4,
         _ => 3
     };
 
@@ -676,6 +718,7 @@ public sealed class AutoPlayer
         AutoPlayerStrategy.Spam => 4 + wave,
         AutoPlayerStrategy.UpgradeFocused => 3 + wave / 4,
         AutoPlayerStrategy.Economy => 3 + wave / 3,
+        AutoPlayerStrategy.Synergy => 4 + wave * 3 / 4,
         _ => 3 + wave / 2
     };
 
@@ -773,6 +816,7 @@ public sealed class AutoPlayer
         AutoPlayerStrategy.UpgradeFocused => 2.0f,
         AutoPlayerStrategy.Spam => 0.55f,
         AutoPlayerStrategy.Economy => 0.9f,
+        AutoPlayerStrategy.Synergy => 1.35f,
         _ => 1.12f
     };
 

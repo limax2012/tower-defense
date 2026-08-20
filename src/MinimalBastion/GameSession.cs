@@ -95,10 +95,12 @@ public sealed class GameSession
     public bool AnnouncementPositive { get; private set; }
     public int CurrentWave => Waves.CurrentWaveNumber;
     public int TotalWaves => Waves.TotalWaves;
+    public int AuthoredWaveCount => Waves.AuthoredWaveCount;
     public int NextEnemyId => _nextEnemyId;
     public int NextTowerId => _nextTowerId;
     public int NextEmergencyDefenseId => _nextEmergencyDefenseId;
     public bool IsEndlessMode => Waves.EndlessModeEnabled;
+    public bool IsMasteryMode => IsEndlessMode && CurrentWave < GameConstants.ApexUnlockWave;
     public bool CanStartWave => IsSandbox ? _sandboxActiveWave is null : Waves.CanStartNextWave;
     public float IntermissionRemaining => Waves.IntermissionRemaining;
     public int EnemiesRemaining => IsSandbox
@@ -1205,8 +1207,8 @@ public sealed class GameSession
     {
         if (!IsVictory || IsDefeat || !Waves.EnableEndlessMode()) return false;
         IsVictory = false;
-        AnnouncementTitle = "ENDLESS DEFENSE ONLINE";
-        AnnouncementSubtitle = $"Wave {CurrentWave + 1} is forming. Enemy pressure will keep scaling.";
+        AnnouncementTitle = "MASTERY DEFENSE ONLINE";
+        AnnouncementSubtitle = $"Authored waves {CurrentWave + 1}-{GameConstants.MasteryFinalWave} lead to Apex Endless defense.";
         AnnouncementPositive = true;
         AnnouncementRemaining = 3.4f;
         return true;
@@ -1285,7 +1287,7 @@ public sealed class GameSession
     public void OnWaveCompleted(int waveNumber)
     {
         var apexUnlocked = IsEndlessMode && waveNumber == GameConstants.ApexUnlockWave - 1;
-        AnnouncementTitle = apexUnlocked ? "APEX UPGRADES ONLINE" : $"WAVE {waveNumber} CLEARED";
+        AnnouncementTitle = apexUnlocked ? "MASTERY SECURED // APEX ONLINE" : $"WAVE {waveNumber} CLEARED";
         AnnouncementSubtitle = apexUnlocked
             ? "Maximum-level towers can now receive one permanent Apex upgrade."
             : $"+{EconomyService.CalculateWaveReward(waveNumber)} completion credits";

@@ -1353,9 +1353,9 @@ public sealed class UIManager
 
     private void ChangeSandboxWave(MinimalBastion.GameSession session, int direction)
     {
-        if (session.TotalWaves <= 0) return;
-        _sandboxWaveNumber = (_sandboxWaveNumber - 1 + direction) % session.TotalWaves;
-        if (_sandboxWaveNumber < 0) _sandboxWaveNumber += session.TotalWaves;
+        if (session.AuthoredWaveCount <= 0) return;
+        _sandboxWaveNumber = (_sandboxWaveNumber - 1 + direction) % session.AuthoredWaveCount;
+        if (_sandboxWaveNumber < 0) _sandboxWaveNumber += session.AuthoredWaveCount;
         _sandboxWaveNumber++;
     }
 
@@ -2013,9 +2013,9 @@ public sealed class UIManager
         DrawText(batch, "CREDITS", new Vector2(115, 8), ColorPalette.Gold, 0.75f);
         DrawText(batch, session.IsSandbox ? "UNLIMITED" : session.Economy.Credits.ToString(),
             new Vector2(115, 26), ColorPalette.Paper, session.IsSandbox ? 0.64f : 1f);
-        DrawText(batch, session.IsSandbox ? "MODE" : session.IsEndlessMode ? "ENDLESS" : "WAVE",
+        DrawText(batch, session.IsSandbox ? "MODE" : session.IsMasteryMode ? "MASTERY" : session.IsEndlessMode ? "ENDLESS" : "WAVE",
             new Vector2(225, 8), ColorPalette.Cyan, 0.75f);
-        DrawText(batch, session.IsSandbox ? "LAB" : session.IsEndlessMode ? session.CurrentWave.ToString() : $"{session.CurrentWave}/{session.TotalWaves}",
+        DrawText(batch, session.IsSandbox ? "LAB" : session.IsMasteryMode ? $"{session.CurrentWave}/{GameConstants.MasteryFinalWave}" : session.IsEndlessMode ? session.CurrentWave.ToString() : $"{session.CurrentWave}/{session.TotalWaves}",
             new Vector2(225, 26), ColorPalette.Paper, session.IsSandbox ? 0.84f : 1f);
         DrawText(batch, session.IsSandbox ? "TARGETS" : "ENEMIES", new Vector2(335, 8), ColorPalette.Lime, 0.75f);
         DrawText(batch, session.EnemiesRemaining.ToString(), new Vector2(335, 26), ColorPalette.Paper, 1f);
@@ -3038,7 +3038,9 @@ public sealed class UIManager
 
             var mapName = _maps.FirstOrDefault(map => map.Id.Equals(slot.MapId, StringComparison.OrdinalIgnoreCase)).Name;
             if (string.IsNullOrWhiteSpace(mapName)) mapName = slot.MapId.Replace('_', ' ');
-            var progress = slot.IsEndless ? $"ENDLESS {slot.CurrentWave}" : $"WAVE {slot.CurrentWave}/20";
+            var progress = slot.IsEndless && slot.CurrentWave < GameConstants.ApexUnlockWave
+                ? $"MASTERY {slot.CurrentWave}/{GameConstants.MasteryFinalWave}"
+                : slot.IsEndless ? $"ENDLESS {slot.CurrentWave}" : $"WAVE {slot.CurrentWave}/{GameConstants.CampaignWaveCount}";
             var difficultyName = _difficulties.FirstOrDefault(x => x.Id.Equals(slot.DifficultyId, StringComparison.OrdinalIgnoreCase))?.DisplayName
                 ?? (string.IsNullOrWhiteSpace(slot.DifficultyId) ? "Hard" : slot.DifficultyId);
             var challengeName = _challenges.FirstOrDefault(x => x.Id.Equals(slot.ChallengeId, StringComparison.OrdinalIgnoreCase))?.DisplayName
@@ -3116,7 +3118,9 @@ public sealed class UIManager
             p.FillRect(batch, new Rectangle(rect.X, rect.Y, 8, rect.Height), accent);
             DrawText(batch, entry.Victory ? "SECURED" : "BREACHED", new Vector2(rect.X + 22, rect.Y + 13), accent, 0.62f);
 
-            var progress = entry.IsEndless ? $"ENDLESS {entry.CurrentWave}" : $"WAVE {entry.CurrentWave}/{entry.TotalWaves}";
+            var progress = entry.IsEndless && entry.CurrentWave < GameConstants.ApexUnlockWave
+                ? $"MASTERY {entry.CurrentWave}/{GameConstants.MasteryFinalWave}"
+                : entry.IsEndless ? $"ENDLESS {entry.CurrentWave}" : $"WAVE {entry.CurrentWave}/{entry.TotalWaves}";
             DrawFittedText(batch, $"{entry.MapName.ToUpperInvariant()}  |  {entry.DifficultyName.ToUpperInvariant()}  |  {entry.ChallengeName.ToUpperInvariant()}  |  {progress}",
                 new Vector2(rect.X + 150, rect.Y + 12), ColorPalette.Ink, 0.56f, rect.Width - 164);
             var localTime = entry.CompletedAtUtc.Kind == DateTimeKind.Unspecified
@@ -3174,8 +3178,9 @@ public sealed class UIManager
         const int cardY = 94;
         DrawResultStatCard(batch, p, new Rectangle(50, cardY, 224, 58), "RESULT", entry.Victory ? "SECURED" : "BREACHED",
             entry.Victory ? ColorPalette.Green : ColorPalette.Coral);
-        DrawResultStatCard(batch, p, new Rectangle(289, cardY, 224, 58), entry.IsEndless ? "ENDLESS" : "WAVE",
-            entry.IsEndless ? entry.CurrentWave.ToString() : $"{entry.CurrentWave}/{entry.TotalWaves}", ColorPalette.Cyan);
+        var entryInMastery = entry.IsEndless && entry.CurrentWave < GameConstants.ApexUnlockWave;
+        DrawResultStatCard(batch, p, new Rectangle(289, cardY, 224, 58), entryInMastery ? "MASTERY" : entry.IsEndless ? "ENDLESS" : "WAVE",
+            entryInMastery ? $"{entry.CurrentWave}/{GameConstants.MasteryFinalWave}" : entry.IsEndless ? entry.CurrentWave.ToString() : $"{entry.CurrentWave}/{entry.TotalWaves}", ColorPalette.Cyan);
         DrawResultStatCard(batch, p, new Rectangle(528, cardY, 224, 58), "LIVES", $"{entry.Lives}/{entry.StartingLives}", ColorPalette.Coral);
         DrawResultStatCard(batch, p, new Rectangle(767, cardY, 224, 58), "KILLS", entry.Kills.ToString(), ColorPalette.Green);
         DrawResultStatCard(batch, p, new Rectangle(1006, cardY, 224, 58), "LEAKS", entry.Leaks.ToString(), ColorPalette.Orange);
@@ -3362,13 +3367,13 @@ public sealed class UIManager
         p.DrawRect(batch, new Rectangle(260, 64, 760, 584), ColorPalette.Ink, 2);
 
         DrawText(batch, victory ? "BASTION SECURED" : "BASTION BREACHED", new Vector2(640, 105), ColorPalette.Ink, 1.55f, true);
-        DrawText(batch, victory ? "Campaign secured. Continue into escalating endless defense." : $"Defense collapsed during wave {session.CurrentWave}.", new Vector2(640, 142), ColorPalette.Muted, 0.72f, true);
+        DrawText(batch, victory ? $"Campaign secured. Continue into authored Mastery waves 21-{GameConstants.MasteryFinalWave}." : $"Defense collapsed during wave {session.CurrentWave}.", new Vector2(640, 142), ColorPalette.Muted, 0.72f, true);
         DrawFittedCenteredText(batch,
             $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
             new Vector2(640, 160), session.Challenge.AccentColor, 0.40f, 650);
 
-        DrawResultStatCard(batch, p, new Rectangle(296, 172, 158, 58), session.IsEndlessMode ? "ENDLESS" : "WAVE",
-            session.IsEndlessMode ? session.CurrentWave.ToString() : $"{session.CurrentWave}/{session.TotalWaves}", ColorPalette.Cyan);
+        DrawResultStatCard(batch, p, new Rectangle(296, 172, 158, 58), session.IsMasteryMode ? "MASTERY" : session.IsEndlessMode ? "ENDLESS" : "WAVE",
+            session.IsMasteryMode ? $"{session.CurrentWave}/{GameConstants.MasteryFinalWave}" : session.IsEndlessMode ? session.CurrentWave.ToString() : $"{session.CurrentWave}/{session.TotalWaves}", ColorPalette.Cyan);
         DrawResultStatCard(batch, p, new Rectangle(472, 172, 158, 58), "LIVES", $"{session.Economy.Lives}/{session.Economy.StartingLives}", ColorPalette.Coral);
         DrawResultStatCard(batch, p, new Rectangle(648, 172, 158, 58), "KILLS", session.Economy.TotalKills.ToString(), ColorPalette.Green);
         DrawResultStatCard(batch, p, new Rectangle(824, 172, 158, 58), "LEAKS", session.Economy.EscapedEnemies.ToString(), ColorPalette.Orange);
@@ -3378,7 +3383,7 @@ public sealed class UIManager
 
         if (victory)
         {
-            DrawButton(batch, p, _resultContinueButton, "CONTINUE ENDLESS", true, ColorPalette.Green);
+            DrawButton(batch, p, _resultContinueButton, "ENTER MASTERY", true, ColorPalette.Green);
             DrawButton(batch, p, _resultRestartButton,
                 _restartArmed ? "CONFIRM RESTART" : session.IsCoOp ? "RESTART CO-OP" : "RESTART", true,
                 _restartArmed ? ColorPalette.Coral : ColorPalette.Cobalt);
@@ -3712,16 +3717,21 @@ public sealed class UIManager
             selectedMap.Path, selectedMap.PathBase, selectedMap.PathAccent);
         p.FillRect(batch, new Rectangle(detailPanel.X + 18, detailPanel.Y + 98, detailPanel.Width - 36, 2), mapAccent);
 
-        for (var index = 0; index < Math.Min(20, waves.Count); index++)
+        var visibleWaveCount = Math.Min(GameConstants.MasteryFinalWave, waves.Count);
+        var waveColumns = visibleWaveCount > GameConstants.CampaignWaveCount ? 3 : 2;
+        var waveGap = 10;
+        var waveColumnWidth = (detailPanel.Width - 36 - waveGap * (waveColumns - 1)) / waveColumns;
+        for (var index = 0; index < visibleWaveCount; index++)
         {
             var column = index / 10;
             var row = index % 10;
-            var rect = new Rectangle(detailPanel.X + 18 + column * 436, detailPanel.Y + 112 + row * 41, 418, 37);
+            var rect = new Rectangle(detailPanel.X + 18 + column * (waveColumnWidth + waveGap),
+                detailPanel.Y + 112 + row * 41, waveColumnWidth, 37);
             DrawCampaignWaveRow(batch, p, rect, waves[index]);
         }
 
         DrawFittedCenteredText(batch,
-            $"W21+ inherits this arena's final roster; HP accelerates, density/cadence stay capped, and a boss returns every 5 waves.  UP/DOWN selects; TAB changes page; ESC or BACK returns to {returnDestination}.",
+            $"W1-20 campaign  |  W21-30 authored Mastery  |  W31+ generated Apex Endless  |  TAB changes page; ESC or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
     }
 
@@ -3975,11 +3985,13 @@ public sealed class UIManager
         p.FillRect(batch, rect, ColorPalette.PanelAlt);
         p.FillRect(batch, new Rectangle(rect.X, rect.Y, 4, rect.Height), accent);
         p.DrawRect(batch, rect, ColorPalette.CardOutline, 1);
-        DrawFittedText(batch, $"W{wave.Number:00}  {wave.Archetype.ToUpperInvariant()}", new Vector2(rect.X + 10, rect.Y + 4), ColorPalette.Navy, 0.46f, 190);
+        var compact = rect.Width < 340;
+        DrawFittedText(batch, $"W{wave.Number:00}  {wave.Archetype.ToUpperInvariant()}", new Vector2(rect.X + 10, rect.Y + 4),
+            ColorPalette.Navy, compact ? 0.40f : 0.46f, compact ? rect.Width - 126 : 190);
         DrawTextRight(batch, $"{wave.Contacts} | HP x{wave.HealthMultiplier:0.00} | SPD x{wave.SpeedMultiplier:0.00}",
-            new Vector2(rect.Right - 8, rect.Y + 4), LibraryAccentText(accent, ColorPalette.PanelAlt), 0.38f);
+            new Vector2(rect.Right - 8, rect.Y + 4), LibraryAccentText(accent, ColorPalette.PanelAlt), compact ? 0.31f : 0.38f);
         DrawStrictFittedText(batch, $"{wave.Threats}  |  {wave.Roster}", new Vector2(rect.X + 10, rect.Y + 20),
-            ColorPalette.Muted, 0.35f, rect.Width - 20, 0.26f);
+            ColorPalette.Muted, compact ? 0.31f : 0.35f, rect.Width - 20, 0.24f);
     }
 
     private static Color MapLibraryAccent(string pathStyle) => pathStyle.ToLowerInvariant() switch

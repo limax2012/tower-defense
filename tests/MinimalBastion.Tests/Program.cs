@@ -138,7 +138,7 @@ internal static class Program
     private static void SimulationCampaignDefault()
     {
         Check.Equal(20, SimulationCli.ResolveMaximumWave(["--simulate-full"], 20), "default simulation wave cap");
-        Check.Equal(30, SimulationCli.ResolveMaximumWave(["--simulate-full", "--max-wave", "30"], 20), "explicit endless wave cap");
+        Check.Equal(30, SimulationCli.ResolveMaximumWave(["--simulate-full", "--max-wave", "30"], 20), "explicit Mastery wave cap");
         Check.Equal(1, SimulationCli.ResolveMaximumWave(["--simulate", "--max-wave=0"], 20), "minimum explicit wave cap");
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
@@ -283,16 +283,17 @@ internal static class Program
         var content = new ContentLoader(root).Load();
         Check.Equal(10, content.Towers.Count, "tower count");
         Check.Equal(5, content.Enemies.Count, "enemy count");
-        Check.Equal(20, content.Waves.Waves.Count, "wave count");
+        Check.Equal(30, content.Waves.Waves.Count, "authored wave count");
         Check.Equal(4, content.Maps.Count, "map count");
         Check.Equal(5, content.Challenges.Count, "challenge directive count including the solo sandbox");
         Check.True(!content.Challenges["no_reserves"].ProtocolsEnabled &&
             content.Challenges.Where(pair => !pair.Key.Equals("no_reserves", StringComparison.OrdinalIgnoreCase))
                 .All(pair => pair.Value.ProtocolsEnabled),
             "Fundamentals is the only Protocol-free directive");
-        Check.Equal(1090, content.Waves.Waves.SelectMany(x => x.Groups).Sum(x => x.Count), "enemy count in waves");
+        Check.Equal(1090, content.Waves.Waves.Take(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Sum(x => x.Count), "enemy count in campaign waves");
         Check.True(content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase)) >= 5, "elite encounter groups");
-        Check.Equal(1, content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)), "final boss group");
+        Check.Equal(1, content.Waves.Waves.Take(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)), "campaign boss group");
+        Check.Equal(1, content.Waves.Waves.Skip(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)), "mastery boss group");
         Check.True(content.Towers.Values.Select(x => x.Visual.Primary).Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 8, "tower palette");
         Check.True(content.Enemies.Values.Select(x => x.Visual.Primary).Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 5, "enemy palette");
         Check.True(!content.Map.Background.Base.Equals("#FFFFFF", StringComparison.OrdinalIgnoreCase), "map palette");
@@ -579,7 +580,7 @@ internal static class Program
 
         Check.Equal(1, sandboxUi.SelectedSandboxWave, "sandbox authored-wave selection starts at wave one");
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxWavePreviousPressed = true }, session);
-        Check.Equal(session.TotalWaves, sandboxUi.SelectedSandboxWave,
+        Check.Equal(session.AuthoredWaveCount, sandboxUi.SelectedSandboxWave,
             "sandbox minus hotkey wraps to the final authored wave");
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxWaveNextPressed = true }, session);
         Check.Equal(1, sandboxUi.SelectedSandboxWave,
@@ -3289,15 +3290,25 @@ internal static class Program
 
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
+        var authoredManager = new WaveManager(content.Waves.Waves);
+        authoredManager.RestoreSaveData(new WaveSaveData
+        {
+            CurrentWaveNumber = GameConstants.CampaignWaveCount,
+            IsFinalWaveCleared = true
+        });
+        Check.True(authoredManager.EnableEndlessMode(), "campaign continuation enters Mastery progression");
+        Check.Equal(21, authoredManager.NextWave!.Number, "Mastery begins with authored wave 21");
+        Check.Equal(30, authoredManager.GetAuthoredWave(30)!.Number, "Mastery finale remains authored");
+
         var anchor = content.Waves.Waves[^1];
-        var wave21 = EndlessWaveGenerator.Create(21, 20, anchor);
-        var wave25 = EndlessWaveGenerator.Create(25, 20, anchor);
-        Check.True(wave25.HealthMultiplier > wave21.HealthMultiplier, "endless health scaling is monotonic");
-        Check.True(wave25.Groups.Any(group => group.Rank == "Boss"), "boss returns every fifth endless wave");
-        Check.True(wave21.Groups.All(group => group.Rank != "Boss"), "ordinary endless waves do not spam bosses");
-        Check.True(Enumerable.Range(96, 5).Select(number => EndlessWaveGenerator.Create(number, 20, anchor))
+        var wave31 = EndlessWaveGenerator.Create(31, 30, anchor);
+        var wave35 = EndlessWaveGenerator.Create(35, 30, anchor);
+        Check.True(wave35.HealthMultiplier > wave31.HealthMultiplier, "endless health scaling is monotonic");
+        Check.True(wave35.Groups.Any(group => group.Rank == "Boss"), "boss returns every fifth endless wave");
+        Check.True(wave31.Groups.All(group => group.Rank != "Boss"), "ordinary endless waves do not spam bosses");
+        Check.True(Enumerable.Range(126, 5).Select(number => EndlessWaveGenerator.Create(number, 30, anchor))
             .Max(wave => wave.Groups.Sum(group => group.Count)) < 250, "endless roster growth remains performance bounded across every theme");
-        var extreme = EndlessWaveGenerator.Create(int.MaxValue, 20, anchor);
+        var extreme = EndlessWaveGenerator.Create(int.MaxValue, 30, anchor);
         Check.True(float.IsFinite(extreme.HealthMultiplier) && float.IsFinite(extreme.SpeedMultiplier) &&
             extreme.Groups.Sum(group => group.Count) < 250,
             "extreme endless generation remains finite and density bounded");
@@ -3310,7 +3321,7 @@ internal static class Program
         });
         Check.True(!terminalManager.CanStartNextWave && terminalManager.NextWave is null,
             "maximum representable wave stops cleanly instead of overflowing negative");
-        Check.Equal(JsonSerializer.Serialize(wave25), JsonSerializer.Serialize(EndlessWaveGenerator.Create(25, 20, anchor)),
+        Check.Equal(JsonSerializer.Serialize(wave35), JsonSerializer.Serialize(EndlessWaveGenerator.Create(35, 30, anchor)),
             "endless generation is deterministic");
 
         var mapEndlessSignatures = new HashSet<string>(StringComparer.Ordinal);
@@ -3462,13 +3473,16 @@ internal static class Program
             ["t4_aegis"] = 4,
             ["t5_regenerator"] = 5
         };
-        foreach (var wave in content.Waves.Waves.Skip(2))
+        foreach (var wave in content.Waves.Waves.Take(GameConstants.CampaignWaveCount).Skip(2))
         {
             var order = wave.Groups.Select(x => tier[x.EnemyId]).ToArray();
             Check.True(order.Zip(order.Skip(1)).Any(pair => pair.First > pair.Second), $"wave {wave.Number} returns to a lower tier");
             Check.True(!string.IsNullOrWhiteSpace(wave.Archetype), $"wave {wave.Number} archetype");
             Check.True(!string.IsNullOrWhiteSpace(wave.Briefing), $"wave {wave.Number} briefing");
         }
+        Check.True(content.Waves.Waves.Skip(GameConstants.CampaignWaveCount).All(wave =>
+                !string.IsNullOrWhiteSpace(wave.Archetype) && !string.IsNullOrWhiteSpace(wave.Briefing)),
+            "Mastery waves retain authored identities and briefings");
         Check.True(content.Waves.Waves.Select(x => x.Archetype).Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 15, "authored wave identities");
         var intel = MinimalBastion.Waves.WaveIntel.Analyze(content.Waves.Waves[13], content.Enemies);
         Check.True(intel.Threats.Contains("REGEN"), "regenerator warning");
@@ -4114,9 +4128,9 @@ internal static class Program
         Check.Equal("t1_crawler", ui.SelectedLibraryEnemyId!, "threat library supports health-ordered arrow selection");
         ui.HandleTitleTowerLibrary(WorldInput(new Vector2(871, 57)) with { LeftPressed = true });
         Check.True(ui.LibraryShowsCampaign, "tactical library switches to campaign reference");
-        Check.Equal(20, ui.SelectedLibraryCampaignWaveCount, "campaign reference exposes all authored waves");
+        Check.Equal(30, ui.SelectedLibraryCampaignWaveCount, "campaign reference exposes campaign and Mastery waves");
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TowerHotkey = 2 });
-        Check.Equal(20, ui.SelectedLibraryCampaignWaveCount, "campaign hotkey selects another complete arena roster");
+        Check.Equal(30, ui.SelectedLibraryCampaignWaveCount, "campaign hotkey selects another complete arena roster");
         var secondMap = ui.SelectedLibraryCampaignMapId;
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateUpPressed = true });
         Check.True(ui.SelectedLibraryCampaignMapId != secondMap, "campaign library supports arrow selection");
