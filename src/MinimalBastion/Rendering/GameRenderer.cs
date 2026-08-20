@@ -55,7 +55,12 @@ public sealed class GameRenderer
         foreach (var node in session.Map.Definition.PowerNodes)
         {
             var position = node.Position.ToVector2();
-            p.DashedRing(batch, position, node.Radius, ColorPalette.WithAlpha(node.NodeColor, 95), 32, 2);
+            const int nodeRingSegments = 32;
+            // Center a dash on every cardinal/diagonal axis. The default phase
+            // begins at an edge, which makes a compact ring look heavier in two
+            // opposing quadrants even though its segment count is even.
+            p.DashedRing(batch, position, node.Radius, ColorPalette.WithAlpha(node.NodeColor, 95),
+                nodeRingSegments, 2, -MathHelper.Pi / nodeRingSegments);
             p.DrawPolygon(batch, position, 14, 4, false, ColorPalette.WithAlpha(node.NodeColor, 210), MathHelper.PiOver4);
             p.DrawPolygon(batch, position, 7, 4, false, ColorPalette.Paper, MathHelper.PiOver4);
             p.Line(batch, position - new Vector2(22, 0), position - new Vector2(10, 0), node.NodeColor, 2);
@@ -463,9 +468,11 @@ public sealed class GameRenderer
         {
             var offset = (index - (visibleNodeCount - 1) * 0.5f) * 7f;
             var pipCenter = markerCenter + perpendicular * offset;
-            p.DrawPolygon(batch, pipCenter, 7f, 4, false, ColorPalette.Navy, MathHelper.PiOver4);
-            p.DrawPolygon(batch, pipCenter, 5.4f, 4, false, powerNodes[index].NodeColor, MathHelper.PiOver4);
-            p.Circle(batch, pipCenter, 1.5f, ColorPalette.Paper);
+            var pixelCenter = new Point((int)MathF.Round(pipCenter.X), (int)MathF.Round(pipCenter.Y));
+            p.FillRect(batch, new Rectangle(pixelCenter.X - 5, pixelCenter.Y - 5, 11, 11), ColorPalette.Navy);
+            p.FillRect(batch, new Rectangle(pixelCenter.X - 3, pixelCenter.Y - 3, 7, 7),
+                powerNodes[index].NodeColor);
+            p.Circle(batch, pixelCenter.ToVector2(), 1.5f, ColorPalette.Paper);
         }
     }
 

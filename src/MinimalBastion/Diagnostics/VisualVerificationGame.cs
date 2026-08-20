@@ -177,6 +177,24 @@ public sealed class VisualVerificationGame : Game
         var amplifierColor = localNodePlacementSession.Map.GetPowerNodes(localNodePlacementSession.PlacementPreviewPosition)[0].NodeColor;
         Require(CountColorPixels(localNodePlacementPixels, new Rectangle(300, 345, 18, 18), amplifierColor) >= 20,
             "Local tower placement carries a node-colored marker beside the ghost.", assertions);
+        Require(CountColorPixels(localNodePlacementPixels, new Rectangle(300, 345, 3, 3), ColorPalette.Paper) >= 4,
+            "The node-overlap marker keeps its white center aligned inside the colored square.", assertions);
+
+        var breachNodePlacementSession = new GameSession(content, "relay_divide", DifficultyCatalog.DefaultId,
+            ChallengeCatalog.DefaultId);
+        breachNodePlacementSession.BeginPlacement("needle_turret");
+        breachNodePlacementSession.HandleWorldInput(Pointer(290, 425));
+        var breachNode = breachNodePlacementSession.Map.GetPowerNodes(
+            breachNodePlacementSession.PlacementPreviewPosition).Single();
+        var breachTextColor = ColorPalette.ReadableAccent(breachNode.NodeColor, ColorPalette.PanelAlt, 3f);
+        Require(ColorPalette.ContrastRatio(breachTextColor, ColorPalette.PanelAlt) >= 2.99f,
+            "Gold Surge Node Intel uses readable accent text on the light panel.", assertions);
+        var breachNodePlacementPixels = RenderPixels(ui, GameState.Playing, breachNodePlacementSession);
+        scenes.Add(Capture("03a1b-gold-node-placement-intel.png", ui, GameState.Playing,
+            breachNodePlacementSession));
+        Require(CountColorPixels(breachNodePlacementPixels, new Rectangle(980, 530, 280, 17),
+                    breachTextColor) >= 8,
+            "Gold node placement renders its adjusted Intel accent.", assertions);
 
         var remoteNodePlacementSession = new GameSession(content, "relay_divide", DifficultyCatalog.DefaultId,
             ChallengeCatalog.DefaultId);

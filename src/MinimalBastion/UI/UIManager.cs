@@ -2643,6 +2643,9 @@ public sealed class UIManager
             ? session.Map.GetPowerNodes(placementIntelPosition)
             : Array.Empty<PowerNodeData>();
         var hasPlacementModifier = powerNodes.Count > 0;
+        var nodeTextColor = hasPlacementModifier
+            ? PowerNodeIntelTextColor(powerNodes[0].NodeColor)
+            : ColorPalette.Muted;
         var power = hasPlacementModifier ? session.Map.GetPowerBuff(placementIntelPosition) : default;
         var comparisonStats = TowerInfo.ComparisonStats(definition, level, null, default, power);
         var statColumns = TowerStatGridColumns(comparisonStats.Count);
@@ -2667,7 +2670,7 @@ public sealed class UIManager
         DrawFittedText(batch, $"{definition.PurchaseCost} CREDITS   LEVEL 1   {TowerInfo.ShortRole(definition)}",
             new Vector2(1036, 508), ColorPalette.Muted, 0.60f, 228);
         DrawFittedText(batch, hasPlacementModifier ? "BASE STATS  |  NODE BOOST INCLUDED" : "BASE STATS",
-            new Vector2(980, 531), hasPlacementModifier ? powerNodes[0].NodeColor : ColorPalette.Muted, 0.45f, 280);
+            new Vector2(980, 531), nodeTextColor, 0.45f, 280);
         DrawTowerStatGrid(batch, comparisonStats, 548);
         if (session.ProtocolsEnabled)
         {
@@ -2688,9 +2691,12 @@ public sealed class UIManager
         if (hasPlacementModifier)
         {
             DrawFittedText(batch, $"ON {PowerNodeNames(powerNodes)}  {string.Join("  ", powerNodes.Select(TowerInfo.PowerNodeBonus))}",
-                new Vector2(980, nodeTop), powerNodes[0].NodeColor, 0.42f, 280);
+                new Vector2(980, nodeTop), nodeTextColor, 0.42f, 280);
         }
     }
+
+    private static Color PowerNodeIntelTextColor(Color nodeColor) =>
+        ColorPalette.ReadableAccent(nodeColor, ColorPalette.PanelAlt, 3f);
 
     private static string PowerNodeNames(IReadOnlyList<PowerNodeData> nodes) => nodes.Count == 1
         ? nodes[0].DisplayName.ToUpperInvariant()
@@ -2737,7 +2743,7 @@ public sealed class UIManager
         p.DrawPolygon(batch, TowerIntelIconCenter, 17, 4, false, zone.NodeColor, MathHelper.PiOver4);
         p.DrawPolygon(batch, TowerIntelIconCenter, 8, 4, false, ColorPalette.Paper, MathHelper.PiOver4);
         DrawFittedText(batch, zone.DisplayName, new Vector2(1028, 486), ColorPalette.Ink, 0.82f, 236);
-        DrawText(batch, "SURGE NODE", new Vector2(1028, 508), zone.NodeColor, 0.60f);
+        DrawText(batch, "SURGE NODE", new Vector2(1028, 508), PowerNodeIntelTextColor(zone.NodeColor), 0.60f);
         var bonus = zone.AttackSpeedBonus > 0 ? $"ATTACK RATE +{zone.AttackSpeedBonus:P0}" :
             zone.RangeBonus > 0 ? $"TOWER RANGE +{zone.RangeBonus:P0}" :
             zone.DamageBonus > 0 ? $"DIRECT DAMAGE +{zone.DamageBonus:P0}" :
@@ -2746,7 +2752,8 @@ public sealed class UIManager
         DrawText(batch, $"FIELD RADIUS {zone.Radius:0}", new Vector2(980, 570), ColorPalette.Muted, 0.56f);
         DrawFittedText(batch, "Center one or two towers in this compact field", new Vector2(980, 602), ColorPalette.Ink, 0.51f, 280);
         DrawFittedText(batch, "to apply its focused bonus for the entire match.", new Vector2(980, 623), ColorPalette.Ink, 0.51f, 280);
-        DrawFittedText(batch, "Node bonuses do not stack with other nodes.", new Vector2(980, 652), ColorPalette.Gold, 0.49f, 280);
+        DrawFittedText(batch, "Node bonuses do not stack with other nodes.", new Vector2(980, 652),
+            PowerNodeIntelTextColor(ColorPalette.Gold), 0.49f, 280);
     }
 
     private void DrawGeneratorIntel(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session, ChargeForgeInstance? active)

@@ -55,13 +55,14 @@ public sealed class PrimitiveRenderer : IDisposable
         batch.Draw(texture, center, null, color, 0, new Vector2(texture.Width / 2f, texture.Height / 2f), scale, SpriteEffects.None, 0);
     }
 
-    public void DashedRing(SpriteBatch batch, Vector2 center, float radius, Color color, int segments = 24, int thickness = 2)
+    public void DashedRing(SpriteBatch batch, Vector2 center, float radius, Color color, int segments = 24,
+        int thickness = 2, float phase = 0f)
     {
         segments = Math.Max(8, segments);
         for (var i = 0; i < segments; i += 2)
         {
-            var start = MathHelper.TwoPi * i / segments;
-            var end = MathHelper.TwoPi * (i + 1) / segments;
+            var start = phase + MathHelper.TwoPi * i / segments;
+            var end = phase + MathHelper.TwoPi * (i + 1) / segments;
             Line(batch, center + new Vector2(MathF.Cos(start), MathF.Sin(start)) * radius,
                 center + new Vector2(MathF.Cos(end), MathF.Sin(end)) * radius, color, thickness);
         }
