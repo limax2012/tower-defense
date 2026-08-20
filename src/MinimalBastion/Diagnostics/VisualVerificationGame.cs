@@ -198,6 +198,11 @@ public sealed class VisualVerificationGame : Game
             "Upgrade comparison scene places a selected Needle Turret.", assertions);
         _ = ui.HandleGameplayInput(Pointer(0, 0), comparisonSession);
         scenes.Add(Capture("04a-current-stat-grid.png", ui, GameState.Playing, comparisonSession));
+        var nodeIntelSession = new GameSession(content, "relay_divide", DifficultyCatalog.DefaultId,
+            ChallengeCatalog.DefaultId);
+        Require(nodeIntelSession.TryPlaceTower("needle_turret", new Vector2(285, 330)),
+            "Power-node Intel scene places a selected tower on the Amplifier Node.", assertions);
+        scenes.Add(Capture("04a1-power-node-current-stat-grid.png", ui, GameState.Playing, nodeIntelSession));
         var initialTargetMode = comparisonSession.SelectedTower!.TargetMode;
         var targetButtonCenter = ui.TargetButtonBounds.Center;
         _ = ui.HandleGameplayInput(Pointer(targetButtonCenter.X, targetButtonCenter.Y, true), comparisonSession);
@@ -757,6 +762,15 @@ public sealed class VisualVerificationGame : Game
                 280, UIManager.TowerStatGridMinimumScale);
             Check(definition.Id, TowerInfo.ProtocolEffectSummary(definition.Protocol, false), 268,
                 UIManager.TowerStatGridMinimumScale);
+
+            foreach (var node in content.Maps.Values.SelectMany(map => map.PowerNodes))
+            {
+                Check(definition.Id, $"CURRENT STATS  |  {TowerInfo.ActiveBoostSources(default, new[] { node })}",
+                    280, UIManager.TowerStatGridMinimumScale);
+                Check(definition.Id,
+                    $"CURRENT STATS  |  {TowerInfo.ActiveBoostSources(new TowerBuff(0.15f, 0.10f), new[] { node })}",
+                    280, UIManager.TowerStatGridMinimumScale);
+            }
 
             foreach (var doctrine in definition.Tier2Doctrines)
             {

@@ -546,6 +546,27 @@ public static class TowerInfo
         return string.Join("  ", bonuses);
     }
 
+    public static string ActiveBoostSources(TowerBuff supportBuff, IReadOnlyList<PowerNodeData> powerNodes,
+        bool compact = false)
+    {
+        var hasBeacon = supportBuff.IsActive;
+        if (!hasBeacon && powerNodes.Count == 0) return "";
+
+        var nodeSource = powerNodes.Count switch
+        {
+            0 => "",
+            1 when compact => "NODE",
+            1 => $"ON {powerNodes[0].DisplayName.ToUpperInvariant()}",
+            _ => $"{powerNodes.Count} NODES"
+        };
+        if (!hasBeacon) return nodeSource;
+        if (powerNodes.Count == 0) return "BEACON";
+
+        return compact
+            ? $"BEACON + {nodeSource}"
+            : $"BEACON + {nodeSource.Replace("ON ", "", StringComparison.Ordinal)}";
+    }
+
     public static string PowerNodeStatChange(TowerDefinition definition, TowerLevelDefinition level, MapPowerBuff power)
     {
         if (definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase))

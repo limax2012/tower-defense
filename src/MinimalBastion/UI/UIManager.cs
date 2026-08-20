@@ -2446,7 +2446,11 @@ public sealed class UIManager
             ? "TOWER DISABLED"
             : _hoveredUpgradePreviewLabel ?? "CURRENT STATS";
         if (!tower.IsSandboxDisabled && (supportBuff.IsActive || powerNodes.Count > 0))
-            statHeader += _hoveredUpgradePreview is null ? "  |  ACTIVE BOOSTS INCLUDED" : "  |  BOOSTS INCLUDED";
+        {
+            var boostSources = TowerInfo.ActiveBoostSources(supportBuff, powerNodes,
+                compact: _hoveredUpgradePreview is not null);
+            statHeader += $"  |  {boostSources}";
+        }
         DrawFittedText(batch, statHeader, new Vector2(980, 531),
             tower.IsSandboxDisabled ? ColorPalette.Coral : _hoveredUpgradePreview is not null ? ColorPalette.Violet : ColorPalette.Muted,
             0.45f, 280);

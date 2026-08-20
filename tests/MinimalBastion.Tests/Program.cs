@@ -964,6 +964,12 @@ internal static class Program
         Check.Equal(1, nodes.Count, "amplifier overlap count");
         Check.Equal("Amplifier Node", nodes[0].DisplayName, "specific overlapping node");
         Check.Equal("DAMAGE +15%", TowerInfo.PowerNodeBonus(nodes[0]), "node bonus label");
+        Check.Equal("ON AMPLIFIER NODE", TowerInfo.ActiveBoostSources(default, nodes), "placed tower names its node");
+        Check.Equal("NODE", TowerInfo.ActiveBoostSources(default, nodes, compact: true), "upgrade preview keeps node source compact");
+        var beaconBuff = new TowerBuff(0.15f, 0.10f);
+        Check.Equal("BEACON + AMPLIFIER NODE", TowerInfo.ActiveBoostSources(beaconBuff, nodes), "combined boost sources remain distinct");
+        Check.Equal("BEACON + NODE", TowerInfo.ActiveBoostSources(beaconBuff, nodes, compact: true), "combined preview source stays compact");
+        Check.Equal("BEACON", TowerInfo.ActiveBoostSources(beaconBuff, Array.Empty<PowerNodeData>()), "beacon-only source label");
         Check.Equal("DAMAGE 8>9.2", TowerInfo.PowerNodeStatChange(content.Towers["needle_turret"], content.Towers["needle_turret"].Levels[0], session.Map.GetPowerBuff(position)), "node stat delta");
         Check.Equal("NO COMPATIBLE COMBAT STAT CHANGE", TowerInfo.PowerNodeStatChange(content.Towers["signal_beacon"], content.Towers["signal_beacon"].Levels[0], session.Map.GetPowerBuff(position)), "support compatibility warning");
     }
