@@ -164,6 +164,31 @@ public sealed class VisualVerificationGame : Game
             "Tower placement retains the full dashed attack/aura range preview.", assertions);
         Require(CountColorPixels(validPlacementPixels, new Rectangle(37, 192, 16, 16), ColorPalette.PlacementValid) < 10,
             "Tower placement no longer overlays a green check icon at its center.", assertions);
+
+        var localNodePlacementSession = new GameSession(content, "relay_divide", DifficultyCatalog.DefaultId,
+            ChallengeCatalog.DefaultId);
+        localNodePlacementSession.BeginPlacement("needle_turret");
+        localNodePlacementSession.HandleWorldInput(Pointer(285, 330));
+        Require(localNodePlacementSession.HasPlacementPreview &&
+                localNodePlacementSession.Map.GetPowerNodes(localNodePlacementSession.PlacementPreviewPosition).Count == 1,
+            "Local node-placement scene resolves the Amplifier Node.", assertions);
+        var localNodePlacementPixels = RenderPixels(ui, GameState.Playing, localNodePlacementSession);
+        scenes.Add(Capture("03a1-local-node-placement-marker.png", ui, GameState.Playing, localNodePlacementSession));
+        var amplifierColor = localNodePlacementSession.Map.GetPowerNodes(localNodePlacementSession.PlacementPreviewPosition)[0].NodeColor;
+        Require(CountColorPixels(localNodePlacementPixels, new Rectangle(300, 345, 18, 18), amplifierColor) >= 20,
+            "Local tower placement carries a node-colored marker beside the ghost.", assertions);
+
+        var remoteNodePlacementSession = new GameSession(content, "relay_divide", DifficultyCatalog.DefaultId,
+            ChallengeCatalog.DefaultId);
+        remoteNodePlacementSession.ConfigureCoOp(1);
+        ui.SetRemoteCoOpCursor(new Vector2(250, 300), 2, placementTowerId: "needle_turret",
+            hasPlacementPreview: true, placementPreviewPosition: new Vector2(285, 330));
+        var remoteNodePlacementPixels = RenderPixels(ui, GameState.Playing, remoteNodePlacementSession);
+        scenes.Add(Capture("03a2-remote-node-placement-marker.png", ui, GameState.Playing, remoteNodePlacementSession));
+        Require(CountColorPixels(remoteNodePlacementPixels, new Rectangle(300, 345, 18, 18), amplifierColor) >= 20,
+            "Remote co-op tower placement shows the same node marker at its synchronized snapped position.", assertions);
+        ui.SetRemoteCoOpCursor(null, 0);
+
         placementSession.HandleWorldInput(Pointer(100, 200));
         Require(placementSession.PlacementFailure == PlacementFailure.None && placementSession.HasPlacementPreview &&
                 Vector2.Distance(placementSession.PlacementPosition, placementSession.PlacementPreviewPosition) > 20,

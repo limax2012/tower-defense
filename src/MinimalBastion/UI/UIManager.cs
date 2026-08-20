@@ -1930,6 +1930,9 @@ public sealed class UIManager
                 placementDefinition.Visual.Marks, true, color,
                 needlePreview ? ColorPalette.NeedlePlacementGhostPrimaryAlpha : ColorPalette.PlacementGhostPrimaryAlpha,
                 needlePreview ? ColorPalette.NeedlePlacementGhostAccentAlpha : ColorPalette.PlacementGhostAccentAlpha);
+            GameRenderer.DrawPowerNodePlacementIndicator(batch, p, _remoteCoOpPlacementPreviewPosition,
+                placementDefinition.Visual.Radius,
+                session.Map.GetPowerNodes(_remoteCoOpPlacementPreviewPosition));
         }
         else if (_remoteCoOpHasPlacementPreview && _remoteCoOpTacticalPlacement == TacticalPlacementKind.PulsePlate)
         {

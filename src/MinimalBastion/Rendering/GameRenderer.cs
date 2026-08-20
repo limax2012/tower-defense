@@ -413,6 +413,8 @@ public sealed class GameRenderer
                 needlePreview ? ColorPalette.NeedlePlacementGhostAccentAlpha : ColorPalette.PlacementGhostAccentAlpha);
             p.DrawShape(batch, position, definition.Visual.Radius, definition.Visual.Shape,
                 previewPrimary, previewAccent, 1, true, levelMarks: true);
+            DrawPowerNodePlacementIndicator(batch, p, position, definition.Visual.Radius,
+                session.Map.GetPowerNodes(position));
         }
 
         if (!placementOnMap || session.TacticalPlacement == TacticalPlacementKind.None) return;
@@ -447,6 +449,25 @@ public sealed class GameRenderer
 
     private static float DisplayRange(MinimalBastion.GameSession session, TowerInstance tower) =>
         tower.IsSupport ? session.GetEffectiveAuraRange(tower) : session.GetEffectiveRange(tower);
+
+    internal static void DrawPowerNodePlacementIndicator(SpriteBatch batch, PrimitiveRenderer p, Vector2 position,
+        int towerRadius, IReadOnlyList<PowerNodeData> powerNodes)
+    {
+        if (powerNodes.Count == 0) return;
+
+        var direction = Vector2.Normalize(new Vector2(1, 1));
+        var perpendicular = new Vector2(-direction.Y, direction.X);
+        var markerCenter = position + direction * (towerRadius + 5f);
+        var visibleNodeCount = Math.Min(3, powerNodes.Count);
+        for (var index = 0; index < visibleNodeCount; index++)
+        {
+            var offset = (index - (visibleNodeCount - 1) * 0.5f) * 7f;
+            var pipCenter = markerCenter + perpendicular * offset;
+            p.DrawPolygon(batch, pipCenter, 7f, 4, false, ColorPalette.Navy, MathHelper.PiOver4);
+            p.DrawPolygon(batch, pipCenter, 5.4f, 4, false, powerNodes[index].NodeColor, MathHelper.PiOver4);
+            p.Circle(batch, pipCenter, 1.5f, ColorPalette.Paper);
+        }
+    }
 
     private static void DrawTacticalDefenses(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session,
         PresentationFrame presentation)
