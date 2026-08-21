@@ -16,6 +16,7 @@ public sealed class AutoPlayer
     private readonly bool _useProtocols;
     private readonly bool _useApexUpgrades;
     private readonly bool _holdBuild;
+    private readonly bool _holdFootprint;
     private int _lastRebalanceWave = -1;
     private int _directEmergencyPurchasesThisWave;
 
@@ -30,6 +31,7 @@ public sealed class AutoPlayer
         _useProtocols = options?.UseProtocols ?? true;
         _useApexUpgrades = options?.UseApexUpgrades ?? true;
         _holdBuild = options?.HoldBuild ?? false;
+        _holdFootprint = options?.HoldFootprint ?? false;
     }
 
     public void PrepareForWave(GameSession session)
@@ -37,9 +39,12 @@ public sealed class AutoPlayer
         _directEmergencyPurchasesThisWave = 0;
         if (_holdBuild) return;
         var threat = ThreatProfile.From(session.Waves.NextWave, session.Content.Enemies);
-        TryRebalance(session, threat);
-        ManageGenerator(session);
-        Spend(session, threat, duringWave: false, 24);
+        if (!_holdFootprint)
+        {
+            TryRebalance(session, threat);
+            ManageGenerator(session);
+        }
+        Spend(session, threat, duringWave: false, session.IsMasteryMode ? 48 : 24);
     }
 
     public void ReactDuringWave(GameSession session)
@@ -61,15 +66,20 @@ public sealed class AutoPlayer
 
             var foundation = FoundationSize();
             var combatTowerCount = session.Towers.Count(x => !x.IsSupport);
-            if (session.CurrentWave == 0 && combatTowerCount < foundation && TryBuyFoundation(session, threat, spendable))
+            if (!_holdFootprint && session.CurrentWave == 0 && combatTowerCount < foundation && TryBuyFoundation(session, threat, spendable))
                 continue;
-            if (TryBuyStrategicPriority(session, threat, spendable, out var savingForPriority))
-                continue;
-            if (savingForPriority) return;
+            if (!_holdFootprint && !session.IsMasteryMode)
+            {
+                if (TryBuyStrategicPriority(session, threat, spendable, out var savingForPriority))
+                    continue;
+                if (savingForPriority) return;
+            }
 
-            var purchase = BestPurchase(session, threat, spendable);
+            var purchase = _holdFootprint ? null : BestPurchase(session, threat, spendable);
             var upgrade = BestUpgrade(session, threat, spendable);
-            var purchaseBias = combatTowerCount < DesiredTowerCount(session.CurrentWave + (duringWave ? 0 : 1)) ? 1.45f : 0.38f;
+            var purchaseBias = combatTowerCount < DesiredTowerCount(session.CurrentWave + (duringWave ? 0 : 1))
+                ? 1.45f
+                : session.IsMasteryMode ? 0.16f : 0.38f;
             var buyScore = purchase?.Score * purchaseBias ?? float.MinValue;
             var upgradeScore = upgrade?.Score * UpgradeBias() ?? float.MinValue;
 

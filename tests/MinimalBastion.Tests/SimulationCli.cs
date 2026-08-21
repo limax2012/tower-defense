@@ -32,6 +32,7 @@ internal static class SimulationCli
         var useProtocols = !args.Any(arg => arg.Equals("--no-protocols", StringComparison.OrdinalIgnoreCase));
         var useApexUpgrades = !args.Any(arg => arg.Equals("--no-apex", StringComparison.OrdinalIgnoreCase));
         var holdBuild = args.Any(arg => arg.Equals("--hold-build", StringComparison.OrdinalIgnoreCase));
+        var holdFootprint = args.Any(arg => arg.Equals("--hold-footprint", StringComparison.OrdinalIgnoreCase));
         var summaryOnly = args.Any(arg => arg.Equals("--summary-only", StringComparison.OrdinalIgnoreCase));
 
         var runs = new List<SimulationRunResult>();
@@ -58,7 +59,8 @@ internal static class SimulationCli
                         ForcedSpecializationId = forcedBuild?.SpecializationId,
                         UseProtocols = useProtocols,
                         UseApexUpgrades = useApexUpgrades,
-                        HoldBuild = holdBuild
+                        HoldBuild = holdBuild,
+                        HoldFootprint = holdFootprint
                     };
                     var result = saveData is null
                         ? HeadlessSimulation.Run(content, options)
@@ -82,6 +84,7 @@ internal static class SimulationCli
             Console.WriteLine("The selected directive disables Protocol activations.");
         if (!useApexUpgrades) Console.WriteLine("Apex purchases disabled for this control group.");
         if (holdBuild) Console.WriteLine("Checkpoint defenses held without purchases, upgrades, sales, or tactical actions.");
+        else if (holdFootprint) Console.WriteLine("Checkpoint footprint held while upgrades and tactical actions remain available.");
         if (saveFile is not null) Console.WriteLine($"Simulation started from checkpoint: {Path.GetFullPath(saveFile)}");
         PrintStrategySummary(runs, outcomeLabel);
         PrintDifficultySummary(runs, outcomeLabel);

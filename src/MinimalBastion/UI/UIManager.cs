@@ -3040,7 +3040,7 @@ public sealed class UIManager
 
             var mapName = _maps.FirstOrDefault(map => map.Id.Equals(slot.MapId, StringComparison.OrdinalIgnoreCase)).Name;
             if (string.IsNullOrWhiteSpace(mapName)) mapName = slot.MapId.Replace('_', ' ');
-            var progress = slot.IsEndless && slot.CurrentWave < GameConstants.ApexUnlockWave
+            var progress = slot.IsEndless && slot.CurrentWave <= GameConstants.MasteryFinalWave
                 ? $"MASTERY {slot.CurrentWave}/{GameConstants.MasteryFinalWave}"
                 : slot.IsEndless ? $"ENDLESS {slot.CurrentWave}" : $"WAVE {slot.CurrentWave}/{GameConstants.CampaignWaveCount}";
             var difficultyName = _difficulties.FirstOrDefault(x => x.Id.Equals(slot.DifficultyId, StringComparison.OrdinalIgnoreCase))?.DisplayName
@@ -3120,7 +3120,7 @@ public sealed class UIManager
             p.FillRect(batch, new Rectangle(rect.X, rect.Y, 8, rect.Height), accent);
             DrawText(batch, entry.Victory ? "SECURED" : "BREACHED", new Vector2(rect.X + 22, rect.Y + 13), accent, 0.62f);
 
-            var progress = entry.IsEndless && entry.CurrentWave < GameConstants.ApexUnlockWave
+            var progress = entry.IsEndless && entry.CurrentWave <= GameConstants.MasteryFinalWave
                 ? $"MASTERY {entry.CurrentWave}/{GameConstants.MasteryFinalWave}"
                 : entry.IsEndless ? $"ENDLESS {entry.CurrentWave}" : $"WAVE {entry.CurrentWave}/{entry.TotalWaves}";
             DrawFittedText(batch, $"{entry.MapName.ToUpperInvariant()}  |  {entry.DifficultyName.ToUpperInvariant()}  |  {entry.ChallengeName.ToUpperInvariant()}  |  {progress}",
@@ -3180,7 +3180,7 @@ public sealed class UIManager
         const int cardY = 94;
         DrawResultStatCard(batch, p, new Rectangle(50, cardY, 224, 58), "RESULT", entry.Victory ? "SECURED" : "BREACHED",
             entry.Victory ? ColorPalette.Green : ColorPalette.Coral);
-        var entryInMastery = entry.IsEndless && entry.CurrentWave < GameConstants.ApexUnlockWave;
+        var entryInMastery = entry.IsEndless && entry.CurrentWave <= GameConstants.MasteryFinalWave;
         DrawResultStatCard(batch, p, new Rectangle(289, cardY, 224, 58), entryInMastery ? "MASTERY" : entry.IsEndless ? "ENDLESS" : "WAVE",
             entryInMastery ? $"{entry.CurrentWave}/{GameConstants.MasteryFinalWave}" : entry.IsEndless ? entry.CurrentWave.ToString() : $"{entry.CurrentWave}/{entry.TotalWaves}", ColorPalette.Cyan);
         DrawResultStatCard(batch, p, new Rectangle(528, cardY, 224, 58), "LIVES", $"{entry.Lives}/{entry.StartingLives}", ColorPalette.Coral);
@@ -3240,28 +3240,37 @@ public sealed class UIManager
         DrawSummaryMetric(batch, "EARLY BONUS", entry.EarlyCallCredits.ToString(), 834, 293, ColorPalette.GreenText);
         DrawSummaryMetric(batch, "DEFENSE TIME", elapsed, 1038, 293, ColorPalette.Cobalt);
 
-        DrawText(batch, "TACTICAL SYSTEMS", new Vector2(834, 338), ColorPalette.Navy, 0.58f);
-        p.FillRect(batch, new Rectangle(834, 360, 390, 2), ColorPalette.Violet);
-        DrawSummaryMetric(batch, "PROTOCOLS", entry.ProtocolActivations.ToString(), 834, 373, ColorPalette.Violet);
-        DrawSummaryMetric(batch, "DIRECT PLATES", entry.PlateDirectPurchases.ToString(), 1038, 373, ColorPalette.Coral);
-        DrawSummaryMetric(batch, "PLATES / TRIGGERS", $"{entry.PlateDeployments} / {entry.PlateTriggers}", 834, 413, ColorPalette.Coral);
-        DrawSummaryMetric(batch, "PLATE HITS / KILLS", $"{entry.PlateHits} / {entry.PlateKills}", 1038, 413, ColorPalette.Coral);
-        DrawSummaryMetric(batch, "PLATE DAMAGE", entry.PlateDamage.ToString("0"), 834, 453, ColorPalette.Coral);
-        DrawSummaryMetric(batch, "FORGED CHARGES", entry.ForgedCharges.ToString(), 1038, 453, ColorPalette.GreenText);
-        DrawSummaryMetric(batch, "FORGES BUILT", entry.ForgePurchases.ToString(), 834, 493, ColorPalette.GreenText);
-        DrawSummaryMetric(batch, "FORGE UPGRADES", entry.ForgeUpgrades.ToString(), 1038, 493, ColorPalette.GreenText);
+        var finalTowerCount = entry.FinalLayout?.Towers.Count;
+        var apexTowerCount = entry.FinalLayout?.Towers.Count(tower => tower.IsApex);
+        DrawText(batch, "FINAL DEFENSE", new Vector2(834, 333), ColorPalette.Muted, 0.38f);
+        DrawFittedText(batch,
+            finalTowerCount is null
+                ? "NOT ARCHIVED"
+                : $"{finalTowerCount} {(finalTowerCount == 1 ? "TOWER" : "TOWERS")}  |  {apexTowerCount} APEX",
+            new Vector2(940, 333), finalTowerCount is null ? ColorPalette.Muted : ColorPalette.Cobalt, 0.42f, 284);
 
-        DrawText(batch, "GREATEST LEAK THREAT", new Vector2(834, 548), ColorPalette.Muted, 0.40f);
+        DrawText(batch, "TACTICAL SYSTEMS", new Vector2(834, 358), ColorPalette.Navy, 0.58f);
+        p.FillRect(batch, new Rectangle(834, 380, 390, 2), ColorPalette.Violet);
+        DrawSummaryMetric(batch, "PROTOCOLS", entry.ProtocolActivations.ToString(), 834, 393, ColorPalette.Violet);
+        DrawSummaryMetric(batch, "DIRECT PLATES", entry.PlateDirectPurchases.ToString(), 1038, 393, ColorPalette.Coral);
+        DrawSummaryMetric(batch, "PLATES / TRIGGERS", $"{entry.PlateDeployments} / {entry.PlateTriggers}", 834, 433, ColorPalette.Coral);
+        DrawSummaryMetric(batch, "PLATE HITS / KILLS", $"{entry.PlateHits} / {entry.PlateKills}", 1038, 433, ColorPalette.Coral);
+        DrawSummaryMetric(batch, "PLATE DAMAGE", entry.PlateDamage.ToString("0"), 834, 473, ColorPalette.Coral);
+        DrawSummaryMetric(batch, "FORGED CHARGES", entry.ForgedCharges.ToString(), 1038, 473, ColorPalette.GreenText);
+        DrawSummaryMetric(batch, "FORGES BUILT", entry.ForgePurchases.ToString(), 834, 513, ColorPalette.GreenText);
+        DrawSummaryMetric(batch, "FORGE UPGRADES", entry.ForgeUpgrades.ToString(), 1038, 513, ColorPalette.GreenText);
+
+        DrawText(batch, "GREATEST LEAK THREAT", new Vector2(834, 568), ColorPalette.Muted, 0.40f);
         var leakThreat = entry.GreatestLeakThreatLivesLost <= 0
             ? "NONE"
             : $"{entry.GreatestLeakThreatName.ToUpperInvariant()}  -{entry.GreatestLeakThreatLivesLost} LIVES";
-        DrawFittedText(batch, leakThreat, new Vector2(834, 568), entry.GreatestLeakThreatLivesLost <= 0 ? ColorPalette.GreenText : ColorPalette.Coral, 0.52f, 390);
+        DrawFittedText(batch, leakThreat, new Vector2(834, 588), entry.GreatestLeakThreatLivesLost <= 0 ? ColorPalette.GreenText : ColorPalette.Coral, 0.52f, 390);
         var enemySummary = entry.Enemies.Count == 0
             ? "NO DETAILED THREAT TELEMETRY"
             : string.Join("  |  ", entry.Enemies.Where(enemy => enemy.Escapes > 0).Take(3)
                 .Select(enemy => $"{enemy.DisplayName.ToUpperInvariant()} {enemy.Escapes} ESC"));
         if (string.IsNullOrWhiteSpace(enemySummary)) enemySummary = "NO ENEMIES ESCAPED";
-        DrawFittedText(batch, enemySummary, new Vector2(834, 592), ColorPalette.Muted, 0.36f, 390);
+        DrawFittedText(batch, enemySummary, new Vector2(834, 612), ColorPalette.Muted, 0.36f, 390);
 
         DrawButton(batch, p, _runHistoryLayoutButton,
             entry.FinalLayout is null ? "LAYOUT NOT ARCHIVED" : "VIEW FINAL LAYOUT",
@@ -3369,7 +3378,7 @@ public sealed class UIManager
         p.DrawRect(batch, new Rectangle(260, 64, 760, 584), ColorPalette.Ink, 2);
 
         DrawText(batch, victory ? "BASTION SECURED" : "BASTION BREACHED", new Vector2(640, 105), ColorPalette.Ink, 1.55f, true);
-        DrawText(batch, victory ? $"Campaign secured. Continue into authored Mastery waves 21-{GameConstants.MasteryFinalWave}." : $"Defense collapsed during wave {session.CurrentWave}.", new Vector2(640, 142), ColorPalette.Muted, 0.72f, true);
+        DrawText(batch, victory ? $"Campaign secured. Mastery waves {GameConstants.ApexUnlockWave}-{GameConstants.MasteryFinalWave} unlock Apex upgrades." : $"Defense collapsed during wave {session.CurrentWave}.", new Vector2(640, 142), ColorPalette.Muted, 0.72f, true);
         DrawFittedCenteredText(batch,
             $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
             new Vector2(640, 160), session.Challenge.AccentColor, 0.40f, 650);
@@ -3733,7 +3742,7 @@ public sealed class UIManager
         }
 
         DrawFittedCenteredText(batch,
-            $"W1-20 campaign  |  W21-30 authored Mastery  |  W31+ generated Apex Endless  |  TAB changes page; ESC or BACK returns to {returnDestination}.",
+            $"W1-{GameConstants.CampaignWaveCount} campaign  |  W{GameConstants.ApexUnlockWave}-{GameConstants.MasteryFinalWave} Mastery with Apex upgrades  |  W{GameConstants.GeneratedEndlessStartWave}+ generated Endless  |  TAB changes page; ESC or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
     }
 

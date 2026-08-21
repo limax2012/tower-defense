@@ -541,7 +541,7 @@ public sealed class VisualVerificationGame : Game
         var apexSeed = new GameSession(content, "foundry_loop", "bastion", "no_reserves");
         var apexSave = apexSeed.CaptureSaveGame();
         apexSave.Economy.Credits = 8_000;
-        apexSave.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 1;
+        apexSave.Waves.CurrentWaveNumber = GameConstants.CampaignWaveCount;
         apexSave.Waves.IsFinalWaveCleared = true;
         apexSave.Waves.EndlessModeEnabled = true;
         var apexSession = GameSession.RestoreSaveGame(content, apexSave);
@@ -549,12 +549,12 @@ public sealed class VisualVerificationGame : Game
                 apexSession.TryChooseTowerDoctrine(apexSession.SelectedTower!.Id, "needle_cycler") &&
                 apexSession.TrySpecializeTower(apexSession.SelectedTower!.Id, "rapid_array") &&
                 apexSession.CanApexUpgrade(apexSession.SelectedTower),
-            "Wave-31 Fundamentals scene exposes Apex on a completed tower.", assertions);
+            "Mastery Fundamentals scene exposes Apex on a completed tower.", assertions);
         _ = RenderPixels(ui, GameState.Playing, apexSession);
         _ = ui.HandleGameplayInput(Pointer(1120, 693), apexSession);
         scenes.Add(Capture("10f-apex-upgrade-preview.png", ui, GameState.Playing, apexSession));
         Require(apexSession.TryUpgradeSelectedTower(),
-            "Wave-31 Fundamentals scene purchases the Apex promotion.", assertions);
+            "Mastery Fundamentals scene purchases the Apex promotion.", assertions);
         _ = ui.HandleGameplayInput(Pointer(0, 0), apexSession);
         var promotedApexPixels = RenderPixels(ui, GameState.Playing, apexSession);
         Require(CountColorPixels(promotedApexPixels, new Rectangle(1204, 484, 58, 22), ColorPalette.Violet) >= 10,

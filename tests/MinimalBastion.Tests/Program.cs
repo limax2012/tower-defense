@@ -67,6 +67,7 @@ internal static class Program
             ("endless wave continuation", EndlessWaveContinuation),
             ("early wave call reward", EarlyWaveCallReward),
             ("mixed wave composition", MixedWaveComposition),
+            ("Mastery pressure curve", MasteryPressureCurve),
             ("arc relay chain", ArcRelayChain),
             ("frost area control", FrostAreaControl),
             ("needle rapid ricochet", NeedleRapidRicochet),
@@ -113,6 +114,7 @@ internal static class Program
             ("save slot recovery backup", SaveSlotRecoveryBackup),
             ("persistent run history", PersistentRunHistory),
             ("headless simulation deterministic", HeadlessSimulationDeterministic),
+            ("simulation footprint hold", SimulationFootprintHold),
             ("forced build completion summary", ForcedBuildCompletionSummary),
             ("simulation campaign default", SimulationCampaignDefault)
         };
@@ -3201,6 +3203,21 @@ internal static class Program
         Check.True(!noProtocols.ProtocolsEnabled, "simulation report identifies Protocol-disabled control group");
     }
 
+    private static void SimulationFootprintHold()
+    {
+        var session = SessionWithWave();
+        Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "place footprint test tower");
+        var player = new AutoPlayer(session, AutoPlayerStrategy.Adaptive, 42, new SimulationOptions
+        {
+            HoldFootprint = true
+        });
+
+        player.PrepareForWave(session);
+
+        Check.Equal(1, session.Towers.Count, "footprint hold does not add towers");
+        Check.Equal(2, session.Towers[0].LevelIndex, "footprint hold still spends on permanent upgrades");
+    }
+
     private static void PlacementRules()
     {
         var authoredContent = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
@@ -3490,6 +3507,48 @@ internal static class Program
         var bossIntel = MinimalBastion.Waves.WaveIntel.Analyze(content.Waves.Waves[19], content.Enemies);
         Check.True(bossIntel.Threats.Contains("BOSS"), "boss warning");
         Check.Equal("BOSS", bossIntel.Threats[0], "boss warning has priority");
+    }
+
+    private static void MasteryPressureCurve()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        foreach (var map in content.Maps.Values)
+        {
+            var waves = content.WaveSets[map.WaveSet].Waves;
+            var campaignFinal = WaveDurability(waves[GameConstants.CampaignWaveCount - 1], content.Enemies);
+            var previous = campaignFinal;
+            foreach (var wave in waves.Skip(GameConstants.CampaignWaveCount))
+            {
+                var durability = WaveDurability(wave, content.Enemies);
+                Check.True(durability >= previous * 0.90f,
+                    $"{map.Id} wave {wave.Number} does not collapse below the preceding pressure");
+                Check.True(durability <= previous * 1.30f,
+                    $"{map.Id} wave {wave.Number} avoids an abrupt durability cliff");
+                previous = durability;
+            }
+
+            Check.True(WaveDurability(waves[GameConstants.MasteryFinalWave - 1], content.Enemies) >= campaignFinal * 2.30f,
+                $"{map.Id} Mastery capstone substantially exceeds its campaign capstone");
+        }
+    }
+
+    private static float WaveDurability(
+        WaveDefinition wave,
+        IReadOnlyDictionary<string, EnemyDefinition> enemies)
+    {
+        var total = 0f;
+        foreach (var group in wave.Groups)
+        {
+            var enemy = enemies[group.EnemyId];
+            var rankMultiplier = group.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase) ? 4.5f
+                : group.Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase) ? 1.85f
+                : 1f;
+            var health = enemy.MaxHealth * wave.HealthMultiplier * rankMultiplier;
+            var shield = enemy.Shield + (group.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase) ? health * 0.12f : 0f);
+            total += (health + shield) * group.Count;
+        }
+        return total;
     }
 
     private static void ArcRelayChain()
@@ -4961,23 +5020,18 @@ internal static class Program
             ProtocolsEnabled = false
         };
         var fundamentals = new GameSession(seed.Content, challengeId: "no_reserves");
-        var activeWaveSave = fundamentals.CaptureSaveGame();
-        activeWaveSave.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 2;
-        activeWaveSave.Waves.IsFinalWaveCleared = true;
-        activeWaveSave.Waves.EndlessModeEnabled = true;
-        var activeWave = GameSession.RestoreSaveGame(seed.Content, activeWaveSave);
-        Check.True(activeWave.StartNextWave(), "start the final pre-Apex wave");
-        Check.Equal(GameConstants.ApexUnlockWave - 1, activeWave.CurrentWave, "wave 30 is active");
-        Check.True(!activeWave.ApexUpgradesUnlocked, "Apex remains locked while wave 30 is active");
-
         var save = fundamentals.CaptureSaveGame();
         save.Economy.Credits = 10_000;
-        save.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 1;
+        save.Waves.CurrentWaveNumber = GameConstants.CampaignWaveCount;
         save.Waves.IsFinalWaveCleared = true;
         save.Waves.EndlessModeEnabled = true;
         var session = GameSession.RestoreSaveGame(seed.Content, save);
 
-        Check.True(session.ApexUpgradesUnlocked, "Apex unlocks during the intermission after wave 30");
+        Check.True(session.ApexUpgradesUnlocked, "Apex unlocks when Mastery becomes available after the campaign");
+        var activeWave = GameSession.RestoreSaveGame(seed.Content, save);
+        Check.True(activeWave.StartNextWave(), "start the first Mastery wave");
+        Check.Equal(GameConstants.ApexUnlockWave, activeWave.CurrentWave, "wave 21 is active");
+        Check.True(activeWave.ApexUpgradesUnlocked, "Apex remains available during Mastery combat");
         Check.True(!session.ProtocolsEnabled && !session.TacticalSystemsEnabled,
             "Fundamentals restrictions remain active alongside permanent Apex progression");
         Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "place Apex test tower");

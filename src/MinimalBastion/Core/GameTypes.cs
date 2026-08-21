@@ -27,7 +27,8 @@ public static class GameConstants
     public const float SellRatio = 0.60f;
     public const int CampaignWaveCount = 20;
     public const int MasteryFinalWave = 30;
-    public const int ApexUnlockWave = 31;
+    public const int ApexUnlockWave = 21;
+    public const int GeneratedEndlessStartWave = 31;
     public const int PulsePlateDamageSourceOffset = 100_000;
     public const int MaximumPulsePlateId = int.MaxValue - PulsePlateDamageSourceOffset + 1;
     public const int ExhaustedPulsePlateNextId = MaximumPulsePlateId + 1;

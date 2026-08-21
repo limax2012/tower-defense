@@ -38,6 +38,7 @@ public sealed class SimulationOptions
     public bool UseProtocols { get; init; } = true;
     public bool UseApexUpgrades { get; init; } = true;
     public bool HoldBuild { get; init; }
+    public bool HoldFootprint { get; init; }
 }
 
 public sealed class SimulationRunResult
