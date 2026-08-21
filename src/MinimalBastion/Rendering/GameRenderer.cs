@@ -472,7 +472,9 @@ public sealed class GameRenderer
             p.FillRect(batch, new Rectangle(pixelCenter.X - 5, pixelCenter.Y - 5, 11, 11), ColorPalette.Navy);
             p.FillRect(batch, new Rectangle(pixelCenter.X - 3, pixelCenter.Y - 3, 7, 7),
                 powerNodes[index].NodeColor);
-            p.Circle(batch, pixelCenter.ToVector2(), 1.5f, ColorPalette.Paper);
+            // Odd-sized rectangles have their geometric center on the half pixel.
+            // Use that same center for the circular pip so all three layers align.
+            p.Circle(batch, pixelCenter.ToVector2() + new Vector2(0.5f), 1.5f, ColorPalette.Paper);
         }
     }
 

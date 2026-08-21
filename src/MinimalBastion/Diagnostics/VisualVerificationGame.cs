@@ -177,8 +177,17 @@ public sealed class VisualVerificationGame : Game
         var amplifierColor = localNodePlacementSession.Map.GetPowerNodes(localNodePlacementSession.PlacementPreviewPosition)[0].NodeColor;
         Require(CountColorPixels(localNodePlacementPixels, new Rectangle(300, 345, 18, 18), amplifierColor) >= 20,
             "Local tower placement carries a node-colored marker beside the ghost.", assertions);
-        Require(CountColorPixels(localNodePlacementPixels, new Rectangle(300, 345, 3, 3), ColorPalette.Paper) >= 4,
-            "The node-overlap marker keeps its white center aligned inside the colored square.", assertions);
+        var nodeMarkerDirection = Vector2.Normalize(Vector2.One);
+        var rawNodeMarkerCenter = localNodePlacementSession.PlacementPreviewPosition + nodeMarkerDirection *
+            (content.Towers["needle_turret"].Visual.Radius + 5f);
+        var expectedNodeMarkerCenter = new Vector2(MathF.Round(rawNodeMarkerCenter.X) + 0.5f,
+            MathF.Round(rawNodeMarkerCenter.Y) + 0.5f);
+        var renderedNodeMarkerCenter = ColorPixelCenter(localNodePlacementPixels,
+            new Rectangle((int)expectedNodeMarkerCenter.X - 4, (int)expectedNodeMarkerCenter.Y - 4, 9, 9),
+            ColorPalette.Paper);
+        Require(renderedNodeMarkerCenter is { } center &&
+                Vector2.Distance(center, expectedNodeMarkerCenter) <= 0.05f,
+            "The node-overlap marker's white dot is centered inside its colored square.", assertions);
 
         var breachNodePlacementSession = new GameSession(content, "relay_divide", DifficultyCatalog.DefaultId,
             ChallengeCatalog.DefaultId);
@@ -979,6 +988,25 @@ public sealed class VisualVerificationGame : Game
             if (pixel.R == color.R && pixel.G == color.G && pixel.B == color.B) count++;
         }
         return count;
+    }
+
+    private static Vector2? ColorPixelCenter(IReadOnlyList<Color> pixels, Rectangle logicalRegion, Color color)
+    {
+        var left = Math.Max(0, logicalRegion.Left * GameConstants.RenderScale);
+        var top = Math.Max(0, logicalRegion.Top * GameConstants.RenderScale);
+        var right = Math.Min(GameConstants.RenderWidth, logicalRegion.Right * GameConstants.RenderScale);
+        var bottom = Math.Min(GameConstants.RenderHeight, logicalRegion.Bottom * GameConstants.RenderScale);
+        var count = 0;
+        var sum = Vector2.Zero;
+        for (var y = top; y < bottom; y++)
+        for (var x = left; x < right; x++)
+        {
+            var pixel = pixels[y * GameConstants.RenderWidth + x];
+            if (pixel.R != color.R || pixel.G != color.G || pixel.B != color.B) continue;
+            sum += new Vector2(x + 0.5f, y + 0.5f) / GameConstants.RenderScale;
+            count++;
+        }
+        return count == 0 ? null : sum / count;
     }
 
     private static InputSnapshot Pointer(float x, float y, bool leftPressed = false) =>
