@@ -474,7 +474,7 @@ public sealed class GameRenderer
                 powerNodes[index].NodeColor);
             // Odd-sized rectangles have their geometric center on the half pixel.
             // Use that same center for the circular pip so all three layers align.
-            p.Circle(batch, pixelCenter.ToVector2() + new Vector2(0.5f), 1.5f, ColorPalette.Paper);
+            p.Circle(batch, pixelCenter.ToVector2() + new Vector2(0.5f), 2f, ColorPalette.Paper);
         }
     }
 
