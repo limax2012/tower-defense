@@ -2102,11 +2102,13 @@ public sealed class UIManager
         var fade = MathHelper.Clamp(session.AnnouncementRemaining / 0.35f, 0, 1);
         var alpha = (byte)(232 * fade);
         var accent = session.AnnouncementPositive ? ColorPalette.Green : ColorPalette.Gold;
-        var rect = new Rectangle(270, 112, 420, 62);
+        var rect = new Rectangle(170, 112, 620, 62);
         p.FillRect(batch, rect, ColorPalette.WithAlpha(ColorPalette.Navy, alpha));
         p.FillRect(batch, new Rectangle(rect.X, rect.Y, 5, rect.Height), ColorPalette.WithAlpha(accent, alpha));
-        DrawText(batch, session.AnnouncementTitle, new Vector2(rect.Center.X, rect.Y + 19), ColorPalette.WithAlpha(ColorPalette.Paper, alpha), 0.72f, true);
-        DrawText(batch, session.AnnouncementSubtitle ?? "", new Vector2(rect.Center.X, rect.Y + 43), ColorPalette.WithAlpha(ColorPalette.PanelAlt, alpha), 0.51f, true);
+        DrawFittedCenteredText(batch, session.AnnouncementTitle, new Vector2(rect.Center.X, rect.Y + 19),
+            ColorPalette.WithAlpha(ColorPalette.Paper, alpha), 0.72f, rect.Width - 32);
+        DrawFittedCenteredText(batch, session.AnnouncementSubtitle ?? "", new Vector2(rect.Center.X, rect.Y + 43),
+            ColorPalette.WithAlpha(ColorPalette.PanelAlt, alpha), 0.51f, rect.Width - 32);
     }
 
     private void DrawTacticalBar(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)

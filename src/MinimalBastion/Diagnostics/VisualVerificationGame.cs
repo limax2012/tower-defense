@@ -552,6 +552,17 @@ public sealed class VisualVerificationGame : Game
             "Promoted Tower Intel identifies Apex in a reserved top-right header gutter.", assertions);
         scenes.Add(Capture("10g-apex-current-intel.png", ui, GameState.Playing, apexSession));
 
+        var masterySeed = new GameSession(content, "relay_divide", "bastion", "no_reserves");
+        var masterySave = masterySeed.CaptureSaveGame();
+        masterySave.Waves.CurrentWaveNumber = GameConstants.CampaignWaveCount;
+        masterySave.Waves.IsFinalWaveCleared = true;
+        masterySave.Waves.EndlessModeEnabled = true;
+        var masterySession = GameSession.RestoreSaveGame(content, masterySave);
+        Require(masterySession.StartNextWave(true) &&
+                masterySession.AnnouncementTitle == "WAVE 21 // RESIDUAL CURRENT",
+            "Mastery announcement scene starts the first authored post-campaign wave.", assertions);
+        scenes.Add(Capture("10h-long-mastery-announcement.png", ui, GameState.Playing, masterySession));
+
         var settings = new UserSettings { AutoStartWaves = true, AutoStartDelaySeconds = 10 };
         ui.ConfigureSettings(settings);
         scenes.Add(Capture("11-settings-auto-start.png", ui, GameState.Settings, null));
