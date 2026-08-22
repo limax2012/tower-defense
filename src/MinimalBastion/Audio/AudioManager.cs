@@ -12,12 +12,14 @@ public sealed class AudioManager : IDisposable
     private SoundEffect? _musicSound;
     private SoundEffectInstance? _musicInstance;
     private float _killCooldown;
+    private float _leakCooldown;
     private float _combatImpactCooldown;
     private float _sfxVolume = 0.65f;
     private float _musicVolume = 0.20f;
     private float _musicActivity = 0.68f;
     private string _musicThemeId = "menu";
     private bool _disposed;
+    private bool _defeatCuePlayed;
     private GameSession? _attachedSession;
 
     public float SfxVolume
@@ -41,14 +43,14 @@ public sealed class AudioManager : IDisposable
             _sounds[Cue.Sell] = CreateTone(360, 210, 0.12f, WaveShape.Triangle);
             _sounds[Cue.Protocol] = CreateChord(390, 585, 0.20f);
             _sounds[Cue.Kill] = CreateTone(720, 560, 0.045f, WaveShape.Square);
-            _sounds[Cue.Leak] = CreateTone(150, 72, 0.22f, WaveShape.Saw);
+            _sounds[Cue.Leak] = CreateTone(132, 82, 0.18f, WaveShape.Triangle);
             _sounds[Cue.WaveStart] = CreateTone(260, 540, 0.24f, WaveShape.Triangle);
             _sounds[Cue.WaveClear] = CreateChord(520, 780, 0.28f);
             _sounds[Cue.Plate] = CreateNoisePulse(0.11f);
             _sounds[Cue.Forge] = CreateTone(620, 980, 0.16f, WaveShape.Sine);
             _sounds[Cue.BossPhase] = CreateTone(230, 105, 0.34f, WaveShape.Saw);
             _sounds[Cue.Victory] = CreateTriad(392, 523, 659, 0.48f);
-            _sounds[Cue.Defeat] = CreateTone(190, 58, 0.48f, WaveShape.Saw);
+            _sounds[Cue.Defeat] = CreateTone(158, 64, 0.42f, WaveShape.Triangle);
             _sounds[Cue.UiConfirm] = CreateTone(410, 620, 0.075f, WaveShape.Sine);
             _sounds[Cue.UiBack] = CreateTone(430, 300, 0.075f, WaveShape.Triangle);
             _sounds[Cue.UiDelete] = CreateTone(230, 150, 0.10f, WaveShape.Saw);
@@ -74,6 +76,7 @@ public sealed class AudioManager : IDisposable
     public void Update(float deltaSeconds)
     {
         _killCooldown = MathF.Max(0, _killCooldown - MathF.Max(0, deltaSeconds));
+        _leakCooldown = MathF.Max(0, _leakCooldown - MathF.Max(0, deltaSeconds));
         _combatImpactCooldown = MathF.Max(0, _combatImpactCooldown - MathF.Max(0, deltaSeconds));
         foreach (var towerId in _towerImpactCooldowns.Keys.ToArray())
         {
@@ -106,13 +109,15 @@ public sealed class AudioManager : IDisposable
     {
         if (ReferenceEquals(_attachedSession, session)) return;
         _attachedSession = session;
+        _leakCooldown = 0;
+        _defeatCuePlayed = false;
         SwitchMusic(session.Map.Definition.Id);
         session.TowerPlaced += _ => Play(Cue.Place, 0.72f);
         session.TowerUpgraded += (_, _) => Play(Cue.Upgrade, 0.78f);
         session.TowerSold += (_, _) => Play(Cue.Sell, 0.62f);
         session.TowerOverdriven += tower => Play(Cue.Protocol, 0.9f, ProtocolPitch(tower.Definition.Id));
         session.EnemyKilled += _ => PlayKill();
-        session.EnemyEscaped += _ => Play(session.Economy.Lives <= 0 ? Cue.Defeat : Cue.Leak, 0.9f);
+        session.EnemyEscaped += _ => PlayLeak(session.Economy.Lives <= 0);
         session.BossPhaseChanged += _ => Play(Cue.BossPhase, 0.88f);
         session.EmergencyDefenseDeployed += (_, _) => Play(Cue.Place, 0.48f, 0.18f);
         session.EmergencyDefenseTriggered += (_, _) => Play(Cue.Plate, 0.72f);
@@ -129,6 +134,8 @@ public sealed class AudioManager : IDisposable
     public void Detach()
     {
         _attachedSession = null;
+        _leakCooldown = 0;
+        _defeatCuePlayed = false;
         _towerImpactCooldowns.Clear();
         SwitchMusic("menu");
     }
@@ -149,6 +156,20 @@ public sealed class AudioManager : IDisposable
         if (_killCooldown > 0) return;
         _killCooldown = 0.055f;
         Play(Cue.Kill, 0.28f);
+    }
+
+    private void PlayLeak(bool defeat)
+    {
+        if (defeat)
+        {
+            if (_defeatCuePlayed) return;
+            _defeatCuePlayed = true;
+            Play(Cue.Defeat, 0.58f);
+            return;
+        }
+        if (_leakCooldown > 0) return;
+        _leakCooldown = 0.18f;
+        Play(Cue.Leak, 0.50f);
     }
 
     private void Play(Cue cue, float cueVolume, float pitch = 0)
