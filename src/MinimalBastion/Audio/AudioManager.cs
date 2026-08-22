@@ -168,7 +168,7 @@ public sealed class AudioManager : IDisposable
         {
             if (_defeatCuePlayed) return;
             _defeatCuePlayed = true;
-            Play(Cue.Defeat, 0.65f);
+            Play(Cue.Defeat, 0.95f);
             return;
         }
         if (_leakCooldown > 0) return;
