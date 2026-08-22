@@ -32,6 +32,9 @@ public static class ColorPalette
     public static readonly Color Orange = new(229, 138, 50);
     public static readonly Color Gold = new(232, 182, 55);
     public static readonly Color Amber = new(218, 145, 52);
+    // Saturated amber ink preserves the gold family on light archive panels
+    // without the low contrast of the brighter effect color.
+    public static readonly Color AmberText = new(189, 117, 16);
     public static readonly Color Green = new(42, 194, 117);
     // Dark success ink for text drawn on Paper/PanelAlt. Keep the brighter
     // Green for filled controls, effects, and battlefield state.

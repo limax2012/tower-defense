@@ -946,6 +946,8 @@ internal static class Program
             "yellow text receives a moderate readability adjustment");
         Check.True(ColorPalette.ContrastRatio(ColorPalette.GreenText, ColorPalette.PanelAlt) >= 4.5f,
             "dark success ink keeps upgrade gains readable on Tower Intel panels");
+        Check.True(ColorPalette.ContrastRatio(ColorPalette.AmberText, ColorPalette.PanelAlt) >= 3f,
+            "archive amber keeps gold-family records readable without becoming brown");
         Check.True(ColorPalette.ContrastRatio(ColorPalette.Paper, ColorPalette.Berry) >= 4.5f,
             "map-selector berry supports readable light text");
         var paletteContent = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
@@ -5070,52 +5072,70 @@ internal static class Program
     {
         var mapIds = new[] { "foundry_loop", "crosswind_basin", "prism_circuit", "relay_divide" };
         var challengeIds = new[] { "standard", "close_quarters", "core_six", "no_reserves" };
-        var runs = Enumerable.Range(0, 4).Select(index => new RunHistoryEntry
+        var towerIds = new[]
+        {
+            "needle_turret", "frost_spire", "shard_fan", "watchtower", "ember_coil",
+            "breaker_cannon", "signal_beacon", "arc_relay", "siege_mortar", "prism_beam"
+        };
+        var runs = Enumerable.Range(0, 25).Select(index => new RunHistoryEntry
         {
             RunId = $"career-{index}",
-            CompletedAtUtc = new DateTime(2026, 1, 1 + index, 12, 0, 0, DateTimeKind.Utc),
+            CompletedAtUtc = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc).AddDays(index),
             Victory = true,
             IsEndless = index == 0,
-            MapId = mapIds[index],
-            MapName = mapIds[index],
-            DifficultyId = index == 0 ? "bastion" : "normal",
-            DifficultyName = index == 0 ? "Bastion" : "Medium",
-            ChallengeId = challengeIds[index],
-            ChallengeName = challengeIds[index],
-            CurrentWave = index == 0 ? 50 : GameConstants.CampaignWaveCount,
+            IsCoOp = index < 5,
+            MapId = mapIds[index % mapIds.Length],
+            MapName = mapIds[index % mapIds.Length],
+            DifficultyId = "bastion",
+            DifficultyName = "Bastion",
+            ChallengeId = challengeIds[index % challengeIds.Length],
+            ChallengeName = challengeIds[index % challengeIds.Length],
+            CurrentWave = index == 0 ? 100 : GameConstants.MasteryFinalWave,
             TotalWaves = GameConstants.CampaignWaveCount,
-            Lives = 18,
+            Lives = index == 2 ? 3 : 18,
             StartingLives = 18,
             Leaks = 0,
-            CreditsRemaining = 1000 + index,
+            CreditsRemaining = index == 0 ? 6_000 : 1000 + index,
+            EarlyCallCredits = index == 0 ? 240 : 0,
+            ProtocolActivations = index == 0 ? 250 : 0,
+            PlateKills = index == 0 ? 500 : 0,
+            ForgedCharges = index == 0 ? 100 : 0,
             DefenseSeconds = 900 + index * 10,
-            Towers =
-            [
-                new RunHistoryTowerEntry { TowerId = "needle_turret", DisplayName = "Needle Turret", Purchases = 3 },
-                new RunHistoryTowerEntry { TowerId = "frost_spire", DisplayName = "Frost Spire", Purchases = 2 },
-                new RunHistoryTowerEntry { TowerId = "breaker_cannon", DisplayName = "Breaker Cannon", Purchases = 2 },
-                new RunHistoryTowerEntry { TowerId = "arc_relay", DisplayName = "Arc Relay", Purchases = 1 }
-            ],
+            Towers = towerIds.Take(index == 0 ? 10 : 4).Select(towerId => new RunHistoryTowerEntry
+            {
+                TowerId = towerId,
+                DisplayName = towerId,
+                Purchases = 1,
+                Upgrades = index == 1 ? 0 : 2
+            }).ToList(),
             FinalLayout = new RunHistoryLayoutSnapshot
             {
                 Towers = Enumerable.Range(1, 8).Select(id => new TowerSaveData
                 {
                     Id = id,
-                    DefinitionId = "needle_turret"
+                    DefinitionId = towerIds[(id - 1) % towerIds.Length],
+                    IsApex = index == 0
                 }).ToList()
             }
         }).ToArray();
 
         var progress = CareerProgression.Analyze(runs);
-        Check.Equal(4, progress.CampaignsSecured, "career record counts secured campaigns");
+        Check.Equal(25, progress.CampaignsSecured, "career record counts secured campaigns");
         Check.Equal(4, progress.MapsSecured, "career record counts unique secured arenas");
+        Check.Equal(20, CareerProgression.AllMedals.Count, "career catalog exposes the full run-medal set");
+        Check.Equal(32, progress.Achievements.Count, "career catalog exposes long-term achievement goals");
+        Check.Equal(20, progress.MedalTypesUnlocked, "representative clears discover every run-medal type");
         Check.True(progress.Achievements.All(achievement => achievement.IsUnlocked),
             "representative clears unlock every authored career achievement");
-        Check.Equal(7, CareerProgression.MedalsFor(runs[0]).Count,
-            "a deep flawless Bastion run earns every available run medal");
+        var deepRunMedals = CareerProgression.MedalsFor(runs[0]).Select(medal => medal.Id).ToHashSet();
+        Check.True(deepRunMedals.Contains("deep_endless") && deepRunMedals.Contains("apex_line") &&
+                   deepRunMedals.Contains("full_spectrum") && deepRunMedals.Contains("allied_hold"),
+            "a deep optimized co-op run earns its distinct endurance and composition medals");
+        Check.True(CareerProgression.MedalsFor(runs[1]).Any(medal => medal.Id == "bare_metal"),
+            "a clear without permanent upgrades earns Bare Metal");
         Check.Equal("career-0", progress.DeepestRun!.RunId, "career record identifies the deepest run");
         Check.Equal("career-0", progress.FastestClear!.RunId, "career record identifies the fastest clear");
-        Check.Equal("career-3", progress.HighestReserveClear!.RunId, "career record identifies the highest reserve clear");
+        Check.Equal("career-0", progress.HighestReserveClear!.RunId, "career record identifies the highest reserve clear");
     }
 
     private static void TowerSpecializations()

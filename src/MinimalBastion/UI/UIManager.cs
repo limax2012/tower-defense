@@ -144,6 +144,8 @@ public sealed class UIManager
     private bool _runHistoryDeleteArmed;
     private bool _runHistoryDetailOpen;
     private bool _runHistoryCareerOpen;
+    private int _careerMedalPage;
+    private int _careerAchievementPage;
     private string _runHistoryStatus = "Completed defenses are retained locally and updated by endless continuation.";
     private bool _readOnlyInspection;
     private bool _archivedLayoutInspection;
@@ -156,6 +158,8 @@ public sealed class UIManager
     internal Rectangle TargetButtonBounds => _targetButton;
     internal Rectangle UpgradeButtonBounds => _upgradeButton;
     internal Rectangle SellButtonBounds => _sellButton;
+    internal int CareerMedalPage => _careerMedalPage;
+    internal int CareerAchievementPage => _careerAchievementPage;
     internal IReadOnlyDictionary<TargetMode, Rectangle> TargetModeButtonBounds => _targetModeButtons;
     private UserSettings _settings = new();
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
@@ -208,6 +212,10 @@ public sealed class UIManager
     private readonly Rectangle _runHistoryLayoutButton = new(340, 650, 280, 42);
     private readonly Rectangle _runHistoryDetailBackButton = new(660, 650, 280, 42);
     private readonly Rectangle _runHistoryCareerBackButton = new(500, 650, 280, 42);
+    private readonly Rectangle _careerMedalPreviousButton = new(340, 406, 28, 25);
+    private readonly Rectangle _careerMedalNextButton = new(388, 406, 28, 25);
+    private readonly Rectangle _careerAchievementPreviousButton = new(1136, 186, 28, 25);
+    private readonly Rectangle _careerAchievementNextButton = new(1196, 186, 28, 25);
     private readonly Rectangle _hostCoOpButton = new(500, 216, 280, 46);
     private readonly Rectangle _joinHostField = new(500, 326, 280, 42);
     private readonly Rectangle _joinCodeField = new(500, 394, 280, 42);
@@ -429,6 +437,8 @@ public sealed class UIManager
         _runHistoryDeleteArmed = false;
         _runHistoryDetailOpen = false;
         _runHistoryCareerOpen = false;
+        _careerMedalPage = 0;
+        _careerAchievementPage = 0;
         _selectedRunHistoryId = preferredRunId is not null && _runHistory.Any(entry => entry.RunId == preferredRunId)
             ? preferredRunId
             : _runHistory.FirstOrDefault()?.RunId;
@@ -790,7 +800,19 @@ public sealed class UIManager
         if (_runHistoryCareerOpen)
         {
             if (input.EscapePressed || input.LeftPressed && _runHistoryCareerBackButton.Contains(input.MousePosition.ToPoint()))
+            {
                 _runHistoryCareerOpen = false;
+                return UiAction.None;
+            }
+            if (!input.LeftPressed) return UiAction.None;
+            var career = CareerProgression.Analyze(_runHistory);
+            var careerPoint = input.MousePosition.ToPoint();
+            var medalPageCount = Math.Max(1, (career.Medals.Count + 6) / 7);
+            var achievementPageCount = Math.Max(1, (career.Achievements.Count + 7) / 8);
+            if (_careerMedalPreviousButton.Contains(careerPoint) && _careerMedalPage > 0) _careerMedalPage--;
+            else if (_careerMedalNextButton.Contains(careerPoint) && _careerMedalPage + 1 < medalPageCount) _careerMedalPage++;
+            else if (_careerAchievementPreviousButton.Contains(careerPoint) && _careerAchievementPage > 0) _careerAchievementPage--;
+            else if (_careerAchievementNextButton.Contains(careerPoint) && _careerAchievementPage + 1 < achievementPageCount) _careerAchievementPage++;
             return UiAction.None;
         }
         if (_runHistoryDetailOpen)
@@ -831,6 +853,8 @@ public sealed class UIManager
         if (_runHistoryCareerButton.Contains(point))
         {
             _runHistoryDeleteArmed = false;
+            _careerMedalPage = 0;
+            _careerAchievementPage = 0;
             _runHistoryCareerOpen = true;
             return UiAction.None;
         }
@@ -3254,7 +3278,7 @@ public sealed class UIManager
 
         const int cardY = 96;
         DrawResultStatCard(batch, p, new Rectangle(50, cardY, 275, 58), "CAMPAIGNS SECURED", career.CampaignsSecured.ToString(), ColorPalette.Green);
-        DrawResultStatCard(batch, p, new Rectangle(352, cardY, 275, 58), "MEDALS EARNED", career.TotalMedals.ToString(), ColorPalette.Gold);
+        DrawResultStatCard(batch, p, new Rectangle(352, cardY, 275, 58), "MEDALS EARNED", career.TotalMedals.ToString(), ColorPalette.AmberText);
         DrawResultStatCard(batch, p, new Rectangle(654, cardY, 275, 58), "DEEPEST WAVE", (career.DeepestRun?.CurrentWave ?? 0).ToString(), ColorPalette.Cyan);
         DrawResultStatCard(batch, p, new Rectangle(956, cardY, 275, 58), "ARENAS SECURED", $"{career.MapsSecured}/4", ColorPalette.Violet);
 
@@ -3266,27 +3290,53 @@ public sealed class UIManager
         DrawCareerRecord(batch, "DEEPEST DEFENSE", CareerRunLabel(career.DeepestRun, run => $"WAVE {run.CurrentWave}"), 56, 230, ColorPalette.Cyan);
         DrawCareerRecord(batch, "FASTEST CAMPAIGN", CareerRunLabel(career.FastestClear, run => FormatRunDuration(run.DefenseSeconds)), 56, 274, ColorPalette.Cobalt);
         DrawCareerRecord(batch, "LEANEST CLEAR", CareerRunLabel(career.LeanestClear, run => $"{run.FinalLayout!.Towers.Count} TOWERS"), 56, 318, ColorPalette.GreenText);
-        DrawCareerRecord(batch, "HIGHEST RESERVE", CareerRunLabel(career.HighestReserveClear, run => $"{run.CreditsRemaining} CREDITS"), 56, 362, ColorPalette.Gold);
+        DrawCareerRecord(batch, "HIGHEST RESERVE", CareerRunLabel(career.HighestReserveClear, run => $"{run.CreditsRemaining} CREDITS"), 56, 362, ColorPalette.AmberText);
 
-        DrawText(batch, "RUN MEDALS", new Vector2(56, 416), ColorPalette.Navy, 0.60f);
+        const int medalsPerPage = 7;
+        var medalPageCount = Math.Max(1, (career.Medals.Count + medalsPerPage - 1) / medalsPerPage);
+        _careerMedalPage = Math.Clamp(_careerMedalPage, 0, medalPageCount - 1);
+        DrawText(batch, "RUN MEDALS", new Vector2(56, 410), ColorPalette.Navy, 0.54f);
+        DrawFittedText(batch, $"{career.MedalTypesUnlocked}/{career.Medals.Count} DISCOVERED", new Vector2(174, 413),
+            ColorPalette.Muted, 0.31f, 156);
+        DrawButton(batch, p, _careerMedalPreviousButton, "<", _careerMedalPage > 0, ColorPalette.Cyan);
+        DrawFittedCenteredText(batch, $"{_careerMedalPage + 1}/{medalPageCount}", new Vector2(378, 418),
+            ColorPalette.Muted, 0.28f, 26);
+        DrawButton(batch, p, _careerMedalNextButton, ">", _careerMedalPage + 1 < medalPageCount, ColorPalette.Cyan);
         p.FillRect(batch, new Rectangle(56, 439, 360, 2), ColorPalette.Gold);
-        var medalY = 449;
-        foreach (var medal in CareerProgression.AllMedals)
+        var medalY = 450;
+        foreach (var medal in career.Medals.Skip(_careerMedalPage * medalsPerPage).Take(medalsPerPage))
         {
-            DrawFittedText(batch, medal.DisplayName.ToUpperInvariant(), new Vector2(56, medalY),
-                ColorPalette.BalancedAccentText(ColorPalette.Gold, ColorPalette.PanelAlt), 0.37f, 90);
-            DrawFittedText(batch, medal.Description, new Vector2(148, medalY), ColorPalette.Muted, 0.34f, 268);
-            medalY += 24;
+            var marker = new Rectangle(56, medalY + 2, 8, 8);
+            if (medal.IsUnlocked) p.FillRect(batch, marker, ColorPalette.GreenText);
+            else p.DrawRect(batch, marker, ColorPalette.CardOutline, 1);
+            DrawStrictFittedText(batch, medal.Definition.DisplayName.ToUpperInvariant(), new Vector2(71, medalY),
+                medal.IsUnlocked ? ColorPalette.AmberText : ColorPalette.Muted, 0.35f, 210, 0.27f);
+            DrawTextRight(batch, medal.IsUnlocked ? $"EARNED x{medal.EarnedCount}" : "LOCKED",
+                new Vector2(416, medalY + 1), medal.IsUnlocked ? ColorPalette.GreenText : ColorPalette.Muted, 0.28f);
+            DrawStrictFittedText(batch, medal.Definition.Description, new Vector2(71, medalY + 12), ColorPalette.Muted,
+                0.27f, 345, 0.25f);
+            medalY += 25;
         }
 
         var achievementPanel = new Rectangle(450, 174, 790, 456);
         p.FillRect(batch, achievementPanel, ColorPalette.PanelAlt);
         p.DrawRect(batch, achievementPanel, ColorPalette.CardOutline, 1);
         DrawText(batch, "ACHIEVEMENTS", new Vector2(466, 190), ColorPalette.Navy, 0.68f);
+        const int achievementsPerPage = 8;
+        var achievementPageCount = Math.Max(1, (career.Achievements.Count + achievementsPerPage - 1) / achievementsPerPage);
+        _careerAchievementPage = Math.Clamp(_careerAchievementPage, 0, achievementPageCount - 1);
+        DrawButton(batch, p, _careerAchievementPreviousButton, "<", _careerAchievementPage > 0, ColorPalette.Violet);
+        DrawFittedCenteredText(batch, $"{_careerAchievementPage + 1}/{achievementPageCount}", new Vector2(1180, 198),
+            ColorPalette.Muted, 0.28f, 26);
+        DrawButton(batch, p, _careerAchievementNextButton, ">", _careerAchievementPage + 1 < achievementPageCount, ColorPalette.Violet);
         p.FillRect(batch, new Rectangle(466, 216, 758, 2), ColorPalette.Violet);
-        for (var index = 0; index < career.Achievements.Count; index++)
+        var visibleAchievements = career.Achievements
+            .Skip(_careerAchievementPage * achievementsPerPage)
+            .Take(achievementsPerPage)
+            .ToArray();
+        for (var index = 0; index < visibleAchievements.Length; index++)
         {
-            var achievement = career.Achievements[index];
+            var achievement = visibleAchievements[index];
             var column = index % 2;
             var row = index / 2;
             var rect = new Rectangle(466 + column * 379, 230 + row * 92, 363, 78);
@@ -3295,8 +3345,9 @@ public sealed class UIManager
             p.DrawRect(batch, rect, accent, achievement.IsUnlocked ? 2 : 1);
             p.FillRect(batch, new Rectangle(rect.X, rect.Y, 5, rect.Height), accent);
             DrawFittedText(batch, achievement.DisplayName.ToUpperInvariant(), new Vector2(rect.X + 14, rect.Y + 10),
-                achievement.IsUnlocked ? ColorPalette.Ink : ColorPalette.Muted, 0.52f, 240);
-            DrawTextRight(batch, achievement.Progress, new Vector2(rect.Right - 12, rect.Y + 11),
+                achievement.IsUnlocked ? ColorPalette.Ink : ColorPalette.Muted, 0.50f, 205);
+            DrawTextRight(batch, $"{(achievement.IsUnlocked ? "EARNED" : "LOCKED")} {achievement.Progress}",
+                new Vector2(rect.Right - 12, rect.Y + 11),
                 achievement.IsUnlocked ? ColorPalette.GreenText : ColorPalette.Muted, 0.40f);
             DrawFittedText(batch, achievement.Description, new Vector2(rect.X + 14, rect.Y + 42), ColorPalette.Muted, 0.36f, rect.Width - 28);
         }
@@ -3347,7 +3398,7 @@ public sealed class UIManager
             earnedMedals.Count == 0
                 ? "NO RUN MEDALS EARNED"
                 : $"MEDALS  {string.Join("  /  ", earnedMedals.Select(medal => medal.DisplayName.ToUpperInvariant()))}",
-            new Vector2(640, 160), earnedMedals.Count == 0 ? ColorPalette.Muted : ColorPalette.Gold, 0.34f, 1160);
+            new Vector2(640, 160), earnedMedals.Count == 0 ? ColorPalette.Muted : ColorPalette.AmberText, 0.34f, 1160);
 
         var towerPanel = new Rectangle(40, 170, 758, 460);
         p.FillRect(batch, towerPanel, ColorPalette.PanelAlt);

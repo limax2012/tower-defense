@@ -671,7 +671,14 @@ public sealed class VisualVerificationGame : Game
         scenes.Add(Capture("13a-run-history-selection.png", ui, GameState.RunHistory, null));
         Require(ui.HandleRunHistory(Pointer(1080, 80, leftPressed: true)) == UiAction.None && ui.IsRunHistoryCareerOpen,
             "Run History opens the persistent medals, achievements, and records overview.", assertions);
+        Require(ColorPalette.ContrastRatio(ColorPalette.AmberText, ColorPalette.PanelAlt) >= 3f,
+            "Archive amber ink keeps gold-family labels readable on light panels.", assertions);
         scenes.Add(Capture("13b-career-medals-and-records.png", ui, GameState.RunHistory, null));
+        _ = ui.HandleRunHistory(Pointer(402, 418, leftPressed: true));
+        _ = ui.HandleRunHistory(Pointer(1210, 198, leftPressed: true));
+        Require(ui.CareerMedalPage == 1 && ui.CareerAchievementPage == 1,
+            "Career medal and achievement catalogs expose independent later pages.", assertions);
+        scenes.Add(Capture("13c-career-catalog-pages.png", ui, GameState.RunHistory, null));
         Require(ui.HandleRunHistory(Pointer(640, 670, leftPressed: true)) == UiAction.None && !ui.IsRunHistoryCareerOpen,
             "The career overview returns to Run History without changing its selected run.", assertions);
         Require(ui.HandleRunHistory(Pointer(480, 543, leftPressed: true)) == UiAction.None && ui.IsRunHistoryDetailOpen,
