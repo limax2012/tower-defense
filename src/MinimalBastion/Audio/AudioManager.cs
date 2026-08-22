@@ -13,6 +13,7 @@ public sealed class AudioManager : IDisposable
     private SoundEffectInstance? _musicInstance;
     private float _killCooldown;
     private float _leakCooldown;
+    private float _bossPhaseCooldown;
     private float _combatImpactCooldown;
     private float _sfxVolume = 0.65f;
     private float _musicVolume = 0.20f;
@@ -48,7 +49,7 @@ public sealed class AudioManager : IDisposable
             _sounds[Cue.WaveClear] = CreateChord(520, 780, 0.28f);
             _sounds[Cue.Plate] = CreateNoisePulse(0.11f);
             _sounds[Cue.Forge] = CreateTone(620, 980, 0.16f, WaveShape.Sine);
-            _sounds[Cue.BossPhase] = CreateTone(230, 105, 0.34f, WaveShape.Saw);
+            _sounds[Cue.BossPhase] = CreateTwoNoteCue(330, 440, 0.24f);
             _sounds[Cue.Victory] = CreateTriad(392, 523, 659, 0.48f);
             _sounds[Cue.Defeat] = CreateTwoNoteCue(392, 330, 0.30f);
             _sounds[Cue.UiConfirm] = CreateTone(410, 620, 0.075f, WaveShape.Sine);
@@ -77,6 +78,7 @@ public sealed class AudioManager : IDisposable
     {
         _killCooldown = MathF.Max(0, _killCooldown - MathF.Max(0, deltaSeconds));
         _leakCooldown = MathF.Max(0, _leakCooldown - MathF.Max(0, deltaSeconds));
+        _bossPhaseCooldown = MathF.Max(0, _bossPhaseCooldown - MathF.Max(0, deltaSeconds));
         _combatImpactCooldown = MathF.Max(0, _combatImpactCooldown - MathF.Max(0, deltaSeconds));
         foreach (var towerId in _towerImpactCooldowns.Keys.ToArray())
         {
@@ -110,6 +112,7 @@ public sealed class AudioManager : IDisposable
         if (ReferenceEquals(_attachedSession, session)) return;
         _attachedSession = session;
         _leakCooldown = 0;
+        _bossPhaseCooldown = 0;
         _defeatCuePlayed = false;
         SwitchMusic(session.Map.Definition.Id);
         session.TowerPlaced += _ => Play(Cue.Place, 0.72f);
@@ -118,7 +121,7 @@ public sealed class AudioManager : IDisposable
         session.TowerOverdriven += tower => Play(Cue.Protocol, 0.9f, ProtocolPitch(tower.Definition.Id));
         session.EnemyKilled += _ => PlayKill();
         session.EnemyEscaped += _ => PlayLeak(session.Economy.Lives <= 0);
-        session.BossPhaseChanged += _ => Play(Cue.BossPhase, 0.88f);
+        session.BossPhaseChanged += _ => PlayBossPhase();
         session.EmergencyDefenseDeployed += (_, _) => Play(Cue.Place, 0.48f, 0.18f);
         session.EmergencyDefenseTriggered += (_, _) => Play(Cue.Plate, 0.72f);
         session.GeneratorPlaced += _ => Play(Cue.Forge, 0.72f);
@@ -135,6 +138,7 @@ public sealed class AudioManager : IDisposable
     {
         _attachedSession = null;
         _leakCooldown = 0;
+        _bossPhaseCooldown = 0;
         _defeatCuePlayed = false;
         _towerImpactCooldowns.Clear();
         SwitchMusic("menu");
@@ -170,6 +174,13 @@ public sealed class AudioManager : IDisposable
         if (_leakCooldown > 0) return;
         _leakCooldown = 0.18f;
         Play(Cue.Leak, 0.26f);
+    }
+
+    private void PlayBossPhase()
+    {
+        if (_bossPhaseCooldown > 0) return;
+        _bossPhaseCooldown = 0.25f;
+        Play(Cue.BossPhase, 0.34f);
     }
 
     private void Play(Cue cue, float cueVolume, float pitch = 0)
