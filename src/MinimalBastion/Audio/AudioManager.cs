@@ -180,7 +180,7 @@ public sealed class AudioManager : IDisposable
     {
         if (_bossPhaseCooldown > 0) return;
         _bossPhaseCooldown = 0.25f;
-        Play(Cue.BossPhase, 0.34f);
+        Play(Cue.BossPhase, 0.50f);
     }
 
     private void Play(Cue cue, float cueVolume, float pitch = 0)
