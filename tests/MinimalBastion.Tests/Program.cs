@@ -3843,6 +3843,11 @@ internal static class Program
         Check.Equal("Long range", TowerInfo.ShortRole(content.Towers["watchtower"]), "short long-range role");
         Check.Equal("Anti-armor", TowerInfo.ShortRole(content.Towers["breaker_cannon"]), "short armor role");
         Check.Equal("Chain", TowerInfo.ShortRole(content.Towers["arc_relay"]), "short chain role");
+        Check.Equal("Fastest", content.Towers["frost_spire"].DefaultTargetMode,
+            "Frost Spire defaults to intercepting the fastest enemy");
+        Check.Equal(TargetMode.Fastest,
+            new TowerInstance(1, content.Towers["frost_spire"], Vector2.Zero).TargetMode,
+            "new Frost Spires apply the authored fastest targeting mode");
         Check.True(content.Towers.Values.All(x => TowerInfo.ShortRole(x).Length <= 10), "catalog roles fit compact cards");
         Check.True(content.Towers.Values.All(x => x.Visual.Marks == 1), "every tower begins with one level mark");
         Check.True(content.Towers.Values.All(x => x.Visual.Ring), "every tower has a consistent outer ring");

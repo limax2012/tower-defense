@@ -75,7 +75,7 @@
     ]
   },
   {
-    "id": "frost_spire", "displayName": "Frost Spire", "role": "Control", "behavior": "slow_projectile", "purchaseCost": 140, "defaultTargetMode": "First",
+    "id": "frost_spire", "displayName": "Frost Spire", "role": "Control", "behavior": "slow_projectile", "purchaseCost": 140, "defaultTargetMode": "Fastest",
     "visual": { "shape": "diamond", "primary": "#2192AA", "accent": "#18586B", "radius": 18, "marks": 1, "ring": true },
     "protocol": { "displayName": "Flash Freeze", "summary": "Freezes its field, then widens control", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.45, "rangeBonus": 0.15, "autoTriggerMode": "protocol_area", "autoTriggerCount": 4, "burstRadius": 170, "burstDamage": 8, "burstStatus": "Slow", "burstStatusMagnitude": 0.5, "burstStatusDuration": 2.5 },
     "apex": { "upgradeCost": 1050, "damageMultiplier": 1.20, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.12, "utilityMultiplier": 1.18 },
