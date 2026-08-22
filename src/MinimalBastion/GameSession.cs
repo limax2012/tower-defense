@@ -118,6 +118,7 @@ public sealed class GameSession
     public event Action<TowerInstance>? TowerOverdriven;
     public event Action<EnemyInstance>? EnemyKilled;
     public event Action<EnemyInstance>? EnemyEscaped;
+    public event Action<EnemyInstance>? EnemySpawned;
     public event Action<EnemyInstance>? BossPhaseChanged;
     public event Action<PulsePlateInstance, bool>? EmergencyDefenseDeployed;
     public event Action<PulsePlateInstance, int>? EmergencyDefenseTriggered;
@@ -1300,6 +1301,7 @@ public sealed class GameSession
             enemy.ArmSignalAbility(initialDelay + enemy.Id % 3 * 0.35f);
         }
         Enemies.Add(enemy);
+        EnemySpawned?.Invoke(enemy);
         if (enemy.IsBoss)
         {
             AnnouncementTitle = "BOSS SIGNAL // BASTION CORE";

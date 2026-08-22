@@ -45,6 +45,7 @@ internal static class Program
             ("content counts", ContentCounts),
             ("high-resolution viewport", HighResolutionViewport),
             ("persistent display and audio settings", PersistentUserSettings),
+            ("persistent tactical discoveries", PersistentTacticalDiscoveries),
             ("crash report fallback", CrashReportFallback),
             ("tactical color palette", TacticalColorPalette),
             ("map roster and power nodes", MapRosterAndPowerNodes),
@@ -252,6 +253,80 @@ internal static class Program
         var surge = arenas.Single(row => row.MapId == "relay_divide");
         Check.Equal(0, surge.Wins, "forced arena summary preserves loss");
         Check.Equal(1, surge.CompletedRuns, "forced arena summary preserves completed loss");
+    }
+
+    private static void PersistentTacticalDiscoveries()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        var progress = new DiscoveryProgress();
+        var session = new GameSession(content, "relay_divide", "bastion", "close_quarters");
+        Check.True(progress.Observe(session), "new run discovers its selected profile");
+        var profile = progress.Snapshot();
+        Check.True(profile.Maps.Contains("relay_divide") && profile.Difficulties.Contains("bastion") &&
+                   profile.Challenges.Contains("close_quarters"),
+            "map, difficulty, and directive are archived after starting a run");
+        Check.True(!profile.Enemies.Contains("t1_crawler") && !profile.Towers.Contains("needle_turret"),
+            "unencountered threats and unused towers remain classified");
+
+        session.SpawnEnemy("t1_crawler", 1, 1, "Elite", EnemySignalRole.Jammer);
+        var enemy = session.Enemies.Single();
+        enemy.StatusEffects.Apply(new StatusApplication
+        {
+            Type = StatusType.Slow,
+            Duration = 2,
+            Magnitude = 0.25f,
+            SourceId = 1
+        });
+        Check.True(progress.Discover(enemy), "live contact adds threat mechanics");
+        var needle = new TowerInstance(1, content.Towers["needle_turret"], new Vector2(420, 300));
+        session.Towers.Add(needle);
+        Check.True(needle.TryChooseDoctrine(needle.Definition.Tier2Doctrines[0].Id), "test tower chooses a doctrine");
+        Check.True(needle.TrySpecialize(needle.Definition.Specializations[0].Id), "test tower chooses a final role");
+        Check.True(progress.Observe(session), "tower progression adds precise archive records");
+
+        var discovered = progress.Snapshot();
+        Check.True(discovered.Enemies.Contains("t1_crawler") && discovered.EnemyRanks.Contains("Elite") &&
+                   discovered.EnemySignalRoles.Contains("Jammer") && discovered.Statuses.Contains("Slow"),
+            "enemy body, rank, signal role, and observed status unlock independently");
+        Check.True(discovered.Towers.Contains("needle_turret") &&
+                   discovered.TowerDoctrines.Contains(DiscoveryProgress.BranchKey("needle_turret", needle.DoctrineId!)) &&
+                   discovered.TowerSpecializations.Contains(DiscoveryProgress.BranchKey("needle_turret", needle.SpecializationId!)),
+            "tower base profile and purchased branches are archived");
+        Check.True(!discovered.Enemies.Contains("t5_regenerator") &&
+                   !discovered.EnemySignalRoles.Contains("Disruptor"),
+            "unseen advanced threats remain hidden after other discoveries");
+
+        var ui = new UIManager(null!);
+        ui.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
+        ui.ConfigureDifficulties(content.Difficulties.Values);
+        ui.ConfigureChallenges(content.Challenges.Values);
+        ui.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values, content.Tactics);
+        ui.ConfigureDiscovery(discovered);
+        Check.Equal("needle_turret", ui.SelectedLibraryTowerId!, "library filters its tower list to used definitions");
+        Check.Equal("relay_divide", ui.SelectedLibraryCampaignMapId!, "library filters campaigns to entered arenas");
+        _ = ui.HandleTitleTowerLibrary(WorldInput(new Vector2(760, 57)) with { LeftPressed = true });
+        _ = ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TowerHotkey = 2 });
+        Check.Equal("signal:jammer", ui.SelectedLibraryEnemyId!,
+            "discovered signal carriers appear as distinct threat records after base enemies");
+
+        var directory = Path.Combine(Path.GetTempPath(), $"MinimalBastionDiscovery-{Guid.NewGuid():N}");
+        try
+        {
+            var repository = new DiscoveryProgressRepository(directory);
+            repository.Save(progress);
+            var restored = repository.Load().Snapshot();
+            Check.True(restored.EnemySignalRoles.Contains("Jammer") && restored.Towers.Contains("needle_turret"),
+                "discovery archive survives a repository round trip");
+            repository.Save(progress);
+            File.WriteAllText(repository.ProgressPath, "{broken");
+            var recovered = repository.Load().Snapshot();
+            Check.True(recovered.EnemySignalRoles.Contains("Jammer"), "discovery archive recovers from its valid backup");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
     }
 
     private static void CrashReportFallback()

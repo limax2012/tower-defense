@@ -413,6 +413,16 @@ public sealed class VisualVerificationGame : Game
         _ = ui.HandleTitleTowerLibrary(Pointer(760, 57, leftPressed: true));
         Require(ui.LibraryShowsThreats, "Tactical Library contrast scene opens threat status language.", assertions);
         scenes.Add(Capture("06b-threat-library-contrast.png", ui, GameState.TowerLibrary, null));
+        _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 6 });
+        Require(ui.SelectedLibraryEnemyId == "signal:accelerator",
+            "Tactical Library includes encountered signal-carrier roles beside base enemies.", assertions);
+        scenes.Add(Capture("06b1-signal-role-library.png", ui, GameState.TowerLibrary, null));
+        ui.ConfigureDiscovery(new DiscoveryProgress().Snapshot());
+        Require(ui.SelectedLibraryEnemyId is null && ui.SelectedLibraryTowerId is null &&
+                ui.SelectedLibraryCampaignMapId is null,
+            "A fresh Tactical Library exposes no undiscovered threats, towers, or campaigns.", assertions);
+        scenes.Add(Capture("06b2-undiscovered-library.png", ui, GameState.TowerLibrary, null));
+        ui.ConfigureDiscovery(DiscoverySnapshot.Everything);
         _ = ui.HandleTitleTowerLibrary(Pointer(850, 57, leftPressed: true));
         Require(ui.LibraryShowsCampaign, "Tactical Library contrast scene opens campaign wave scaling.", assertions);
         scenes.Add(Capture("06c-campaign-library-contrast.png", ui, GameState.TowerLibrary, null));
