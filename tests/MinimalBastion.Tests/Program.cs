@@ -564,15 +564,17 @@ internal static class Program
         Check.Nearly(0, session.OverdriveCooldownRemaining, "lab reset readies Protocol testing");
         Check.True(!tower.IsOverdriven, "lab reset clears active Protocol state");
 
-        Check.True(session.ToggleSandboxTower(tower.Id) && tower.IsSandboxDisabled,
-            "sandbox can disable an individual tower without removing it");
+        var sandboxUi = new UIManager(null!);
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxToggleTowerPressed = true }, session);
+        Check.True(tower.IsSandboxDisabled,
+            "sandbox D hotkey disables an individual tower without removing it");
         Check.True(!session.TryOverdriveTower(tower.Id), "disabled sandbox towers cannot run Protocols");
-        Check.True(session.ToggleSandboxTower(tower.Id) && !tower.IsSandboxDisabled,
-            "sandbox can re-enable an individual tower");
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxToggleTowerPressed = true }, session);
+        Check.True(!tower.IsSandboxDisabled,
+            "sandbox D hotkey re-enables an individual tower");
         Check.True(session.TestSandboxProtocol(tower.Id) && tower.IsOverdriven,
             "sandbox Protocol test always starts the selected Protocol from a clean timer");
 
-        var sandboxUi = new UIManager(null!);
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { OverdrivePressed = true }, session);
         Check.True(!tower.IsOverdriven && session.OverdriveCooldownRemaining <= 0,
             "sandbox E resets an active Protocol test and its shared cooldown");
@@ -588,8 +590,17 @@ internal static class Program
         Check.Equal(1, sandboxUi.SelectedSandboxWave,
             "sandbox plus hotkey wraps to the first authored wave");
 
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxEnemyNextPressed = true }, session);
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxEnemyPreviousPressed = true }, session);
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { GeneratorPressed = true }, session);
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxRankPressed = true }, session);
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxHealthPressed = true }, session);
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxSpawnPressed = true }, session);
-        Check.True(session.Enemies.Count > 0, "sandbox F hotkey spawns the configured target group");
+        Check.Equal(5, session.Enemies.Count, "sandbox G and F hotkeys spawn the configured five-target group");
+        Check.True(session.Enemies.All(enemy => enemy.Rank == EnemyRank.Elite),
+            "sandbox K hotkey advances the configured target rank");
+        Check.True(session.Enemies.All(enemy => MathF.Abs(enemy.HealthScale - session.SandboxHealthMultiplierForWave(10)) < 0.001f),
+            "sandbox H hotkey advances the configured target health");
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxResetPressed = true }, session);
         Check.Equal(0, session.Enemies.Count, "sandbox R hotkey resets test targets");
         Check.True(!tower.IsOverdriven && session.OverdriveCooldownRemaining <= 0,
@@ -4263,7 +4274,7 @@ internal static class Program
         var position = new Vector2(200, 30);
         Check.True(UIManager.PulsePlateButtonLabel(session).Contains("FIELD 0/16", StringComparison.Ordinal),
             "plate button always shows active field capacity");
-        Check.True(UIManager.PulsePlateButtonLabel(session).StartsWith("[Q] DEPLOY 1", StringComparison.Ordinal),
+        Check.True(UIManager.PulsePlateButtonLabel(session).StartsWith("DEPLOY 1", StringComparison.Ordinal),
             "stored plate label leads with its available action");
         Check.Equal(PlacementFailure.None, session.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, position), "road placement");
         Check.Equal(PlacementFailure.None, session.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(250, 61)), "visible road edge placement");
@@ -4969,13 +4980,15 @@ internal static class Program
         var tower = session.Towers[0];
         Check.True(tower.RequiresDoctrine, "tier two requires an explicit doctrine");
         Check.True(!session.TryUpgradeTower(tower.Id, 1), "linear tier two upgrade is blocked");
-        Check.True(session.TryChooseTowerDoctrine(tower.Id, "tempo", 1), "other player chooses shared doctrine");
-        Check.Equal("tempo", tower.DoctrineId!, "doctrine identity");
+        var localUi = new UIManager(null!);
+        localUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { UpgradePressed = true }, session);
+        Check.Equal("tempo", tower.DoctrineId!, "U chooses the first tier-two doctrine");
         Check.Equal(1, tower.LevelIndex, "doctrine reaches tier two");
         Check.Nearly(10.8f, tower.Level.Damage, "doctrine damage tradeoff active");
         Check.Nearly(1.32f, tower.Level.AttacksPerSecond, "doctrine cadence tradeoff active");
         Check.True(tower.RequiresSpecialization, "final role follows doctrine");
-        Check.True(session.TrySpecializeTower(tower.Id, "alpha", 2), "either player chooses final role");
+        localUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { UpgradePressed = true }, session);
+        Check.Equal("alpha", tower.SpecializationId!, "U chooses the first final role");
         Check.Nearly(27, tower.Level.Damage, "doctrine persists into final role damage");
         Check.Nearly(1.44f, tower.Level.AttacksPerSecond, "doctrine persists into final role cadence");
         Check.Equal(1, session.Statistics.Towers.Single().Specializations["doctrine:tempo"], "doctrine telemetry");
@@ -4985,14 +4998,21 @@ internal static class Program
         var commandSession = Session();
         commandSession.Content.Towers["tower"].Tier2Doctrines = definition.Tier2Doctrines;
         Check.True(commandSession.TryPlaceTower("tower", new Vector2(50, 200)), "place network doctrine tower");
-        Check.True(GameCommandProcessor.Apply(commandSession, new GameCommand
-        {
-            PlayerId = 2,
-            Type = GameCommandType.ChooseDoctrine,
-            EntityId = commandSession.Towers[0].Id,
-            DoctrineId = "focus"
-        }).Accepted, "co-op doctrine command accepted");
+        var commandUi = new UIManager(null!);
+        GameCommand? command = null;
+        commandUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { AlternateUpgradePressed = true }, commandSession,
+            value => command = value, 2);
+        Check.True(command is { Type: GameCommandType.ChooseDoctrine, DoctrineId: "focus", PlayerId: 2 },
+            "I routes the second doctrine through the co-op command stream");
+        Check.True(GameCommandProcessor.Apply(commandSession, command!).Accepted, "co-op doctrine command accepted");
         Check.Equal("focus", commandSession.Towers[0].DoctrineId!, "co-op doctrine command applied");
+        command = null;
+        commandUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { AlternateUpgradePressed = true }, commandSession,
+            value => command = value, 2);
+        Check.True(command is { Type: GameCommandType.SpecializeTower, SpecializationId: "beta", PlayerId: 2 },
+            "I routes the second final role through the co-op command stream");
+        Check.True(GameCommandProcessor.Apply(commandSession, command!).Accepted, "co-op final-role command accepted");
+        Check.Equal("beta", commandSession.Towers[0].SpecializationId!, "co-op final-role command applied");
 
         var branchMetrics = new TowerRunMetrics { TowerId = definition.Id };
         var branchTower = new TowerInstance(9, definition, Vector2.Zero);
@@ -5053,6 +5073,10 @@ internal static class Program
         var rangeBefore = tower.Level.Range;
         var investedBefore = tower.InvestedCredits;
         Check.True(session.CanApexUpgrade(tower), "maximum-level tower exposes its Apex promotion");
+        apexCommand = null;
+        apexUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { UpgradePressed = true }, session,
+            command => apexCommand = command, 2);
+        Check.True(apexCommand is null, "U remains reserved for ordinary and branch upgrades at Apex eligibility");
         apexUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { ApexPressed = true }, session,
             command => apexCommand = command, 2);
         Check.True(apexCommand is { Type: GameCommandType.UpgradeTower } && apexCommand.EntityId == tower.Id,

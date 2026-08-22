@@ -375,17 +375,17 @@ public sealed class UIManager
         var definition = session.Content.Tactics.EmergencyDefense;
         var field = $"FIELD {session.EmergencyDefenses.Count}/{definition.MaximumActive}";
         if (session.EmergencyDefenses.Count >= definition.MaximumActive)
-            return $"[Q] {field} | FULL";
+            return $"{field} | FULL";
         if (session.EmergencyInventory > 0)
         {
             var stock = session.Generator is { } forge
                 ? $"{session.EmergencyInventory}/{forge.Level.Capacity}"
                 : session.EmergencyInventory.ToString();
-            return $"[Q] DEPLOY {stock} | {field}";
+            return $"DEPLOY {stock} | {field}";
         }
         if (session.Waves.IsActive)
-            return $"[Q] BUY {session.CurrentEmergencyDirectPurchaseCost} | {field}";
-        return $"[Q] PLATES 0 | {field}";
+            return $"BUY {session.CurrentEmergencyDirectPurchaseCost} | {field}";
+        return $"PLATES 0 | {field}";
     }
 
     private static string EarlyCallStatus(int currentWave, float intermissionRemaining) =>
@@ -1140,6 +1140,13 @@ public sealed class UIManager
             if (input.SandboxSpawnPressed) SpawnSelectedSandboxTargets(session);
             if (input.SandboxResetPressed) session.ResetSandboxExperiment();
             if (input.SandboxClearTowersPressed) session.ClearSandboxTowers();
+            if (input.SandboxToggleTowerPressed && session.SelectedTower is { } sandboxTower)
+                session.ToggleSandboxTower(sandboxTower.Id);
+            if (input.SandboxEnemyPreviousPressed) CycleSandboxEnemy(session, -1);
+            if (input.SandboxEnemyNextPressed) CycleSandboxEnemy(session, 1);
+            if (input.GeneratorPressed) CycleSandboxGroup();
+            if (input.SandboxRankPressed) CycleSandboxRank();
+            if (input.SandboxHealthPressed) CycleSandboxHealth();
         }
         if (input.OverdrivePressed)
         {
@@ -1155,7 +1162,8 @@ public sealed class UIManager
         }
         if (input.ApexPressed && session.SelectedTower is { } apexTower && session.CanApexUpgrade(apexTower))
             RequestUpgrade(session, commandSink, playerId);
-        if (input.UpgradePressed) RequestUpgrade(session, commandSink, playerId);
+        if (input.UpgradePressed) RequestUpgradeChoice(session, 0, commandSink, playerId);
+        if (input.AlternateUpgradePressed) RequestUpgradeChoice(session, 1, commandSink, playerId);
         if (input.SellPressed)
         {
             if (session.IsSandbox && session.SelectedTower is { } sandboxTower)
@@ -1317,17 +1325,17 @@ public sealed class UIManager
         }
         if (_sandboxGroupButton.Contains(point))
         {
-            _sandboxGroupIndex = (_sandboxGroupIndex + 1) % SandboxGroupSizes.Length;
+            CycleSandboxGroup();
             return true;
         }
         if (_sandboxRankButton.Contains(point))
         {
-            _sandboxRankIndex = (_sandboxRankIndex + 1) % SandboxRanks.Length;
+            CycleSandboxRank();
             return true;
         }
         if (_sandboxHealthButton.Contains(point))
         {
-            _sandboxHealthIndex = (_sandboxHealthIndex + 1) % 4;
+            CycleSandboxHealth();
             return true;
         }
         if (_sandboxSpawnButton.Contains(point))
@@ -1383,6 +1391,15 @@ public sealed class UIManager
         _sandboxEnemyIndex = (_sandboxEnemyIndex + direction) % enemies.Count;
         if (_sandboxEnemyIndex < 0) _sandboxEnemyIndex += enemies.Count;
     }
+
+    private void CycleSandboxGroup() =>
+        _sandboxGroupIndex = (_sandboxGroupIndex + 1) % SandboxGroupSizes.Length;
+
+    private void CycleSandboxRank() =>
+        _sandboxRankIndex = (_sandboxRankIndex + 1) % SandboxRanks.Length;
+
+    private void CycleSandboxHealth() =>
+        _sandboxHealthIndex = (_sandboxHealthIndex + 1) % 4;
 
     private void SpawnSelectedSandboxTargets(MinimalBastion.GameSession session)
     {
@@ -1471,6 +1488,27 @@ public sealed class UIManager
             sink(new GameCommand { PlayerId = playerId, Type = GameCommandType.UpgradeTower, EntityId = tower.Id });
         else if (session.SelectedGenerator is not null)
             sink(new GameCommand { PlayerId = playerId, Type = GameCommandType.UpgradeGenerator });
+    }
+
+    private static void RequestUpgradeChoice(MinimalBastion.GameSession session, int choiceIndex,
+        Action<GameCommand>? sink, int playerId)
+    {
+        if (session.SelectedTower is { RequiresDoctrine: true } doctrineTower &&
+            choiceIndex >= 0 && choiceIndex < doctrineTower.Definition.Tier2Doctrines.Count)
+        {
+            RequestDoctrine(session, doctrineTower.Definition.Tier2Doctrines[choiceIndex].Id, sink, playerId);
+            return;
+        }
+
+        if (session.SelectedTower is { RequiresSpecialization: true } specializationTower &&
+            choiceIndex >= 0 && choiceIndex < specializationTower.Definition.Specializations.Count)
+        {
+            RequestSpecialization(session, specializationTower.Definition.Specializations[choiceIndex].Id, sink, playerId);
+            return;
+        }
+
+        if (choiceIndex == 0 && (session.SelectedTower is null || session.SelectedTower.CanUpgrade))
+            RequestUpgrade(session, sink, playerId);
     }
 
     private static void RequestSpecialization(MinimalBastion.GameSession session, string specializationId, Action<GameCommand>? sink, int playerId)
@@ -2060,20 +2098,20 @@ public sealed class UIManager
             startWaveEnabled = !_coOpWaveStartQueued && !localReady;
         }
         DrawButton(batch, p, _startWaveButton, startWaveLabel, startWaveEnabled, ColorPalette.Green,
-            session.IsSandbox ? ColorPalette.Paper : null);
-        DrawButton(batch, p, _speedButton, session.Speed >= 1.5f ? "[S] 2x" : "[S] 1x", !session.IsCoOpPaused, ColorPalette.Violet,
-            session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Violet) : null);
+            session.IsSandbox ? ColorPalette.Paper : null, "SPC");
+        DrawButton(batch, p, _speedButton, session.Speed >= 1.5f ? "2x" : "1x", !session.IsCoOpPaused, ColorPalette.Violet,
+            session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Violet) : null, "S");
         var pauseLabel = session.IsCoOpPaused ? "RESUME" : "PAUSE";
         var pauseFill = session.IsCoOpPaused ? ColorPalette.Green : ColorPalette.Coral;
         DrawButton(batch, p, _pauseButton, pauseLabel, !session.IsCoOp || _coOpPeerConnected, pauseFill,
-            session.IsSandbox ? ContrastAwareButtonTextColor(pauseFill) : null);
+            session.IsSandbox ? ContrastAwareButtonTextColor(pauseFill) : null, "P");
 
         if (session.IsSandbox)
         {
             _sandboxWavePreviousButton = new Rectangle(820, 9, 62, 38);
             _sandboxWaveNextButton = new Rectangle(890, 9, 62, 38);
-            DrawSandboxButton(batch, p, _sandboxWavePreviousButton, "[-] WAVE", true, ColorPalette.Cyan);
-            DrawSandboxButton(batch, p, _sandboxWaveNextButton, "[+] WAVE", true, ColorPalette.Cyan);
+            DrawSandboxButton(batch, p, _sandboxWavePreviousButton, "WAVE", true, ColorPalette.Cyan, "-");
+            DrawSandboxButton(batch, p, _sandboxWaveNextButton, "WAVE", true, ColorPalette.Cyan, "+");
         }
         else
         {
@@ -2148,37 +2186,37 @@ public sealed class UIManager
         var defense = session.Content.Tactics.EmergencyDefense;
         var plateFieldFull = session.EmergencyDefenses.Count >= defense.MaximumActive;
         var emergencyReady = session.TacticalSystemsEnabled && !plateFieldFull && (session.EmergencyInventory > 0 || session.CanDirectPurchaseEmergencyDefense);
-        var emergencyLabel = session.TacticalSystemsEnabled ? PulsePlateButtonLabel(session) : "[Q] PLATES | DIRECTIVE OFF";
-        DrawButton(batch, p, _emergencyButton, emergencyLabel, emergencyReady, ColorPalette.Gold, ColorPalette.Ink);
+        var emergencyLabel = session.TacticalSystemsEnabled ? PulsePlateButtonLabel(session) : "PLATES | DIRECTIVE OFF";
+        DrawButton(batch, p, _emergencyButton, emergencyLabel, emergencyReady, ColorPalette.Gold, ColorPalette.Ink, "Q");
 
         var generator = session.Content.Tactics.Generator;
         var generatorReady = session.TacticalSystemsEnabled && (session.Generator is not null || session.Economy.CanAfford(generator.PurchaseCost));
-        var generatorLabel = !session.TacticalSystemsEnabled ? "[G] FORGE | DIRECTIVE OFF" : session.Generator is { } active
+        var generatorLabel = !session.TacticalSystemsEnabled ? "FORGE | DIRECTIVE OFF" : session.Generator is { } active
             ? session.EmergencyInventory >= active.Level.Capacity
-                ? $"[G] FORGE L{active.LevelIndex + 1} | FULL"
+                ? $"FORGE L{active.LevelIndex + 1} | FULL"
                 : session.Waves.IsActive
-                    ? $"[G] FORGE L{active.LevelIndex + 1} | +1 IN {active.ProductionRemaining:0}s"
-                    : $"[G] FORGE L{active.LevelIndex + 1} | PAUSED {active.ProductionRemaining:0}s"
-            : $"[G] FORGE {generator.PurchaseCost} | ACTIVE WAVES";
-        DrawButton(batch, p, _generatorButton, generatorLabel, generatorReady, ColorPalette.Green);
+                    ? $"FORGE L{active.LevelIndex + 1} | +1 IN {active.ProductionRemaining:0}s"
+                    : $"FORGE L{active.LevelIndex + 1} | PAUSED {active.ProductionRemaining:0}s"
+            : $"FORGE {generator.PurchaseCost} | ACTIVE WAVES";
+        DrawButton(batch, p, _generatorButton, generatorLabel, generatorReady, ColorPalette.Green, hotkey: "G");
 
         var selected = session.SelectedTower;
         var activeOverdrive = session.Towers.FirstOrDefault(x => x.IsOverdriven);
         var overdriveReady = session.ProtocolsEnabled && selected is not null && session.OverdriveCooldownRemaining <= 0 && !selected.IsOverdriven;
-        var overdriveLabel = !session.ProtocolsEnabled ? "[E] PROTOCOLS | DIRECTIVE OFF" :
-            activeOverdrive is not null ? $"[E] {activeOverdrive.Protocol.DisplayName.ToUpperInvariant()} {activeOverdrive.OverdriveRemaining:0.0}s" :
-            session.OverdriveCooldownRemaining > 0 ? $"[E] PROTOCOL | {session.OverdriveCooldownRemaining:0.0}s" :
-            selected is null ? "[E] PROTOCOL | SELECT" :
-            $"[E] {selected.Protocol.DisplayName.ToUpperInvariant()}";
-        DrawButton(batch, p, _overdriveButton, overdriveLabel, overdriveReady, ColorPalette.Coral);
+        var overdriveLabel = !session.ProtocolsEnabled ? "PROTOCOLS | DIRECTIVE OFF" :
+            activeOverdrive is not null ? $"{activeOverdrive.Protocol.DisplayName.ToUpperInvariant()} {activeOverdrive.OverdriveRemaining:0.0}s" :
+            session.OverdriveCooldownRemaining > 0 ? $"PROTOCOL | {session.OverdriveCooldownRemaining:0.0}s" :
+            selected is null ? "PROTOCOL | SELECT" :
+            selected.Protocol.DisplayName.ToUpperInvariant();
+        DrawButton(batch, p, _overdriveButton, overdriveLabel, overdriveReady, ColorPalette.Coral, hotkey: "E");
         var armedAutoTower = session.Towers.FirstOrDefault(tower => tower.Id == session.AutoOverdriveTowerId);
         var autoActive = session.ProtocolsEnabled && selected is not null && armedAutoTower == selected;
-        var autoLabel = !session.ProtocolsEnabled ? "[A] OFF" : autoActive ? "[A] ON" :
-            armedAutoTower is not null && selected is not null ? "[A] MOVE" :
-            armedAutoTower is not null ? "[A] ARMED" : "[A] ARM";
+        var autoLabel = !session.ProtocolsEnabled ? "OFF" : autoActive ? "ON" :
+            armedAutoTower is not null && selected is not null ? "MOVE" :
+            armedAutoTower is not null ? "ARMED" : "ARM";
         DrawButton(batch, p, _autoProtocolButton, autoLabel,
             session.ProtocolsEnabled && selected is not null,
-            ColorPalette.Auto);
+            ColorPalette.Auto, hotkey: "A");
     }
 
     private void DrawSidebar(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -2318,11 +2356,11 @@ public sealed class UIManager
         _sandboxEnemyPreviousButton = new Rectangle(972, 98, 38, 28);
         var enemyDisplay = new Rectangle(1014, 98, 208, 28);
         _sandboxEnemyNextButton = new Rectangle(1226, 98, 42, 28);
-        DrawSandboxButton(batch, p, _sandboxEnemyPreviousButton, "<", enemies.Count > 1, ColorPalette.Cyan);
+        DrawSandboxButton(batch, p, _sandboxEnemyPreviousButton, "<", enemies.Count > 1, ColorPalette.Cyan, "[");
         var enemyFill = enemy?.Visual.PrimaryColor ?? ColorPalette.Cyan;
         DrawButton(batch, p, enemyDisplay, enemy?.DisplayName.ToUpperInvariant() ?? "NO TARGETS", enemy is not null,
             enemyFill, enemy is null ? ColorPalette.Muted : SandboxEnemyButtonTextColor(enemy));
-        DrawSandboxButton(batch, p, _sandboxEnemyNextButton, ">", enemies.Count > 1, ColorPalette.Cyan);
+        DrawSandboxButton(batch, p, _sandboxEnemyNextButton, ">", enemies.Count > 1, ColorPalette.Cyan, "]");
 
         _sandboxGroupButton = new Rectangle(972, 132, 94, 28);
         _sandboxRankButton = new Rectangle(1070, 132, 94, 28);
@@ -2341,11 +2379,11 @@ public sealed class UIManager
             3 => "IMMORTAL",
             _ => "BASE HP"
         };
-        DrawSandboxButton(batch, p, _sandboxGroupButton, groupLabel, true, ColorPalette.Cobalt);
+        DrawSandboxButton(batch, p, _sandboxGroupButton, groupLabel, true, ColorPalette.Cobalt, "G");
         DrawSandboxButton(batch, p, _sandboxRankButton, rankLabel, true,
-            SandboxRanks[_sandboxRankIndex] == EnemyRank.Boss ? ColorPalette.Coral : ColorPalette.Violet);
+            SandboxRanks[_sandboxRankIndex] == EnemyRank.Boss ? ColorPalette.Coral : ColorPalette.Violet, "K");
         DrawSandboxButton(batch, p, _sandboxHealthButton, healthLabel, true,
-            _sandboxHealthIndex == 3 ? ColorPalette.Gold : ColorPalette.Cyan);
+            _sandboxHealthIndex == 3 ? ColorPalette.Gold : ColorPalette.Cyan, "H");
 
         _sandboxSpawnButton = new Rectangle(972, 166, 48, 28);
         _sandboxResetButton = new Rectangle(1024, 166, 68, 28);
@@ -2353,13 +2391,12 @@ public sealed class UIManager
         _sandboxProtocolButton = new Rectangle(1176, 166, 92, 28);
         var protocolNeedsReset = HasSandboxProtocolTestState(session);
         var protocolCanStart = session.SelectedTower is { IsSandboxDisabled: false };
-        DrawSandboxTwoLineButton(batch, p, _sandboxSpawnButton, "[F]", "SPAWN", enemy is not null, ColorPalette.Green);
-        DrawSandboxTwoLineButton(batch, p, _sandboxResetButton, "[R]", "RESET TEST", true, ColorPalette.Orange);
-        DrawSandboxTwoLineButton(batch, p, _sandboxClearTowersButton, "[C]", "CLEAR TOWERS", session.Towers.Count > 0, ColorPalette.Coral);
-        DrawSandboxTwoLineButton(batch, p, _sandboxProtocolButton,
-            protocolNeedsReset ? "[E] RESET" : protocolCanStart ? "[E] TEST" : "[E] SELECT",
-            protocolCanStart || protocolNeedsReset ? "PROTOCOL" : "TOWER",
-            protocolNeedsReset || protocolCanStart, ColorPalette.Violet);
+        DrawSandboxButton(batch, p, _sandboxSpawnButton, "SPAWN", enemy is not null, ColorPalette.Green, "F");
+        DrawSandboxButton(batch, p, _sandboxResetButton, "RESET TEST", true, ColorPalette.Orange, "R");
+        DrawSandboxButton(batch, p, _sandboxClearTowersButton, "CLEAR TOWERS", session.Towers.Count > 0, ColorPalette.Coral, "C");
+        DrawSandboxButton(batch, p, _sandboxProtocolButton,
+            protocolNeedsReset ? "RESET PROTOCOL" : protocolCanStart ? "TEST PROTOCOL" : "SELECT TOWER",
+            protocolNeedsReset || protocolCanStart, ColorPalette.Violet, "E");
     }
 
     private void DrawTowerIntel(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -2405,11 +2442,11 @@ public sealed class UIManager
             if (session.IsSandbox)
             {
                 DrawText(batch, "SANDBOX QUICK GUIDE", new Vector2(980, 482), ColorPalette.Navy, 0.64f);
-                DrawFittedText(batch, "Cycle target, group, rank, and health above.", new Vector2(980, 507), ColorPalette.Muted, 0.48f, 280);
-                DrawFittedText(batch, "F SPAWN  |  R RESET TEST  |  C CLEAR TOWERS", new Vector2(980, 530), ColorPalette.Cobalt, 0.46f, 280);
-                DrawFittedText(batch, "E TEST / RESET PROTOCOL  |  - / + SELECT WAVE", new Vector2(980, 553), ColorPalette.Violet, 0.46f, 280);
-                DrawFittedText(batch, "SPACE sends the selected authored test wave.", new Vector2(980, 576), ColorPalette.Muted, 0.46f, 280);
-                DrawFittedText(batch, "RESET TEST preserves towers; CLEAR TOWERS preserves targets.", new Vector2(980, 599), ColorPalette.Coral, 0.42f, 280);
+                DrawFittedText(batch, "U / I UPGRADES  |  X APEX  |  D TOGGLES TOWER", new Vector2(980, 507), ColorPalette.Violet, 0.46f, 280);
+                DrawFittedText(batch, "T TARGET  |  DELETE REMOVES  |  E TESTS PROTOCOL", new Vector2(980, 530), ColorPalette.Cobalt, 0.44f, 280);
+                DrawFittedText(batch, "F SPAWN  |  R RESET TEST  |  C CLEAR TOWERS", new Vector2(980, 553), ColorPalette.Coral, 0.44f, 280);
+                DrawFittedText(batch, "- / + SELECT WAVE  |  SPACE SENDS WAVE", new Vector2(980, 576), ColorPalette.Muted, 0.46f, 280);
+                DrawFittedText(batch, "[ / ] ENEMY  |  G GROUP  |  K RANK  |  H HEALTH", new Vector2(980, 599), ColorPalette.Muted, 0.43f, 280);
                 return;
             }
             DrawText(batch, "Hover a card to compare stats.", new Vector2(980, 482), ColorPalette.Muted, 0.72f);
@@ -2444,7 +2481,7 @@ public sealed class UIManager
         {
             var toggleFill = tower.IsSandboxDisabled ? ColorPalette.Green : ColorPalette.Orange;
             DrawSandboxButton(batch, p, _sandboxToggleTowerButton, tower.IsSandboxDisabled ? "ENABLE" : "DISABLE",
-                !_readOnlyInspection, toggleFill);
+                !_readOnlyInspection, toggleFill, "D");
         }
         var power = session.Map.GetPowerBuff(tower.Position);
         var powerNodes = session.Map.GetPowerNodes(tower.Position);
@@ -2495,38 +2532,39 @@ public sealed class UIManager
             var firstFill = tower.Definition.Visual.PrimaryColor;
             var firstText = TowerIntelPrimaryUpgradeTextColor(tower.Definition);
             DrawButton(batch, p, _targetButton, TargetButtonLabel(tower), canManage, ColorPalette.Cyan,
-                session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Cyan) : null);
+                session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Cyan) : null, "T");
             DrawButton(batch, p, _specializationAButton, $"{firstLabel.ToUpperInvariant()} {firstCost}", canManage && session.Economy.CanAfford(firstCost),
-                firstFill, firstText);
+                firstFill, firstText, "U");
             DrawButton(batch, p, _specializationBButton, $"{secondLabel.ToUpperInvariant()} {secondCost}", canManage && session.Economy.CanAfford(secondCost),
-                ColorPalette.Violet, session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Violet) : null);
+                ColorPalette.Violet, session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Violet) : null, "I");
             if (session.IsSandbox)
-                DrawSandboxButton(batch, p, _sandboxRemoveTowerButton, "REMOVE", canManage, ColorPalette.Coral);
+                DrawSandboxButton(batch, p, _sandboxRemoveTowerButton, "REMOVE", canManage, ColorPalette.Coral, "DEL");
             else
-                DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange);
+                DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange, hotkey: "DEL");
             DrawTargetPicker(batch, p, tower, canManage);
             return;
         }
         if (!tower.IsSupport)
             DrawButton(batch, p, _targetButton, TargetButtonLabel(tower), canManage, ColorPalette.Cyan,
-                session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Cyan) : null);
+                session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Cyan) : null, "T");
         var apexAvailable = session.CanApexUpgrade(tower);
         var upgradeCost = apexAvailable ? tower.ApexUpgradeCost : tower.UpgradeCost;
         var upgradeLabel = tower.CanUpgrade ? $"UP {tower.UpgradeCost}"
-            : apexAvailable ? $"[X] APEX {tower.ApexUpgradeCost}"
+            : apexAvailable ? $"APEX {tower.ApexUpgradeCost}"
             : tower.IsApex ? "APEX"
             : session.IsEndlessMode && tower.Definition.Apex is not null ? $"APEX W{GameConstants.ApexUnlockWave}"
             : "MAX";
+        var upgradeHotkey = tower.CanUpgrade ? "U" : apexAvailable ? "X" : null;
         DrawButton(batch, p, _upgradeButton, upgradeLabel,
             canManage && (tower.CanUpgrade || apexAvailable) && session.Economy.CanAfford(upgradeCost), ColorPalette.Violet,
-            session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Violet) : null);
+            session.IsSandbox ? ContrastAwareButtonTextColor(ColorPalette.Violet) : null, upgradeHotkey);
         if (session.IsSandbox)
         {
             _sandboxRemoveTowerButton = _sellButton;
-            DrawSandboxButton(batch, p, _sandboxRemoveTowerButton, "REMOVE", canManage, ColorPalette.Coral);
+            DrawSandboxButton(batch, p, _sandboxRemoveTowerButton, "REMOVE", canManage, ColorPalette.Coral, "DEL");
         }
         else
-            DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange);
+            DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange, hotkey: "DEL");
         if (!tower.IsSupport) DrawTargetPicker(batch, p, tower, canManage);
     }
 
@@ -2802,8 +2840,10 @@ public sealed class UIManager
         _upgradeButton = new Rectangle(1074, 646, 92, 30);
         _sellButton = new Rectangle(1172, 646, 94, 30);
         var canManage = !_readOnlyInspection;
-        DrawButton(batch, p, _upgradeButton, active.CanUpgrade ? $"UP {active.UpgradeCost}" : "MAX", canManage && active.CanUpgrade && session.Economy.CanAfford(active.UpgradeCost), ColorPalette.Violet);
-        DrawButton(batch, p, _sellButton, $"SELL {active.SellValue}", canManage, ColorPalette.Orange);
+        DrawButton(batch, p, _upgradeButton, active.CanUpgrade ? $"UP {active.UpgradeCost}" : "MAX",
+            canManage && active.CanUpgrade && session.Economy.CanAfford(active.UpgradeCost), ColorPalette.Violet,
+            hotkey: active.CanUpgrade ? "U" : null);
+        DrawButton(batch, p, _sellButton, $"SELL {active.SellValue}", canManage, ColorPalette.Orange, hotkey: "DEL");
     }
 
     private void DrawPlacementStatus(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -3895,11 +3935,12 @@ public sealed class UIManager
         [
             "SPACE: START / READY WAVE    S: 1x / 2x SPEED",
             "ESC/P: PAUSE    TAB: CO-OP LIBRARY",
-            "LEFT/RIGHT: CHANGE LIBRARY PAGE",
-            "1-0: SELECT    U: UPGRADE    X: APEX",
-            "T: TARGET    DELETE: SELL",
-            "Q: PLATE    G: FORGE    E: PROTOCOL",
-            "A: TOGGLE AUTO    MIDDLE CLICK: PING"
+            "LEFT/RIGHT: LIBRARY PAGE    MIDDLE: PING",
+            "1-0: SELECT    U/I: UPGRADE CHOICES",
+            "X: APEX    T: TARGET    DELETE: SELL",
+            "Q: PLATE    G: FORGE    E: PROTOCOL    A: AUTO",
+            "SANDBOX [ ]: ENEMY    G/K/H: GROUP/RANK/HP",
+            "SANDBOX F/R/C/D: SPAWN/RESET/CLEAR/TOGGLE"
         ]);
 
         DrawSystemCard(batch, p, new Rectangle(firstX + cardWidth + gap, firstY, cardWidth, cardHeight),
@@ -4361,14 +4402,11 @@ public sealed class UIManager
     private static Rectangle CampaignLibraryMapRow(int index) => new(66, 148 + index * 116, 244, 102);
 
     private void DrawSandboxButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string text, bool enabled,
-        Color fillColor) =>
-        DrawButton(batch, p, rect, text, enabled, fillColor, ContrastAwareButtonTextColor(fillColor));
+        Color fillColor, string? hotkey = null) =>
+        DrawButton(batch, p, rect, text, enabled, fillColor, ContrastAwareButtonTextColor(fillColor), hotkey);
 
-    private void DrawSandboxTwoLineButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string shortcut,
-        string action, bool enabled, Color fillColor) =>
-        DrawTwoLineButton(batch, p, rect, shortcut, action, enabled, fillColor, ContrastAwareButtonTextColor(fillColor));
-
-    private void DrawButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string text, bool enabled, Color fillColor, Color? textColor = null)
+    private void DrawButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string text, bool enabled,
+        Color fillColor, Color? textColor = null, string? hotkey = null)
     {
         if (string.IsNullOrEmpty(text)) return;
         var background = enabled ? fillColor : ColorPalette.Disabled;
@@ -4376,19 +4414,25 @@ public sealed class UIManager
         p.DrawRect(batch, rect, enabled ? ColorPalette.Ink : ColorPalette.Muted, enabled ? 2 : 1);
         var scale = 0.65f;
         var measured = _font.MeasureString(text).X * scale * GameConstants.FontDrawScale;
-        if (measured > rect.Width - 12) scale *= (rect.Width - 12) / measured;
+        var badgeAllowance = string.IsNullOrWhiteSpace(hotkey) ? 0 : Math.Min(12, rect.Width / 8);
+        if (measured > rect.Width - 12 - badgeAllowance) scale *= (rect.Width - 12 - badgeAllowance) / measured;
         DrawText(batch, text, new Vector2(rect.Center.X, rect.Center.Y), enabled ? textColor ?? ColorPalette.Paper : ColorPalette.Muted, MathF.Max(0.38f, scale), true);
+        if (!string.IsNullOrWhiteSpace(hotkey)) DrawHotkeyBadge(batch, p, rect, hotkey, enabled);
     }
 
-    private void DrawTwoLineButton(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string shortcut, string action,
-        bool enabled, Color fillColor, Color? textColor = null)
+    private void DrawHotkeyBadge(SpriteBatch batch, PrimitiveRenderer p, Rectangle button, string hotkey, bool enabled)
     {
-        var background = enabled ? fillColor : ColorPalette.Disabled;
-        var foreground = enabled ? textColor ?? ColorPalette.Paper : ColorPalette.Muted;
-        p.FillRect(batch, rect, background);
-        p.DrawRect(batch, rect, enabled ? ColorPalette.Ink : ColorPalette.Muted, enabled ? 2 : 1);
-        DrawFittedCenteredText(batch, shortcut, new Vector2(rect.Center.X, rect.Y + 8), foreground, 0.40f, rect.Width - 10);
-        DrawFittedCenteredText(batch, action, new Vector2(rect.Center.X, rect.Y + 20), foreground, 0.37f, rect.Width - 8);
+        var label = hotkey.ToUpperInvariant();
+        var height = Math.Clamp(button.Height / 3, 9, 12);
+        var labelScale = height <= 9 ? 0.24f : 0.27f;
+        var measuredWidth = _font.MeasureString(label).X * labelScale * GameConstants.FontDrawScale;
+        var width = Math.Max(height, (int)MathF.Ceiling(measuredWidth) + 5);
+        var badge = new Rectangle(button.Right - width - 3, button.Y + 3, width, height);
+        var fill = enabled ? ColorPalette.Navy : ColorPalette.Muted;
+        var foreground = enabled ? ColorPalette.Paper : ColorPalette.PanelAlt;
+        p.FillRect(batch, badge, fill);
+        p.DrawRect(batch, badge, foreground, 1);
+        DrawFittedCenteredText(batch, label, badge.Center.ToVector2(), foreground, labelScale, badge.Width - 3);
     }
 
     private string DescribeSpecial(TowerInstance tower)
