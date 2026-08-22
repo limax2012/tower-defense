@@ -701,6 +701,11 @@ public sealed class VisualVerificationGame : Game
         Require(ui.CareerMedalPage == 1 && ui.CareerAchievementPage == 1,
             "Career medal and achievement catalogs expose independent later pages.", assertions);
         scenes.Add(Capture("13c-career-catalog-pages.png", ui, GameState.RunHistory, null));
+        for (var page = 0; page < 5; page++)
+            _ = ui.HandleRunHistory(Pointer(1210, 198, leftPressed: true));
+        Require(ui.CareerAchievementPage == 6,
+            "Career progression exposes its final Honors and completion goals.", assertions);
+        scenes.Add(Capture("13d-career-completion-goals.png", ui, GameState.RunHistory, null));
         Require(ui.HandleRunHistory(Pointer(640, 670, leftPressed: true)) == UiAction.None && !ui.IsRunHistoryCareerOpen,
             "The career overview returns to Run History without changing its selected run.", assertions);
         Require(ui.HandleRunHistory(Pointer(480, 543, leftPressed: true)) == UiAction.None && ui.IsRunHistoryDetailOpen,

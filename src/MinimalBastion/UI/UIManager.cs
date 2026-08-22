@@ -3319,8 +3319,11 @@ public sealed class UIManager
         DrawMenuFrame(batch, p);
         var career = CareerProgression.Analyze(_runHistory);
         DrawText(batch, "MEDALS & RECORDS", new Vector2(640, 45), ColorPalette.Ink, 1.35f, true);
-        DrawText(batch, "Career milestones are derived from completed defenses retained in Run History.",
-            new Vector2(640, 76), ColorPalette.Muted, 0.50f, true);
+        var nextAchievement = career.Achievements.FirstOrDefault(achievement => !achievement.IsUnlocked);
+        var careerSummary = nextAchievement is null
+            ? $"ALL {career.Achievements.Count} ACHIEVEMENTS COMPLETE"
+            : $"{career.AchievementsUnlocked}/{career.Achievements.Count} ACHIEVEMENTS  |  NEXT: {nextAchievement.DisplayName.ToUpperInvariant()}";
+        DrawFittedCenteredText(batch, careerSummary, new Vector2(640, 76), ColorPalette.Muted, 0.50f, 1120);
 
         const int cardY = 96;
         DrawResultStatCard(batch, p, new Rectangle(50, cardY, 275, 58), "CAMPAIGNS SECURED", career.CampaignsSecured.ToString(), ColorPalette.Green);
@@ -3367,19 +3370,22 @@ public sealed class UIManager
         var achievementPanel = new Rectangle(450, 174, 790, 456);
         p.FillRect(batch, achievementPanel, ColorPalette.PanelAlt);
         p.DrawRect(batch, achievementPanel, ColorPalette.CardOutline, 1);
-        DrawText(batch, "ACHIEVEMENTS", new Vector2(466, 190), ColorPalette.Navy, 0.68f);
         const int achievementsPerPage = 8;
         var achievementPageCount = Math.Max(1, (career.Achievements.Count + achievementsPerPage - 1) / achievementsPerPage);
         _careerAchievementPage = Math.Clamp(_careerAchievementPage, 0, achievementPageCount - 1);
+        var visibleAchievements = career.Achievements
+            .Skip(_careerAchievementPage * achievementsPerPage)
+            .Take(achievementsPerPage)
+            .ToArray();
+        DrawText(batch, $"ACHIEVEMENTS {career.AchievementsUnlocked}/{career.Achievements.Count}",
+            new Vector2(466, 190), ColorPalette.Navy, 0.68f);
+        DrawTextRight(batch, visibleAchievements.FirstOrDefault()?.Category.ToUpperInvariant() ?? "CAREER",
+            new Vector2(1118, 194), ColorPalette.Violet, 0.38f);
         DrawButton(batch, p, _careerAchievementPreviousButton, "<", _careerAchievementPage > 0, ColorPalette.Violet);
         DrawFittedCenteredText(batch, $"{_careerAchievementPage + 1}/{achievementPageCount}", new Vector2(1180, 198),
             ColorPalette.Muted, 0.28f, 26);
         DrawButton(batch, p, _careerAchievementNextButton, ">", _careerAchievementPage + 1 < achievementPageCount, ColorPalette.Violet);
         p.FillRect(batch, new Rectangle(466, 216, 758, 2), ColorPalette.Violet);
-        var visibleAchievements = career.Achievements
-            .Skip(_careerAchievementPage * achievementsPerPage)
-            .Take(achievementsPerPage)
-            .ToArray();
         for (var index = 0; index < visibleAchievements.Length; index++)
         {
             var achievement = visibleAchievements[index];

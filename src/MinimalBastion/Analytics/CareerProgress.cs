@@ -14,6 +14,7 @@ public sealed record CareerMedalProgress(
 
 public sealed record CareerAchievement(
     string Id,
+    string Category,
     string DisplayName,
     string Description,
     bool IsUnlocked,
@@ -27,6 +28,7 @@ public sealed class CareerProgress
     public int CampaignsSecured { get; init; }
     public int TotalMedals { get; init; }
     public int MedalTypesUnlocked { get; init; }
+    public int AchievementsUnlocked { get; init; }
     public int MapsSecured { get; init; }
     public RunHistoryEntry? DeepestRun { get; init; }
     public RunHistoryEntry? FastestClear { get; init; }
@@ -36,12 +38,28 @@ public sealed class CareerProgress
 
 public static class CareerProgression
 {
+    private static readonly string[] RequiredMaps =
+    [
+        "foundry_loop",
+        "crosswind_basin",
+        "prism_circuit",
+        "relay_divide"
+    ];
+
     private static readonly string[] RequiredDirectives =
     [
         "standard",
         "close_quarters",
         "core_six",
         "no_reserves"
+    ];
+
+    private static readonly string[] RequiredDifficulties =
+    [
+        "easy",
+        "normal",
+        "hard",
+        "bastion"
     ];
 
     private static readonly RunMedalDefinition[] MedalCatalog =
@@ -65,7 +83,15 @@ public static class CareerProgression
         new("rapid_response", "Rapid Response", "Secure a campaign within 20 defense minutes."),
         new("apex_line", "Apex Line", "Finish with at least six Apex towers."),
         new("mastery", "Mastery", $"Reach authored wave {GameConstants.MasteryFinalWave}."),
-        new("deep_endless", "Deep Endless", "Reach endless wave 50.")
+        new("deep_endless", "Deep Endless", "Reach endless wave 50."),
+        new("iron_bastion", "Iron Bastion", "Secure Bastion without a leak."),
+        new("gauntlet_bastion", "Signal Bastion", "Secure Signal Gauntlet on Bastion."),
+        new("core_bastion", "Core Bastion", "Secure Core Six on Bastion."),
+        new("entrenched_bastion", "Entrenched Bastion", "Secure Entrenched on Bastion."),
+        new("tactical_triad", "Tactical Triad", "Secure with 10 Protocols, 10 Plate kills, and 5 forged charges."),
+        new("bastion_mastery", "Bastion Mastery", $"Reach authored wave {GameConstants.MasteryFinalWave} on Bastion."),
+        new("endless_75", "Endless 75", "Reach endless wave 75."),
+        new("century_hold", "Century Hold", "Reach endless wave 100.")
     ];
 
     public static IReadOnlyList<RunMedalDefinition> AllMedals => MedalCatalog;
@@ -77,19 +103,67 @@ public static class CareerProgression
     {
         var runs = entries.OrderByDescending(entry => entry.CompletedAtUtc).ToArray();
         var secured = runs.Where(SecuredCampaign).ToArray();
-        var mapsSecured = DistinctMaps(secured);
+        var mapsSecured = DistinctRequiredMaps(secured);
         var bastionSecured = secured.Where(IsBastion).ToArray();
-        var bastionMapsSecured = DistinctMaps(bastionSecured);
+        var bastionMapsSecured = DistinctRequiredMaps(bastionSecured);
         var challengesSecured = secured.Select(entry => entry.ChallengeId)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var directivesSecured = RequiredDirectives.Count(challengesSecured.Contains);
+        var difficultiesSecured = RequiredDifficulties.Count(difficulty =>
+            secured.Any(entry => entry.DifficultyId.Equals(difficulty, StringComparison.OrdinalIgnoreCase)));
+        var mapDifficultyPairs = DistinctPairs(secured, entry => entry.MapId, entry => entry.DifficultyId,
+            RequiredMaps, RequiredDifficulties);
+        var mapDirectivePairs = DistinctPairs(secured, entry => entry.MapId, entry => entry.ChallengeId,
+            RequiredMaps, RequiredDirectives);
         var deepestWave = runs.Select(entry => entry.CurrentWave).DefaultIfEmpty(0).Max();
-        var masteryMaps = runs.Where(entry => entry.CurrentWave >= GameConstants.MasteryFinalWave)
-            .Select(entry => entry.MapId).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        var masteryRuns = runs.Where(entry => entry.CurrentWave >= GameConstants.MasteryFinalWave).ToArray();
+        var masteryMaps = DistinctRequiredMaps(masteryRuns);
+        var masteryDirectives = RequiredDirectives.Count(directive =>
+            masteryRuns.Any(entry => entry.ChallengeId.Equals(directive, StringComparison.OrdinalIgnoreCase)));
+        var masteryMapDirectivePairs = DistinctPairs(masteryRuns, entry => entry.MapId, entry => entry.ChallengeId,
+            RequiredMaps, RequiredDirectives);
+        var bastionMasteryRuns = masteryRuns.Where(IsBastion).ToArray();
+        var bastionMasteryMaps = DistinctRequiredMaps(bastionMasteryRuns);
+        var bastionMasteryMapDirectivePairs = DistinctPairs(bastionMasteryRuns, entry => entry.MapId,
+            entry => entry.ChallengeId, RequiredMaps, RequiredDirectives);
+        var wave50Runs = runs.Where(entry => entry.CurrentWave >= 50).ToArray();
+        var wave50Maps = DistinctRequiredMaps(wave50Runs);
+        var wave50Directives = RequiredDirectives.Count(directive =>
+            wave50Runs.Any(entry => entry.ChallengeId.Equals(directive, StringComparison.OrdinalIgnoreCase)));
+        var wave50MapDirectivePairs = DistinctPairs(wave50Runs, entry => entry.MapId, entry => entry.ChallengeId,
+            RequiredMaps, RequiredDirectives);
+        var wave75Maps = DistinctRequiredMaps(runs.Where(entry => entry.CurrentWave >= 75));
+        var wave100Maps = DistinctRequiredMaps(runs.Where(entry => entry.CurrentWave >= 100));
         var coOpSecured = secured.Count(entry => entry.IsCoOp);
+        var coOpMaps = DistinctRequiredMaps(secured.Where(entry => entry.IsCoOp));
         var totalProtocols = runs.Sum(entry => (long)entry.ProtocolActivations);
         var totalPlateKills = runs.Sum(entry => (long)entry.PlateKills);
         var totalForgedCharges = runs.Sum(entry => (long)entry.ForgedCharges);
+        var towerTypesUsed = secured.SelectMany(entry => entry.Towers)
+            .Where(tower => tower.Purchases > 0)
+            .Select(tower => tower.TowerId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+        var finalTowers = secured.Where(entry => entry.FinalLayout is not null)
+            .SelectMany(entry => entry.FinalLayout!.Towers)
+            .ToArray();
+        var doctrinesSeen = finalTowers.Where(tower => !string.IsNullOrWhiteSpace(tower.DoctrineId))
+            .Select(tower => $"{tower.DefinitionId}:{tower.DoctrineId}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+        var rolesSeen = finalTowers.Where(tower => !string.IsNullOrWhiteSpace(tower.SpecializationId))
+            .Select(tower => $"{tower.DefinitionId}:{tower.SpecializationId}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+        var designsSeen = finalTowers.Where(tower => !string.IsNullOrWhiteSpace(tower.DoctrineId) &&
+                                                      !string.IsNullOrWhiteSpace(tower.SpecializationId))
+            .Select(tower => $"{tower.DefinitionId}:{tower.DoctrineId}:{tower.SpecializationId}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+        var apexTypes = finalTowers.Where(tower => tower.IsApex)
+            .Select(tower => tower.DefinitionId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
 
         var medals = MedalCatalog.Select(definition => new CareerMedalProgress(definition,
                 runs.Count(entry => EarnsMedal(entry, definition.Id))))
@@ -98,40 +172,83 @@ public static class CareerProgression
             StringComparer.OrdinalIgnoreCase);
         var totalMedals = medals.Sum(medal => medal.EarnedCount);
 
+        var medalTypesUnlocked = medals.Count(medal => medal.IsUnlocked);
+        var precisionHonors = MedalGroupCount(medalCounts, "flawless", "lean_grid", "minimal_grid", "specialist");
+        var tacticalHonors = MedalGroupCount(medalCounts, "early_command", "protocol_chain", "plate_ace", "forge_fed");
+        var bastionHonors = MedalGroupCount(medalCounts, "bastion", "iron_bastion", "gauntlet_bastion", "core_bastion", "entrenched_bastion", "bastion_mastery");
+        var enduranceHonors = MedalGroupCount(medalCounts, "mastery", "deep_endless", "endless_75", "century_hold");
+        var totalCommandRequirements =
+            (medalTypesUnlocked >= MedalCatalog.Length ? 1 : 0) +
+            (mapDifficultyPairs >= 16 ? 1 : 0) +
+            (bastionMasteryMapDirectivePairs >= 16 ? 1 : 0) +
+            (designsSeen >= 40 ? 1 : 0) +
+            (wave100Maps >= 4 ? 1 : 0) +
+            (secured.Length >= 50 ? 1 : 0);
+
         var achievements = new[]
         {
-            Tracked("first_hold", "First Hold", "Secure any campaign.", secured.Length, 1),
-            Tracked("seasoned_guard", "Seasoned Guard", "Secure 10 campaigns.", secured.Length, 10),
-            Tracked("veteran_guard", "Veteran Guard", "Secure 25 campaigns.", secured.Length, 25),
-            Tracked("cartographer", "Cartographer", "Secure all four arenas.", mapsSecured, 4),
-            Tracked("bastion_clear", "Bastion Clear", "Secure any arena on Bastion difficulty.", bastionSecured.Length, 1),
-            Tracked("bastion_circuit", "Bastion Circuit", "Secure all four arenas on Bastion.", bastionMapsSecured, 4),
-            Tracked("directive_master", "Directive Master", "Secure Standard, Gauntlet, Core Six, and Entrenched.", directivesSecured, 4),
-            Tracked("gauntlet_victor", "Signal Breaker", "Secure Signal Gauntlet.", SecuredDirective(secured, "close_quarters"), 1),
-            Tracked("core_commander", "Core Commander", "Secure Core Six.", SecuredDirective(secured, "core_six"), 1),
-            Tracked("entrenched_hold", "Entrenched Hold", "Secure Entrenched.", SecuredDirective(secured, "no_reserves"), 1),
-            Tracked("untouched", "Untouched", "Earn the Flawless medal.", MedalCount(medalCounts, "flawless"), 1),
-            Tracked("perfect_five", "Perfect Five", "Earn Flawless in five runs.", MedalCount(medalCounts, "flawless"), 5),
-            Tracked("lean_architect", "Lean Architect", "Earn the Lean Grid medal.", MedalCount(medalCounts, "lean_grid"), 1),
-            Tracked("minimal_architect", "Minimal Architect", "Earn the Minimal Grid medal.", MedalCount(medalCounts, "minimal_grid"), 1),
-            Tracked("specialist_seal", "Specialist Seal", "Earn the Specialist medal.", MedalCount(medalCounts, "specialist"), 1),
-            Tracked("arsenal_master", "Arsenal Master", "Earn the Full Spectrum medal.", MedalCount(medalCounts, "full_spectrum"), 1),
-            Tracked("pure_defender", "Pure Defender", "Earn the Pure Defense medal.", MedalCount(medalCounts, "pure_defense"), 1),
-            Tracked("last_stand", "Against the Brink", "Earn the Last Stand medal.", MedalCount(medalCounts, "last_stand"), 1),
-            Tracked("early_commander", "Early Commander", "Earn the Early Command medal.", MedalCount(medalCounts, "early_command"), 1),
-            Tracked("quartermaster", "Quartermaster", "Earn the War Chest medal.", MedalCount(medalCounts, "war_chest"), 1),
-            Tracked("protocol_authority", "Protocol Authority", "Activate 250 Protocols across retained runs.", totalProtocols, 250),
-            Tracked("plate_engineer", "Plate Engineer", "Defeat 500 threats with Pulse Plates.", totalPlateKills, 500),
-            Tracked("forge_network", "Forge Network", "Produce 100 forged charges.", totalForgedCharges, 100),
-            Tracked("apex_command", "Apex Command", "Earn the Apex Line medal.", MedalCount(medalCounts, "apex_line"), 1),
-            Tracked("mastery_30", "Mastery 30", $"Reach authored wave {GameConstants.MasteryFinalWave}.", deepestWave, GameConstants.MasteryFinalWave),
-            Tracked("mastery_circuit", "Mastery Circuit", "Reach wave 30 on all four arenas.", masteryMaps, 4),
-            Tracked("endless_50", "Endless 50", "Reach endless wave 50.", deepestWave, 50),
-            Tracked("endless_75", "Endless 75", "Reach endless wave 75.", deepestWave, 75),
-            Tracked("endless_100", "Endless 100", "Reach endless wave 100.", deepestWave, 100),
-            Tracked("allied_victory", "Allied Victory", "Secure an online co-op campaign.", coOpSecured, 1),
-            Tracked("allied_veteran", "Allied Veteran", "Secure five online co-op campaigns.", coOpSecured, 5),
-            Tracked("decorated", "Decorated", "Earn 50 run medals.", totalMedals, 50)
+            Tracked("Career", "first_hold", "First Hold", "Secure any campaign.", secured.Length, 1),
+            Tracked("Career", "field_tested", "Field Tested", "Secure five campaigns.", secured.Length, 5),
+            Tracked("Career", "seasoned_guard", "Seasoned Guard", "Secure ten campaigns.", secured.Length, 10),
+            Tracked("Career", "veteran_guard", "Veteran Guard", "Secure 25 campaigns.", secured.Length, 25),
+            Tracked("Career", "eternal_guard", "Eternal Guard", "Secure 50 campaigns.", secured.Length, 50),
+            Tracked("Career", "cartographer", "Cartographer", "Secure all four arenas.", mapsSecured, 4),
+            Tracked("Career", "difficulty_ladder", "Difficulty Ladder", "Secure campaigns on every difficulty.", difficultiesSecured, 4),
+            Tracked("Career", "world_tour", "World Tour", "Secure every arena on every difficulty.", mapDifficultyPairs, 16),
+
+            Tracked("Directives", "standard_circuit", "Standard Circuit", "Secure Standard on all four arenas.", SecuredMapsForDirective(secured, "standard"), 4),
+            Tracked("Directives", "signal_circuit", "Signal Circuit", "Secure Signal Gauntlet on all four arenas.", SecuredMapsForDirective(secured, "close_quarters"), 4),
+            Tracked("Directives", "core_circuit", "Core Circuit", "Secure Core Six on all four arenas.", SecuredMapsForDirective(secured, "core_six"), 4),
+            Tracked("Directives", "entrenched_circuit", "Entrenched Circuit", "Secure Entrenched on all four arenas.", SecuredMapsForDirective(secured, "no_reserves"), 4),
+            Tracked("Directives", "directive_master", "Directive Master", "Secure all four directives.", directivesSecured, 4),
+            Tracked("Directives", "doctrine_grid", "Doctrine Grid", "Secure every arena and directive pairing.", mapDirectivePairs, 16),
+            Tracked("Directives", "bastion_circuit", "Bastion Circuit", "Secure all four arenas on Bastion.", bastionMapsSecured, 4),
+            Tracked("Directives", "bastion_doctrine", "Bastion Doctrine", "Secure all four directives on Bastion.", RequiredDirectives.Count(directive => bastionSecured.Any(entry => entry.ChallengeId.Equals(directive, StringComparison.OrdinalIgnoreCase))), 4),
+
+            Tracked("Mastery", "mastery_veteran", "Mastery Veteran", "Complete five authored Mastery campaigns.", masteryRuns.Length, 5),
+            Tracked("Mastery", "mastery_explorer", "Mastery Explorer", "Reach wave 30 on two arenas.", masteryMaps, 2),
+            Tracked("Mastery", "mastery_circuit", "Mastery Circuit", "Reach wave 30 on all four arenas.", masteryMaps, 4),
+            Tracked("Mastery", "mastery_directives", "Mastery Directives", "Reach wave 30 with every directive.", masteryDirectives, 4),
+            Tracked("Mastery", "mastery_grid", "Mastery Grid", "Reach wave 30 for every arena and directive pairing.", masteryMapDirectivePairs, 16),
+            Tracked("Mastery", "bastion_mastery_veteran", "Bastion Master", "Complete five Mastery campaigns on Bastion.", bastionMasteryRuns.Length, 5),
+            Tracked("Mastery", "bastion_mastery_circuit", "Bastion Mastery Circuit", "Reach wave 30 on every arena on Bastion.", bastionMasteryMaps, 4),
+            Tracked("Mastery", "bastion_mastery_matrix", "Bastion Mastery Matrix", "Reach wave 30 for every arena and directive pairing on Bastion.", bastionMasteryMapDirectivePairs, 16),
+
+            Tracked("Endurance", "deep_explorer", "Deep Explorer", "Reach wave 50 on two arenas.", wave50Maps, 2),
+            Tracked("Endurance", "deep_circuit", "Deep Circuit", "Reach wave 50 on all four arenas.", wave50Maps, 4),
+            Tracked("Endurance", "endless_directives", "Endless Directives", "Reach wave 50 with every directive.", wave50Directives, 4),
+            Tracked("Endurance", "endless_matrix", "Endless Matrix", "Reach wave 50 for every arena and directive pairing.", wave50MapDirectivePairs, 16),
+            Tracked("Endurance", "deep_75_circuit", "Deep 75 Circuit", "Reach wave 75 on all four arenas.", wave75Maps, 4),
+            Tracked("Endurance", "century_circuit", "Century Circuit", "Reach wave 100 on all four arenas.", wave100Maps, 4),
+            Tracked("Endurance", "eternal_run", "Eternal Run", "Reach endless wave 150.", deepestWave, 150),
+            Tracked("Endurance", "last_light", "Last Light", "Reach endless wave 200.", deepestWave, 200),
+
+            Tracked("Arsenal", "full_arsenal", "Full Arsenal", "Deploy every tower type across secured campaigns.", towerTypesUsed, 10),
+            Tracked("Arsenal", "doctrine_scholar", "Doctrine Scholar", "Archive ten distinct tower and Tier 2 doctrine pairings.", doctrinesSeen, 10),
+            Tracked("Arsenal", "doctrine_complete", "Doctrine Complete", "Archive both Tier 2 doctrines for every tower.", doctrinesSeen, 20),
+            Tracked("Arsenal", "role_scholar", "Role Scholar", "Archive ten distinct tower and final-role pairings.", rolesSeen, 10),
+            Tracked("Arsenal", "role_complete", "Role Complete", "Archive both final roles for every tower.", rolesSeen, 20),
+            Tracked("Arsenal", "design_scholar", "Design Scholar", "Archive 20 distinct doctrine and final-role tower designs.", designsSeen, 20),
+            Tracked("Arsenal", "design_archive", "Design Archive", "Archive all 40 doctrine and final-role tower designs.", designsSeen, 40),
+            Tracked("Arsenal", "apex_arsenal", "Apex Arsenal", "Finish runs with every tower type promoted to Apex.", apexTypes, 10),
+
+            Tracked("Operations", "protocol_authority", "Protocol Authority", "Activate 250 Protocols across retained runs.", totalProtocols, 250),
+            Tracked("Operations", "protocol_command", "Protocol Command", "Activate 1,000 Protocols across retained runs.", totalProtocols, 1_000),
+            Tracked("Operations", "plate_engineer", "Plate Engineer", "Defeat 500 threats with Pulse Plates.", totalPlateKills, 500),
+            Tracked("Operations", "plate_corps", "Plate Corps", "Defeat 2,500 threats with Pulse Plates.", totalPlateKills, 2_500),
+            Tracked("Operations", "forge_network", "Forge Network", "Produce 100 forged charges.", totalForgedCharges, 100),
+            Tracked("Operations", "industrial_network", "Industrial Network", "Produce 500 forged charges.", totalForgedCharges, 500),
+            Tracked("Operations", "allied_veteran", "Allied Veteran", "Secure five online co-op campaigns.", coOpSecured, 5),
+            Tracked("Operations", "allied_circuit", "Allied Circuit", "Secure all four arenas in online co-op.", coOpMaps, 4),
+
+            Tracked("Honors", "medal_collector", "Medal Collector", "Discover seven distinct run-medal types.", medalTypesUnlocked, 7),
+            Tracked("Honors", "full_honors", "Full Honors", "Discover every run-medal type.", medalTypesUnlocked, MedalCatalog.Length),
+            Tracked("Honors", "decorated", "Decorated", "Earn 50 run medals across retained runs.", totalMedals, 50),
+            Tracked("Honors", "precision_honors", "Precision Honors", "Discover Flawless, Lean Grid, Minimal Grid, and Specialist.", precisionHonors, 4),
+            Tracked("Honors", "tactical_honors", "Tactical Honors", "Discover Early Command, Protocol Chain, Plate Ace, and Forge Fed.", tacticalHonors, 4),
+            Tracked("Honors", "bastion_honors", "Bastion Honors", "Discover all six Bastion run medals.", bastionHonors, 6),
+            Tracked("Honors", "endurance_honors", "Endurance Honors", "Discover Mastery, Deep Endless, Endless 75, and Century Hold.", enduranceHonors, 4),
+            Tracked("Honors", "total_command", "Total Command", "Complete the medal, campaign, Mastery, design, endurance, and service records.", totalCommandRequirements, 6)
         };
 
         return new CareerProgress
@@ -141,7 +258,8 @@ public static class CareerProgression
             Achievements = achievements,
             CampaignsSecured = secured.Length,
             TotalMedals = totalMedals,
-            MedalTypesUnlocked = medals.Count(medal => medal.IsUnlocked),
+            MedalTypesUnlocked = medalTypesUnlocked,
+            AchievementsUnlocked = achievements.Count(achievement => achievement.IsUnlocked),
             MapsSecured = mapsSecured,
             DeepestRun = runs.OrderByDescending(entry => entry.CurrentWave).ThenByDescending(entry => entry.Lives).FirstOrDefault(),
             FastestClear = secured.Where(entry => entry.DefenseSeconds > 0).OrderBy(entry => entry.DefenseSeconds).FirstOrDefault(),
@@ -187,6 +305,14 @@ public static class CareerProgression
             "apex_line" => apexTowers >= 6,
             "mastery" => entry.CurrentWave >= GameConstants.MasteryFinalWave,
             "deep_endless" => entry.CurrentWave >= 50,
+            "iron_bastion" => secured && IsBastion(entry) && entry.Leaks == 0,
+            "gauntlet_bastion" => secured && IsBastion(entry) && IsDirective(entry, "close_quarters"),
+            "core_bastion" => secured && IsBastion(entry) && IsDirective(entry, "core_six"),
+            "entrenched_bastion" => secured && IsBastion(entry) && IsDirective(entry, "no_reserves"),
+            "tactical_triad" => secured && entry.ProtocolActivations >= 10 && entry.PlateKills >= 10 && entry.ForgedCharges >= 5,
+            "bastion_mastery" => IsBastion(entry) && entry.CurrentWave >= GameConstants.MasteryFinalWave,
+            "endless_75" => entry.CurrentWave >= 75,
+            "century_hold" => entry.CurrentWave >= 100,
             _ => false
         };
     }
@@ -194,15 +320,36 @@ public static class CareerProgression
     private static bool IsBastion(RunHistoryEntry entry) =>
         entry.DifficultyId.Equals("bastion", StringComparison.OrdinalIgnoreCase);
 
-    private static int DistinctMaps(IEnumerable<RunHistoryEntry> entries) =>
-        entries.Select(entry => entry.MapId).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+    private static int DistinctRequiredMaps(IEnumerable<RunHistoryEntry> entries) =>
+        RequiredMaps.Count(mapId => entries.Any(entry => entry.MapId.Equals(mapId, StringComparison.OrdinalIgnoreCase)));
 
-    private static int SecuredDirective(IEnumerable<RunHistoryEntry> entries, string challengeId) =>
-        entries.Count(entry => entry.ChallengeId.Equals(challengeId, StringComparison.OrdinalIgnoreCase));
+    private static int SecuredMapsForDirective(IEnumerable<RunHistoryEntry> entries, string challengeId) =>
+        DistinctRequiredMaps(entries.Where(entry => IsDirective(entry, challengeId)));
+
+    private static bool IsDirective(RunHistoryEntry entry, string challengeId) =>
+        entry.ChallengeId.Equals(challengeId, StringComparison.OrdinalIgnoreCase);
+
+    private static int DistinctPairs(
+        IEnumerable<RunHistoryEntry> entries,
+        Func<RunHistoryEntry, string> first,
+        Func<RunHistoryEntry, string> second,
+        IReadOnlyCollection<string>? allowedFirst,
+        IReadOnlyCollection<string>? allowedSecond)
+    {
+        return entries.Where(entry =>
+                (allowedFirst is null || allowedFirst.Contains(first(entry), StringComparer.OrdinalIgnoreCase)) &&
+                (allowedSecond is null || allowedSecond.Contains(second(entry), StringComparer.OrdinalIgnoreCase)))
+            .Select(entry => $"{first(entry)}\n{second(entry)}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+    }
 
     private static int MedalCount(IReadOnlyDictionary<string, int> counts, string medalId) =>
         counts.GetValueOrDefault(medalId);
 
-    private static CareerAchievement Tracked(string id, string name, string description, long current, long target) =>
-        new(id, name, description, current >= target, $"{Math.Min(current, target):N0}/{target:N0}");
+    private static int MedalGroupCount(IReadOnlyDictionary<string, int> counts, params string[] medalIds) =>
+        medalIds.Count(medalId => MedalCount(counts, medalId) > 0);
+
+    private static CareerAchievement Tracked(string category, string id, string name, string description, long current, long target) =>
+        new(id, category, name, description, current >= target, $"{Math.Min(current, target):N0}/{target:N0}");
 }

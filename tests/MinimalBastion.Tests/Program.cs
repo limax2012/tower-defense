@@ -5154,36 +5154,37 @@ internal static class Program
     {
         var mapIds = new[] { "foundry_loop", "crosswind_basin", "prism_circuit", "relay_divide" };
         var challengeIds = new[] { "standard", "close_quarters", "core_six", "no_reserves" };
+        var difficultyIds = new[] { "easy", "normal", "hard", "bastion" };
         var towerIds = new[]
         {
             "needle_turret", "frost_spire", "shard_fan", "watchtower", "ember_coil",
             "breaker_cannon", "signal_beacon", "arc_relay", "siege_mortar", "prism_beam"
         };
-        var runs = Enumerable.Range(0, 25).Select(index => new RunHistoryEntry
+        var runs = Enumerable.Range(0, 64).Select(index => new RunHistoryEntry
         {
             RunId = $"career-{index}",
             CompletedAtUtc = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc).AddDays(index),
             Victory = true,
-            IsEndless = index == 0,
-            IsCoOp = index < 5,
+            IsEndless = true,
+            IsCoOp = true,
             MapId = mapIds[index % mapIds.Length],
             MapName = mapIds[index % mapIds.Length],
-            DifficultyId = "bastion",
-            DifficultyName = "Bastion",
-            ChallengeId = challengeIds[index % challengeIds.Length],
-            ChallengeName = challengeIds[index % challengeIds.Length],
-            CurrentWave = index == 0 ? 100 : GameConstants.MasteryFinalWave,
+            DifficultyId = difficultyIds[index / 16],
+            DifficultyName = difficultyIds[index / 16],
+            ChallengeId = challengeIds[index / 4 % challengeIds.Length],
+            ChallengeName = challengeIds[index / 4 % challengeIds.Length],
+            CurrentWave = index == 0 ? 250 : 200,
             TotalWaves = GameConstants.CampaignWaveCount,
             Lives = index == 2 ? 3 : 18,
             StartingLives = 18,
             Leaks = 0,
-            CreditsRemaining = index == 0 ? 6_000 : 1000 + index,
-            EarlyCallCredits = index == 0 ? 240 : 0,
-            ProtocolActivations = index == 0 ? 250 : 0,
-            PlateKills = index == 0 ? 500 : 0,
-            ForgedCharges = index == 0 ? 100 : 0,
+            CreditsRemaining = index == 0 ? 10_000 : 6_000,
+            EarlyCallCredits = 240,
+            ProtocolActivations = index == 3 ? 0 : 20,
+            PlateKills = index == 3 ? 0 : 50,
+            ForgedCharges = index == 3 ? 0 : 10,
             DefenseSeconds = 900 + index * 10,
-            Towers = towerIds.Take(index == 0 ? 10 : 4).Select(towerId => new RunHistoryTowerEntry
+            Towers = towerIds.Take(index == 1 ? 4 : 10).Select(towerId => new RunHistoryTowerEntry
             {
                 TowerId = towerId,
                 DisplayName = towerId,
@@ -5192,29 +5193,40 @@ internal static class Program
             }).ToList(),
             FinalLayout = new RunHistoryLayoutSnapshot
             {
-                Towers = Enumerable.Range(1, 8).Select(id => new TowerSaveData
+                Towers = towerIds.Select((towerId, towerIndex) => new TowerSaveData
                 {
-                    Id = id,
-                    DefinitionId = towerIds[(id - 1) % towerIds.Length],
-                    IsApex = index == 0
+                    Id = towerIndex + 1,
+                    DefinitionId = towerId,
+                    DoctrineId = index % 2 == 0 ? "alpha" : "beta",
+                    SpecializationId = index / 2 % 2 == 0 ? "alpha" : "beta",
+                    IsApex = true
                 }).ToList()
             }
         }).ToArray();
 
         var progress = CareerProgression.Analyze(runs);
-        Check.Equal(25, progress.CampaignsSecured, "career record counts secured campaigns");
+        Check.Equal(64, progress.CampaignsSecured, "career record counts secured campaigns");
         Check.Equal(4, progress.MapsSecured, "career record counts unique secured arenas");
-        Check.Equal(20, CareerProgression.AllMedals.Count, "career catalog exposes the full run-medal set");
-        Check.Equal(32, progress.Achievements.Count, "career catalog exposes long-term achievement goals");
-        Check.Equal(20, progress.MedalTypesUnlocked, "representative clears discover every run-medal type");
+        Check.Equal(28, CareerProgression.AllMedals.Count, "career catalog exposes ordinary and exceptional run medals");
+        Check.Equal(56, progress.Achievements.Count, "career catalog exposes a complete long-term goal ladder");
+        Check.Equal(28, progress.MedalTypesUnlocked, "representative clears discover every run-medal type");
+        Check.Equal(56, progress.AchievementsUnlocked, "representative career completes every achievement category");
         Check.True(progress.Achievements.All(achievement => achievement.IsUnlocked),
             "representative clears unlock every authored career achievement");
+        Check.True(progress.Achievements.GroupBy(achievement => achievement.Category)
+                .All(category => category.Count() == 8),
+            "achievement pages form complete eight-goal categories");
+        Check.True(progress.Achievements.All(achievement =>
+                !achievement.Description.StartsWith("Earn the ", StringComparison.OrdinalIgnoreCase)),
+            "career achievements do not duplicate a single run medal");
         var deepRunMedals = CareerProgression.MedalsFor(runs[0]).Select(medal => medal.Id).ToHashSet();
         Check.True(deepRunMedals.Contains("deep_endless") && deepRunMedals.Contains("apex_line") &&
-                   deepRunMedals.Contains("full_spectrum") && deepRunMedals.Contains("allied_hold"),
-            "a deep optimized co-op run earns its distinct endurance and composition medals");
+                   deepRunMedals.Contains("century_hold") && deepRunMedals.Contains("allied_hold"),
+            "a deep optimized co-op run earns its distinct endurance and alliance medals");
         Check.True(CareerProgression.MedalsFor(runs[1]).Any(medal => medal.Id == "bare_metal"),
             "a clear without permanent upgrades earns Bare Metal");
+        Check.True(CareerProgression.MedalsFor(runs[60]).Any(medal => medal.Id == "entrenched_bastion"),
+            "a Bastion Entrenched clear earns its exceptional directive medal");
         Check.Equal("career-0", progress.DeepestRun!.RunId, "career record identifies the deepest run");
         Check.Equal("career-0", progress.FastestClear!.RunId, "career record identifies the fastest clear");
         Check.Equal("career-0", progress.HighestReserveClear!.RunId, "career record identifies the highest reserve clear");
