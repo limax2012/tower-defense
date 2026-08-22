@@ -43,14 +43,14 @@ public sealed class AudioManager : IDisposable
             _sounds[Cue.Sell] = CreateTone(360, 210, 0.12f, WaveShape.Triangle);
             _sounds[Cue.Protocol] = CreateChord(390, 585, 0.20f);
             _sounds[Cue.Kill] = CreateTone(720, 560, 0.045f, WaveShape.Square);
-            _sounds[Cue.Leak] = CreateTone(132, 82, 0.18f, WaveShape.Triangle);
+            _sounds[Cue.Leak] = CreateTone(392, 392, 0.10f, WaveShape.Sine);
             _sounds[Cue.WaveStart] = CreateTone(260, 540, 0.24f, WaveShape.Triangle);
             _sounds[Cue.WaveClear] = CreateChord(520, 780, 0.28f);
             _sounds[Cue.Plate] = CreateNoisePulse(0.11f);
             _sounds[Cue.Forge] = CreateTone(620, 980, 0.16f, WaveShape.Sine);
             _sounds[Cue.BossPhase] = CreateTone(230, 105, 0.34f, WaveShape.Saw);
             _sounds[Cue.Victory] = CreateTriad(392, 523, 659, 0.48f);
-            _sounds[Cue.Defeat] = CreateTone(158, 64, 0.42f, WaveShape.Triangle);
+            _sounds[Cue.Defeat] = CreateTwoNoteCue(392, 330, 0.30f);
             _sounds[Cue.UiConfirm] = CreateTone(410, 620, 0.075f, WaveShape.Sine);
             _sounds[Cue.UiBack] = CreateTone(430, 300, 0.075f, WaveShape.Triangle);
             _sounds[Cue.UiDelete] = CreateTone(230, 150, 0.10f, WaveShape.Saw);
@@ -164,12 +164,12 @@ public sealed class AudioManager : IDisposable
         {
             if (_defeatCuePlayed) return;
             _defeatCuePlayed = true;
-            Play(Cue.Defeat, 0.58f);
+            Play(Cue.Defeat, 0.32f);
             return;
         }
         if (_leakCooldown > 0) return;
         _leakCooldown = 0.18f;
-        Play(Cue.Leak, 0.50f);
+        Play(Cue.Leak, 0.26f);
     }
 
     private void Play(Cue cue, float cueVolume, float pitch = 0)
@@ -334,6 +334,26 @@ public sealed class AudioManager : IDisposable
                        MathF.Sin(MathHelper.TwoPi * secondFrequency * time) * 0.34f +
                        MathF.Sin(MathHelper.TwoPi * thirdFrequency * time) * 0.28f;
             samples[index] = ToSample(wave * Envelope(t) * 0.27f);
+        }
+        return CreateSoundEffect(samples);
+    }
+
+    private static SoundEffect CreateTwoNoteCue(float firstFrequency, float secondFrequency, float seconds)
+    {
+        var count = Math.Max(2, (int)(SampleRate * seconds));
+        var samples = new short[count];
+        var split = count / 2;
+        for (var index = 0; index < count; index++)
+        {
+            var firstNote = index < split;
+            var noteStart = firstNote ? 0 : split;
+            var noteLength = firstNote ? split : count - split;
+            var noteTime = (index - noteStart) / (float)Math.Max(1, noteLength - 1);
+            var frequency = firstNote ? firstFrequency : secondFrequency;
+            var time = (index - noteStart) / (float)SampleRate;
+            var envelope = MathF.Sin(MathF.PI * noteTime);
+            var wave = MathF.Sin(MathHelper.TwoPi * frequency * time);
+            samples[index] = ToSample(wave * envelope * envelope * 0.18f);
         }
         return CreateSoundEffect(samples);
     }
