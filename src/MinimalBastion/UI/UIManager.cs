@@ -1153,6 +1153,8 @@ public sealed class UIManager
             ToggleTargetPicker(session);
             return UiAction.None;
         }
+        if (input.ApexPressed && session.SelectedTower is { } apexTower && session.CanApexUpgrade(apexTower))
+            RequestUpgrade(session, commandSink, playerId);
         if (input.UpgradePressed) RequestUpgrade(session, commandSink, playerId);
         if (input.SellPressed)
         {
@@ -2511,7 +2513,7 @@ public sealed class UIManager
         var apexAvailable = session.CanApexUpgrade(tower);
         var upgradeCost = apexAvailable ? tower.ApexUpgradeCost : tower.UpgradeCost;
         var upgradeLabel = tower.CanUpgrade ? $"UP {tower.UpgradeCost}"
-            : apexAvailable ? $"APEX {tower.ApexUpgradeCost}"
+            : apexAvailable ? $"[X] APEX {tower.ApexUpgradeCost}"
             : tower.IsApex ? "APEX"
             : session.IsEndlessMode && tower.Definition.Apex is not null ? $"APEX W{GameConstants.ApexUnlockWave}"
             : "MAX";
@@ -3894,10 +3896,10 @@ public sealed class UIManager
             "SPACE: START / READY WAVE    S: 1x / 2x SPEED",
             "ESC/P: PAUSE    TAB: CO-OP LIBRARY",
             "LEFT/RIGHT: CHANGE LIBRARY PAGE",
-            "1-0: SELECT    U: UPGRADE    T: TARGET",
-            "DELETE: SELL    Q: PLATE    G: FORGE",
-            "E: ACTIVATE PROTOCOL    A: TOGGLE AUTO",
-            "MIDDLE CLICK: CO-OP LOCATION PING"
+            "1-0: SELECT    U: UPGRADE    X: APEX",
+            "T: TARGET    DELETE: SELL",
+            "Q: PLATE    G: FORGE    E: PROTOCOL",
+            "A: TOGGLE AUTO    MIDDLE CLICK: PING"
         ]);
 
         DrawSystemCard(batch, p, new Rectangle(firstX + cardWidth + gap, firstY, cardWidth, cardHeight),

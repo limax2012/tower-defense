@@ -40,7 +40,7 @@ public static class TowerInfo
         if (apex.AttackSpeedMultiplier > 1f) effects.Add($"RATE +{apex.AttackSpeedMultiplier - 1:P0}");
         if (apex.RangeMultiplier > 1f) effects.Add($"RANGE +{apex.RangeMultiplier - 1:P0}");
         if (apex.UtilityMultiplier > 1f) effects.Add($"UTILITY +{apex.UtilityMultiplier - 1:P0}");
-        return $"APEX AFTER W30  |  UPGRADE {apex.UpgradeCost}  |  {string.Join("  ", effects)}";
+        return $"MASTERY APEX  |  [X] PROMOTE {apex.UpgradeCost}  |  {string.Join("  ", effects)}";
     }
 
     public static float RawDps(TowerLevelDefinition level) => level.Damage * level.AttacksPerSecond * Math.Max(1, level.PelletCount);

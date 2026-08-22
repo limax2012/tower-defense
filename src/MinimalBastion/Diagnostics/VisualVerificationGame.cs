@@ -553,8 +553,9 @@ public sealed class VisualVerificationGame : Game
         _ = RenderPixels(ui, GameState.Playing, apexSession);
         _ = ui.HandleGameplayInput(Pointer(1120, 693), apexSession);
         scenes.Add(Capture("10f-apex-upgrade-preview.png", ui, GameState.Playing, apexSession));
-        Require(apexSession.TryUpgradeSelectedTower(),
-            "Mastery Fundamentals scene purchases the Apex promotion.", assertions);
+        _ = ui.HandleGameplayInput(Pointer(0, 0) with { ApexPressed = true }, apexSession);
+        Require(apexSession.SelectedTower!.IsApex,
+            "The X hotkey purchases an eligible Apex promotion.", assertions);
         _ = ui.HandleGameplayInput(Pointer(0, 0), apexSession);
         var promotedApexPixels = RenderPixels(ui, GameState.Playing, apexSession);
         Require(CountColorPixels(promotedApexPixels, new Rectangle(1204, 484, 58, 22), ColorPalette.Violet) >= 10,

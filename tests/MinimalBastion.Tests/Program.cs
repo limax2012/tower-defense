@@ -5041,6 +5041,11 @@ internal static class Program
             "Fundamentals restrictions remain active alongside permanent Apex progression");
         Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "place Apex test tower");
         var tower = session.Towers.Single();
+        var apexUi = new UIManager(null!);
+        GameCommand? apexCommand = null;
+        apexUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { ApexPressed = true }, session,
+            command => apexCommand = command, 2);
+        Check.True(apexCommand is null, "Apex hotkey does not buy an ordinary tower upgrade");
         Check.True(session.TryUpgradeTower(tower.Id), "reach the tier two branch point");
         Check.True(session.TrySpecializeTower(tower.Id, "alpha"), "complete the tower's final role");
         var damageBefore = tower.Level.Damage;
@@ -5048,7 +5053,12 @@ internal static class Program
         var rangeBefore = tower.Level.Range;
         var investedBefore = tower.InvestedCredits;
         Check.True(session.CanApexUpgrade(tower), "maximum-level tower exposes its Apex promotion");
-        Check.True(session.TryUpgradeTower(tower.Id, 2), "either co-op player can buy the shared Apex promotion");
+        apexUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { ApexPressed = true }, session,
+            command => apexCommand = command, 2);
+        Check.True(apexCommand is { Type: GameCommandType.UpgradeTower } && apexCommand.EntityId == tower.Id,
+            "Apex hotkey emits the shared co-op upgrade command for the selected tower");
+        Check.True(GameCommandProcessor.Apply(session, apexCommand!).Accepted,
+            "either co-op player can buy the shared Apex promotion through its hotkey");
         Check.True(tower.IsApex, "Apex identity is stored on the tower");
         Check.Nearly(damageBefore * 1.25f, tower.Level.Damage, "Apex damage multiplier");
         Check.Nearly(rateBefore * 1.20f, tower.Level.AttacksPerSecond, "Apex fire-rate multiplier");

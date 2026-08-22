@@ -109,6 +109,7 @@ This command creates `.build\publish\MinimalBastion.exe`. The output is self-con
 - `E`: activate the selected tower's unique Protocol.
 - `A`: arm/disarm automatic Protocol use for the selected tower.
 - `U`: upgrade the selected tower or Charge Forge.
+- `X`: promote an eligible selected tier-three tower to Apex during Mastery or Endless.
 - `Delete`: sell the selected tower or Charge Forge.
 - `T`: open or close the selected tower's targeting picker. The current mode does not change until a replacement is chosen.
 - `Space`: start/ready the next wave or claim the early-call reward.

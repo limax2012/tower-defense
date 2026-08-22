@@ -132,7 +132,8 @@ public readonly record struct InputSnapshot(
     bool SandboxClearTowersPressed = false,
     bool SandboxWavePreviousPressed = false,
     bool SandboxWaveNextPressed = false,
-    bool FullscreenPressed = false);
+    bool FullscreenPressed = false,
+    bool ApexPressed = false);
 
 public sealed class ViewportTransform
 {
@@ -285,7 +286,8 @@ public sealed class InputRouter
             !controlDown && IsPressed(keyboard, _previousKeyboard, Keys.C),
             IsPressed(keyboard, _previousKeyboard, Keys.OemMinus) || IsPressed(keyboard, _previousKeyboard, Keys.Subtract),
             IsPressed(keyboard, _previousKeyboard, Keys.OemPlus) || IsPressed(keyboard, _previousKeyboard, Keys.Add),
-            IsPressed(keyboard, _previousKeyboard, Keys.F11));
+            IsPressed(keyboard, _previousKeyboard, Keys.F11),
+            IsPressed(keyboard, _previousKeyboard, Keys.X));
         _previousKeyboard = keyboard;
         _previousMouse = mouse;
         _wasWindowActive = true;
