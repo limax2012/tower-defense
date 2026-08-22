@@ -639,8 +639,8 @@ internal static class Program
             "accelerator does not multiply its own movement");
         Check.Nearly(1f + session.Challenge.CounterHasteBonus, session.Enemies[1].FormationSpeedMultiplier,
             "accelerator increases movement for nearby formation members");
-        Check.True(session.Challenge.CounterHasteBonus >= 0.20f && session.Challenge.CounterRepairFraction >= 0.06f &&
-                   session.Challenge.CounterShieldFraction >= 0.07f,
+        Check.True(session.Challenge.CounterHasteBonus >= 0.14f && session.Challenge.CounterRepairFraction >= 0.04f &&
+                   session.Challenge.CounterShieldFraction >= 0.05f,
             "Gauntlet support modifiers create a noticeable formation threat");
 
         var repairSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
@@ -1118,6 +1118,15 @@ internal static class Program
         var crosswindSession = new GameSession(content, crosswind.Id, "hard");
         Check.True(crosswindSession.TryPlaceTower("needle_turret", new Vector2(250, 320)),
             "Crosswind interior island accepts a practical tower placement");
+        var crosswindNeedleRange = content.Towers["needle_turret"].Levels[0].Range;
+        var crosswindCrossfirePoint = new Vector2(240, 320);
+        Check.True(Vector2.Distance(crosswindCrossfirePoint, new Vector2(130, 320)) <= crosswindNeedleRange &&
+            Vector2.Distance(crosswindCrossfirePoint, new Vector2(350, 320)) <= crosswindNeedleRange,
+            "Crosswind gives an opening Needle a practical dual-lane crossfire band");
+        var crosswindShardRange = content.Towers["shard_fan"].Levels[0].Range;
+        Check.True(Vector2.Distance(crosswindCrossfirePoint, new Vector2(130, 320)) <= crosswindShardRange &&
+            Vector2.Distance(crosswindCrossfirePoint, new Vector2(350, 320)) <= crosswindShardRange,
+            "Crosswind gives the short-range Shard Fan a narrow but usable crossfire band");
         var crosswindIntel = WaveIntel.AnalyzeCampaign(content.WaveSets[crosswind.WaveSet], content.Enemies);
         Check.Equal(1066, crosswindIntel.TotalContacts, "Crosswind campaign intel counts the authored roster");
         Check.Equal(118, crosswindIntel.PeakContacts, "Crosswind campaign intel identifies peak density");

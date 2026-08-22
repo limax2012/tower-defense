@@ -408,6 +408,19 @@ public sealed class VisualVerificationGame : Game
             "An Accelerator visibly supports each nearby formation member.", assertions);
         scenes.Add(Capture("05d-signal-support-network.png", ui, GameState.Playing, supportSession));
 
+        var crosswindSession = new GameSession(content, "crosswind_basin", DifficultyCatalog.DefaultId,
+            ChallengeCatalog.DefaultId);
+        Require(crosswindSession.TryPlaceTower("shard_fan", new Vector2(680, 350)) &&
+                crosswindSession.TryPlaceTower("frost_spire", new Vector2(460, 330)) &&
+                crosswindSession.TryPlaceTower("needle_turret", new Vector2(240, 320)),
+            "Crosswind visual scene places the opening roster in the revised crossfire islands.", assertions);
+        Require(Vector2.Distance(crosswindSession.SelectedTower!.Position, new Vector2(130, 320)) <=
+                    crosswindSession.SelectedTower.Level.Range &&
+                Vector2.Distance(crosswindSession.SelectedTower.Position, new Vector2(350, 320)) <=
+                    crosswindSession.SelectedTower.Level.Range,
+            "The selected opening Needle visibly covers both adjacent Crosswind lanes.", assertions);
+        scenes.Add(Capture("05e-crosswind-crossfire-geometry.png", ui, GameState.Playing, crosswindSession));
+
         scenes.Add(Capture("06-protocol-auto-library.png", ui, GameState.TowerLibrary, null));
         _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 7 });
         Require(ui.SelectedLibraryTowerId == "signal_beacon",
