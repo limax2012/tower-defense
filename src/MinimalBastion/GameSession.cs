@@ -1392,16 +1392,31 @@ public sealed class GameSession
             .ToArray();
         if (enemy.SignalRole == EnemySignalRole.Restorer)
         {
-            var restored = nearbyEnemies.Sum(target => target.RestoreHealth(target.MaxHealth * Challenge.CounterRepairFraction));
+            var restored = 0f;
+            foreach (var target in nearbyEnemies)
+            {
+                var amount = target.RestoreHealth(target.MaxHealth * Challenge.CounterRepairFraction);
+                if (amount <= 0) continue;
+                restored += amount;
+                Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Green, 0.46f);
+                Effects.AddFlash(target.Position, ColorPalette.Green, 0.32f, target.Radius + 4);
+            }
             if (restored <= 0) return;
             Effects.AddSplash(enemy.Position, ColorPalette.Green, Challenge.CounterSupportRadius);
             return;
         }
         if (enemy.SignalRole == EnemySignalRole.Bulwark)
         {
-            var granted = nearbyEnemies.Sum(target => target.GrantShield(
-                target.MaxHealth * Challenge.CounterShieldFraction,
-                target.Definition.Shield + target.MaxHealth * Challenge.CounterShieldCapacityFraction));
+            var granted = 0f;
+            foreach (var target in nearbyEnemies)
+            {
+                var amount = target.GrantShield(target.MaxHealth * Challenge.CounterShieldFraction,
+                    target.Definition.Shield + target.MaxHealth * Challenge.CounterShieldCapacityFraction);
+                if (amount <= 0) continue;
+                granted += amount;
+                Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Shield, 0.46f);
+                Effects.AddFlash(target.Position, ColorPalette.Shield, 0.32f, target.Radius + 5);
+            }
             if (granted <= 0) return;
             Effects.AddSplash(enemy.Position, ColorPalette.Shield, Challenge.CounterSupportRadius);
             return;
@@ -1414,8 +1429,9 @@ public sealed class GameSession
             .ThenBy(tower => tower.Id)
             .FirstOrDefault(tower => tower.ApplySuppression(Challenge.CounterSuppressionDuration, 2.4f));
         if (targetTower is null) return;
-        Effects.AddBeam(enemy.Position, targetTower.Position, ColorPalette.Orange, 0.24f);
-        Effects.AddFlash(targetTower.Position, ColorPalette.Orange, 0.24f,
+        Effects.AddFlash(enemy.Position, ColorPalette.Orange, 0.32f, enemy.Radius + 8);
+        Effects.AddBeam(enemy.Position, targetTower.Position, ColorPalette.Orange, 0.40f);
+        Effects.AddFlash(targetTower.Position, ColorPalette.Orange, 0.34f,
             targetTower.Definition.Visual.Radius + 7);
     }
 
@@ -1435,7 +1451,10 @@ public sealed class GameSession
 
         Effects.AddSplash(enemy.Position, ColorPalette.Violet, radius);
         foreach (var tower in affected.Take(5))
+        {
+            Effects.AddBeam(enemy.Position, tower.Position, ColorPalette.Violet, 0.38f);
             Effects.AddFlash(tower.Position, ColorPalette.Violet, 0.22f, tower.Definition.Visual.Radius + 7);
+        }
     }
 
     public void OnEnemyKilled(EnemyInstance enemy)

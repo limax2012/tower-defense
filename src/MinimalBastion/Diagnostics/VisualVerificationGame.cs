@@ -396,6 +396,18 @@ public sealed class VisualVerificationGame : Game
             "Disrupted tower art carries the compact violet interruption mark.", assertions);
         scenes.Add(Capture("05c-signal-gauntlet-disruption.png", ui, GameState.Playing, gauntletSession));
 
+        var supportSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, "close_quarters");
+        supportSession.SpawnEnemy("t2_runner", 1, 1, signalRole: EnemySignalRole.Accelerator);
+        supportSession.SpawnEnemy("t1_crawler", 1, 1);
+        supportSession.SpawnEnemy("t3_brute", 1, 1);
+        supportSession.Enemies[0].SetSandboxPathDistance(430f, supportSession.Map.Path);
+        supportSession.Enemies[1].SetSandboxPathDistance(380f, supportSession.Map.Path);
+        supportSession.Enemies[2].SetSandboxPathDistance(335f, supportSession.Map.Path);
+        supportSession.RefreshEnemySignalFormation();
+        Require(supportSession.Enemies.Skip(1).All(enemy => enemy.FormationSpeedMultiplier > 1f),
+            "An Accelerator visibly supports each nearby formation member.", assertions);
+        scenes.Add(Capture("05d-signal-support-network.png", ui, GameState.Playing, supportSession));
+
         scenes.Add(Capture("06-protocol-auto-library.png", ui, GameState.TowerLibrary, null));
         _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 7 });
         Require(ui.SelectedLibraryTowerId == "signal_beacon",

@@ -737,6 +737,7 @@ public sealed class GameRenderer
         PresentationFrame presentation)
     {
         var time = presentation.TimeSeconds;
+        DrawEnemySignalFields(batch, p, session, presentation, time);
         foreach (var enemy in session.Enemies)
         {
             if (enemy.IsDead || enemy.HasEscaped) continue;
@@ -790,39 +791,51 @@ public sealed class GameRenderer
         }
     }
 
+    private static void DrawEnemySignalFields(SpriteBatch batch, PrimitiveRenderer p,
+        MinimalBastion.GameSession session, PresentationFrame presentation, float time)
+    {
+        if (!session.CounterPressureEnabled) return;
+        var sources = session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped &&
+                enemy.SignalRole is EnemySignalRole.Accelerator or EnemySignalRole.Restorer or EnemySignalRole.Bulwark)
+            .ToArray();
+        if (sources.Length == 0) return;
+
+        var supportRadius = session.Challenge.CounterSupportRadius;
+        foreach (var source in sources)
+        {
+            var sourcePosition = presentation.EnemyPosition(source);
+            var accent = EnemySignalGlyphRenderer.Accent(source.SignalRole);
+            var pulse = (MathF.Sin(time * 3.4f + source.Id * 0.7f) + 1f) * 0.5f;
+            var alpha = source.SignalRole == EnemySignalRole.Accelerator
+                ? (byte)(54 + pulse * 34)
+                : (byte)(30 + pulse * 20);
+            p.Ring(batch, sourcePosition, supportRadius,
+                ColorPalette.WithAlpha(accent, alpha), source.SignalRole == EnemySignalRole.Accelerator ? 2 : 1);
+        }
+
+        var accelerators = sources.Where(source => source.SignalRole == EnemySignalRole.Accelerator).ToArray();
+        if (accelerators.Length == 0) return;
+        foreach (var recipient in session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped &&
+                     enemy.FormationSpeedMultiplier > 1.001f))
+        {
+            var source = accelerators.OrderBy(candidate =>
+                    Vector2.DistanceSquared(candidate.Position, recipient.Position))
+                .FirstOrDefault(candidate => candidate.Id != recipient.Id &&
+                    Vector2.DistanceSquared(candidate.Position, recipient.Position) <= supportRadius * supportRadius);
+            if (source is null) continue;
+            var recipientPosition = presentation.EnemyPosition(recipient);
+            var sourcePosition = presentation.EnemyPosition(source);
+            var linkColor = ColorPalette.WithAlpha(EnemySignalGlyphRenderer.Accent(source.SignalRole), 138);
+            p.Line(batch, sourcePosition, recipientPosition, linkColor, 2);
+            p.Ring(batch, recipientPosition, recipient.Radius + 3, linkColor, 2);
+        }
+    }
+
     private static void DrawEnemySignalMarker(SpriteBatch batch, PrimitiveRenderer p, EnemyInstance enemy, Vector2 position)
     {
         if (enemy.SignalRole == EnemySignalRole.None) return;
-        var marker = position + new Vector2(enemy.Radius + 4f, 0);
-        var color = enemy.SignalRole switch
-        {
-            EnemySignalRole.Accelerator => ColorPalette.Orange,
-            EnemySignalRole.Restorer => ColorPalette.Green,
-            EnemySignalRole.Bulwark => ColorPalette.Shield,
-            EnemySignalRole.Jammer => ColorPalette.Violet,
-            _ => ColorPalette.Coral
-        };
-        p.Circle(batch, marker, 6f, ColorPalette.Navy);
-        switch (enemy.SignalRole)
-        {
-            case EnemySignalRole.Accelerator:
-                p.DrawPolygon(batch, marker, 3.8f, 3, false, color, 0);
-                break;
-            case EnemySignalRole.Restorer:
-                p.Line(batch, marker - new Vector2(3, 0), marker + new Vector2(3, 0), color, 2);
-                p.Line(batch, marker - new Vector2(0, 3), marker + new Vector2(0, 3), color, 2);
-                break;
-            case EnemySignalRole.Bulwark:
-                p.FillRect(batch, new Rectangle((int)marker.X - 3, (int)marker.Y - 3, 7, 7), color);
-                break;
-            case EnemySignalRole.Jammer:
-                p.Line(batch, marker - new Vector2(3, 3), marker + new Vector2(3, 3), color, 2);
-                p.Line(batch, marker + new Vector2(3, -3), marker + new Vector2(-3, 3), color, 2);
-                break;
-            case EnemySignalRole.Disruptor:
-                p.DrawPolygon(batch, marker, 4f, 4, false, color, MathHelper.PiOver4);
-                break;
-        }
+        EnemySignalGlyphRenderer.DrawEmbedded(batch, p, enemy.SignalRole, position,
+            MathHelper.Clamp(enemy.Radius * 0.43f, 4.5f, 7f));
     }
 
     private void DrawProjectiles(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session,

@@ -4418,7 +4418,7 @@ public sealed class UIManager
                 definition.Visual.AccentColor, definition.Visual.Marks, definition.Visual.Ring);
             return;
         }
-        p.DrawShape(batch, center, radius, threat.Shape, threat.PrimaryColor, ColorPalette.Paper, 1, true);
+        EnemySignalGlyphRenderer.DrawCarrierIcon(batch, p, threat.SignalRole, center, radius);
     }
 
     private void DrawEnemyLibraryDetails(SpriteBatch batch, PrimitiveRenderer p, EnemyDefinition definition, Rectangle panel)
@@ -4492,7 +4492,7 @@ public sealed class UIManager
         var rules = _challenges.FirstOrDefault(challenge => challenge.CounterPressureEnabled) ?? new ChallengeDefinition();
         DrawThreatIcon(batch, p, threat, new Vector2(panel.X + 42, panel.Y + 45), 24);
         DrawText(batch, threat.DisplayName.ToUpperInvariant(), new Vector2(panel.X + 84, panel.Y + 17), ColorPalette.Ink, 0.98f);
-        DrawText(batch, "SIGNAL GAUNTLET SPECIALIST", new Vector2(panel.X + 84, panel.Y + 49),
+        DrawText(batch, "SIGNAL GAUNTLET MODIFIER", new Vector2(panel.X + 84, panel.Y + 49),
             LibraryAccentText(threat.PrimaryColor, ColorPalette.Panel), 0.57f);
         DrawFittedText(batch, SignalRoleDescription(role), new Vector2(panel.X + 18, panel.Y + 82),
             ColorPalette.Muted, 0.48f, panel.Width - 36);
@@ -4505,9 +4505,9 @@ public sealed class UIManager
         DrawEnemyInfoCard(batch, p, new Rectangle(panel.X + 594, profileY, 278, 174), "COUNTERPLAY", ColorPalette.Green, cards[2], 0.43f, 22);
 
         DrawText(batch, "IDENTIFICATION", new Vector2(panel.X + 18, panel.Y + 322), ColorPalette.Navy, 0.62f);
-        DrawFittedText(batch, $"A {threat.DisplayName.ToUpperInvariant()} carries the {threat.SymbolLabel.ToLowerInvariant()} signal marker above its normal enemy body.",
+        DrawFittedText(batch, $"A carrier displays the {threat.SymbolLabel.ToLowerInvariant()} glyph inside its normal enemy body.",
             new Vector2(panel.X + 18, panel.Y + 352), ColorPalette.Ink, 0.49f, panel.Width - 36);
-        DrawFittedText(batch, "The carrier keeps its base enemy health, speed, armor, shield, reward, and breach profile. Its signal role adds formation pressure rather than replacing that body.",
+        DrawFittedText(batch, "This is a modifier, not a separate body type. Crawler, Runner, Brute, Aegis, and Regenerator carriers retain their normal base profile.",
             new Vector2(panel.X + 18, panel.Y + 382), ColorPalette.Muted, 0.46f, panel.Width - 36);
         DrawFittedText(batch, "Signal roles are archived only after the carrier appears in a defense.",
             new Vector2(panel.X + 18, panel.Y + 430), LibraryAccentText(threat.PrimaryColor, ColorPalette.Panel), 0.46f, panel.Width - 36);
@@ -4860,16 +4860,16 @@ public sealed class UIManager
 
         public static ThreatLibraryEntry FromSignalRole(EnemySignalRole role) => role switch
         {
-            EnemySignalRole.Accelerator => new("signal:accelerator", "Accelerator", null, role, ColorPalette.Cyan,
-                "triangle", "FORMATION SPEED SUPPORT", "CYAN ACCELERATOR"),
-            EnemySignalRole.Restorer => new("signal:restorer", "Restorer", null, role, ColorPalette.Green,
-                "circle", "FORMATION HEALTH SUPPORT", "GREEN RESTORER"),
-            EnemySignalRole.Bulwark => new("signal:bulwark", "Bulwark", null, role, ColorPalette.Gold,
-                "diamond", "FORMATION SHIELD SUPPORT", "GOLD BULWARK"),
-            EnemySignalRole.Jammer => new("signal:jammer", "Jammer", null, role, ColorPalette.Orange,
-                "square", "SINGLE-TOWER SUPPRESSION", "ORANGE JAMMER"),
-            EnemySignalRole.Disruptor => new("signal:disruptor", "Disruptor", null, role, ColorPalette.Violet,
-                "hexagon", "GROUP TOWER DISRUPTION", "VIOLET DISRUPTOR"),
+            EnemySignalRole.Accelerator => new("signal:accelerator", "Accelerator Signal", null, role,
+                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // FORMATION SPEED", "CYAN DOUBLE-CHEVRON"),
+            EnemySignalRole.Restorer => new("signal:restorer", "Restorer Signal", null, role,
+                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // FORMATION REPAIR", "GREEN PLUS"),
+            EnemySignalRole.Bulwark => new("signal:bulwark", "Bulwark Signal", null, role,
+                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // FORMATION SHIELD", "CYAN DIAMOND"),
+            EnemySignalRole.Jammer => new("signal:jammer", "Jammer Signal", null, role,
+                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // TOWER SUPPRESSION", "ORANGE CROSS"),
+            EnemySignalRole.Disruptor => new("signal:disruptor", "Disruptor Signal", null, role,
+                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // GROUP DISRUPTION", "VIOLET BREAK"),
             _ => new("signal:none", "No Signal", null, role, ColorPalette.Muted, "circle", "NO SPECIAL ROLE", "NO SIGNAL")
         };
     }

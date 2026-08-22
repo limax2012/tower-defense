@@ -639,6 +639,9 @@ internal static class Program
             "accelerator does not multiply its own movement");
         Check.Nearly(1f + session.Challenge.CounterHasteBonus, session.Enemies[1].FormationSpeedMultiplier,
             "accelerator increases movement for nearby formation members");
+        Check.True(session.Challenge.CounterHasteBonus >= 0.20f && session.Challenge.CounterRepairFraction >= 0.06f &&
+                   session.Challenge.CounterShieldFraction >= 0.07f,
+            "Gauntlet support modifiers create a noticeable formation threat");
 
         var repairSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
         repairSession.SpawnEnemy("t1_crawler", 1, 1);
@@ -649,6 +652,8 @@ internal static class Program
         repairSession.Enemies[1].ArmSignalAbility(0);
         repairSession.TryActivateEnemySignal(repairSession.Enemies[1]);
         Check.True(repairTarget.Health > damagedHealth, "restorer repairs a bounded amount of nearby health");
+        Check.True(repairSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Beam),
+            "restorer visibly links its repair pulse to affected formation members");
 
         var shieldSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
         shieldSession.SpawnEnemy("t1_crawler", 1, 1);
@@ -656,6 +661,8 @@ internal static class Program
         shieldSession.Enemies[1].ArmSignalAbility(0);
         shieldSession.TryActivateEnemySignal(shieldSession.Enemies[1]);
         Check.True(shieldSession.Enemies[0].Shield > 0, "bulwark grants a bounded shield to nearby threats");
+        Check.True(shieldSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Beam),
+            "bulwark visibly links its shield pulse to affected formation members");
 
         var jammerSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
         Check.True(jammerSession.TryPlaceTower("needle_turret", new Vector2(45, 200)),
