@@ -172,7 +172,7 @@ public sealed class AudioManager : IDisposable
             return;
         }
         if (_leakCooldown > 0) return;
-        _leakCooldown = 0.18f;
+        _leakCooldown = 0.055f;
         Play(Cue.Leak, 0.26f);
     }
 
