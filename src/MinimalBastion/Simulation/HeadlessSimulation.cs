@@ -11,6 +11,13 @@ public static class HeadlessSimulation
     public static SimulationRunResult Run(Data.GameContent content, SimulationOptions options) =>
         Run(new GameSession(content, options.MapId, options.DifficultyId, options.ChallengeId), options);
 
+    internal static (GameSession Session, SimulationRunResult Result) RunForDiagnostics(
+        Data.GameContent content, SimulationOptions options)
+    {
+        var session = new GameSession(content, options.MapId, options.DifficultyId, options.ChallengeId);
+        return (session, Run(session, options));
+    }
+
     public static SimulationRunResult Run(Data.GameContent content, SaveGameData save, SimulationOptions options) =>
         Run(GameSession.RestoreSaveGame(content, save), options);
 

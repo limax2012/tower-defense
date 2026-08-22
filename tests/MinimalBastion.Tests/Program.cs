@@ -1119,14 +1119,15 @@ internal static class Program
         Check.True(crosswindSession.TryPlaceTower("needle_turret", new Vector2(250, 320)),
             "Crosswind interior island accepts a practical tower placement");
         var crosswindNeedleRange = content.Towers["needle_turret"].Levels[0].Range;
-        var crosswindCrossfirePoint = new Vector2(240, 320);
+        var crosswindCrossfirePoint = new Vector2(250, 320);
         Check.True(Vector2.Distance(crosswindCrossfirePoint, new Vector2(130, 320)) <= crosswindNeedleRange &&
-            Vector2.Distance(crosswindCrossfirePoint, new Vector2(350, 320)) <= crosswindNeedleRange,
-            "Crosswind gives an opening Needle a practical dual-lane crossfire band");
+            Vector2.Distance(crosswindCrossfirePoint, new Vector2(370, 320)) <= crosswindNeedleRange,
+            "Crosswind rewards a centered opening Needle with dual-lane crossfire");
+        Check.True(Vector2.Distance(new Vector2(238, 320), new Vector2(370, 320)) > crosswindNeedleRange,
+            "Crosswind's opening crossfire remains a deliberate placement decision");
         var crosswindShardRange = content.Towers["shard_fan"].Levels[0].Range;
-        Check.True(Vector2.Distance(crosswindCrossfirePoint, new Vector2(130, 320)) <= crosswindShardRange &&
-            Vector2.Distance(crosswindCrossfirePoint, new Vector2(350, 320)) <= crosswindShardRange,
-            "Crosswind gives the short-range Shard Fan a narrow but usable crossfire band");
+        Check.True(Vector2.Distance(crosswindCrossfirePoint, new Vector2(130, 320)) > crosswindShardRange,
+            "Crosswind's base Shard Fan commits to one lane until its reach improves");
         var crosswindIntel = WaveIntel.AnalyzeCampaign(content.WaveSets[crosswind.WaveSet], content.Enemies);
         Check.Equal(1066, crosswindIntel.TotalContacts, "Crosswind campaign intel counts the authored roster");
         Check.Equal(118, crosswindIntel.PeakContacts, "Crosswind campaign intel identifies peak density");

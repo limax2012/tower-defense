@@ -8,6 +8,7 @@ using MinimalBastion.Maps;
 using MinimalBastion.Multiplayer;
 using MinimalBastion.Persistence;
 using MinimalBastion.Rendering;
+using MinimalBastion.Simulation;
 using MinimalBastion.Towers;
 using MinimalBastion.UI;
 using Microsoft.Xna.Framework;
@@ -410,16 +411,38 @@ public sealed class VisualVerificationGame : Game
 
         var crosswindSession = new GameSession(content, "crosswind_basin", DifficultyCatalog.DefaultId,
             ChallengeCatalog.DefaultId);
-        Require(crosswindSession.TryPlaceTower("shard_fan", new Vector2(680, 350)) &&
-                crosswindSession.TryPlaceTower("frost_spire", new Vector2(460, 330)) &&
-                crosswindSession.TryPlaceTower("needle_turret", new Vector2(240, 320)),
-            "Crosswind visual scene places the opening roster in the revised crossfire islands.", assertions);
+        Require(crosswindSession.TryPlaceTower("shard_fan", new Vector2(730, 350)) &&
+                crosswindSession.TryPlaceTower("frost_spire", new Vector2(490, 330)) &&
+                crosswindSession.TryPlaceTower("needle_turret", new Vector2(250, 320)),
+            "Crosswind visual scene places the opening roster in its crossfire islands.", assertions);
         Require(Vector2.Distance(crosswindSession.SelectedTower!.Position, new Vector2(130, 320)) <=
                     crosswindSession.SelectedTower.Level.Range &&
-                Vector2.Distance(crosswindSession.SelectedTower.Position, new Vector2(350, 320)) <=
+                Vector2.Distance(crosswindSession.SelectedTower.Position, new Vector2(370, 320)) <=
                     crosswindSession.SelectedTower.Level.Range,
             "The selected opening Needle visibly covers both adjacent Crosswind lanes.", assertions);
         scenes.Add(Capture("05e-crosswind-crossfire-geometry.png", ui, GameState.Playing, crosswindSession));
+
+        var crosswindWinningSample = CaptureSimulationLayout(content, ui,
+            "05f-crosswind-hard-standard-win.png", "crosswind_basin", "hard", "standard",
+            AutoPlayerStrategy.Conservative, 1337, true, assertions);
+        var crosswindLosingSample = CaptureSimulationLayout(content, ui,
+            "05g-crosswind-hard-standard-loss.png", "crosswind_basin", "hard", "standard",
+            AutoPlayerStrategy.Economy, 1337, false, assertions);
+        scenes.Add(crosswindWinningSample.Scene);
+        scenes.Add(crosswindLosingSample.Scene);
+
+        var surgeWinningSample = CaptureSimulationLayout(content, ui,
+            "05h-surge-bastion-entrenched-win.png", "relay_divide", "bastion", "no_reserves",
+            AutoPlayerStrategy.Control, 9256, true, assertions);
+        var surgeLosingSample = CaptureSimulationLayout(content, ui,
+            "05i-surge-bastion-entrenched-loss.png", "relay_divide", "bastion", "no_reserves",
+            AutoPlayerStrategy.Control, 1337, false, assertions);
+        scenes.Add(surgeWinningSample.Scene);
+        scenes.Add(surgeLosingSample.Scene);
+        Require(surgeWinningSample.OpeningNodeTowers >= 6 && surgeLosingSample.OpeningNodeTowers >= 5,
+            "Representative Surge bots prioritize authored Surge Nodes during their opening builds.", assertions);
+        Require(surgeWinningSample.OccupiedNodes >= 8,
+            "The representative winning Surge bot expands through nearly the full node network.", assertions);
 
         scenes.Add(Capture("06-protocol-auto-library.png", ui, GameState.TowerLibrary, null));
         _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 7 });
@@ -1002,6 +1025,37 @@ public sealed class VisualVerificationGame : Game
         return new VisualVerificationScene(fileName, GameConstants.RenderWidth, GameConstants.RenderHeight, hash, nonPaperPixels);
     }
 
+    private SimulationLayoutScene CaptureSimulationLayout(GameContent content, UIManager ui, string fileName,
+        string mapId, string difficultyId, string challengeId, AutoPlayerStrategy strategy, int seed,
+        bool expectWin, List<string> assertions)
+    {
+        var execution = HeadlessSimulation.RunForDiagnostics(content, new SimulationOptions
+        {
+            MapId = mapId,
+            DifficultyId = difficultyId,
+            ChallengeId = challengeId,
+            Strategy = strategy,
+            Seed = seed,
+            MaximumWave = GameConstants.CampaignWaveCount
+        });
+        Require(execution.Result.Won == expectWin,
+            $"The deterministic {mapId} {strategy} sample remains a {(expectWin ? "win" : "loss")}.", assertions);
+        var poweredTowers = execution.Session.Towers.Count(tower =>
+            execution.Session.Map.GetPowerBuff(tower.Position).IsPowered);
+        var orderedTowers = execution.Session.Towers.OrderBy(tower => tower.Id).ToArray();
+        var openingNodeTowers = orderedTowers.Take(10).Count(tower =>
+            execution.Session.Map.GetPowerBuff(tower.Position).IsPowered);
+        var occupiedNodes = execution.Session.Map.Definition.PowerNodes.Count(node =>
+            orderedTowers.Any(tower => Vector2.DistanceSquared(tower.Position, node.Position.ToVector2()) <= node.Radius * node.Radius));
+        var history = RunHistoryEntry.FromSession(execution.Session);
+        var inspection = history.CreateInspectionSession(content);
+        var scene = Capture(fileName, ui, GameState.RunHistoryField, inspection);
+        assertions.Add($"{fileName}: {execution.Result.Result} wave {execution.Result.WaveReached}, " +
+                       $"{inspection.Towers.Count} final towers, {poweredTowers} on Surge Nodes, " +
+                       $"{openingNodeTowers}/10 opening towers node-powered, {occupiedNodes} distinct nodes occupied.");
+        return new SimulationLayoutScene(scene, poweredTowers, openingNodeTowers, occupiedNodes);
+    }
+
     private Color[] RenderPixels(UIManager ui, GameState state, GameSession? session)
     {
         using var target = RenderScene(ui, state, session);
@@ -1117,6 +1171,11 @@ public sealed class VisualVerificationGame : Game
     }
 
     private sealed record VisualVerificationScene(string File, int Width, int Height, string Sha256, int NonPaperPixels);
+    private sealed record SimulationLayoutScene(
+        VisualVerificationScene Scene,
+        int PoweredTowers,
+        int OpeningNodeTowers,
+        int OccupiedNodes);
 
     private const int GwlExStyle = -20;
     private const long WsExNoActivate = 0x08000000L;
