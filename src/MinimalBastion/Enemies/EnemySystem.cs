@@ -4,6 +4,7 @@ public sealed class EnemySystem
 {
     public void Update(float deltaSeconds, MinimalBastion.GameSession session)
     {
+        session.RefreshEnemySignalFormation();
         foreach (var enemy in session.Enemies)
         {
             if (enemy.IsDead || enemy.HasEscaped) continue;
@@ -14,7 +15,7 @@ public sealed class EnemySystem
                 session.OnEnemyEscaped(enemy);
                 continue;
             }
-            session.TryEmitCounterPressure(enemy);
+            session.TryActivateEnemySignal(enemy);
 
             foreach (var burnTick in enemy.StatusEffects.ConsumeBurnTicks(deltaSeconds))
             {

@@ -197,6 +197,8 @@ public sealed record RunHistoryLayoutSnapshot
             saved.OverdriveRemaining = 0;
             saved.DisruptionRemaining = 0;
             saved.DisruptionLockoutRemaining = 0;
+            saved.SuppressionRemaining = 0;
+            saved.SuppressionLockoutRemaining = 0;
             return saved;
         }).ToList(),
         PulsePlates = session.EmergencyDefenses.Select(plate =>

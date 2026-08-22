@@ -500,7 +500,7 @@ public sealed class UIManager
     public void ConfigureChallenges(IEnumerable<ChallengeDefinition> challenges)
     {
         _challenges.Clear();
-        _challenges.AddRange(challenges.OrderBy(challenge => challenge.Id.Equals(ChallengeCatalog.DefaultId, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+        _challenges.AddRange(challenges.OrderBy(ChallengeOrder)
             .ThenBy(challenge => challenge.DisplayName));
         var defaultIndex = _challenges.FindIndex(challenge => challenge.Id.Equals(ChallengeCatalog.DefaultId, StringComparison.OrdinalIgnoreCase));
         _selectedChallengeIndex = defaultIndex >= 0 ? defaultIndex : 0;
@@ -695,6 +695,16 @@ public sealed class UIManager
         "hard" => 2,
         "bastion" => 3,
         _ => 4
+    };
+
+    private static int ChallengeOrder(ChallengeDefinition challenge) => challenge.Id.ToLowerInvariant() switch
+    {
+        ChallengeCatalog.DefaultId => 0,
+        "core_six" => 1,
+        "no_reserves" => 2,
+        "close_quarters" => 3,
+        "sandbox_lab" => 4,
+        _ => 3
     };
 
     public UiAction HandleSaveSlots(InputSnapshot input)
@@ -2507,18 +2517,23 @@ public sealed class UIManager
             ? "TOWER DISABLED"
             : tower.IsDisrupted
                 ? $"DISRUPTED  {tower.DisruptionRemaining:0.0}s"
+                : tower.IsSuppressed
+                    ? $"SIGNAL WEAKENED  {tower.SuppressionRemaining:0.0}s"
                 : _hoveredUpgradePreviewLabel ?? "CURRENT STATS";
-        if (!tower.IsSandboxDisabled && !tower.IsDisrupted && (supportBuff.IsActive || powerNodes.Count > 0))
+        if (!tower.IsSandboxDisabled && !tower.IsDisrupted && !tower.IsSuppressed &&
+            (supportBuff.IsActive || powerNodes.Count > 0))
         {
             var boostSources = TowerInfo.ActiveBoostSources(supportBuff, powerNodes,
                 compact: _hoveredUpgradePreview is not null);
             statHeader += $"  |  {boostSources}";
         }
         DrawFittedText(batch, statHeader, new Vector2(980, 531),
-            tower.IsSandboxDisabled ? ColorPalette.Coral : tower.IsDisrupted ? ColorPalette.Violet : _hoveredUpgradePreview is not null ? ColorPalette.Violet : ColorPalette.Muted,
+            tower.IsSandboxDisabled ? ColorPalette.Coral : tower.IsDisrupted ? ColorPalette.Violet :
+            tower.IsSuppressed ? ColorPalette.Orange : _hoveredUpgradePreview is not null ? ColorPalette.Violet : ColorPalette.Muted,
             0.45f, 280);
         var comparisonStats = TowerInfo.ComparisonStats(tower.Definition, tower.Level, _hoveredUpgradePreview,
-            supportBuff, power, tower.IsOverdriven ? tower.Protocol : null);
+            supportBuff, power, tower.IsOverdriven ? tower.Protocol : null,
+            session.GetSignalDamageMultiplier(tower), session.GetSignalRateMultiplier(tower));
         DrawTowerStatGrid(batch, comparisonStats, 548);
         // The stat grid can use three complete label/value rows. Keep the
         // lifetime telemetry below that rhythm instead of visually attaching it
@@ -2984,7 +2999,7 @@ public sealed class UIManager
         var best = BestRunLabel(_runHistory, map.Id ?? "foundry_loop", difficulty?.Id ?? DifficultyCatalog.DefaultId,
             challenge?.Id ?? ChallengeCatalog.DefaultId);
         var setupFooter = challenge?.IsSandbox == true
-            ? "UNLIMITED CREDITS + LIVES  |  FIXED TARGETS  |  20 AUTHORED WAVES"
+            ? "UNLIMITED CREDITS + LIVES  |  FIXED TARGETS  |  30 AUTHORED WAVES"
             : $"START {credits} CREDITS  |  {difficulty?.StartingLives ?? 24} LIVES  |  {map.Campaign?.CompactSummary ?? "20-WAVE CAMPAIGN"}{(string.IsNullOrEmpty(best) ? "" : $"  |  {best}")}";
         DrawFittedCenteredText(batch, setupFooter, new Vector2(640, 546), ColorPalette.Navy, 0.46f, 1100);
 
@@ -3992,6 +4007,18 @@ public sealed class UIManager
                 "RESET TOWER DATA + PROTOCOLS"
             ];
         }
+        if (challenge.CounterPressureEnabled)
+        {
+            return
+            [
+                $"START CREDITS x{challenge.StartingCreditsMultiplier:0.00}",
+                "W2 ACCELERATE / W3 REPAIR / W4 SHIELD",
+                "W5 JAMMER WEAKENS ONE TOWER",
+                "ELITE + BOSS GROUP DISRUPTION",
+                "FULL ROSTER + ALL SYSTEMS",
+                "RULE: SIGNAL CARRIERS SUPPORT FORMATIONS"
+            ];
+        }
         var available = Math.Max(0, totalTowerCount - challenge.ExcludedTowerIds.Count);
         var lines = new List<string>
         {
@@ -4001,8 +4028,6 @@ public sealed class UIManager
             $"TOWERS AVAILABLE {available}/{Math.Max(0, totalTowerCount)}"
         };
         if (!challenge.SellingEnabled) lines.Add("TOWER SALES OFF");
-        if (challenge.CounterPressureEnabled)
-            lines.Add($"ENEMY DISRUPTION {challenge.CounterPressureRadius:0} RANGE / {challenge.CounterPressureDuration:0.0}s");
         var excluded = challenge.ExcludedTowerIds
             .Select(id => id.Replace('_', ' ').ToUpperInvariant())
             .ToArray();
@@ -4019,7 +4044,7 @@ public sealed class UIManager
         lines.Add(challenge.Id.ToLowerInvariant() switch
         {
             "standard" => "RULE: ALL SYSTEMS AVAILABLE",
-            "close_quarters" => "RULE: PRIORITY THREATS JAM NEARBY TOWERS",
+            "close_quarters" => "RULE: SIGNAL CARRIERS SUPPORT FORMATIONS",
             "core_six" => "RULE: SIX-TOWER ROSTER LOCK",
             "no_reserves" => "RULE: TOWERS + PERMANENT UPGRADES ONLY",
             _ => $"RULE: {challenge.Description.ToUpperInvariant()}"

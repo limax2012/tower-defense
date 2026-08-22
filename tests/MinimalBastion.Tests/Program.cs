@@ -522,8 +522,10 @@ internal static class Program
         ui.ConfigureChallenges(content.Challenges.Values);
         Check.Equal("standard", ui.SelectedChallengeId, "challenge UI defaults to standard");
         ui.PrepareGameSetup(false);
-        ui.HandleGameSetup(WorldInput(new Vector2(1100, 345)) with { LeftPressed = true });
+        ui.HandleGameSetup(WorldInput(new Vector2(880, 345)) with { LeftPressed = true });
         Check.Equal("close_quarters", ui.SelectedChallengeId, "mode row selects Signal Gauntlet directly");
+        ui.HandleGameSetup(WorldInput(new Vector2(1120, 345)) with { LeftPressed = true });
+        Check.Equal("sandbox_lab", ui.SelectedChallengeId, "Sandbox remains the final solo mode choice");
     }
 
     private static void SignalGauntletDisruption()
@@ -531,37 +533,110 @@ internal static class Program
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
         var session = new GameSession(content, "foundry_loop", "hard", "close_quarters");
-        Check.True(session.TryPlaceTower("needle_turret", new Vector2(45, 200)),
-            "Gauntlet test places a tower beside the opening route");
-        session.SpawnEnemy("t4_aegis", 1, 1);
-        var pressureSource = session.Enemies.Single();
-        pressureSource.UpdateMovement(1f, session.Map.Path);
-        pressureSource.ArmCounterPressure(0);
-        session.TryEmitCounterPressure(pressureSource);
+        var wave1 = session.Waves.GetAuthoredWave(1)!;
+        var wave2 = session.Waves.GetAuthoredWave(2)!;
+        var wave3 = session.Waves.GetAuthoredWave(3)!;
+        var wave4 = session.Waves.GetAuthoredWave(4)!;
+        var wave5 = session.Waves.GetAuthoredWave(5)!;
+        Check.Equal(EnemySignalRole.None,
+            session.ResolveEnemySignalRole(wave1, 0, 3, wave1.Groups[0]),
+            "Gauntlet wave one remains a clean baseline");
+        Check.Equal(EnemySignalRole.Accelerator,
+            session.ResolveEnemySignalRole(wave2, 0, (wave2.Groups[0].Count - 1) / 2, wave2.Groups[0]),
+            "Gauntlet introduces an accelerator carrier on wave two");
+        Check.Equal(EnemySignalRole.Restorer,
+            session.ResolveEnemySignalRole(wave3, 1, (wave3.Groups[1].Count - 1) / 2, wave3.Groups[1]),
+            "Gauntlet introduces a repair carrier on wave three");
+        Check.Equal(EnemySignalRole.Bulwark,
+            session.ResolveEnemySignalRole(wave4, 2, (wave4.Groups[2].Count - 1) / 2, wave4.Groups[2]),
+            "Gauntlet introduces a shield carrier on wave four");
+        Check.Equal(EnemySignalRole.Jammer,
+            session.ResolveEnemySignalRole(wave5, 3, (wave5.Groups[3].Count - 1) / 2, wave5.Groups[3]),
+            "Gauntlet introduces a single-tower jammer on wave five");
+        Check.Equal(EnemySignalRole.None,
+            session.ResolveEnemySignalRole(wave5, 3, 0, wave5.Groups[3]),
+            "ordinary formation members do not inherit the carrier signal");
 
-        Check.True(session.Towers[0].IsDisrupted, "a shielded threat jams a nearby tower");
-        Check.True(pressureSource.CounterPressureCooldownRemaining > 0,
-            "enemy disruption has a deterministic repeat interval");
+        session.SpawnEnemy("t1_crawler", 1, 1, signalRole: EnemySignalRole.Accelerator);
+        session.SpawnEnemy("t1_crawler", 1, 1);
+        session.RefreshEnemySignalFormation();
+        Check.Nearly(1f, session.Enemies[0].FormationSpeedMultiplier,
+            "accelerator does not multiply its own movement");
+        Check.Nearly(1f + session.Challenge.CounterHasteBonus, session.Enemies[1].FormationSpeedMultiplier,
+            "accelerator increases movement for nearby formation members");
 
-        var snapshot = session.CaptureCoOpState(12, 0, false);
+        var repairSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
+        repairSession.SpawnEnemy("t1_crawler", 1, 1);
+        repairSession.SpawnEnemy("t1_crawler", 1, 1, signalRole: EnemySignalRole.Restorer);
+        var repairTarget = repairSession.Enemies[0];
+        repairTarget.ApplyHealthDamage(repairTarget.MaxHealth * 0.25f);
+        var damagedHealth = repairTarget.Health;
+        repairSession.Enemies[1].ArmSignalAbility(0);
+        repairSession.TryActivateEnemySignal(repairSession.Enemies[1]);
+        Check.True(repairTarget.Health > damagedHealth, "restorer repairs a bounded amount of nearby health");
+
+        var shieldSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
+        shieldSession.SpawnEnemy("t1_crawler", 1, 1);
+        shieldSession.SpawnEnemy("t1_crawler", 1, 1, signalRole: EnemySignalRole.Bulwark);
+        shieldSession.Enemies[1].ArmSignalAbility(0);
+        shieldSession.TryActivateEnemySignal(shieldSession.Enemies[1]);
+        Check.True(shieldSession.Enemies[0].Shield > 0, "bulwark grants a bounded shield to nearby threats");
+
+        var jammerSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
+        Check.True(jammerSession.TryPlaceTower("needle_turret", new Vector2(45, 200)),
+            "Gauntlet jammer test places a tower beside the opening route");
+        var jammerTower = jammerSession.Towers.Single();
+        var unsuppressedRate = jammerSession.GetEffectiveAttacksPerSecond(jammerTower);
+        var unsuppressedDamage = jammerSession.GetEffectiveDamage(jammerTower, jammerTower.Level.Damage);
+        jammerSession.SpawnEnemy("t1_crawler", 1, 1, signalRole: EnemySignalRole.Jammer);
+        var jammer = jammerSession.Enemies.Single();
+        jammer.UpdateMovement(1f, jammerSession.Map.Path);
+        jammer.ArmSignalAbility(0);
+        jammerSession.TryActivateEnemySignal(jammer);
+        Check.True(jammerTower.IsSuppressed, "jammer weakens one nearby attacking tower");
+        Check.True(jammerSession.GetEffectiveAttacksPerSecond(jammerTower) < unsuppressedRate &&
+                   jammerSession.GetEffectiveDamage(jammerTower, jammerTower.Level.Damage) < unsuppressedDamage,
+            "jammer suppression reduces both attack rate and damage without pausing the tower");
+
+        var sessionWithDisruptor = new GameSession(content, "foundry_loop", "hard", "close_quarters");
+        Check.True(sessionWithDisruptor.TryPlaceTower("needle_turret", new Vector2(45, 200)),
+            "Gauntlet disruptor test places a tower beside the opening route");
+        sessionWithDisruptor.SpawnEnemy("t4_aegis", 1, 1, "Elite", EnemySignalRole.Disruptor);
+        var pressureSource = sessionWithDisruptor.Enemies.Single();
+        pressureSource.UpdateMovement(1f, sessionWithDisruptor.Map.Path);
+        pressureSource.ArmSignalAbility(0);
+        sessionWithDisruptor.TryActivateEnemySignal(pressureSource);
+
+        Check.True(sessionWithDisruptor.Towers[0].IsDisrupted,
+            "an Elite disruptor briefly pauses nearby tower groups");
+        Check.True(pressureSource.SignalAbilityCooldownRemaining > 0,
+            "enemy signal ability has a deterministic repeat interval");
+
+        var snapshot = jammerSession.CaptureCoOpState(12, 0, false);
         var restored = GameSession.RestoreCoOpState(content, snapshot, 2);
-        Check.Nearly(session.Towers[0].DisruptionRemaining, restored.Towers[0].DisruptionRemaining,
-            "co-op resynchronization restores tower disruption time");
-        Check.Nearly(session.Towers[0].DisruptionLockoutRemaining, restored.Towers[0].DisruptionLockoutRemaining,
-            "co-op resynchronization restores tower disruption recovery time");
-        Check.Nearly(pressureSource.CounterPressureCooldownRemaining, restored.Enemies[0].CounterPressureCooldownRemaining,
-            "co-op resynchronization restores enemy pulse timing");
-        Check.Equal(SessionChecksum.Compute(session, 12), SessionChecksum.Compute(restored, 12),
-            "Gauntlet pressure state participates in the authoritative checksum");
+        Check.Nearly(jammerTower.SuppressionRemaining, restored.Towers[0].SuppressionRemaining,
+            "co-op resynchronization restores tower suppression time");
+        Check.Nearly(jammerTower.SuppressionLockoutRemaining, restored.Towers[0].SuppressionLockoutRemaining,
+            "co-op resynchronization restores tower suppression recovery time");
+        Check.Equal(EnemySignalRole.Jammer, restored.Enemies[0].SignalRole,
+            "co-op resynchronization restores the enemy carrier role");
+        Check.Nearly(jammer.SignalAbilityCooldownRemaining, restored.Enemies[0].SignalAbilityCooldownRemaining,
+            "co-op resynchronization restores enemy signal timing");
+        Check.Equal(SessionChecksum.Compute(jammerSession, 12), SessionChecksum.Compute(restored, 12),
+            "Gauntlet signal state participates in the authoritative checksum");
 
-        var archivedTower = RunHistoryLayoutSnapshot.FromSession(session).Towers.Single();
+        var archivedTower = RunHistoryLayoutSnapshot.FromSession(jammerSession).Towers.Single();
         Check.Nearly(0, archivedTower.DisruptionRemaining,
             "the final-layout diagram omits terminal-frame disruption animation state");
         Check.Nearly(0, archivedTower.DisruptionLockoutRemaining,
             "the final-layout diagram omits terminal-frame disruption recovery state");
+        Check.Nearly(0, archivedTower.SuppressionRemaining,
+            "the final-layout diagram omits terminal-frame suppression animation state");
 
-        session.OnWaveCompleted(1);
-        Check.True(!session.Towers[0].IsDisrupted, "intermission clears any residual disruption");
+        jammerSession.OnWaveCompleted(1);
+        sessionWithDisruptor.OnWaveCompleted(1);
+        Check.True(!jammerTower.IsSuppressed && !sessionWithDisruptor.Towers[0].IsDisrupted,
+            "intermission clears residual signal interference");
     }
 
     private static void SandboxTowerLaboratory()
@@ -662,7 +737,7 @@ internal static class Program
         var ui = new UIManager(null!);
         ui.ConfigureChallenges(content.Challenges.Values);
         ui.PrepareGameSetup(false);
-        ui.HandleGameSetup(WorldInput(new Vector2(870, 345)) with { LeftPressed = true });
+        ui.HandleGameSetup(WorldInput(new Vector2(1120, 345)) with { LeftPressed = true });
         Check.Equal("sandbox_lab", ui.SelectedChallengeId, "solo setup exposes Sandbox Lab as a direct mode choice");
         ui.PrepareGameSetup(true);
         Check.Equal("standard", ui.SelectedChallengeId, "online setup excludes and safely leaves the solo-only sandbox");
@@ -4220,9 +4295,10 @@ internal static class Program
         Check.True(normalReference.Contains("ENEMY HEALTH x0.90") && normalReference.Contains("STARTING LIVES 24"),
             "profile reference exposes exact difficulty combat and economy values");
         var closeReference = UIManager.ChallengeReferenceLines(content.Challenges["close_quarters"], content.Towers.Count);
-        Check.True(closeReference.Contains("TOWERS AVAILABLE 10/10") &&
-            closeReference.Any(line => line.Contains("ENEMY DISRUPTION", StringComparison.Ordinal)),
-            "profile reference exposes the full Gauntlet roster and disruption rule");
+        Check.True(closeReference.Contains("FULL ROSTER + ALL SYSTEMS") &&
+            closeReference.Any(line => line.Contains("W2 ACCELERATE", StringComparison.Ordinal)) &&
+            closeReference.Any(line => line.Contains("ELITE + BOSS", StringComparison.Ordinal)),
+            "profile reference exposes the full Gauntlet roster and graduated signal rules");
         var fundamentalsReference = UIManager.ChallengeReferenceLines(content.Challenges["no_reserves"], content.Towers.Count);
         Check.True(fundamentalsReference.Contains("TACTICAL RESERVES OFF") &&
             fundamentalsReference.Contains("TOWER PROTOCOLS OFF") &&

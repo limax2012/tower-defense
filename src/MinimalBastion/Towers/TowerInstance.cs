@@ -30,6 +30,8 @@ public sealed class TowerInstance
     public float CooldownRemaining { get; set; }
     public float DisruptionRemaining { get; private set; }
     public float DisruptionLockoutRemaining { get; private set; }
+    public float SuppressionRemaining { get; private set; }
+    public float SuppressionLockoutRemaining { get; private set; }
     public TargetMode TargetMode { get; set; }
     public int InvestedCredits { get; private set; }
     public float DeployAnimationRemaining { get; private set; } = DeployAnimationDuration;
@@ -46,6 +48,7 @@ public sealed class TowerInstance
     public bool IsSandboxDisabled { get; private set; }
     public bool IsOverdriven => OverdriveRemaining > 0;
     public bool IsDisrupted => DisruptionRemaining > 0;
+    public bool IsSuppressed => SuppressionRemaining > 0;
     public TowerProtocolDefinition Protocol => Definition.Protocol;
     public bool IsSupport => Definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase);
     public float EffectiveAuraRange => Level.AuraRange * (1f + (IsOverdriven ? Protocol.AuraRangeBonus : 0f));
@@ -148,22 +151,34 @@ public sealed class TowerInstance
         OverdriveRemaining = MathF.Max(0, OverdriveRemaining - deltaSeconds);
         DisruptionRemaining = MathF.Max(0, DisruptionRemaining - deltaSeconds);
         DisruptionLockoutRemaining = MathF.Max(0, DisruptionLockoutRemaining - deltaSeconds);
+        SuppressionRemaining = MathF.Max(0, SuppressionRemaining - deltaSeconds);
+        SuppressionLockoutRemaining = MathF.Max(0, SuppressionLockoutRemaining - deltaSeconds);
     }
 
     public void OnFired() => RecoilAnimationRemaining = RecoilAnimationDuration;
     public void ActivateOverdrive() => OverdriveRemaining = Protocol.DurationSeconds;
     public bool ApplyDisruption(float durationSeconds, float recoverySeconds)
     {
-        if (durationSeconds <= 0 || DisruptionLockoutRemaining > 0) return false;
+        if (durationSeconds <= 0 || DisruptionLockoutRemaining > 0 || SuppressionLockoutRemaining > 0) return false;
         DisruptionRemaining = durationSeconds;
         DisruptionLockoutRemaining = durationSeconds + MathF.Max(0, recoverySeconds);
         return true;
     }
 
-    internal void ClearDisruption()
+    public bool ApplySuppression(float durationSeconds, float recoverySeconds)
+    {
+        if (durationSeconds <= 0 || DisruptionLockoutRemaining > 0 || SuppressionLockoutRemaining > 0) return false;
+        SuppressionRemaining = durationSeconds;
+        SuppressionLockoutRemaining = durationSeconds + MathF.Max(0, recoverySeconds);
+        return true;
+    }
+
+    internal void ClearSignalInterference()
     {
         DisruptionRemaining = 0;
         DisruptionLockoutRemaining = 0;
+        SuppressionRemaining = 0;
+        SuppressionLockoutRemaining = 0;
     }
     internal void ClearOverdrive() => OverdriveRemaining = 0;
 
@@ -225,6 +240,8 @@ public sealed class TowerInstance
         CooldownRemaining = CooldownRemaining,
         DisruptionRemaining = DisruptionRemaining,
         DisruptionLockoutRemaining = DisruptionLockoutRemaining,
+        SuppressionRemaining = SuppressionRemaining,
+        SuppressionLockoutRemaining = SuppressionLockoutRemaining,
         TargetMode = TargetMode,
         InvestedCredits = InvestedCredits,
         OverdriveRemaining = OverdriveRemaining,
@@ -265,6 +282,8 @@ public sealed class TowerInstance
             CooldownRemaining = MathF.Max(0, data.CooldownRemaining),
             DisruptionRemaining = MathF.Max(0, data.DisruptionRemaining),
             DisruptionLockoutRemaining = MathF.Max(0, data.DisruptionLockoutRemaining),
+            SuppressionRemaining = MathF.Max(0, data.SuppressionRemaining),
+            SuppressionLockoutRemaining = MathF.Max(0, data.SuppressionLockoutRemaining),
             TargetMode = data.TargetMode,
             InvestedCredits = Math.Max(definition.PurchaseCost, data.InvestedCredits),
             DeployAnimationRemaining = 0,

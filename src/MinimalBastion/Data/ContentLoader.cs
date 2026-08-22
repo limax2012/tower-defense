@@ -148,7 +148,16 @@ public static class DataValidator
             string.IsNullOrWhiteSpace(challenge.MenuLabel) || challenge.StartingCreditsMultiplier <= 0 ||
             challenge.ExcludedTowerIds.Distinct(StringComparer.OrdinalIgnoreCase).Count() != challenge.ExcludedTowerIds.Count ||
             challenge.ExcludedTowerIds.Any(id => !towerIds.Contains(id)) ||
-            challenge.ExcludedTowerIds.Count >= towers.Count))
+            challenge.ExcludedTowerIds.Count >= towers.Count ||
+            challenge.CounterPressureRadius <= 0 || challenge.CounterPressureDuration <= 0 ||
+            challenge.CounterPressureInterval <= 0 || challenge.CounterSupportRadius <= 0 ||
+            challenge.CounterHasteBonus < 0 || challenge.CounterHasteBonus > 1 ||
+            challenge.CounterRepairFraction < 0 || challenge.CounterRepairFraction > 1 ||
+            challenge.CounterShieldFraction < 0 || challenge.CounterShieldFraction > 1 ||
+            challenge.CounterShieldCapacityFraction < 0 || challenge.CounterShieldCapacityFraction > 1 ||
+            challenge.CounterSuppressionRadius <= 0 || challenge.CounterSuppressionDuration <= 0 ||
+            challenge.CounterSuppressionRatePenalty < 0 || challenge.CounterSuppressionRatePenalty >= 1 ||
+            challenge.CounterSuppressionDamagePenalty < 0 || challenge.CounterSuppressionDamagePenalty >= 1))
             throw new InvalidDataException("Invalid challenge directive.");
     }
 

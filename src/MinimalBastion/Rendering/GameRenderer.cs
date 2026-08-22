@@ -546,6 +546,14 @@ public sealed class GameRenderer
             p.Line(batch, tower.Position + new Vector2(4, -barHalfHeight),
                 tower.Position + new Vector2(4, barHalfHeight), ColorPalette.Violet, 3);
         }
+        else if (tower.IsSuppressed)
+        {
+            var halfWidth = tower.Definition.Visual.Radius * 0.34f;
+            p.Line(batch, tower.Position + new Vector2(-halfWidth, 5),
+                tower.Position + new Vector2(-2, 1), ColorPalette.Orange, 3);
+            p.Line(batch, tower.Position + new Vector2(2, 1),
+                tower.Position + new Vector2(halfWidth, 5), ColorPalette.Orange, 3);
+        }
         if (tower.IsApex)
             p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 4, ColorPalette.Paper, 2);
         if (tower.IsSandboxDisabled)
@@ -778,6 +786,42 @@ public sealed class GameRenderer
                     (MathF.Sin(time * 11f + enemy.Id) + 1f) * 0.5f);
             if (enemy.Definition.RegenerationPerSecond > 0)
                 p.Ring(batch, position, enemy.Radius + 11, ColorPalette.Lime, 2);
+            DrawEnemySignalMarker(batch, p, enemy, position);
+        }
+    }
+
+    private static void DrawEnemySignalMarker(SpriteBatch batch, PrimitiveRenderer p, EnemyInstance enemy, Vector2 position)
+    {
+        if (enemy.SignalRole == EnemySignalRole.None) return;
+        var marker = position + new Vector2(enemy.Radius + 4f, 0);
+        var color = enemy.SignalRole switch
+        {
+            EnemySignalRole.Accelerator => ColorPalette.Orange,
+            EnemySignalRole.Restorer => ColorPalette.Green,
+            EnemySignalRole.Bulwark => ColorPalette.Shield,
+            EnemySignalRole.Jammer => ColorPalette.Violet,
+            _ => ColorPalette.Coral
+        };
+        p.Circle(batch, marker, 6f, ColorPalette.Navy);
+        switch (enemy.SignalRole)
+        {
+            case EnemySignalRole.Accelerator:
+                p.DrawPolygon(batch, marker, 3.8f, 3, false, color, 0);
+                break;
+            case EnemySignalRole.Restorer:
+                p.Line(batch, marker - new Vector2(3, 0), marker + new Vector2(3, 0), color, 2);
+                p.Line(batch, marker - new Vector2(0, 3), marker + new Vector2(0, 3), color, 2);
+                break;
+            case EnemySignalRole.Bulwark:
+                p.FillRect(batch, new Rectangle((int)marker.X - 3, (int)marker.Y - 3, 7, 7), color);
+                break;
+            case EnemySignalRole.Jammer:
+                p.Line(batch, marker - new Vector2(3, 3), marker + new Vector2(3, 3), color, 2);
+                p.Line(batch, marker + new Vector2(3, -3), marker + new Vector2(-3, 3), color, 2);
+                break;
+            case EnemySignalRole.Disruptor:
+                p.DrawPolygon(batch, marker, 4f, 4, false, color, MathHelper.PiOver4);
+                break;
         }
     }
 

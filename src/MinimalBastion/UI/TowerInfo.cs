@@ -64,7 +64,9 @@ public static class TowerInfo
         TowerLevelDefinition? preview = null,
         TowerBuff supportBuff = default,
         MapPowerBuff powerBuff = default,
-        TowerProtocolDefinition? activeProtocol = null)
+        TowerProtocolDefinition? activeProtocol = null,
+        float signalDamageMultiplier = 1f,
+        float signalRateMultiplier = 1f)
     {
         var authored = definition.Levels.Concat(definition.Specializations.Select(choice => choice.Level)).ToArray();
         var result = new List<TowerStatDisplay>();
@@ -73,8 +75,8 @@ public static class TowerInfo
         var protocolRate = activeProtocol?.AttackSpeedBonus ?? 0;
         var protocolRange = activeProtocol?.RangeBonus ?? 0;
         var protocolPierce = activeProtocol?.ArmorPierceBonus ?? 0;
-        var damageMultiplier = 1f + powerBuff.DamageBonus + protocolDamage;
-        var rateMultiplier = 1f + supportBuff.AttackSpeedBonus + powerBuff.AttackSpeedBonus + protocolRate;
+        var damageMultiplier = (1f + powerBuff.DamageBonus + protocolDamage) * signalDamageMultiplier;
+        var rateMultiplier = (1f + supportBuff.AttackSpeedBonus + powerBuff.AttackSpeedBonus + protocolRate) * signalRateMultiplier;
         var rangeMultiplier = 1f + supportBuff.RangeBonus + powerBuff.RangeBonus + protocolRange;
 
         if (definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase))

@@ -69,6 +69,15 @@ public sealed class ChallengeDefinition
     public float CounterPressureRadius { get; set; } = 118f;
     public float CounterPressureDuration { get; set; } = 1.1f;
     public float CounterPressureInterval { get; set; } = 7.5f;
+    public float CounterSupportRadius { get; set; } = 92f;
+    public float CounterHasteBonus { get; set; } = 0.12f;
+    public float CounterRepairFraction { get; set; } = 0.03f;
+    public float CounterShieldFraction { get; set; } = 0.04f;
+    public float CounterShieldCapacityFraction { get; set; } = 0.10f;
+    public float CounterSuppressionRadius { get; set; } = 148f;
+    public float CounterSuppressionDuration { get; set; } = 2.6f;
+    public float CounterSuppressionRatePenalty { get; set; } = 0.28f;
+    public float CounterSuppressionDamagePenalty { get; set; } = 0.14f;
     public bool IsSandbox { get; set; }
     public List<string> ExcludedTowerIds { get; set; } = new();
     public string Accent { get; set; } = "#2192AA";

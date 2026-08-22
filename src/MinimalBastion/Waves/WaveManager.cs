@@ -81,7 +81,9 @@ public sealed class WaveManager
         _groupTimer -= deltaSeconds;
         if (_spawnedInGroup < group.Count && _groupTimer <= 0)
         {
-            session.SpawnEnemy(group.EnemyId, _activeDefinition.HealthMultiplier, _activeDefinition.SpeedMultiplier, group.Rank);
+            var signalRole = session.ResolveEnemySignalRole(_activeDefinition, _groupIndex, _spawnedInGroup, group);
+            session.SpawnEnemy(group.EnemyId, _activeDefinition.HealthMultiplier, _activeDefinition.SpeedMultiplier,
+                group.Rank, signalRole);
             _spawnedInGroup++;
             QueuedEnemies--;
             _groupTimer += group.SpawnInterval;

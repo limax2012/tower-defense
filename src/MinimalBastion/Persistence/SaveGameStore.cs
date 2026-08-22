@@ -296,6 +296,8 @@ public sealed class SaveSlotRepository
                 !Enum.IsDefined(tower.TargetMode) || tower.InvestedCredits < 0 || !float.IsFinite(tower.CooldownRemaining) ||
                 !IsNonnegativeFinite(tower.DisruptionRemaining) ||
                 !IsNonnegativeFinite(tower.DisruptionLockoutRemaining) ||
+                !IsNonnegativeFinite(tower.SuppressionRemaining) ||
+                !IsNonnegativeFinite(tower.SuppressionLockoutRemaining) ||
                 !IsNonnegativeFinite(tower.OverdriveRemaining) || !IsNonnegativeFinite(tower.LifetimeDamage) ||
                 tower.LifetimeKills < 0 || !IsNonnegativeFinite(tower.LifetimeSupportDamageEquivalent) ||
                 !IsNonnegativeFinite(tower.LifetimeExposeDamageEquivalent) ||

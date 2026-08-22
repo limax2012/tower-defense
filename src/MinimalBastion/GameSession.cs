@@ -1232,14 +1232,22 @@ public sealed class GameSession
         var support = _buffSystem.Get(tower);
         var power = Map.GetPowerBuff(tower.Position);
         var overdrive = tower.IsOverdriven ? tower.Protocol.AttackSpeedBonus : 0f;
-        return tower.Level.AttacksPerSecond * (1f + support.AttackSpeedBonus + power.AttackSpeedBonus + overdrive);
+        return tower.Level.AttacksPerSecond * (1f + support.AttackSpeedBonus + power.AttackSpeedBonus + overdrive) *
+            GetSignalRateMultiplier(tower);
     }
 
     public float GetEffectiveDamage(TowerInstance tower, float baseDamage)
     {
         var protocol = tower.IsOverdriven ? tower.Protocol.DamageBonus : 0f;
-        return baseDamage * (1f + Map.GetPowerBuff(tower.Position).DamageBonus + protocol);
+        return baseDamage * (1f + Map.GetPowerBuff(tower.Position).DamageBonus + protocol) *
+            GetSignalDamageMultiplier(tower);
     }
+
+    public float GetSignalRateMultiplier(TowerInstance tower) =>
+        tower.IsSuppressed ? 1f - Challenge.CounterSuppressionRatePenalty : 1f;
+
+    public float GetSignalDamageMultiplier(TowerInstance tower) =>
+        tower.IsSuppressed ? 1f - Challenge.CounterSuppressionDamagePenalty : 1f;
 
     public float GetEffectiveArmorPierce(TowerInstance tower, float baseArmorPierce)
     {
@@ -1247,17 +1255,49 @@ public sealed class GameSession
         return baseArmorPierce + Map.GetPowerBuff(tower.Position).ArmorPierceBonus + protocol;
     }
 
-    public void SpawnEnemy(string enemyId, float healthMultiplier, float speedMultiplier, string rank = "Standard")
+    public EnemySignalRole ResolveEnemySignalRole(WaveDefinition wave, int groupIndex, int spawnedInGroup,
+        WaveGroupDefinition group)
+    {
+        if (!CounterPressureEnabled || wave.Number < 2 || group.Count <= 0) return EnemySignalRole.None;
+        if (Enum.TryParse<EnemyRank>(group.Rank, true, out var rank) && rank is EnemyRank.Elite or EnemyRank.Boss)
+            return EnemySignalRole.Disruptor;
+
+        var carrierIndex = (group.Count - 1) / 2;
+        if (spawnedInGroup != carrierIndex) return EnemySignalRole.None;
+
+        EnemySignalRole[] roles =
+        [
+            EnemySignalRole.Accelerator,
+            EnemySignalRole.Restorer,
+            EnemySignalRole.Bulwark,
+            EnemySignalRole.Jammer
+        ];
+        if (wave.Number <= 5)
+            return groupIndex < wave.Number - 1 ? roles[groupIndex] : EnemySignalRole.None;
+        if (group.EnemyId.Contains("aegis", StringComparison.OrdinalIgnoreCase)) return EnemySignalRole.Bulwark;
+        if (group.EnemyId.Contains("regenerator", StringComparison.OrdinalIgnoreCase)) return EnemySignalRole.Restorer;
+        return roles[(wave.Number + groupIndex) % roles.Length];
+    }
+
+    public void SpawnEnemy(string enemyId, float healthMultiplier, float speedMultiplier, string rank = "Standard",
+        EnemySignalRole signalRole = EnemySignalRole.None)
     {
         if (_nextEnemyId >= int.MaxValue || !_content.Enemies.TryGetValue(enemyId, out var definition)) return;
         var enemy = new EnemyInstance(_nextEnemyId++, definition, Map.Path,
             healthMultiplier * Difficulty.EnemyHealthMultiplier,
             speedMultiplier * Difficulty.EnemySpeedMultiplier,
-            rank);
-        if (CounterPressureEnabled && IsCounterPressureSource(enemy))
+            rank, signalRole: signalRole);
+        if (CounterPressureEnabled && signalRole is EnemySignalRole.Restorer or EnemySignalRole.Bulwark or
+            EnemySignalRole.Jammer or EnemySignalRole.Disruptor)
         {
-            var initialDelay = enemy.IsBoss ? 1.6f : enemy.IsElite ? 2.2f : 2.8f;
-            enemy.ArmCounterPressure(initialDelay + enemy.Id % 3 * 0.35f);
+            var initialDelay = signalRole switch
+            {
+                EnemySignalRole.Jammer => 2.6f,
+                EnemySignalRole.Restorer => 3.0f,
+                EnemySignalRole.Bulwark => 3.4f,
+                _ => enemy.IsBoss ? 1.6f : enemy.IsElite ? 2.2f : 2.8f
+            };
+            enemy.ArmSignalAbility(initialDelay + enemy.Id % 3 * 0.35f);
         }
         Enemies.Add(enemy);
         if (enemy.IsBoss)
@@ -1284,7 +1324,15 @@ public sealed class GameSession
     {
         EmergencyDirectPurchasesThisWave = 0;
         AnnouncementTitle = $"WAVE {wave.Number} // {wave.Archetype.ToUpperInvariant()}";
-        AnnouncementSubtitle = earlyCallBonus > 0 ? $"EARLY CALL +{earlyCallBonus} // {wave.Briefing}" : wave.Briefing;
+        var briefing = CounterPressureEnabled ? wave.Number switch
+        {
+            2 => "SIGNAL: ACCELERATOR // Nearby threats move faster.",
+            3 => "SIGNAL: RESTORER // Nearby threats recover health.",
+            4 => "SIGNAL: BULWARK // Nearby threats gain shields.",
+            5 => "SIGNAL: JAMMER // One nearby tower is weakened.",
+            _ => wave.Briefing
+        } : wave.Briefing;
+        AnnouncementSubtitle = earlyCallBonus > 0 ? $"EARLY CALL +{earlyCallBonus} // {briefing}" : briefing;
         AnnouncementPositive = false;
         AnnouncementRemaining = 2.4f;
         WaveStarted?.Invoke(wave);
@@ -1292,7 +1340,7 @@ public sealed class GameSession
 
     public void OnWaveCompleted(int waveNumber)
     {
-        foreach (var tower in Towers) tower.ClearDisruption();
+        foreach (var tower in Towers) tower.ClearSignalInterference();
         var masteryCleared = IsEndlessMode && waveNumber == GameConstants.MasteryFinalWave;
         AnnouncementTitle = masteryCleared ? "MASTERY SECURED" : $"WAVE {waveNumber} CLEARED";
         AnnouncementSubtitle = masteryCleared
@@ -1303,11 +1351,76 @@ public sealed class GameSession
         WaveCompleted?.Invoke(waveNumber);
     }
 
-    public void TryEmitCounterPressure(EnemyInstance enemy)
+    public void RefreshEnemySignalFormation()
     {
-        if (!CounterPressureEnabled || !IsCounterPressureSource(enemy)) return;
+        foreach (var enemy in Enemies) enemy.SetFormationSpeedMultiplier(1f);
+        if (!CounterPressureEnabled) return;
+
+        var radiusSquared = Challenge.CounterSupportRadius * Challenge.CounterSupportRadius;
+        var accelerators = Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped &&
+                enemy.SignalRole == EnemySignalRole.Accelerator)
+            .ToArray();
+        if (accelerators.Length == 0) return;
+
+        foreach (var enemy in Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped))
+        {
+            if (accelerators.Any(source => source.Id != enemy.Id &&
+                    Vector2.DistanceSquared(source.Position, enemy.Position) <= radiusSquared))
+                enemy.SetFormationSpeedMultiplier(1f + Challenge.CounterHasteBonus);
+        }
+    }
+
+    public void TryActivateEnemySignal(EnemyInstance enemy)
+    {
+        if (!CounterPressureEnabled || enemy.SignalRole is EnemySignalRole.None or EnemySignalRole.Accelerator) return;
+        if (enemy.SignalRole == EnemySignalRole.Disruptor)
+        {
+            TryEmitDisruption(enemy);
+            return;
+        }
+
+        var interval = Challenge.CounterPressureInterval * (enemy.SignalRole == EnemySignalRole.Bulwark ? 1.12f : 1f);
+        if (!enemy.TryActivateSignalAbility(interval)) return;
+
+        var radiusSquared = Challenge.CounterSupportRadius * Challenge.CounterSupportRadius;
+        var nearbyEnemies = Enemies.Where(target => !target.IsDead && !target.HasEscaped &&
+                Vector2.DistanceSquared(target.Position, enemy.Position) <= radiusSquared)
+            .OrderBy(target => Vector2.DistanceSquared(target.Position, enemy.Position))
+            .Take(7)
+            .ToArray();
+        if (enemy.SignalRole == EnemySignalRole.Restorer)
+        {
+            var restored = nearbyEnemies.Sum(target => target.RestoreHealth(target.MaxHealth * Challenge.CounterRepairFraction));
+            if (restored <= 0) return;
+            Effects.AddSplash(enemy.Position, ColorPalette.Green, Challenge.CounterSupportRadius);
+            return;
+        }
+        if (enemy.SignalRole == EnemySignalRole.Bulwark)
+        {
+            var granted = nearbyEnemies.Sum(target => target.GrantShield(
+                target.MaxHealth * Challenge.CounterShieldFraction,
+                target.Definition.Shield + target.MaxHealth * Challenge.CounterShieldCapacityFraction));
+            if (granted <= 0) return;
+            Effects.AddSplash(enemy.Position, ColorPalette.Shield, Challenge.CounterSupportRadius);
+            return;
+        }
+
+        var suppressionRadiusSquared = Challenge.CounterSuppressionRadius * Challenge.CounterSuppressionRadius;
+        var targetTower = Towers.Where(tower => !tower.IsSupport && !tower.IsSandboxDisabled &&
+                Vector2.DistanceSquared(tower.Position, enemy.Position) <= suppressionRadiusSquared)
+            .OrderBy(tower => Vector2.DistanceSquared(tower.Position, enemy.Position))
+            .ThenBy(tower => tower.Id)
+            .FirstOrDefault(tower => tower.ApplySuppression(Challenge.CounterSuppressionDuration, 2.4f));
+        if (targetTower is null) return;
+        Effects.AddBeam(enemy.Position, targetTower.Position, ColorPalette.Orange, 0.24f);
+        Effects.AddFlash(targetTower.Position, ColorPalette.Orange, 0.24f,
+            targetTower.Definition.Visual.Radius + 7);
+    }
+
+    private void TryEmitDisruption(EnemyInstance enemy)
+    {
         var interval = Challenge.CounterPressureInterval * (enemy.IsBoss ? 0.72f : enemy.IsElite ? 0.86f : 1f);
-        if (!enemy.TryEmitCounterPressure(interval)) return;
+        if (!enemy.TryActivateSignalAbility(interval)) return;
 
         var radius = Challenge.CounterPressureRadius * (enemy.IsBoss ? 1.32f : enemy.IsElite ? 1.12f : 1f);
         var duration = Challenge.CounterPressureDuration * (enemy.IsBoss ? 1.55f : enemy.IsElite ? 1.22f : 1f);
@@ -1322,9 +1435,6 @@ public sealed class GameSession
         foreach (var tower in affected.Take(5))
             Effects.AddFlash(tower.Position, ColorPalette.Violet, 0.22f, tower.Definition.Visual.Radius + 7);
     }
-
-    private static bool IsCounterPressureSource(EnemyInstance enemy) =>
-        enemy.IsElite || enemy.IsBoss || enemy.Definition.Shield > 0 || enemy.Definition.RegenerationPerSecond > 0;
 
     public void OnEnemyKilled(EnemyInstance enemy)
     {

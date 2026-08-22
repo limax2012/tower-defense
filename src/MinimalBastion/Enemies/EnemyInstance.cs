@@ -29,7 +29,9 @@ public sealed class EnemyInstance
     public string DisplayName => IsBoss ? "Bastion Core" : IsElite ? $"Elite {Definition.DisplayName}" : Definition.DisplayName;
     public float DamagePauseTimer { get; set; }
     public float KnockbackGraceRemaining { get; private set; }
-    public float CounterPressureCooldownRemaining { get; private set; }
+    public float SignalAbilityCooldownRemaining { get; private set; }
+    public EnemySignalRole SignalRole { get; }
+    public float FormationSpeedMultiplier { get; private set; } = 1f;
     public bool IsDead { get; private set; }
     public bool HasEscaped { get; private set; }
     public bool IsSandboxImmortal { get; }
@@ -40,10 +42,11 @@ public sealed class EnemyInstance
 
     public float EffectiveArmor => MathF.Max(0, BaseArmor - StatusEffects.ArmorReduction - (StatusEffects.IsBurning ? 2f : 0f));
     public float SpeedMultiplier => StatusEffects.IsStunned ? 0 : 1f - MathHelper.Clamp(StatusEffects.SlowFactor, 0, 0.60f);
-    public float CurrentSpeed => Definition.Speed * _speedMultiplier * _rankSpeedMultiplier * (BossPhaseActive ? 1.28f : 1f) * SpeedMultiplier;
+    public float CurrentSpeed => Definition.Speed * _speedMultiplier * _rankSpeedMultiplier * FormationSpeedMultiplier *
+        (BossPhaseActive ? 1.28f : 1f) * SpeedMultiplier;
 
     public EnemyInstance(int id, EnemyDefinition definition, PathRuntime path, float healthMultiplier, float speedMultiplier,
-        string rank = "Standard", bool sandboxImmortal = false)
+        string rank = "Standard", bool sandboxImmortal = false, EnemySignalRole signalRole = EnemySignalRole.None)
     {
         Id = id;
         Definition = definition;
@@ -63,6 +66,7 @@ public sealed class EnemyInstance
         _speedMultiplier = speedMultiplier;
         _healthMultiplier = healthMultiplier;
         IsSandboxImmortal = sandboxImmortal;
+        SignalRole = signalRole;
     }
 
     private readonly float _healthMultiplier;
@@ -106,17 +110,36 @@ public sealed class EnemyInstance
     {
         DamagePauseTimer = MathF.Max(0, DamagePauseTimer - deltaSeconds);
         KnockbackGraceRemaining = MathF.Max(0, KnockbackGraceRemaining - deltaSeconds);
-        CounterPressureCooldownRemaining = MathF.Max(0, CounterPressureCooldownRemaining - deltaSeconds);
+        SignalAbilityCooldownRemaining = MathF.Max(0, SignalAbilityCooldownRemaining - deltaSeconds);
     }
 
-    public void ArmCounterPressure(float initialDelaySeconds) =>
-        CounterPressureCooldownRemaining = MathF.Max(0, initialDelaySeconds);
+    public void SetFormationSpeedMultiplier(float multiplier) =>
+        FormationSpeedMultiplier = MathF.Max(0.1f, multiplier);
 
-    public bool TryEmitCounterPressure(float intervalSeconds)
+    public void ArmSignalAbility(float initialDelaySeconds) =>
+        SignalAbilityCooldownRemaining = MathF.Max(0, initialDelaySeconds);
+
+    public bool TryActivateSignalAbility(float intervalSeconds)
     {
-        if (CounterPressureCooldownRemaining > 0 || IsDead || HasEscaped) return false;
-        CounterPressureCooldownRemaining = MathF.Max(0.1f, intervalSeconds);
+        if (SignalAbilityCooldownRemaining > 0 || IsDead || HasEscaped) return false;
+        SignalAbilityCooldownRemaining = MathF.Max(0.1f, intervalSeconds);
         return true;
+    }
+
+    public float RestoreHealth(float amount)
+    {
+        if (amount <= 0 || IsDead || HasEscaped || Health >= MaxHealth) return 0;
+        var restored = MathF.Min(amount, MaxHealth - Health);
+        Health += restored;
+        return restored;
+    }
+
+    public float GrantShield(float amount, float maximumShield)
+    {
+        if (amount <= 0 || maximumShield <= Shield || IsDead || HasEscaped) return 0;
+        var granted = MathF.Min(amount, maximumShield - Shield);
+        Shield += granted;
+        return granted;
     }
 
     public void ApplyHealthDamage(float amount)
@@ -191,7 +214,9 @@ public sealed class EnemyInstance
         Shield = Shield,
         DamagePauseTimer = DamagePauseTimer,
         KnockbackGraceRemaining = KnockbackGraceRemaining,
-        CounterPressureCooldownRemaining = CounterPressureCooldownRemaining,
+        SignalAbilityCooldownRemaining = SignalAbilityCooldownRemaining,
+        SignalRole = SignalRole,
+        FormationSpeedMultiplier = FormationSpeedMultiplier,
         IsDead = IsDead,
         HasEscaped = HasEscaped,
         BossPhaseActive = BossPhaseActive,
@@ -207,7 +232,8 @@ public sealed class EnemyInstance
             path,
             MathF.Max(0.01f, data.HealthMultiplier),
             MathF.Max(0.01f, data.SpeedMultiplier),
-            data.Rank.ToString())
+            data.Rank.ToString(),
+            signalRole: data.SignalRole)
         {
             DistanceAlongPath = MathHelper.Clamp(data.DistanceAlongPath, 0, path.TotalLength),
             Health = MathHelper.Clamp(data.Health, 0, definition.MaxHealth * MathF.Max(0.01f, data.HealthMultiplier) *
@@ -215,7 +241,8 @@ public sealed class EnemyInstance
             Shield = MathF.Max(0, data.Shield),
             DamagePauseTimer = MathF.Max(0, data.DamagePauseTimer),
             KnockbackGraceRemaining = MathF.Max(0, data.KnockbackGraceRemaining),
-            CounterPressureCooldownRemaining = MathF.Max(0, data.CounterPressureCooldownRemaining),
+            SignalAbilityCooldownRemaining = MathF.Max(0, data.SignalAbilityCooldownRemaining),
+            FormationSpeedMultiplier = MathF.Max(0.1f, data.FormationSpeedMultiplier),
             IsDead = data.IsDead,
             HasEscaped = data.HasEscaped,
             BossPhaseActive = data.BossPhaseActive,

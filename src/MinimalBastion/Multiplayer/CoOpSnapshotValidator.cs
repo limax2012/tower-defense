@@ -72,6 +72,8 @@ internal static class CoOpSnapshotValidator
                 !Enum.IsDefined(tower.TargetMode) || tower.InvestedCredits < 0 || !float.IsFinite(tower.CooldownRemaining) ||
                 !IsNonnegativeFinite(tower.DisruptionRemaining) ||
                 !IsNonnegativeFinite(tower.DisruptionLockoutRemaining) ||
+                !IsNonnegativeFinite(tower.SuppressionRemaining) ||
+                !IsNonnegativeFinite(tower.SuppressionLockoutRemaining) ||
                 !IsNonnegativeFinite(tower.OverdriveRemaining) || !IsNonnegativeFinite(tower.LifetimeDamage) ||
                 tower.LifetimeKills < 0 || !IsNonnegativeFinite(tower.LifetimeSupportDamageEquivalent) ||
                 !IsNonnegativeFinite(tower.LifetimeExposeDamageEquivalent) ||
@@ -94,7 +96,8 @@ internal static class CoOpSnapshotValidator
                 !IsPositiveFinite(enemy.SpeedMultiplier) || enemy.SpeedMultiplier < 0.01f || !IsNonnegativeFinite(enemy.DistanceAlongPath) ||
                 !IsNonnegativeFinite(enemy.Health) || !IsNonnegativeFinite(enemy.Shield) ||
                 !IsNonnegativeFinite(enemy.DamagePauseTimer) || !IsNonnegativeFinite(enemy.KnockbackGraceRemaining) ||
-                !IsNonnegativeFinite(enemy.CounterPressureCooldownRemaining) ||
+                !IsNonnegativeFinite(enemy.SignalAbilityCooldownRemaining) || !Enum.IsDefined(enemy.SignalRole) ||
+                !IsPositiveFinite(enemy.FormationSpeedMultiplier) || enemy.FormationSpeedMultiplier > 3f ||
                 statuses.Count > MaximumStatusesPerEnemy || statuses.Any(status => status is null ||
                     !Enum.IsDefined(status.Type) || !IsPositiveFinite(status.RemainingSeconds) ||
                     !IsPositiveFinite(status.Magnitude) || !IsPositiveFinite(status.TickInterval) || status.TickInterval < 0.05f ||

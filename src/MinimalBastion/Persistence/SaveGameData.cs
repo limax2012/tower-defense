@@ -63,6 +63,8 @@ public sealed class TowerSaveData
     public float CooldownRemaining { get; set; }
     public float DisruptionRemaining { get; set; }
     public float DisruptionLockoutRemaining { get; set; }
+    public float SuppressionRemaining { get; set; }
+    public float SuppressionLockoutRemaining { get; set; }
     public TargetMode TargetMode { get; set; }
     public int InvestedCredits { get; set; }
     public float OverdriveRemaining { get; set; }

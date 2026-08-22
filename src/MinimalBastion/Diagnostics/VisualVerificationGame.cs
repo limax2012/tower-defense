@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using MinimalBastion.Core;
 using MinimalBastion.Data;
+using MinimalBastion.Enemies;
 using MinimalBastion.Maps;
 using MinimalBastion.Multiplayer;
 using MinimalBastion.Persistence;
@@ -383,11 +384,11 @@ public sealed class VisualVerificationGame : Game
         var gauntletSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, "close_quarters");
         Require(gauntletSession.TryPlaceTower("needle_turret", new Vector2(45, 200)),
             "Signal Gauntlet visual scene places a tower beside the opening route.", assertions);
-        gauntletSession.SpawnEnemy("t4_aegis", 1, 1);
+        gauntletSession.SpawnEnemy("t4_aegis", 1, 1, signalRole: EnemySignalRole.Disruptor);
         var gauntletThreat = gauntletSession.Enemies.Single();
         gauntletThreat.UpdateMovement(1f, gauntletSession.Map.Path);
-        gauntletThreat.ArmCounterPressure(0);
-        gauntletSession.TryEmitCounterPressure(gauntletThreat);
+        gauntletThreat.ArmSignalAbility(0);
+        gauntletSession.TryActivateEnemySignal(gauntletThreat);
         Require(gauntletSession.Towers[0].IsDisrupted,
             "A shielded Gauntlet threat creates a visible synchronized tower disruption.", assertions);
         var gauntletPixels = RenderPixels(ui, GameState.Playing, gauntletSession);
