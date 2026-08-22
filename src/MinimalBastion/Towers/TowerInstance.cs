@@ -28,6 +28,8 @@ public sealed class TowerInstance
     public string? SpecializationId { get; private set; }
     public bool IsApex { get; private set; }
     public float CooldownRemaining { get; set; }
+    public float DisruptionRemaining { get; private set; }
+    public float DisruptionLockoutRemaining { get; private set; }
     public TargetMode TargetMode { get; set; }
     public int InvestedCredits { get; private set; }
     public float DeployAnimationRemaining { get; private set; } = DeployAnimationDuration;
@@ -43,6 +45,7 @@ public sealed class TowerInstance
     public float LifetimeArmorBreakSeconds { get; private set; }
     public bool IsSandboxDisabled { get; private set; }
     public bool IsOverdriven => OverdriveRemaining > 0;
+    public bool IsDisrupted => DisruptionRemaining > 0;
     public TowerProtocolDefinition Protocol => Definition.Protocol;
     public bool IsSupport => Definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase);
     public float EffectiveAuraRange => Level.AuraRange * (1f + (IsOverdriven ? Protocol.AuraRangeBonus : 0f));
@@ -143,10 +146,25 @@ public sealed class TowerInstance
         DeployAnimationRemaining = MathF.Max(0, DeployAnimationRemaining - deltaSeconds);
         RecoilAnimationRemaining = MathF.Max(0, RecoilAnimationRemaining - deltaSeconds);
         OverdriveRemaining = MathF.Max(0, OverdriveRemaining - deltaSeconds);
+        DisruptionRemaining = MathF.Max(0, DisruptionRemaining - deltaSeconds);
+        DisruptionLockoutRemaining = MathF.Max(0, DisruptionLockoutRemaining - deltaSeconds);
     }
 
     public void OnFired() => RecoilAnimationRemaining = RecoilAnimationDuration;
     public void ActivateOverdrive() => OverdriveRemaining = Protocol.DurationSeconds;
+    public bool ApplyDisruption(float durationSeconds, float recoverySeconds)
+    {
+        if (durationSeconds <= 0 || DisruptionLockoutRemaining > 0) return false;
+        DisruptionRemaining = durationSeconds;
+        DisruptionLockoutRemaining = durationSeconds + MathF.Max(0, recoverySeconds);
+        return true;
+    }
+
+    internal void ClearDisruption()
+    {
+        DisruptionRemaining = 0;
+        DisruptionLockoutRemaining = 0;
+    }
     internal void ClearOverdrive() => OverdriveRemaining = 0;
 
     internal void ToggleSandboxDisabled()
@@ -205,6 +223,8 @@ public sealed class TowerInstance
         SpecializationId = SpecializationId,
         IsApex = IsApex,
         CooldownRemaining = CooldownRemaining,
+        DisruptionRemaining = DisruptionRemaining,
+        DisruptionLockoutRemaining = DisruptionLockoutRemaining,
         TargetMode = TargetMode,
         InvestedCredits = InvestedCredits,
         OverdriveRemaining = OverdriveRemaining,
@@ -243,6 +263,8 @@ public sealed class TowerInstance
             SpecializationId = data.SpecializationId,
             IsApex = data.IsApex,
             CooldownRemaining = MathF.Max(0, data.CooldownRemaining),
+            DisruptionRemaining = MathF.Max(0, data.DisruptionRemaining),
+            DisruptionLockoutRemaining = MathF.Max(0, data.DisruptionLockoutRemaining),
             TargetMode = data.TargetMode,
             InvestedCredits = Math.Max(definition.PurchaseCost, data.InvestedCredits),
             DeployAnimationRemaining = 0,

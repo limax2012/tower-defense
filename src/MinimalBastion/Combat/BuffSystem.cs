@@ -12,13 +12,13 @@ public sealed class BuffSystem
         _buffs.Clear();
         foreach (var tower in towers)
         {
-            if (!tower.IsSupport || tower.IsSandboxDisabled) continue;
+            if (!tower.IsSupport || tower.IsSandboxDisabled || tower.IsDisrupted) continue;
             var auraRange = tower.EffectiveAuraRange;
             var attackSpeedBonus = tower.EffectiveAuraAttackSpeedBonus;
             var rangeBonus = tower.EffectiveAuraTowerRangeBonus;
             foreach (var recipient in towers)
             {
-                if (recipient.Id == tower.Id || recipient.IsSupport || recipient.IsSandboxDisabled) continue;
+                if (recipient.Id == tower.Id || recipient.IsSupport || recipient.IsSandboxDisabled || recipient.IsDisrupted) continue;
                 if (Vector2.DistanceSquared(tower.Position, recipient.Position) > auraRange * auraRange) continue;
                 var current = _buffs.TryGetValue(recipient.Id, out var existing) ? existing : new TowerBuff(0, 0);
                 var replacesAttackSpeed = attackSpeedBonus > current.AttackSpeedBonus ||

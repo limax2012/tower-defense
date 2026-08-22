@@ -169,6 +169,8 @@ public static class SessionChecksum
             Add(ref hash, tower.IsApex ? 1 : 0);
             Add(ref hash, tower.InvestedCredits);
             Add(ref hash, tower.CooldownRemaining);
+            Add(ref hash, tower.DisruptionRemaining);
+            Add(ref hash, tower.DisruptionLockoutRemaining);
             Add(ref hash, tower.OverdriveRemaining);
             Add(ref hash, (int)tower.TargetMode);
             Add(ref hash, tower.LifetimeDamage);
@@ -197,6 +199,7 @@ public static class SessionChecksum
             Add(ref hash, enemy.Shield);
             Add(ref hash, enemy.DamagePauseTimer);
             Add(ref hash, enemy.KnockbackGraceRemaining);
+            Add(ref hash, enemy.CounterPressureCooldownRemaining);
             foreach (var status in enemy.StatusEffects.Active.OrderBy(x => x.Type).ThenBy(x => x.SourceId))
             {
                 Add(ref hash, (int)status.Type);

@@ -6,7 +6,7 @@ namespace MinimalBastion.Multiplayer;
 
 public sealed class CoOpStateSnapshot
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public string RunId { get; set; } = "";
     public string MapId { get; set; } = "";
@@ -69,6 +69,7 @@ public sealed class EnemyRuntimeState
     public float Shield { get; set; }
     public float DamagePauseTimer { get; set; }
     public float KnockbackGraceRemaining { get; set; }
+    public float CounterPressureCooldownRemaining { get; set; }
     public bool IsDead { get; set; }
     public bool HasEscaped { get; set; }
     public bool BossPhaseActive { get; set; }

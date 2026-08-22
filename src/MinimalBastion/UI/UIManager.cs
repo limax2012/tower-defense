@@ -143,6 +143,7 @@ public sealed class UIManager
     private int _runHistoryPage;
     private bool _runHistoryDeleteArmed;
     private bool _runHistoryDetailOpen;
+    private bool _runHistoryCareerOpen;
     private string _runHistoryStatus = "Completed defenses are retained locally and updated by endless continuation.";
     private bool _readOnlyInspection;
     private bool _archivedLayoutInspection;
@@ -203,8 +204,10 @@ public sealed class UIManager
     private readonly Rectangle _saveSlotHistoryButton = new(990, 62, 190, 38);
     private readonly Rectangle _runHistoryViewButton = new(330, 520, 300, 46);
     private readonly Rectangle _runHistoryDeleteButton = new(640, 520, 310, 46);
+    private readonly Rectangle _runHistoryCareerButton = new(990, 62, 190, 38);
     private readonly Rectangle _runHistoryLayoutButton = new(340, 650, 280, 42);
     private readonly Rectangle _runHistoryDetailBackButton = new(660, 650, 280, 42);
+    private readonly Rectangle _runHistoryCareerBackButton = new(500, 650, 280, 42);
     private readonly Rectangle _hostCoOpButton = new(500, 216, 280, 46);
     private readonly Rectangle _joinHostField = new(500, 326, 280, 42);
     private readonly Rectangle _joinCodeField = new(500, 394, 280, 42);
@@ -260,6 +263,7 @@ public sealed class UIManager
     public RunHistoryEntry? SelectedRunHistoryEntry =>
         _runHistory.FirstOrDefault(entry => entry.RunId == _selectedRunHistoryId);
     public bool IsRunHistoryDetailOpen => _runHistoryDetailOpen;
+    public bool IsRunHistoryCareerOpen => _runHistoryCareerOpen;
     public bool LibraryShowsThreats => _libraryShowsThreats;
     public bool LibraryShowsCampaign => _libraryShowsCampaign;
     public bool LibraryShowsProfiles => _libraryShowsProfiles;
@@ -424,6 +428,7 @@ public sealed class UIManager
         _runHistory = entries.OrderByDescending(entry => entry.CompletedAtUtc).ToArray();
         _runHistoryDeleteArmed = false;
         _runHistoryDetailOpen = false;
+        _runHistoryCareerOpen = false;
         _selectedRunHistoryId = preferredRunId is not null && _runHistory.Any(entry => entry.RunId == preferredRunId)
             ? preferredRunId
             : _runHistory.FirstOrDefault()?.RunId;
@@ -772,6 +777,12 @@ public sealed class UIManager
 
     public UiAction HandleRunHistory(InputSnapshot input)
     {
+        if (_runHistoryCareerOpen)
+        {
+            if (input.EscapePressed || input.LeftPressed && _runHistoryCareerBackButton.Contains(input.MousePosition.ToPoint()))
+                _runHistoryCareerOpen = false;
+            return UiAction.None;
+        }
         if (_runHistoryDetailOpen)
         {
             var detailPoint = input.MousePosition.ToPoint();
@@ -807,6 +818,12 @@ public sealed class UIManager
         }
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
+        if (_runHistoryCareerButton.Contains(point))
+        {
+            _runHistoryDeleteArmed = false;
+            _runHistoryCareerOpen = true;
+            return UiAction.None;
+        }
         var pageCount = Math.Max(1, (_runHistory.Count + _saveSlotRows.Length - 1) / _saveSlotRows.Length);
         var pageEntries = _runHistory.Skip(_runHistoryPage * _saveSlotRows.Length).Take(_saveSlotRows.Length).ToArray();
         for (var index = 0; index < _saveSlotRows.Length; index++)
@@ -2488,15 +2505,17 @@ public sealed class UIManager
         var supportBuff = session.GetSupportBuff(tower);
         var statHeader = tower.IsSandboxDisabled
             ? "TOWER DISABLED"
-            : _hoveredUpgradePreviewLabel ?? "CURRENT STATS";
-        if (!tower.IsSandboxDisabled && (supportBuff.IsActive || powerNodes.Count > 0))
+            : tower.IsDisrupted
+                ? $"DISRUPTED  {tower.DisruptionRemaining:0.0}s"
+                : _hoveredUpgradePreviewLabel ?? "CURRENT STATS";
+        if (!tower.IsSandboxDisabled && !tower.IsDisrupted && (supportBuff.IsActive || powerNodes.Count > 0))
         {
             var boostSources = TowerInfo.ActiveBoostSources(supportBuff, powerNodes,
                 compact: _hoveredUpgradePreview is not null);
             statHeader += $"  |  {boostSources}";
         }
         DrawFittedText(batch, statHeader, new Vector2(980, 531),
-            tower.IsSandboxDisabled ? ColorPalette.Coral : _hoveredUpgradePreview is not null ? ColorPalette.Violet : ColorPalette.Muted,
+            tower.IsSandboxDisabled ? ColorPalette.Coral : tower.IsDisrupted ? ColorPalette.Violet : _hoveredUpgradePreview is not null ? ColorPalette.Violet : ColorPalette.Muted,
             0.45f, 280);
         var comparisonStats = TowerInfo.ComparisonStats(tower.Definition, tower.Level, _hoveredUpgradePreview,
             supportBuff, power, tower.IsOverdriven ? tower.Protocol : null);
@@ -2540,7 +2559,8 @@ public sealed class UIManager
             if (session.IsSandbox)
                 DrawSandboxButton(batch, p, _sandboxRemoveTowerButton, "REMOVE", canManage, ColorPalette.Coral, "DEL");
             else
-                DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange, hotkey: "DEL");
+                DrawButton(batch, p, _sellButton, session.SellingEnabled ? $"SELL {tower.SellValue}" : "FIXED",
+                    canManage && session.SellingEnabled, ColorPalette.Orange, hotkey: session.SellingEnabled ? "DEL" : null);
             DrawTargetPicker(batch, p, tower, canManage);
             return;
         }
@@ -2564,7 +2584,8 @@ public sealed class UIManager
             DrawSandboxButton(batch, p, _sandboxRemoveTowerButton, "REMOVE", canManage, ColorPalette.Coral, "DEL");
         }
         else
-            DrawButton(batch, p, _sellButton, $"SELL {tower.SellValue}", canManage, ColorPalette.Orange, hotkey: "DEL");
+            DrawButton(batch, p, _sellButton, session.SellingEnabled ? $"SELL {tower.SellValue}" : "FIXED",
+                canManage && session.SellingEnabled, ColorPalette.Orange, hotkey: session.SellingEnabled ? "DEL" : null);
         if (!tower.IsSupport) DrawTargetPicker(batch, p, tower, canManage);
     }
 
@@ -2727,7 +2748,7 @@ public sealed class UIManager
         }
         else
         {
-            DrawFittedText(batch, "PROTOCOLS OFFLINE  |  FUNDAMENTALS", new Vector2(980, protocolTop), ColorPalette.Muted, 0.40f, 280);
+            DrawFittedText(batch, "PROTOCOLS OFFLINE  |  ENTRENCHED", new Vector2(980, protocolTop), ColorPalette.Muted, 0.40f, 280);
             DrawFittedText(batch, "PERMANENT TOWER SYSTEMS ONLY", new Vector2(992, protocolTop + detailStep), ColorPalette.Muted, 0.39f, 268);
         }
         if (hasPlacementModifier)
@@ -2843,7 +2864,8 @@ public sealed class UIManager
         DrawButton(batch, p, _upgradeButton, active.CanUpgrade ? $"UP {active.UpgradeCost}" : "MAX",
             canManage && active.CanUpgrade && session.Economy.CanAfford(active.UpgradeCost), ColorPalette.Violet,
             hotkey: active.CanUpgrade ? "U" : null);
-        DrawButton(batch, p, _sellButton, $"SELL {active.SellValue}", canManage, ColorPalette.Orange, hotkey: "DEL");
+        DrawButton(batch, p, _sellButton, session.SellingEnabled ? $"SELL {active.SellValue}" : "FIXED",
+            canManage && session.SellingEnabled, ColorPalette.Orange, hotkey: session.SellingEnabled ? "DEL" : null);
     }
 
     private void DrawPlacementStatus(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -3132,6 +3154,11 @@ public sealed class UIManager
 
     private void DrawRunHistory(SpriteBatch batch, PrimitiveRenderer p)
     {
+        if (_runHistoryCareerOpen)
+        {
+            DrawCareerProgress(batch, p);
+            return;
+        }
         if (_runHistoryDetailOpen)
         {
             DrawRunHistoryDetail(batch, p);
@@ -3141,6 +3168,7 @@ public sealed class UIManager
         DrawText(batch, "RUN HISTORY", new Vector2(640, 62), ColorPalette.Ink, 1.75f, true);
         DrawText(batch, "Select a completed defense to inspect its full run statistics.",
             new Vector2(640, 102), ColorPalette.Muted, 0.58f, true);
+        DrawButton(batch, p, _runHistoryCareerButton, "MEDALS & RECORDS", true, ColorPalette.Cyan);
 
         var pageCount = Math.Max(1, (_runHistory.Count + _saveSlotRows.Length - 1) / _saveSlotRows.Length);
         var pageEntries = _runHistory.Skip(_runHistoryPage * _saveSlotRows.Length).Take(_saveSlotRows.Length).ToArray();
@@ -3171,7 +3199,7 @@ public sealed class UIManager
                 ? DateTime.SpecifyKind(entry.CompletedAtUtc, DateTimeKind.Utc).ToLocalTime()
                 : entry.CompletedAtUtc.ToLocalTime();
             DrawFittedText(batch,
-                $"{localTime:g}  |  {(entry.IsCoOp ? "CO-OP" : "SOLO")}  |  LIVES {entry.Lives}/{entry.StartingLives}  |  KILLS {entry.Kills}  |  TOP {entry.TopTowerName.ToUpperInvariant()}",
+                $"{localTime:g}  |  {(entry.IsCoOp ? "CO-OP" : "SOLO")}  |  LIVES {entry.Lives}/{entry.StartingLives}  |  KILLS {entry.Kills}  |  MEDALS {CareerProgression.MedalsFor(entry).Count}",
                 new Vector2(rect.X + 150, rect.Y + 39), ColorPalette.Muted, 0.44f, rect.Width - 164);
         }
 
@@ -3201,6 +3229,76 @@ public sealed class UIManager
         DrawFittedCenteredText(batch, $"ARROWS SELECT  |  {_runHistoryStatus}", new Vector2(640, 690), ColorPalette.Muted, 0.40f, 1080);
     }
 
+    private void DrawCareerProgress(SpriteBatch batch, PrimitiveRenderer p)
+    {
+        DrawMenuFrame(batch, p);
+        var career = CareerProgression.Analyze(_runHistory);
+        DrawText(batch, "MEDALS & RECORDS", new Vector2(640, 45), ColorPalette.Ink, 1.35f, true);
+        DrawText(batch, "Career milestones are derived from completed defenses retained in Run History.",
+            new Vector2(640, 76), ColorPalette.Muted, 0.50f, true);
+
+        const int cardY = 96;
+        DrawResultStatCard(batch, p, new Rectangle(50, cardY, 275, 58), "CAMPAIGNS SECURED", career.CampaignsSecured.ToString(), ColorPalette.Green);
+        DrawResultStatCard(batch, p, new Rectangle(352, cardY, 275, 58), "MEDALS EARNED", career.TotalMedals.ToString(), ColorPalette.Gold);
+        DrawResultStatCard(batch, p, new Rectangle(654, cardY, 275, 58), "DEEPEST WAVE", (career.DeepestRun?.CurrentWave ?? 0).ToString(), ColorPalette.Cyan);
+        DrawResultStatCard(batch, p, new Rectangle(956, cardY, 275, 58), "ARENAS SECURED", $"{career.MapsSecured}/4", ColorPalette.Violet);
+
+        var recordPanel = new Rectangle(40, 174, 392, 456);
+        p.FillRect(batch, recordPanel, ColorPalette.PanelAlt);
+        p.DrawRect(batch, recordPanel, ColorPalette.CardOutline, 1);
+        DrawText(batch, "PERSONAL RECORDS", new Vector2(56, 190), ColorPalette.Navy, 0.68f);
+        p.FillRect(batch, new Rectangle(56, 216, 360, 2), ColorPalette.Cyan);
+        DrawCareerRecord(batch, "DEEPEST DEFENSE", CareerRunLabel(career.DeepestRun, run => $"WAVE {run.CurrentWave}"), 56, 230, ColorPalette.Cyan);
+        DrawCareerRecord(batch, "FASTEST CAMPAIGN", CareerRunLabel(career.FastestClear, run => FormatRunDuration(run.DefenseSeconds)), 56, 274, ColorPalette.Cobalt);
+        DrawCareerRecord(batch, "LEANEST CLEAR", CareerRunLabel(career.LeanestClear, run => $"{run.FinalLayout!.Towers.Count} TOWERS"), 56, 318, ColorPalette.GreenText);
+        DrawCareerRecord(batch, "HIGHEST RESERVE", CareerRunLabel(career.HighestReserveClear, run => $"{run.CreditsRemaining} CREDITS"), 56, 362, ColorPalette.Gold);
+
+        DrawText(batch, "RUN MEDALS", new Vector2(56, 416), ColorPalette.Navy, 0.60f);
+        p.FillRect(batch, new Rectangle(56, 439, 360, 2), ColorPalette.Gold);
+        var medalY = 449;
+        foreach (var medal in CareerProgression.AllMedals)
+        {
+            DrawFittedText(batch, medal.DisplayName.ToUpperInvariant(), new Vector2(56, medalY),
+                ColorPalette.BalancedAccentText(ColorPalette.Gold, ColorPalette.PanelAlt), 0.37f, 90);
+            DrawFittedText(batch, medal.Description, new Vector2(148, medalY), ColorPalette.Muted, 0.34f, 268);
+            medalY += 24;
+        }
+
+        var achievementPanel = new Rectangle(450, 174, 790, 456);
+        p.FillRect(batch, achievementPanel, ColorPalette.PanelAlt);
+        p.DrawRect(batch, achievementPanel, ColorPalette.CardOutline, 1);
+        DrawText(batch, "ACHIEVEMENTS", new Vector2(466, 190), ColorPalette.Navy, 0.68f);
+        p.FillRect(batch, new Rectangle(466, 216, 758, 2), ColorPalette.Violet);
+        for (var index = 0; index < career.Achievements.Count; index++)
+        {
+            var achievement = career.Achievements[index];
+            var column = index % 2;
+            var row = index / 2;
+            var rect = new Rectangle(466 + column * 379, 230 + row * 92, 363, 78);
+            var accent = achievement.IsUnlocked ? ColorPalette.Green : ColorPalette.CardOutline;
+            p.FillRect(batch, rect, achievement.IsUnlocked ? ColorPalette.Panel : ColorPalette.PanelAlt);
+            p.DrawRect(batch, rect, accent, achievement.IsUnlocked ? 2 : 1);
+            p.FillRect(batch, new Rectangle(rect.X, rect.Y, 5, rect.Height), accent);
+            DrawFittedText(batch, achievement.DisplayName.ToUpperInvariant(), new Vector2(rect.X + 14, rect.Y + 10),
+                achievement.IsUnlocked ? ColorPalette.Ink : ColorPalette.Muted, 0.52f, 240);
+            DrawTextRight(batch, achievement.Progress, new Vector2(rect.Right - 12, rect.Y + 11),
+                achievement.IsUnlocked ? ColorPalette.GreenText : ColorPalette.Muted, 0.40f);
+            DrawFittedText(batch, achievement.Description, new Vector2(rect.X + 14, rect.Y + 42), ColorPalette.Muted, 0.36f, rect.Width - 28);
+        }
+
+        DrawButton(batch, p, _runHistoryCareerBackButton, "BACK TO HISTORY", true, ColorPalette.Violet);
+    }
+
+    private void DrawCareerRecord(SpriteBatch batch, string label, string value, int x, int y, Color accent)
+    {
+        DrawText(batch, label, new Vector2(x, y), ColorPalette.Muted, 0.36f);
+        DrawFittedText(batch, value, new Vector2(x, y + 17), accent, 0.46f, 360);
+    }
+
+    private static string CareerRunLabel(RunHistoryEntry? entry, Func<RunHistoryEntry, string> value) => entry is null
+        ? "NO QUALIFYING RUN"
+        : $"{value(entry)}  |  {entry.MapName.ToUpperInvariant()}  |  {entry.DifficultyName.ToUpperInvariant()}";
+
     private void DrawRunHistoryDetail(SpriteBatch batch, PrimitiveRenderer p)
     {
         DrawMenuFrame(batch, p);
@@ -3228,6 +3326,13 @@ public sealed class UIManager
         DrawResultStatCard(batch, p, new Rectangle(528, cardY, 224, 58), "LIVES", $"{entry.Lives}/{entry.StartingLives}", ColorPalette.Coral);
         DrawResultStatCard(batch, p, new Rectangle(767, cardY, 224, 58), "KILLS", entry.Kills.ToString(), ColorPalette.Green);
         DrawResultStatCard(batch, p, new Rectangle(1006, cardY, 224, 58), "LEAKS", entry.Leaks.ToString(), ColorPalette.Orange);
+
+        var earnedMedals = CareerProgression.MedalsFor(entry);
+        DrawFittedCenteredText(batch,
+            earnedMedals.Count == 0
+                ? "NO RUN MEDALS EARNED"
+                : $"MEDALS  {string.Join("  /  ", earnedMedals.Select(medal => medal.DisplayName.ToUpperInvariant()))}",
+            new Vector2(640, 160), earnedMedals.Count == 0 ? ColorPalette.Muted : ColorPalette.Gold, 0.34f, 1160);
 
         var towerPanel = new Rectangle(40, 170, 758, 460);
         p.FillRect(batch, towerPanel, ColorPalette.PanelAlt);
@@ -3895,6 +4000,9 @@ public sealed class UIManager
             $"TOWER PROTOCOLS {(challenge.ProtocolsEnabled ? "ON" : "OFF")}",
             $"TOWERS AVAILABLE {available}/{Math.Max(0, totalTowerCount)}"
         };
+        if (!challenge.SellingEnabled) lines.Add("TOWER SALES OFF");
+        if (challenge.CounterPressureEnabled)
+            lines.Add($"ENEMY DISRUPTION {challenge.CounterPressureRadius:0} RANGE / {challenge.CounterPressureDuration:0.0}s");
         var excluded = challenge.ExcludedTowerIds
             .Select(id => id.Replace('_', ' ').ToUpperInvariant())
             .ToArray();
@@ -3911,7 +4019,7 @@ public sealed class UIManager
         lines.Add(challenge.Id.ToLowerInvariant() switch
         {
             "standard" => "RULE: ALL SYSTEMS AVAILABLE",
-            "close_quarters" => "RULE: FIGHT NEAR THE ROUTE",
+            "close_quarters" => "RULE: PRIORITY THREATS JAM NEARBY TOWERS",
             "core_six" => "RULE: SIX-TOWER ROSTER LOCK",
             "no_reserves" => "RULE: TOWERS + PERMANENT UPGRADES ONLY",
             _ => $"RULE: {challenge.Description.ToUpperInvariant()}"

@@ -64,6 +64,11 @@ public sealed class ChallengeDefinition
     public float StartingCreditsMultiplier { get; set; } = 1f;
     public bool TacticalSystemsEnabled { get; set; } = true;
     public bool ProtocolsEnabled { get; set; } = true;
+    public bool SellingEnabled { get; set; } = true;
+    public bool CounterPressureEnabled { get; set; }
+    public float CounterPressureRadius { get; set; } = 118f;
+    public float CounterPressureDuration { get; set; } = 1.1f;
+    public float CounterPressureInterval { get; set; } = 7.5f;
     public bool IsSandbox { get; set; }
     public List<string> ExcludedTowerIds { get; set; } = new();
     public string Accent { get; set; } = "#2192AA";

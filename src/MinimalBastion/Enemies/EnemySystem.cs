@@ -14,6 +14,7 @@ public sealed class EnemySystem
                 session.OnEnemyEscaped(enemy);
                 continue;
             }
+            session.TryEmitCounterPressure(enemy);
 
             foreach (var burnTick in enemy.StatusEffects.ConsumeBurnTicks(deltaSeconds))
             {

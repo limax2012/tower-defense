@@ -45,6 +45,8 @@ public sealed class GameSession
     public string ChallengeId => Challenge.Id;
     public bool TacticalSystemsEnabled => Challenge.TacticalSystemsEnabled;
     public bool ProtocolsEnabled => Challenge.ProtocolsEnabled;
+    public bool SellingEnabled => Challenge.SellingEnabled || IsSandbox;
+    public bool CounterPressureEnabled => Challenge.CounterPressureEnabled;
     public bool IsSandbox => Challenge.IsSandbox;
     public MapRuntime Map { get; }
     public EconomyService Economy { get; }
@@ -764,7 +766,7 @@ public sealed class GameSession
     public bool TrySellTower(int towerId, int requestingPlayerId = 1)
     {
         var tower = Towers.FirstOrDefault(x => x.Id == towerId);
-        if (requestingPlayerId is < 1 or > 2 || tower is null) return false;
+        if (!SellingEnabled || requestingPlayerId is < 1 or > 2 || tower is null) return false;
         var value = tower.SellValue;
         Economy.RecoverSale(value);
         Towers.Remove(tower);
@@ -971,7 +973,7 @@ public sealed class GameSession
 
     public bool TrySellGenerator(int requestingPlayerId = 1)
     {
-        if (requestingPlayerId is < 1 or > 2 || Generator is not { } generator) return false;
+        if (!SellingEnabled || requestingPlayerId is < 1 or > 2 || Generator is not { } generator) return false;
         var value = generator.SellValue;
         Economy.RecoverSale(value);
         Generator = null;
@@ -1252,6 +1254,11 @@ public sealed class GameSession
             healthMultiplier * Difficulty.EnemyHealthMultiplier,
             speedMultiplier * Difficulty.EnemySpeedMultiplier,
             rank);
+        if (CounterPressureEnabled && IsCounterPressureSource(enemy))
+        {
+            var initialDelay = enemy.IsBoss ? 1.6f : enemy.IsElite ? 2.2f : 2.8f;
+            enemy.ArmCounterPressure(initialDelay + enemy.Id % 3 * 0.35f);
+        }
         Enemies.Add(enemy);
         if (enemy.IsBoss)
         {
@@ -1285,6 +1292,7 @@ public sealed class GameSession
 
     public void OnWaveCompleted(int waveNumber)
     {
+        foreach (var tower in Towers) tower.ClearDisruption();
         var masteryCleared = IsEndlessMode && waveNumber == GameConstants.MasteryFinalWave;
         AnnouncementTitle = masteryCleared ? "MASTERY SECURED" : $"WAVE {waveNumber} CLEARED";
         AnnouncementSubtitle = masteryCleared
@@ -1294,6 +1302,29 @@ public sealed class GameSession
         AnnouncementRemaining = masteryCleared ? 3.2f : 2.2f;
         WaveCompleted?.Invoke(waveNumber);
     }
+
+    public void TryEmitCounterPressure(EnemyInstance enemy)
+    {
+        if (!CounterPressureEnabled || !IsCounterPressureSource(enemy)) return;
+        var interval = Challenge.CounterPressureInterval * (enemy.IsBoss ? 0.72f : enemy.IsElite ? 0.86f : 1f);
+        if (!enemy.TryEmitCounterPressure(interval)) return;
+
+        var radius = Challenge.CounterPressureRadius * (enemy.IsBoss ? 1.32f : enemy.IsElite ? 1.12f : 1f);
+        var duration = Challenge.CounterPressureDuration * (enemy.IsBoss ? 1.55f : enemy.IsElite ? 1.22f : 1f);
+        var radiusSquared = radius * radius;
+        var affected = Towers.Where(tower => !tower.IsSandboxDisabled &&
+                Vector2.DistanceSquared(tower.Position, enemy.Position) <= radiusSquared)
+            .Where(tower => tower.ApplyDisruption(duration, 2.4f))
+            .ToArray();
+        if (affected.Length == 0) return;
+
+        Effects.AddSplash(enemy.Position, ColorPalette.Violet, radius);
+        foreach (var tower in affected.Take(5))
+            Effects.AddFlash(tower.Position, ColorPalette.Violet, 0.22f, tower.Definition.Visual.Radius + 7);
+    }
+
+    private static bool IsCounterPressureSource(EnemyInstance enemy) =>
+        enemy.IsElite || enemy.IsBoss || enemy.Definition.Shield > 0 || enemy.Definition.RegenerationPerSecond > 0;
 
     public void OnEnemyKilled(EnemyInstance enemy)
     {

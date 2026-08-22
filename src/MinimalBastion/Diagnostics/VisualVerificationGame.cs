@@ -380,6 +380,21 @@ public sealed class VisualVerificationGame : Game
         scenes.Add(Capture("05b-crowded-auto-and-remote-selection.png", ui, GameState.Playing, crowdedMarkerSession));
         ui.SetRemoteCoOpCursor(null, 0);
 
+        var gauntletSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, "close_quarters");
+        Require(gauntletSession.TryPlaceTower("needle_turret", new Vector2(45, 200)),
+            "Signal Gauntlet visual scene places a tower beside the opening route.", assertions);
+        gauntletSession.SpawnEnemy("t4_aegis", 1, 1);
+        var gauntletThreat = gauntletSession.Enemies.Single();
+        gauntletThreat.UpdateMovement(1f, gauntletSession.Map.Path);
+        gauntletThreat.ArmCounterPressure(0);
+        gauntletSession.TryEmitCounterPressure(gauntletThreat);
+        Require(gauntletSession.Towers[0].IsDisrupted,
+            "A shielded Gauntlet threat creates a visible synchronized tower disruption.", assertions);
+        var gauntletPixels = RenderPixels(ui, GameState.Playing, gauntletSession);
+        Require(CountColorPixels(gauntletPixels, new Rectangle(15, 165, 60, 70), ColorPalette.Violet) >= 12,
+            "Disrupted tower art carries the compact violet interruption mark.", assertions);
+        scenes.Add(Capture("05c-signal-gauntlet-disruption.png", ui, GameState.Playing, gauntletSession));
+
         scenes.Add(Capture("06-protocol-auto-library.png", ui, GameState.TowerLibrary, null));
         _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 7 });
         Require(ui.SelectedLibraryTowerId == "signal_beacon",
@@ -549,7 +564,7 @@ public sealed class VisualVerificationGame : Game
                 apexSession.TryChooseTowerDoctrine(apexSession.SelectedTower!.Id, "needle_cycler") &&
                 apexSession.TrySpecializeTower(apexSession.SelectedTower!.Id, "rapid_array") &&
                 apexSession.CanApexUpgrade(apexSession.SelectedTower),
-            "Mastery Fundamentals scene exposes Apex on a completed tower.", assertions);
+            "Mastery Entrenched scene exposes Apex on a completed tower.", assertions);
         _ = RenderPixels(ui, GameState.Playing, apexSession);
         _ = ui.HandleGameplayInput(Pointer(1120, 693), apexSession);
         scenes.Add(Capture("10f-apex-upgrade-preview.png", ui, GameState.Playing, apexSession));
@@ -653,6 +668,11 @@ public sealed class VisualVerificationGame : Game
         Require(ui.HandleRunHistory(Pointer(400, 150, leftPressed: true)) == UiAction.None && !ui.IsRunHistoryDetailOpen,
             "Selecting a history record keeps the list open until an action is chosen.", assertions);
         scenes.Add(Capture("13a-run-history-selection.png", ui, GameState.RunHistory, null));
+        Require(ui.HandleRunHistory(Pointer(1080, 80, leftPressed: true)) == UiAction.None && ui.IsRunHistoryCareerOpen,
+            "Run History opens the persistent medals, achievements, and records overview.", assertions);
+        scenes.Add(Capture("13b-career-medals-and-records.png", ui, GameState.RunHistory, null));
+        Require(ui.HandleRunHistory(Pointer(640, 670, leftPressed: true)) == UiAction.None && !ui.IsRunHistoryCareerOpen,
+            "The career overview returns to Run History without changing its selected run.", assertions);
         Require(ui.HandleRunHistory(Pointer(480, 543, leftPressed: true)) == UiAction.None && ui.IsRunHistoryDetailOpen,
             "The explicit View Run action opens the complete statistics view.", assertions);
         var runDetailPixels = RenderPixels(ui, GameState.RunHistory, null);

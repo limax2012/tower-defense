@@ -538,6 +538,14 @@ public sealed class GameRenderer
         var accent = tower.IsSandboxDisabled ? ColorPalette.MapBoundary : tower.Definition.Visual.AccentColor;
         p.DrawShape(batch, tower.Position, tower.Definition.Visual.Radius, tower.Definition.Visual.Shape,
             primary, accent, tower.LevelIndex + 1, true, pulse, true);
+        if (tower.IsDisrupted)
+        {
+            var barHalfHeight = tower.Definition.Visual.Radius * 0.42f;
+            p.Line(batch, tower.Position + new Vector2(-4, -barHalfHeight),
+                tower.Position + new Vector2(-4, barHalfHeight), ColorPalette.Violet, 3);
+            p.Line(batch, tower.Position + new Vector2(4, -barHalfHeight),
+                tower.Position + new Vector2(4, barHalfHeight), ColorPalette.Violet, 3);
+        }
         if (tower.IsApex)
             p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 4, ColorPalette.Paper, 2);
         if (tower.IsSandboxDisabled)

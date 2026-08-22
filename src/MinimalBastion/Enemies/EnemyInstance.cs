@@ -29,6 +29,7 @@ public sealed class EnemyInstance
     public string DisplayName => IsBoss ? "Bastion Core" : IsElite ? $"Elite {Definition.DisplayName}" : Definition.DisplayName;
     public float DamagePauseTimer { get; set; }
     public float KnockbackGraceRemaining { get; private set; }
+    public float CounterPressureCooldownRemaining { get; private set; }
     public bool IsDead { get; private set; }
     public bool HasEscaped { get; private set; }
     public bool IsSandboxImmortal { get; }
@@ -105,6 +106,17 @@ public sealed class EnemyInstance
     {
         DamagePauseTimer = MathF.Max(0, DamagePauseTimer - deltaSeconds);
         KnockbackGraceRemaining = MathF.Max(0, KnockbackGraceRemaining - deltaSeconds);
+        CounterPressureCooldownRemaining = MathF.Max(0, CounterPressureCooldownRemaining - deltaSeconds);
+    }
+
+    public void ArmCounterPressure(float initialDelaySeconds) =>
+        CounterPressureCooldownRemaining = MathF.Max(0, initialDelaySeconds);
+
+    public bool TryEmitCounterPressure(float intervalSeconds)
+    {
+        if (CounterPressureCooldownRemaining > 0 || IsDead || HasEscaped) return false;
+        CounterPressureCooldownRemaining = MathF.Max(0.1f, intervalSeconds);
+        return true;
     }
 
     public void ApplyHealthDamage(float amount)
@@ -179,6 +191,7 @@ public sealed class EnemyInstance
         Shield = Shield,
         DamagePauseTimer = DamagePauseTimer,
         KnockbackGraceRemaining = KnockbackGraceRemaining,
+        CounterPressureCooldownRemaining = CounterPressureCooldownRemaining,
         IsDead = IsDead,
         HasEscaped = HasEscaped,
         BossPhaseActive = BossPhaseActive,
@@ -202,6 +215,7 @@ public sealed class EnemyInstance
             Shield = MathF.Max(0, data.Shield),
             DamagePauseTimer = MathF.Max(0, data.DamagePauseTimer),
             KnockbackGraceRemaining = MathF.Max(0, data.KnockbackGraceRemaining),
+            CounterPressureCooldownRemaining = MathF.Max(0, data.CounterPressureCooldownRemaining),
             IsDead = data.IsDead,
             HasEscaped = data.HasEscaped,
             BossPhaseActive = data.BossPhaseActive,

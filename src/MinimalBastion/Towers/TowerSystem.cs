@@ -17,6 +17,7 @@ public sealed class TowerSystem
             if (tower.IsSandboxDisabled) continue;
             if (tower.IsSupport) continue;
             tower.CooldownRemaining -= deltaSeconds;
+            if (tower.IsDisrupted) continue;
             if (tower.CooldownRemaining > 0) continue;
             var target = _targetSelector.Select(tower.Position, session.GetEffectiveRange(tower), tower.TargetMode, session.Enemies);
             if (target is null) continue;

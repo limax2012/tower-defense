@@ -195,6 +195,8 @@ public sealed record RunHistoryLayoutSnapshot
             // arbitrary fire/recoil phase from the terminal simulation tick.
             saved.CooldownRemaining = 0;
             saved.OverdriveRemaining = 0;
+            saved.DisruptionRemaining = 0;
+            saved.DisruptionLockoutRemaining = 0;
             return saved;
         }).ToList(),
         PulsePlates = session.EmergencyDefenses.Select(plate =>

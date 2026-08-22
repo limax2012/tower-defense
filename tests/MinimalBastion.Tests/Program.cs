@@ -1,4 +1,5 @@
 using MinimalBastion;
+using MinimalBastion.Analytics;
 using MinimalBastion.Audio;
 using MinimalBastion.Combat;
 using MinimalBastion.Core;
@@ -49,6 +50,7 @@ internal static class Program
             ("map roster and power nodes", MapRosterAndPowerNodes),
             ("difficulty profiles and persistence", DifficultyProfilesAndPersistence),
             ("challenge directives and persistence", ChallengeDirectivesAndPersistence),
+            ("Signal Gauntlet disruption", SignalGauntletDisruption),
             ("sandbox tower laboratory", SandboxTowerLaboratory),
             ("profile matrix state reconstruction", ProfileMatrixStateReconstruction),
             ("power node tower intel", PowerNodeTowerIntel),
@@ -113,6 +115,7 @@ internal static class Program
             ("independent solo and co-op save slots", IndependentSaveSlots),
             ("save slot recovery backup", SaveSlotRecoveryBackup),
             ("persistent run history", PersistentRunHistory),
+            ("career medals and records", CareerMedalsAndRecords),
             ("headless simulation deterministic", HeadlessSimulationDeterministic),
             ("simulation footprint hold", SimulationFootprintHold),
             ("forced build completion summary", ForcedBuildCompletionSummary),
@@ -291,7 +294,7 @@ internal static class Program
         Check.True(!content.Challenges["no_reserves"].ProtocolsEnabled &&
             content.Challenges.Where(pair => !pair.Key.Equals("no_reserves", StringComparison.OrdinalIgnoreCase))
                 .All(pair => pair.Value.ProtocolsEnabled),
-            "Fundamentals is the only Protocol-free directive");
+            "Entrenched is the only Protocol-free directive");
         Check.Equal(1090, content.Waves.Waves.Take(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Sum(x => x.Count), "enemy count in campaign waves");
         Check.True(content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase)) >= 5, "elite encounter groups");
         Check.Equal(1, content.Waves.Waves.Take(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)), "campaign boss group");
@@ -466,25 +469,25 @@ internal static class Program
         var fundamentals = new GameSession(content, "foundry_loop", "hard", "no_reserves");
 
         Check.Equal(400, standard.Economy.Credits, "standard directive preserves starting economy");
-        Check.Equal(440, close.Economy.Credits, "close-quarters compensation is fixed at session start");
-        Check.True(!close.IsTowerAvailable("watchtower") && !close.IsTowerAvailable("siege_mortar"),
-            "close quarters removes the two remote artillery towers");
-        Check.Equal(PlacementFailure.TowerUnavailable, close.ValidatePlacement("watchtower", new Vector2(50, 200)),
-            "restricted towers report an explicit directive failure");
+        Check.Equal(440, close.Economy.Credits, "Signal Gauntlet compensation is fixed at session start");
+        Check.True(close.CounterPressureEnabled && content.Towers.Keys.All(close.IsTowerAvailable),
+            "Signal Gauntlet preserves the full roster and enables enemy disruption pressure");
         Check.True(core.IsTowerAvailable("ember_coil") && !core.IsTowerAvailable("prism_beam"),
             "core-six roster retains its authored compact arsenal");
         Check.Equal(520, core.Economy.Credits, "advanced core-six roster receives its fixed opening cushion");
-        Check.Equal("Fundamentals", fundamentals.Challenge.DisplayName, "stable directive id exposes its new player-facing name");
+        Check.Equal("Entrenched", fundamentals.Challenge.DisplayName, "stable directive id exposes its player-facing name");
         Check.True(!fundamentals.TacticalSystemsEnabled && fundamentals.EmergencyInventory == 0,
             "fundamentals disables tactical inventory");
         Check.True(!fundamentals.ProtocolsEnabled, "fundamentals disables manual and automatic Protocols");
-        Check.Equal(500, fundamentals.Economy.Credits, "fundamentals receives its fixed tower-only opening cushion");
+        Check.Equal(440, fundamentals.Economy.Credits, "Entrenched receives its restrained tower-only opening cushion");
         Check.Equal(PlacementFailure.TacticalSystemsDisabled,
             fundamentals.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(200, 30)),
             "fundamentals rejects pulse placement explicitly");
         Check.True(fundamentals.TryPlaceTower("needle_turret", new Vector2(45, 200)),
             "fundamentals retains the complete permanent tower roster");
         var fundamentalsTower = fundamentals.Towers.Single();
+        Check.True(!fundamentals.SellingEnabled && !fundamentals.TrySellTower(fundamentalsTower.Id),
+            "Entrenched makes permanent tower commitments irreversible");
         Check.True(!fundamentals.TryOverdriveTower(fundamentalsTower.Id),
             "fundamentals rejects manual Protocol activation");
         Check.True(!fundamentals.TryToggleAutoProtocol(fundamentalsTower.Id),
@@ -497,17 +500,14 @@ internal static class Program
             EntityId = fundamentalsTower.Id
         }).Accepted, "fundamentals rejects remote co-op Protocol commands authoritatively");
 
-        // Saves made before No Reserves became Fundamentals may contain a
-        // dormant auto selection or Protocol timer. Restore the permanent
-        // defenses, but normalize those newly prohibited transient systems.
-        var legacyFundamentalsSave = fundamentals.CaptureSaveGame();
-        legacyFundamentalsSave.OverdriveCooldownRemaining = 9;
-        legacyFundamentalsSave.AutoOverdriveTowerId = fundamentalsTower.Id;
-        legacyFundamentalsSave.Towers[0].OverdriveRemaining = 4;
-        var normalizedFundamentals = GameSession.RestoreSaveGame(content, legacyFundamentalsSave);
-        Check.Equal(0, normalizedFundamentals.AutoOverdriveTowerId, "legacy fundamentals auto Protocol is cleared");
-        Check.Nearly(0, normalizedFundamentals.OverdriveCooldownRemaining, "legacy fundamentals Protocol cooldown is cleared");
-        Check.True(!normalizedFundamentals.Towers[0].IsOverdriven, "legacy fundamentals active Protocol is cleared");
+        var restrictedSave = fundamentals.CaptureSaveGame();
+        restrictedSave.OverdriveCooldownRemaining = 9;
+        restrictedSave.AutoOverdriveTowerId = fundamentalsTower.Id;
+        restrictedSave.Towers[0].OverdriveRemaining = 4;
+        var normalizedEntrenched = GameSession.RestoreSaveGame(content, restrictedSave);
+        Check.Equal(0, normalizedEntrenched.AutoOverdriveTowerId, "Entrenched auto Protocol state is cleared");
+        Check.Nearly(0, normalizedEntrenched.OverdriveCooldownRemaining, "Entrenched Protocol cooldown is cleared");
+        Check.True(!normalizedEntrenched.Towers[0].IsOverdriven, "Entrenched active Protocol state is cleared");
 
         var saved = close.CaptureSaveGame();
         Check.Equal("close_quarters", saved.ChallengeId, "save captures challenge directive");
@@ -522,8 +522,46 @@ internal static class Program
         ui.ConfigureChallenges(content.Challenges.Values);
         Check.Equal("standard", ui.SelectedChallengeId, "challenge UI defaults to standard");
         ui.PrepareGameSetup(false);
-        ui.HandleGameSetup(WorldInput(new Vector2(500, 345)) with { LeftPressed = true });
-        Check.Equal("close_quarters", ui.SelectedChallengeId, "mode row selects close quarters directly");
+        ui.HandleGameSetup(WorldInput(new Vector2(1100, 345)) with { LeftPressed = true });
+        Check.Equal("close_quarters", ui.SelectedChallengeId, "mode row selects Signal Gauntlet directly");
+    }
+
+    private static void SignalGauntletDisruption()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        var session = new GameSession(content, "foundry_loop", "hard", "close_quarters");
+        Check.True(session.TryPlaceTower("needle_turret", new Vector2(45, 200)),
+            "Gauntlet test places a tower beside the opening route");
+        session.SpawnEnemy("t4_aegis", 1, 1);
+        var pressureSource = session.Enemies.Single();
+        pressureSource.UpdateMovement(1f, session.Map.Path);
+        pressureSource.ArmCounterPressure(0);
+        session.TryEmitCounterPressure(pressureSource);
+
+        Check.True(session.Towers[0].IsDisrupted, "a shielded threat jams a nearby tower");
+        Check.True(pressureSource.CounterPressureCooldownRemaining > 0,
+            "enemy disruption has a deterministic repeat interval");
+
+        var snapshot = session.CaptureCoOpState(12, 0, false);
+        var restored = GameSession.RestoreCoOpState(content, snapshot, 2);
+        Check.Nearly(session.Towers[0].DisruptionRemaining, restored.Towers[0].DisruptionRemaining,
+            "co-op resynchronization restores tower disruption time");
+        Check.Nearly(session.Towers[0].DisruptionLockoutRemaining, restored.Towers[0].DisruptionLockoutRemaining,
+            "co-op resynchronization restores tower disruption recovery time");
+        Check.Nearly(pressureSource.CounterPressureCooldownRemaining, restored.Enemies[0].CounterPressureCooldownRemaining,
+            "co-op resynchronization restores enemy pulse timing");
+        Check.Equal(SessionChecksum.Compute(session, 12), SessionChecksum.Compute(restored, 12),
+            "Gauntlet pressure state participates in the authoritative checksum");
+
+        var archivedTower = RunHistoryLayoutSnapshot.FromSession(session).Towers.Single();
+        Check.Nearly(0, archivedTower.DisruptionRemaining,
+            "the final-layout diagram omits terminal-frame disruption animation state");
+        Check.Nearly(0, archivedTower.DisruptionLockoutRemaining,
+            "the final-layout diagram omits terminal-frame disruption recovery state");
+
+        session.OnWaveCompleted(1);
+        Check.True(!session.Towers[0].IsDisrupted, "intermission clears any residual disruption");
     }
 
     private static void SandboxTowerLaboratory()
@@ -624,7 +662,7 @@ internal static class Program
         var ui = new UIManager(null!);
         ui.ConfigureChallenges(content.Challenges.Values);
         ui.PrepareGameSetup(false);
-        ui.HandleGameSetup(WorldInput(new Vector2(1100, 345)) with { LeftPressed = true });
+        ui.HandleGameSetup(WorldInput(new Vector2(870, 345)) with { LeftPressed = true });
         Check.Equal("sandbox_lab", ui.SelectedChallengeId, "solo setup exposes Sandbox Lab as a direct mode choice");
         ui.PrepareGameSetup(true);
         Check.Equal("standard", ui.SelectedChallengeId, "online setup excludes and safely leaves the solo-only sandbox");
@@ -4182,14 +4220,15 @@ internal static class Program
         Check.True(normalReference.Contains("ENEMY HEALTH x0.90") && normalReference.Contains("STARTING LIVES 24"),
             "profile reference exposes exact difficulty combat and economy values");
         var closeReference = UIManager.ChallengeReferenceLines(content.Challenges["close_quarters"], content.Towers.Count);
-        Check.True(closeReference.Contains("TOWERS AVAILABLE 8/10") &&
-            closeReference.Any(line => line.Contains("WATCHTOWER", StringComparison.Ordinal)),
-            "profile reference exposes exact directive roster restrictions");
+        Check.True(closeReference.Contains("TOWERS AVAILABLE 10/10") &&
+            closeReference.Any(line => line.Contains("ENEMY DISRUPTION", StringComparison.Ordinal)),
+            "profile reference exposes the full Gauntlet roster and disruption rule");
         var fundamentalsReference = UIManager.ChallengeReferenceLines(content.Challenges["no_reserves"], content.Towers.Count);
         Check.True(fundamentalsReference.Contains("TACTICAL RESERVES OFF") &&
             fundamentalsReference.Contains("TOWER PROTOCOLS OFF") &&
+            fundamentalsReference.Contains("TOWER SALES OFF") &&
             fundamentalsReference.Contains("TOWERS AVAILABLE 10/10"),
-            "profile reference exposes every Fundamentals restriction and its full tower roster");
+            "profile reference exposes every Entrenched restriction and its full tower roster");
         Check.Equal(UiAction.TowerLibrary,
             ui.HandleMainMenu(WorldInput(new Vector2(640, 540)) with { LeftPressed = true }),
             "title screen opens tactical library");
@@ -4951,6 +4990,58 @@ internal static class Program
         }
     }
 
+    private static void CareerMedalsAndRecords()
+    {
+        var mapIds = new[] { "foundry_loop", "crosswind_basin", "prism_circuit", "relay_divide" };
+        var challengeIds = new[] { "standard", "close_quarters", "core_six", "no_reserves" };
+        var runs = Enumerable.Range(0, 4).Select(index => new RunHistoryEntry
+        {
+            RunId = $"career-{index}",
+            CompletedAtUtc = new DateTime(2026, 1, 1 + index, 12, 0, 0, DateTimeKind.Utc),
+            Victory = true,
+            IsEndless = index == 0,
+            MapId = mapIds[index],
+            MapName = mapIds[index],
+            DifficultyId = index == 0 ? "bastion" : "normal",
+            DifficultyName = index == 0 ? "Bastion" : "Medium",
+            ChallengeId = challengeIds[index],
+            ChallengeName = challengeIds[index],
+            CurrentWave = index == 0 ? 50 : GameConstants.CampaignWaveCount,
+            TotalWaves = GameConstants.CampaignWaveCount,
+            Lives = 18,
+            StartingLives = 18,
+            Leaks = 0,
+            CreditsRemaining = 1000 + index,
+            DefenseSeconds = 900 + index * 10,
+            Towers =
+            [
+                new RunHistoryTowerEntry { TowerId = "needle_turret", DisplayName = "Needle Turret", Purchases = 3 },
+                new RunHistoryTowerEntry { TowerId = "frost_spire", DisplayName = "Frost Spire", Purchases = 2 },
+                new RunHistoryTowerEntry { TowerId = "breaker_cannon", DisplayName = "Breaker Cannon", Purchases = 2 },
+                new RunHistoryTowerEntry { TowerId = "arc_relay", DisplayName = "Arc Relay", Purchases = 1 }
+            ],
+            FinalLayout = new RunHistoryLayoutSnapshot
+            {
+                Towers = Enumerable.Range(1, 8).Select(id => new TowerSaveData
+                {
+                    Id = id,
+                    DefinitionId = "needle_turret"
+                }).ToList()
+            }
+        }).ToArray();
+
+        var progress = CareerProgression.Analyze(runs);
+        Check.Equal(4, progress.CampaignsSecured, "career record counts secured campaigns");
+        Check.Equal(4, progress.MapsSecured, "career record counts unique secured arenas");
+        Check.True(progress.Achievements.All(achievement => achievement.IsUnlocked),
+            "representative clears unlock every authored career achievement");
+        Check.Equal(7, CareerProgression.MedalsFor(runs[0]).Count,
+            "a deep flawless Bastion run earns every available run medal");
+        Check.Equal("career-0", progress.DeepestRun!.RunId, "career record identifies the deepest run");
+        Check.Equal("career-0", progress.FastestClear!.RunId, "career record identifies the fastest clear");
+        Check.Equal("career-3", progress.HighestReserveClear!.RunId, "career record identifies the highest reserve clear");
+    }
+
     private static void TowerSpecializations()
     {
         var session = Session();
@@ -5040,9 +5131,10 @@ internal static class Program
         seed.Content.Challenges["no_reserves"] = new ChallengeDefinition
         {
             Id = "no_reserves",
-            DisplayName = "Fundamentals",
+            DisplayName = "Entrenched",
             TacticalSystemsEnabled = false,
-            ProtocolsEnabled = false
+            ProtocolsEnabled = false,
+            SellingEnabled = false
         };
         var fundamentals = new GameSession(seed.Content, challengeId: "no_reserves");
         var save = fundamentals.CaptureSaveGame();
@@ -5058,7 +5150,7 @@ internal static class Program
         Check.Equal(GameConstants.ApexUnlockWave, activeWave.CurrentWave, "wave 21 is active");
         Check.True(activeWave.ApexUpgradesUnlocked, "Apex remains available during Mastery combat");
         Check.True(!session.ProtocolsEnabled && !session.TacticalSystemsEnabled,
-            "Fundamentals restrictions remain active alongside permanent Apex progression");
+            "Entrenched restrictions remain active alongside permanent Apex progression");
         Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "place Apex test tower");
         var tower = session.Towers.Single();
         var apexUi = new UIManager(null!);
