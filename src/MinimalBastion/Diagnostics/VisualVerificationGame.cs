@@ -79,15 +79,21 @@ public sealed class VisualVerificationGame : Game
         var mainMenuAtRest = RenderPixels(ui, GameState.MainMenu, null);
         var scenes = new List<VisualVerificationScene>
         {
-            Capture("00-main-menu-defense-lanes.png", ui, GameState.MainMenu, null)
+            Capture("00-main-menu-battles.png", ui, GameState.MainMenu, null)
         };
         ui.AdvanceVisualTime(0.45f);
+        ui.AdvanceMainMenuBattle(0.45f);
         var mainMenuInMotion = RenderPixels(ui, GameState.MainMenu, null);
         Require(CountChangedPixels(mainMenuAtRest, mainMenuInMotion, UIManager.MainMenuLeftDefenseBounds) >= 300 &&
                 CountChangedPixels(mainMenuAtRest, mainMenuInMotion, UIManager.MainMenuRightDefenseBounds) >= 300,
             "Both main-menu defense lanes contain visible animated combat.", assertions);
         Require(CountChangedPixels(mainMenuAtRest, mainMenuInMotion, new Rectangle(300, 0, 680, 720)) == 0,
             "Main-menu combat motion remains outside the logo, buttons, and central instructions.", assertions);
+        for (var index = 0; index < 64; index++) ui.AdvanceMainMenuBattle(0.25f);
+        Require(ui.MainMenuBattleKills > 0,
+            "Main-menu battles resolve real enemy deaths through normal combat logic.", assertions);
+        Require(ui.MainMenuBattleEscapes > 0,
+            "Main-menu battles allow surviving enemies to reach the end of their paths.", assertions);
         Require(ui.HandleMainMenu(Pointer(640, 440, leftPressed: true)) == UiAction.CoOp,
             "Online Co-op opens the connection screen without visiting setup.", assertions);
 
@@ -829,6 +835,7 @@ public sealed class VisualVerificationGame : Game
         ui.ConfigureDifficulties(content.Difficulties.Values);
         ui.ConfigureChallenges(content.Challenges.Values);
         ui.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values, content.Tactics);
+        ui.ConfigureMainMenuBattle(content);
         ui.SetSaveState(false);
     }
 

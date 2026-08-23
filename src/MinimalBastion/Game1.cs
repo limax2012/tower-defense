@@ -135,6 +135,7 @@ public sealed class Game1 : Game
             _ui.ConfigureDifficulties(_content.Difficulties.Values);
             _ui.ConfigureChallenges(_content.Challenges.Values);
             _ui.ConfigureTowerLibrary(_content.Towers.Values, _content.Enemies.Values, _content.Tactics);
+            _ui.ConfigureMainMenuBattle(_content);
             _ui.ConfigureDiscovery(_discovery.Snapshot());
             _ui.ConfigureSettings(_settings);
             _ui.SetSaveState(SaveSlotsExistSafely());
@@ -165,6 +166,7 @@ public sealed class Game1 : Game
         if (input.FullscreenPressed) ToggleFullscreenFromHotkey();
         var elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
         _ui.AdvanceVisualTime(elapsedSeconds);
+        if (_state == GameState.MainMenu) _ui.AdvanceMainMenuBattle(elapsedSeconds);
         _audio?.Update(elapsedSeconds);
         _coOpCursor.Advance(elapsedSeconds);
         SyncRemoteCoOpCursor();

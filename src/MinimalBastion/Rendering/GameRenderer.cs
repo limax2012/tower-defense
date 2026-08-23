@@ -32,6 +32,17 @@ public sealed class GameRenderer
         DrawForegroundTowerOverlays(batch, primitives, session, presentation, foregroundTowerId);
     }
 
+    internal void DrawCombatShowcase(SpriteBatch batch, PrimitiveRenderer primitives,
+        MinimalBastion.GameSession session)
+    {
+        var presentation = PresentationFrame.Create(session, 0);
+        DrawPath(batch, primitives, session);
+        DrawTowers(batch, primitives, session, presentation);
+        DrawEnemies(batch, primitives, session, presentation);
+        DrawProjectiles(batch, primitives, session, presentation);
+        DrawEffects(batch, primitives, session, presentation);
+    }
+
     private static void DrawTerrain(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
     {
         var mapRect = new Rectangle(0, 0, GameConstants.MapWidth, GameConstants.LogicalHeight);
