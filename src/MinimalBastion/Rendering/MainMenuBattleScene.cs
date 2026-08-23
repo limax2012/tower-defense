@@ -22,6 +22,8 @@ internal sealed class MainMenuBattleScene
         .Select(tower => tower.LevelIndex + 1).ToArray();
     public IReadOnlyList<string> TowerKinds => _left.Session.Towers.Concat(_right.Session.Towers)
         .Select(tower => tower.Definition.Id).ToArray();
+    public IReadOnlyList<int> TowerCounts => [_left.Session.Towers.Count, _right.Session.Towers.Count];
+    public IReadOnlyList<int> EnemyCounts => [_left.EnemyCount, _right.EnemyCount];
 
     public MainMenuBattleScene(GameContent content, int? randomSeed = null)
     {
@@ -102,11 +104,12 @@ internal sealed class MainMenuBattleScene
             StartingCredits = 0,
             StartingLives = 24
         };
+        var wave = CreateWave(leftLane);
         var waveSet = new WaveSetDefinition
         {
             Id = waveSetId,
             MapId = mapId,
-            Waves = [CreateWave(leftLane)]
+            Waves = [wave]
         };
         var maps = new Dictionary<string, MapDefinition>(_content.Maps, StringComparer.OrdinalIgnoreCase)
         {
@@ -130,56 +133,77 @@ internal sealed class MainMenuBattleScene
         };
         var session = new GameSession(laneContent, mapId, DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
         AddTowers(session, leftLane);
-        var lane = new LaneBattle(session, previousKills, previousEscapes);
+        var lane = new LaneBattle(session, previousKills, previousEscapes,
+            wave.Groups.Sum(group => group.Count));
         session.EnemyKilled += _ => lane.EnemiesKilled++;
         session.EnemyEscaped += _ => lane.EnemiesEscaped++;
         session.StartNextWave(false);
         return lane;
     }
 
-    private static WaveDefinition CreateWave(bool leftLane) => new()
+    private WaveDefinition CreateWave(bool leftLane)
     {
-        Number = 1,
-        Archetype = "Menu Skirmish",
-        HealthMultiplier = leftLane ? 1.30f : 1.35f,
-        SpeedMultiplier = 0.90f,
-        Groups = leftLane
-            ?
-            [
-                new WaveGroupDefinition { EnemyId = "t1_crawler", Count = 2, SpawnInterval = 1.35f },
-                new WaveGroupDefinition { EnemyId = "t2_runner", Count = 1, SpawnInterval = 1.25f, DelayBefore = 0.45f },
-                new WaveGroupDefinition { EnemyId = "t5_regenerator", Count = 1, SpawnInterval = 1.50f, DelayBefore = 0.55f }
-            ]
-            :
-            [
-                new WaveGroupDefinition { EnemyId = "t2_runner", Count = 1, SpawnInterval = 1.30f },
-                new WaveGroupDefinition { EnemyId = "t1_crawler", Count = 1, SpawnInterval = 1.35f, DelayBefore = 0.40f },
-                new WaveGroupDefinition { EnemyId = "t4_aegis", Count = 1, SpawnInterval = 1.45f, DelayBefore = 0.50f },
-                new WaveGroupDefinition { EnemyId = "t5_regenerator", Count = 1, SpawnInterval = 1.55f, DelayBefore = 0.55f }
-            ]
-    };
+        var enemyCount = _random.Next(3, 6);
+        var pool = leftLane
+            ? new[] { "t1_crawler", "t1_crawler", "t2_runner", "t3_brute" }
+            : new[] { "t1_crawler", "t2_runner", "t2_runner", "t3_brute" };
+        var groups = new List<WaveGroupDefinition>(enemyCount);
+        for (var index = 0; index < enemyCount; index++)
+        {
+            var enemyId = index switch
+            {
+                0 => leftLane ? "t1_crawler" : "t2_runner",
+                _ when index == enemyCount - 1 => leftLane ? "t5_regenerator" : "t4_aegis",
+                _ => pool[_random.Next(pool.Length)]
+            };
+            groups.Add(new WaveGroupDefinition
+            {
+                EnemyId = enemyId,
+                Count = 1,
+                SpawnInterval = 1.15f + (_random.NextSingle() * 0.35f),
+                DelayBefore = index == 0 ? 0f : 0.25f + (_random.NextSingle() * 0.35f)
+            });
+        }
+
+        return new WaveDefinition
+        {
+            Number = 1,
+            Archetype = "Menu Skirmish",
+            HealthMultiplier = leftLane ? 1.30f : 1.35f,
+            SpeedMultiplier = 0.90f,
+            Groups = groups
+        };
+    }
 
     private void AddTowers(GameSession session, bool leftLane)
     {
         var positions = leftLane
             ? new[]
             {
-                new Vector2(67, 205),
-                new Vector2(243, 390),
-                new Vector2(67, 558)
+                new Vector2(67, 160),
+                new Vector2(243, 245),
+                new Vector2(67, 330),
+                new Vector2(243, 415),
+                new Vector2(67, 500),
+                new Vector2(243, 585)
             }
             : new[]
             {
-                new Vector2(1037, 185),
-                new Vector2(1213, 370),
-                new Vector2(1037, 548)
+                new Vector2(1213, 160),
+                new Vector2(1037, 245),
+                new Vector2(1213, 330),
+                new Vector2(1037, 415),
+                new Vector2(1213, 500),
+                new Vector2(1037, 585)
             };
+        Shuffle(positions);
+        var towerCount = _random.Next(2, 6);
         var candidates = session.Content.Towers.Values
             .Where(tower => !tower.Id.Equals("signal_beacon", StringComparison.OrdinalIgnoreCase))
             .OrderBy(tower => tower.Id)
             .ToList();
         Shuffle(candidates);
-        var chosen = candidates.Take(positions.Length).ToList();
+        var chosen = candidates.Take(towerCount).ToList();
 
         for (var index = 0; index < Math.Min(positions.Length, chosen.Count); index++)
         {
@@ -220,12 +244,14 @@ internal sealed class MainMenuBattleScene
         public GameSession Session { get; }
         public int EnemiesKilled { get; set; }
         public int EnemiesEscaped { get; set; }
+        public int EnemyCount { get; }
 
-        public LaneBattle(GameSession session, int enemiesKilled, int enemiesEscaped)
+        public LaneBattle(GameSession session, int enemiesKilled, int enemiesEscaped, int enemyCount)
         {
             Session = session;
             EnemiesKilled = enemiesKilled;
             EnemiesEscaped = enemiesEscaped;
+            EnemyCount = enemyCount;
         }
     }
 }

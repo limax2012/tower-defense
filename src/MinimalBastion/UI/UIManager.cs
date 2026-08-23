@@ -318,6 +318,8 @@ public sealed class UIManager
     internal int MainMenuBattleEscapes => _mainMenuBattleScene?.EnemiesEscaped ?? 0;
     internal IReadOnlyList<int> MainMenuBattleTowerLevels => _mainMenuBattleScene?.TowerLevels ?? [];
     internal IReadOnlyList<string> MainMenuBattleTowerKinds => _mainMenuBattleScene?.TowerKinds ?? [];
+    internal IReadOnlyList<int> MainMenuBattleTowerCounts => _mainMenuBattleScene?.TowerCounts ?? [];
+    internal IReadOnlyList<int> MainMenuBattleEnemyCounts => _mainMenuBattleScene?.EnemyCounts ?? [];
 
     public void PreparePauseScreen()
     {

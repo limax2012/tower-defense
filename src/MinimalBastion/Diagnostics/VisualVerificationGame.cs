@@ -89,7 +89,10 @@ public sealed class VisualVerificationGame : Game
             "Both main-menu defense lanes contain visible animated combat.", assertions);
         Require(CountChangedPixels(mainMenuAtRest, mainMenuInMotion, new Rectangle(300, 0, 680, 720)) == 0,
             "Main-menu combat motion remains outside the logo, buttons, and central instructions.", assertions);
-        Require(ui.MainMenuBattleTowerLevels.Count == 6 &&
+        Require(ui.MainMenuBattleTowerCounts.Count == 2 &&
+                ui.MainMenuBattleTowerCounts.All(count => count is >= 2 and <= 5),
+            "Each main-menu lane independently occupies two to five tower positions.", assertions);
+        Require(ui.MainMenuBattleTowerLevels.Count == ui.MainMenuBattleTowerCounts.Sum() &&
                 ui.MainMenuBattleTowerLevels.All(level => level is >= 1 and <= 3),
             "Main-menu battle towers independently use valid randomized levels.", assertions);
         Require(ui.MainMenuBattleTowerKinds.Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 3,
@@ -97,6 +100,9 @@ public sealed class VisualVerificationGame : Game
         Require(ui.MainMenuBattleTowerKinds.All(towerId =>
                 !towerId.Equals("signal_beacon", StringComparison.OrdinalIgnoreCase)),
             "Main-menu battles exclude the non-attacking Signal Beacon.", assertions);
+        Require(ui.MainMenuBattleEnemyCounts.Count == 2 &&
+                ui.MainMenuBattleEnemyCounts.All(count => count is >= 3 and <= 5),
+            "Each main-menu lane fields a randomized group of three to five enemies.", assertions);
         for (var index = 0; index < 96; index++) ui.AdvanceMainMenuBattle(0.25f);
         Require(ui.MainMenuBattleKills > 0,
             "Main-menu battles resolve real enemy deaths through normal combat logic.", assertions);
