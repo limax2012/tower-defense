@@ -21,6 +21,7 @@ public sealed class UserSettings
     public float SfxVolume { get; set; } = 0.65f;
     public float MusicVolume { get; set; } = 0.20f;
     public bool ReducedEffects { get; set; }
+    public bool ShowHotkeyBadges { get; set; } = true;
     public bool AutoStartWaves { get; set; }
     public int AutoStartDelaySeconds { get; set; }
 

@@ -256,7 +256,8 @@ public sealed class UIManager
     private readonly Rectangle _resolutionButton = new(650, 202, 280, 54);
     private readonly Rectangle _vsyncButton = new(350, 266, 280, 54);
     private readonly Rectangle _effectsButton = new(650, 266, 280, 54);
-    private readonly Rectangle _autoStartButton = new(350, 330, 580, 54);
+    private readonly Rectangle _autoStartButton = new(350, 330, 300, 54);
+    private readonly Rectangle _hotkeyBadgesButton = new(660, 330, 270, 54);
     private readonly Rectangle _volumeButton = new(350, 394, 580, 54);
     private readonly Rectangle _musicVolumeButton = new(350, 458, 580, 54);
     private readonly Rectangle _settingsBackButton = new(500, 526, 280, 48);
@@ -670,11 +671,11 @@ public sealed class UIManager
         if (input.EscapePressed || input.PausePressed) return UiAction.CloseSettings;
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
-        for (var index = 0; index < 8; index++)
+        for (var index = 0; index < 9; index++)
         {
             if (!SettingsOptionRectangle(index).Contains(point)) continue;
             _settingsSelection = index;
-            return index == 7 ? UiAction.CloseSettings : ApplySelectedSetting(1);
+            return index == 8 ? UiAction.CloseSettings : ApplySelectedSetting(1);
         }
         return UiAction.None;
     }
@@ -709,6 +710,9 @@ public sealed class UIManager
             case 6:
                 _settings.CycleAutoStart();
                 break;
+            case 7:
+                _settings.ShowHotkeyBadges = !_settings.ShowHotkeyBadges;
+                break;
             default:
                 return UiAction.None;
         }
@@ -736,7 +740,8 @@ public sealed class UIManager
         4 => _volumeButton,
         5 => _musicVolumeButton,
         6 => _autoStartButton,
-        7 => _settingsBackButton,
+        7 => _hotkeyBadgesButton,
+        8 => _settingsBackButton,
         _ => Rectangle.Empty
     };
 
@@ -2389,10 +2394,13 @@ public sealed class UIManager
             var placedCount = _archivedLayoutInspection
                 ? session.Towers.Count(tower => tower.Definition.Id == definition.Id)
                 : 0;
-            DrawText(batch, _archivedLayoutInspection ? placedCount.ToString() : index == 9 ? "0" : (index + 1).ToString(),
-                new Vector2(rect.Right - 14, rect.Y + 7), selected
-                    ? definition.Visual.AccentColor
-                    : ColorPalette.Muted, 0.39f, true);
+            if (_archivedLayoutInspection || _settings.ShowHotkeyBadges)
+            {
+                DrawText(batch, _archivedLayoutInspection ? placedCount.ToString() : index == 9 ? "0" : (index + 1).ToString(),
+                    new Vector2(rect.Right - 14, rect.Y + 7), selected
+                        ? definition.Visual.AccentColor
+                        : ColorPalette.Muted, 0.39f, true);
+            }
             DrawFittedText(batch, definition.DisplayName, new Vector2(rect.X + 38, rect.Y + 5), ColorPalette.Ink, 0.53f, 80);
             var cardSubtitle = _archivedLayoutInspection
                 ? placedCount > 0 ? $"{placedCount} PLACED  {TowerInfo.ShortRole(definition)}" : TowerInfo.ShortRole(definition)
@@ -3135,9 +3143,12 @@ public sealed class UIManager
             true, ColorPalette.Cyan);
         DrawButton(batch, p, _autoStartButton,
             _settings.AutoStartWaves
-                ? $"AUTO-START WAVES  ON  |  SOLO  |  {_settings.AutoStartDelaySeconds}s"
-                : "AUTO-START WAVES  OFF",
+                ? $"AUTO-START  ON  |  {_settings.AutoStartDelaySeconds}s"
+                : "AUTO-START  OFF",
             true, ColorPalette.Auto);
+        DrawButton(batch, p, _hotkeyBadgesButton,
+            _settings.ShowHotkeyBadges ? "HOTKEY BADGES  ON" : "HOTKEY BADGES  OFF",
+            true, ColorPalette.Cyan);
         DrawButton(batch, p, _volumeButton, $"SOUND EFFECTS  {MathF.Round(_settings.SfxVolume * 100):0}%  |  CLICK TO CHANGE",
             true, ColorPalette.Gold, ColorPalette.Ink);
         DrawButton(batch, p, _musicVolumeButton, $"TACTICAL MUSIC  {MathF.Round(_settings.MusicVolume * 100):0}%  |  CLICK TO CHANGE",
@@ -3931,10 +3942,13 @@ public sealed class UIManager
                 definition.Visual.PrimaryColor, definition.Visual.AccentColor, 1, true, levelMarks: true);
             DrawFittedText(batch, definition.DisplayName, new Vector2(row.X + 44, row.Y + 7), ColorPalette.Ink, 0.56f, 142);
             DrawText(batch, $"{definition.PurchaseCost}  {TowerInfo.ShortRole(definition)}", new Vector2(row.X + 44, row.Y + 24), ColorPalette.Muted, 0.43f);
-            var hotkeyColor = selected
-                ? definition.Visual.AccentColor
-                : ColorPalette.Muted;
-            DrawTextRight(batch, index == 9 ? "0" : (index + 1).ToString(), new Vector2(row.Right - 9, row.Y + 8), hotkeyColor, 0.43f);
+            if (_settings.ShowHotkeyBadges)
+            {
+                var hotkeyColor = selected
+                    ? definition.Visual.AccentColor
+                    : ColorPalette.Muted;
+                DrawTextRight(batch, index == 9 ? "0" : (index + 1).ToString(), new Vector2(row.Right - 9, row.Y + 8), hotkeyColor, 0.43f);
+            }
         }
 
         DrawTowerLibraryDetails(batch, p, towers[_towerLibraryIndex], detailPanel);
@@ -3973,8 +3987,11 @@ public sealed class UIManager
             DrawFittedText(batch, archivedWave > 0 ? $"INTEL ARCHIVED THROUGH WAVE {archivedWave}" : "ROUTE DISCOVERED; NO WAVE INTEL YET",
                 new Vector2(row.X + 14, row.Y + 78), LibraryAccentText(accent, selected ? ColorPalette.Tint(accent, 0.80f) : ColorPalette.PanelAlt),
                 0.40f, row.Width - 28);
-            DrawTextRight(batch, (index + 1).ToString(), new Vector2(row.Right - 10, row.Y + 9),
-                selected ? LibraryAccentText(accent, ColorPalette.Tint(accent, 0.80f)) : ColorPalette.Muted, 0.43f);
+            if (_settings.ShowHotkeyBadges)
+            {
+                DrawTextRight(batch, (index + 1).ToString(), new Vector2(row.Right - 10, row.Y + 9),
+                    selected ? LibraryAccentText(accent, ColorPalette.Tint(accent, 0.80f)) : ColorPalette.Muted, 0.43f);
+            }
         }
 
         var selectedMap = _libraryMaps[_campaignLibraryMapIndex];
@@ -4405,8 +4422,11 @@ public sealed class UIManager
             DrawThreatIcon(batch, p, threat, new Vector2(row.X + 22, row.Center.Y), 12);
             DrawFittedText(batch, threat.DisplayName, new Vector2(row.X + 43, row.Y + 7), ColorPalette.Ink, 0.54f, 155);
             DrawFittedText(batch, threat.ListSummary, new Vector2(row.X + 43, row.Y + 25), ColorPalette.Muted, 0.39f, 178);
-            DrawTextRight(batch, (index + 1).ToString(), new Vector2(row.Right - 10, row.Y + 9),
-                selected ? LibraryAccentText(threat.PrimaryColor, selectedFill) : ColorPalette.Muted, 0.43f);
+            if (_settings.ShowHotkeyBadges)
+            {
+                DrawTextRight(batch, (index + 1).ToString(), new Vector2(row.Right - 10, row.Y + 9),
+                    selected ? LibraryAccentText(threat.PrimaryColor, selectedFill) : ColorPalette.Muted, 0.43f);
+            }
         }
 
         var selectedThreat = _libraryThreats[_enemyLibraryIndex];
@@ -4893,10 +4913,11 @@ public sealed class UIManager
         p.DrawRect(batch, rect, enabled ? ColorPalette.Ink : ColorPalette.Muted, enabled ? 2 : 1);
         var scale = 0.65f;
         var measured = _font.MeasureString(text).X * scale * GameConstants.FontDrawScale;
-        var badgeAllowance = string.IsNullOrWhiteSpace(hotkey) ? 0 : Math.Min(12, rect.Width / 8);
+        var showHotkeyBadge = _settings.ShowHotkeyBadges && !string.IsNullOrWhiteSpace(hotkey);
+        var badgeAllowance = showHotkeyBadge ? Math.Min(12, rect.Width / 8) : 0;
         if (measured > rect.Width - 12 - badgeAllowance) scale *= (rect.Width - 12 - badgeAllowance) / measured;
         DrawText(batch, text, new Vector2(rect.Center.X, rect.Center.Y), enabled ? textColor ?? ColorPalette.Paper : ColorPalette.Muted, MathF.Max(0.38f, scale), true);
-        if (!string.IsNullOrWhiteSpace(hotkey)) DrawHotkeyBadge(batch, p, rect, hotkey, enabled);
+        if (showHotkeyBadge) DrawHotkeyBadge(batch, p, rect, hotkey!, enabled);
     }
 
     private void DrawHotkeyBadge(SpriteBatch batch, PrimitiveRenderer p, Rectangle button, string hotkey, bool enabled)

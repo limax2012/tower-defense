@@ -653,6 +653,10 @@ public sealed class VisualVerificationGame : Game
         Require(ui.HandleSettingsInput(Pointer(640, 357, leftPressed: true)) == UiAction.ApplySettings &&
                 !settings.AutoStartWaves,
             "The Settings screen exposes a persistent mouse-only Auto-start control.", assertions);
+        Require(ui.HandleSettingsInput(Pointer(795, 357, leftPressed: true)) == UiAction.ApplySettings &&
+                !settings.ShowHotkeyBadges,
+            "The Settings screen can hide visual hotkey badges without changing input bindings.", assertions);
+        scenes.Add(Capture("11b-settings-hotkey-badges-off.png", ui, GameState.Settings, null));
 
         ui.ConfigureSaveSlots(
         [

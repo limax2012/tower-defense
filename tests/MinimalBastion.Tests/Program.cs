@@ -918,6 +918,7 @@ internal static class Program
         Check.Equal(2160, settings.WindowHeight, "maximum output height");
         Check.Nearly(0, settings.SfxVolume, "sound volume clamp");
         Check.Nearly(1, settings.MusicVolume, "music volume clamp");
+        Check.True(settings.ShowHotkeyBadges, "hotkey badges are visible by default");
         Check.Nearly(0.68f, AudioManager.MusicActivityTarget(false, 200, true),
             "downtime music remains restrained regardless of queued pressure");
         Check.True(AudioManager.MusicActivityTarget(true, 70, false) >
@@ -978,6 +979,11 @@ internal static class Program
         Check.True(!settings.AutoStartWaves, "auto-start cadence cycle returns to off");
         Check.Equal(6, ui.SelectedSettingsIndex, "clicked auto-start control remains identifiable");
         Check.Equal(UiAction.ApplySettings,
+            ui.HandleSettingsInput(WorldInput(new Vector2(795, 357)) with { LeftPressed = true }),
+            "hotkey badge setting applies immediately");
+        Check.True(!settings.ShowHotkeyBadges, "hotkey badges can be hidden without changing shortcuts");
+        Check.Equal(7, ui.SelectedSettingsIndex, "clicked hotkey badge control remains identifiable");
+        Check.Equal(UiAction.ApplySettings,
             ui.HandleSettingsInput(WorldInput(new Vector2(640, 485)) with { LeftPressed = true }),
             "clicked music control applies immediately");
         Check.Equal(5, ui.SelectedSettingsIndex, "clicked music control remains identifiable");
@@ -990,7 +996,11 @@ internal static class Program
         try
         {
             var repository = new UserSettingsRepository(directory);
-            repository.Save(new UserSettings { WindowWidth = 1600, WindowHeight = 900, SfxVolume = 0.25f, MusicVolume = 0.10f, AutoStartWaves = true, AutoStartDelaySeconds = 5 });
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(repository.SettingsPath, "{\"SchemaVersion\":1,\"WindowWidth\":1280,\"WindowHeight\":720}");
+            Check.True(repository.Load().ShowHotkeyBadges,
+                "settings from before the badge preference retain visible badges by default");
+            repository.Save(new UserSettings { WindowWidth = 1600, WindowHeight = 900, SfxVolume = 0.25f, MusicVolume = 0.10f, ShowHotkeyBadges = false, AutoStartWaves = true, AutoStartDelaySeconds = 5 });
             repository.Save(new UserSettings { WindowWidth = 1920, WindowHeight = 1080, SfxVolume = 0.75f, MusicVolume = 0.35f });
             Check.Equal(1920, repository.Load().WindowWidth, "settings repository loads its current generation");
             File.WriteAllText(repository.SettingsPath, "{ interrupted");
@@ -998,6 +1008,7 @@ internal static class Program
             Check.Equal(1600, recovered.WindowWidth, "corrupt settings recover from the previous valid generation");
             Check.Nearly(0.25f, recovered.SfxVolume, "settings recovery preserves audio choices");
             Check.Nearly(0.10f, recovered.MusicVolume, "settings recovery preserves music choices");
+            Check.True(!recovered.ShowHotkeyBadges, "settings recovery preserves the hotkey badge preference");
             Check.True(recovered.AutoStartWaves, "settings recovery preserves auto-start preference");
             Check.Equal(5, recovered.AutoStartDelaySeconds, "settings recovery preserves auto-start cadence");
 
