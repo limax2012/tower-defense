@@ -11,16 +11,22 @@ internal sealed class MainMenuBattleScene
     private const float FixedStepSeconds = 1f / 60f;
     private readonly GameContent _content;
     private readonly GameRenderer _renderer = new();
+    private readonly Random _random;
     private LaneBattle _left;
     private LaneBattle _right;
     private float _accumulator;
 
     public int EnemiesKilled => _left.EnemiesKilled + _right.EnemiesKilled;
     public int EnemiesEscaped => _left.EnemiesEscaped + _right.EnemiesEscaped;
+    public IReadOnlyList<int> TowerLevels => _left.Session.Towers.Concat(_right.Session.Towers)
+        .Select(tower => tower.LevelIndex + 1).ToArray();
+    public IReadOnlyList<string> TowerKinds => _left.Session.Towers.Concat(_right.Session.Towers)
+        .Select(tower => tower.Definition.Id).ToArray();
 
-    public MainMenuBattleScene(GameContent content)
+    public MainMenuBattleScene(GameContent content, int? randomSeed = null)
     {
         _content = content;
+        _random = randomSeed.HasValue ? new Random(randomSeed.Value) : new Random();
         _left = CreateLane(leftLane: true);
         _right = CreateLane(leftLane: false);
         WarmUp(_left, 1.8f);
@@ -135,43 +141,79 @@ internal sealed class MainMenuBattleScene
     {
         Number = 1,
         Archetype = "Menu Skirmish",
-        HealthMultiplier = leftLane ? 1.05f : 1.10f,
+        HealthMultiplier = leftLane ? 1.30f : 1.35f,
         SpeedMultiplier = 0.90f,
         Groups = leftLane
             ?
             [
-                new WaveGroupDefinition { EnemyId = "t1_crawler", Count = 4, SpawnInterval = 1.05f },
-                new WaveGroupDefinition { EnemyId = "t2_runner", Count = 3, SpawnInterval = 0.90f, DelayBefore = 0.35f },
-                new WaveGroupDefinition { EnemyId = "t3_brute", Count = 2, SpawnInterval = 1.40f, DelayBefore = 0.40f }
+                new WaveGroupDefinition { EnemyId = "t1_crawler", Count = 2, SpawnInterval = 1.35f },
+                new WaveGroupDefinition { EnemyId = "t2_runner", Count = 1, SpawnInterval = 1.25f, DelayBefore = 0.45f },
+                new WaveGroupDefinition { EnemyId = "t5_regenerator", Count = 1, SpawnInterval = 1.50f, DelayBefore = 0.55f }
             ]
             :
             [
-                new WaveGroupDefinition { EnemyId = "t2_runner", Count = 4, SpawnInterval = 0.90f },
-                new WaveGroupDefinition { EnemyId = "t1_crawler", Count = 3, SpawnInterval = 1.05f, DelayBefore = 0.30f },
-                new WaveGroupDefinition { EnemyId = "t4_aegis", Count = 2, SpawnInterval = 1.55f, DelayBefore = 0.45f }
+                new WaveGroupDefinition { EnemyId = "t2_runner", Count = 1, SpawnInterval = 1.30f },
+                new WaveGroupDefinition { EnemyId = "t1_crawler", Count = 1, SpawnInterval = 1.35f, DelayBefore = 0.40f },
+                new WaveGroupDefinition { EnemyId = "t4_aegis", Count = 1, SpawnInterval = 1.45f, DelayBefore = 0.50f },
+                new WaveGroupDefinition { EnemyId = "t5_regenerator", Count = 1, SpawnInterval = 1.55f, DelayBefore = 0.55f }
             ]
     };
 
-    private static void AddTowers(GameSession session, bool leftLane)
+    private void AddTowers(GameSession session, bool leftLane)
     {
-        var placements = leftLane
-            ? new (string Id, Vector2 Position)[]
+        var positions = leftLane
+            ? new[]
             {
-                ("needle_turret", new Vector2(67, 205)),
-                ("ember_coil", new Vector2(243, 390)),
-                ("watchtower", new Vector2(67, 558))
+                new Vector2(67, 205),
+                new Vector2(243, 390),
+                new Vector2(67, 558)
             }
-            :
-            [
-                ("frost_spire", new Vector2(1037, 185)),
-                ("shard_fan", new Vector2(1213, 370)),
-                ("breaker_cannon", new Vector2(1037, 548))
-            ];
+            : new[]
+            {
+                new Vector2(1037, 185),
+                new Vector2(1213, 370),
+                new Vector2(1037, 548)
+            };
+        var candidates = session.Content.Towers.Values.OrderBy(tower => tower.Id).ToList();
+        Shuffle(candidates);
+        var chosen = candidates.Where(tower => !tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase))
+            .Take(2).ToList();
+        chosen.AddRange(candidates.Where(tower => !chosen.Contains(tower)).Take(positions.Length - chosen.Count));
+        Shuffle(chosen);
+        var levels = new List<int> { 1, 2, 3 };
+        Shuffle(levels);
 
-        for (var index = 0; index < placements.Length; index++)
+        for (var index = 0; index < Math.Min(positions.Length, chosen.Count); index++)
         {
-            if (!session.Content.Towers.TryGetValue(placements[index].Id, out var definition)) continue;
-            session.Towers.Add(new TowerInstance(index + 1, definition, placements[index].Position));
+            var tower = new TowerInstance(index + 1, chosen[index], positions[index]);
+            ApplyLevel(tower, levels[index]);
+            session.Towers.Add(tower);
+        }
+    }
+
+    private void ApplyLevel(TowerInstance tower, int level)
+    {
+        if (level >= 2)
+        {
+            if (tower.Definition.Tier2Doctrines.Count > 0)
+                tower.TryChooseDoctrine(tower.Definition.Tier2Doctrines[_random.Next(tower.Definition.Tier2Doctrines.Count)].Id);
+            else
+                tower.TryUpgrade();
+        }
+
+        if (level < 3) return;
+        if (tower.Definition.Specializations.Count > 0)
+            tower.TrySpecialize(tower.Definition.Specializations[_random.Next(tower.Definition.Specializations.Count)].Id);
+        else
+            tower.TryUpgrade();
+    }
+
+    private void Shuffle<T>(IList<T> items)
+    {
+        for (var index = items.Count - 1; index > 0; index--)
+        {
+            var swapIndex = _random.Next(index + 1);
+            (items[index], items[swapIndex]) = (items[swapIndex], items[index]);
         }
     }
 

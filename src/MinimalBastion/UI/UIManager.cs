@@ -308,14 +308,16 @@ public sealed class UIManager
         _visualTimeSeconds = (_visualTimeSeconds + Math.Min(elapsedSeconds, 0.25f)) % 120f;
     }
 
-    public void ConfigureMainMenuBattle(GameContent content) =>
-        _mainMenuBattleScene = new MainMenuBattleScene(content);
+    public void ConfigureMainMenuBattle(GameContent content, int? randomSeed = null) =>
+        _mainMenuBattleScene = new MainMenuBattleScene(content, randomSeed);
 
     public void AdvanceMainMenuBattle(float elapsedSeconds) =>
         _mainMenuBattleScene?.Update(elapsedSeconds);
 
     internal int MainMenuBattleKills => _mainMenuBattleScene?.EnemiesKilled ?? 0;
     internal int MainMenuBattleEscapes => _mainMenuBattleScene?.EnemiesEscaped ?? 0;
+    internal IReadOnlyList<int> MainMenuBattleTowerLevels => _mainMenuBattleScene?.TowerLevels ?? [];
+    internal IReadOnlyList<string> MainMenuBattleTowerKinds => _mainMenuBattleScene?.TowerKinds ?? [];
 
     public void PreparePauseScreen()
     {

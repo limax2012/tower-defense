@@ -89,7 +89,11 @@ public sealed class VisualVerificationGame : Game
             "Both main-menu defense lanes contain visible animated combat.", assertions);
         Require(CountChangedPixels(mainMenuAtRest, mainMenuInMotion, new Rectangle(300, 0, 680, 720)) == 0,
             "Main-menu combat motion remains outside the logo, buttons, and central instructions.", assertions);
-        for (var index = 0; index < 64; index++) ui.AdvanceMainMenuBattle(0.25f);
+        Require(ui.MainMenuBattleTowerLevels.Distinct().Order().SequenceEqual([1, 2, 3]),
+            "Main-menu battles visibly mix level-one, level-two, and level-three towers.", assertions);
+        Require(ui.MainMenuBattleTowerKinds.Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 3,
+            "Main-menu battles draw a varied random tower roster.", assertions);
+        for (var index = 0; index < 96; index++) ui.AdvanceMainMenuBattle(0.25f);
         Require(ui.MainMenuBattleKills > 0,
             "Main-menu battles resolve real enemy deaths through normal combat logic.", assertions);
         Require(ui.MainMenuBattleEscapes > 0,
@@ -835,7 +839,7 @@ public sealed class VisualVerificationGame : Game
         ui.ConfigureDifficulties(content.Difficulties.Values);
         ui.ConfigureChallenges(content.Challenges.Values);
         ui.ConfigureTowerLibrary(content.Towers.Values, content.Enemies.Values, content.Tactics);
-        ui.ConfigureMainMenuBattle(content);
+        ui.ConfigureMainMenuBattle(content, randomSeed: 27182);
         ui.SetSaveState(false);
     }
 
