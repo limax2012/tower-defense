@@ -197,7 +197,7 @@ internal sealed class MainMenuBattleScene
                 new Vector2(1037, 585)
             };
         Shuffle(positions);
-        var towerCount = _random.Next(2, 6);
+        var towerCount = _random.Next(3, 6);
         var candidates = session.Content.Towers.Values
             .Where(tower => !tower.Id.Equals("signal_beacon", StringComparison.OrdinalIgnoreCase))
             .OrderBy(tower => tower.Id)

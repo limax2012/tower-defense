@@ -90,8 +90,8 @@ public sealed class VisualVerificationGame : Game
         Require(CountChangedPixels(mainMenuAtRest, mainMenuInMotion, new Rectangle(300, 0, 680, 720)) == 0,
             "Main-menu combat motion remains outside the logo, buttons, and central instructions.", assertions);
         Require(ui.MainMenuBattleTowerCounts.Count == 2 &&
-                ui.MainMenuBattleTowerCounts.All(count => count is >= 2 and <= 5),
-            "Each main-menu lane independently occupies two to five tower positions.", assertions);
+                ui.MainMenuBattleTowerCounts.All(count => count is >= 3 and <= 5),
+            "Each main-menu lane independently occupies three to five tower positions.", assertions);
         Require(ui.MainMenuBattleTowerLevels.Count == ui.MainMenuBattleTowerCounts.Sum() &&
                 ui.MainMenuBattleTowerLevels.All(level => level is >= 1 and <= 3),
             "Main-menu battle towers independently use valid randomized levels.", assertions);
