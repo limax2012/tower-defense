@@ -76,13 +76,22 @@ public sealed class VisualVerificationGame : Game
         var assertions = new List<string>();
         AssertEveryAuthoredTowerStatSheetFits(font, content, assertions);
         AssertEveryAuthoredTowerIntelLabelFits(font, content, assertions);
+        var mainMenuAtRest = RenderPixels(ui, GameState.MainMenu, null);
+        var scenes = new List<VisualVerificationScene>
+        {
+            Capture("00-main-menu-defense-lanes.png", ui, GameState.MainMenu, null)
+        };
+        ui.AdvanceVisualTime(0.45f);
+        var mainMenuInMotion = RenderPixels(ui, GameState.MainMenu, null);
+        Require(CountChangedPixels(mainMenuAtRest, mainMenuInMotion, UIManager.MainMenuLeftDefenseBounds) >= 300 &&
+                CountChangedPixels(mainMenuAtRest, mainMenuInMotion, UIManager.MainMenuRightDefenseBounds) >= 300,
+            "Both main-menu defense lanes contain visible animated combat.", assertions);
+        Require(CountChangedPixels(mainMenuAtRest, mainMenuInMotion, new Rectangle(300, 0, 680, 720)) == 0,
+            "Main-menu combat motion remains outside the logo, buttons, and central instructions.", assertions);
         Require(ui.HandleMainMenu(Pointer(640, 440, leftPressed: true)) == UiAction.CoOp,
             "Online Co-op opens the connection screen without visiting setup.", assertions);
 
-        var scenes = new List<VisualVerificationScene>
-        {
-            Capture("01-online-coop-connect.png", ui, GameState.CoOpMenu, null)
-        };
+        scenes.Add(Capture("01-online-coop-connect.png", ui, GameState.CoOpMenu, null));
 
         Require(ui.HandleCoOpMenu(Pointer(640, 239, leftPressed: true)) == UiAction.OpenCoOpSetup,
             "Only the Host command opens online defense setup.", assertions);

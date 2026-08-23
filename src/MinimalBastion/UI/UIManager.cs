@@ -60,6 +60,8 @@ public sealed class UIManager
     internal static readonly Rectangle CoOpPauseLibraryBounds = new(986, 248, 268, 44);
     internal static readonly Rectangle CoOpPauseRestartBounds = new(986, 316, 268, 44);
     internal static readonly Rectangle CoOpPauseMenuBounds = new(986, 368, 268, 44);
+    internal static readonly Rectangle MainMenuLeftDefenseBounds = new(32, 70, 235, 594);
+    internal static readonly Rectangle MainMenuRightDefenseBounds = new(1013, 70, 235, 594);
 
     // Intel icons use a fixed header footprint rather than their battlefield
     // size. An 18px body plus the optional 6px ring leaves clear padding from
@@ -3011,6 +3013,8 @@ public sealed class UIManager
         p.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, 10), ColorPalette.Coral);
         p.FillRect(batch, new Rectangle(0, 710, GameConstants.LogicalWidth, 10), ColorPalette.Cobalt);
 
+        DrawMainMenuDefenseLanes(batch, p);
+
         // Keep the logo fully above the title and preserve the menu's vertical rhythm.
         var logo = new Vector2(640, 150);
         p.Circle(batch, logo, 78, ColorPalette.Navy);
@@ -3030,6 +3034,111 @@ public sealed class UIManager
         DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
         DrawText(batch, "Choose a mode, then configure its arena and rules.", new Vector2(640, 682), ColorPalette.Muted, 0.50f, true);
     }
+
+    private void DrawMainMenuDefenseLanes(SpriteBatch batch, PrimitiveRenderer p)
+    {
+        DrawMainMenuDefenseLane(batch, p, new Rectangle(126, 82, 58, 570), true,
+            ["t1_crawler", "t3_brute", "t2_runner"],
+            [("needle_turret", new Vector2(67, 205)), ("ember_coil", new Vector2(243, 390)),
+                ("watchtower", new Vector2(67, 558))]);
+        DrawMainMenuDefenseLane(batch, p, new Rectangle(1096, 82, 58, 570), false,
+            ["t2_runner", "t4_aegis", "t1_crawler"],
+            [("frost_spire", new Vector2(1037, 185)), ("shard_fan", new Vector2(1213, 370)),
+                ("breaker_cannon", new Vector2(1037, 548))]);
+    }
+
+    private void DrawMainMenuDefenseLane(SpriteBatch batch, PrimitiveRenderer p, Rectangle lane, bool movesDown,
+        IReadOnlyList<string> enemyIds, IReadOnlyList<(string TowerId, Vector2 Position)> towers)
+    {
+        var centerX = lane.Center.X;
+        p.FillRect(batch, lane, ColorPalette.Path);
+        p.FillRect(batch, new Rectangle(lane.X, lane.Y, 4, lane.Height), ColorPalette.Navy);
+        p.FillRect(batch, new Rectangle(lane.Right - 4, lane.Y, 4, lane.Height), ColorPalette.Navy);
+        p.DrawRect(batch, new Rectangle(lane.X - 3, lane.Y - 3, lane.Width + 6, lane.Height + 6),
+            ColorPalette.CardOutline, 2);
+
+        var travelSpan = lane.Height - 56f;
+        var direction = movesDown ? 1f : -1f;
+        for (var index = 0; index < 8; index++)
+        {
+            var progress = Wrap01(index / 8f + _visualTimeSeconds / 8f);
+            var y = movesDown
+                ? lane.Y + 28f + progress * travelSpan
+                : lane.Bottom - 28f - progress * travelSpan;
+            DrawMenuLaneChevron(batch, p, new Vector2(centerX, y), direction);
+        }
+
+        var enemies = new List<(EnemyDefinition Definition, Vector2 Position, float Health)>(enemyIds.Count);
+        for (var index = 0; index < enemyIds.Count; index++)
+        {
+            var definition = _allLibraryEnemies.FirstOrDefault(candidate =>
+                candidate.Id.Equals(enemyIds[index], StringComparison.OrdinalIgnoreCase));
+            if (definition is null) continue;
+            var progress = Wrap01(_visualTimeSeconds / 8.4f + 0.10f + index / (float)enemyIds.Count);
+            var y = movesDown
+                ? lane.Y + 28f + progress * travelSpan
+                : lane.Bottom - 28f - progress * travelSpan;
+            var health = 0.48f + 0.42f * Wrap01(1f - progress + index * 0.19f);
+            enemies.Add((definition, new Vector2(centerX, y), health));
+        }
+
+        foreach (var enemy in enemies)
+            DrawMainMenuEnemy(batch, p, enemy.Definition, enemy.Position, enemy.Health);
+
+        for (var index = 0; index < towers.Count; index++)
+        {
+            var tower = _allLibraryTowers.FirstOrDefault(candidate =>
+                candidate.Id.Equals(towers[index].TowerId, StringComparison.OrdinalIgnoreCase));
+            if (tower is null || enemies.Count == 0) continue;
+            var target = enemies.MinBy(enemy => MathF.Abs(enemy.Position.Y - towers[index].Position.Y));
+            DrawMainMenuTower(batch, p, tower, towers[index].Position, target.Position, index * 0.29f);
+        }
+    }
+
+    private static void DrawMenuLaneChevron(SpriteBatch batch, PrimitiveRenderer p, Vector2 center, float direction)
+    {
+        var tip = center + new Vector2(0, direction * 5);
+        p.Line(batch, center + new Vector2(-9, -direction * 4), tip, ColorPalette.Gold, 2);
+        p.Line(batch, center + new Vector2(9, -direction * 4), tip, ColorPalette.Gold, 2);
+    }
+
+    private static void DrawMainMenuEnemy(SpriteBatch batch, PrimitiveRenderer p, EnemyDefinition definition,
+        Vector2 position, float health)
+    {
+        var radius = Math.Min(15, definition.Visual.Radius);
+        p.DrawShape(batch, position, radius, definition.Visual.Shape, definition.Visual.PrimaryColor,
+            definition.Visual.AccentColor, definition.Visual.Marks, definition.Visual.Ring);
+        p.HealthBar(batch, position + new Vector2(0, radius + 3), 28, health, ColorPalette.Green,
+            ColorPalette.HealthTrack, ColorPalette.Navy);
+    }
+
+    private void DrawMainMenuTower(SpriteBatch batch, PrimitiveRenderer p, TowerDefinition definition,
+        Vector2 position, Vector2 target, float shotOffset)
+    {
+        var direction = Vector2.Normalize(target - position);
+        var radius = Math.Min(18, definition.Visual.Radius);
+        p.Line(batch, position + direction * 7, position + direction * (radius + 8),
+            definition.Visual.AccentColor, 4);
+        p.DrawShape(batch, position, radius, definition.Visual.Shape, definition.Visual.PrimaryColor,
+            definition.Visual.AccentColor, 1, true, levelMarks: true);
+
+        var shotPhase = Wrap01(_visualTimeSeconds * 0.92f + shotOffset);
+        var muzzle = position + direction * (radius + 8);
+        if (shotPhase < 0.78f)
+        {
+            var projectile = Vector2.Lerp(muzzle, target, shotPhase / 0.78f);
+            p.Circle(batch, projectile, 3.5f, definition.Visual.PrimaryColor);
+            p.Ring(batch, projectile, 5.5f, definition.Visual.AccentColor, 1);
+            return;
+        }
+
+        var impact = (shotPhase - 0.78f) / 0.22f;
+        var impactColor = ColorPalette.WithPremultipliedAlpha(definition.Visual.PrimaryColor,
+            (byte)MathHelper.Lerp(190, 20, impact));
+        p.Ring(batch, target, 4 + impact * 12, impactColor, 2);
+    }
+
+    private static float Wrap01(float value) => value - MathF.Floor(value);
 
     private void DrawGameSetup(SpriteBatch batch, PrimitiveRenderer p)
     {
