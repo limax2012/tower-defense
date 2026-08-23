@@ -660,7 +660,7 @@ public sealed class VisualVerificationGame : Game
 
         ui.ConfigureSaveSlots(
         [
-            new SaveSlotInfo(SaveSlotRepository.AutosaveSlot, true, true, "foundry_loop", "normal", "standard", 28, true, 12, 8_400, DateTime.UtcNow),
+            new SaveSlotInfo(SaveSlotRepository.AutosaveSlot, true, true, "crosswind_basin", "hard", "close_quarters", 22, true, 18, 14_292, DateTime.UtcNow),
             new SaveSlotInfo(1, false)
         ], false, SaveSlotRepository.AutosaveSlot);
         scenes.Add(Capture("12-save-solo-or-host.png", ui, GameState.SaveSlots, null));

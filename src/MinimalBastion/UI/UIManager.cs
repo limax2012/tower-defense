@@ -3207,13 +3207,13 @@ public sealed class UIManager
                 ?? (string.IsNullOrWhiteSpace(slot.DifficultyId) ? "Hard" : slot.DifficultyId);
             var challengeName = _challenges.FirstOrDefault(x => x.Id.Equals(slot.ChallengeId, StringComparison.OrdinalIgnoreCase))?.DisplayName
                 ?? (string.IsNullOrWhiteSpace(slot.ChallengeId) ? "Standard" : slot.ChallengeId.Replace('_', ' '));
-            DrawFittedText(batch, $"{(slot.IsCoOp ? "CO-OP" : "SOLO")}  |  {mapName.ToUpperInvariant()}  |  {difficultyName.ToUpperInvariant()}  |  {challengeName.ToUpperInvariant()}  |  {progress}",
+            DrawFittedText(batch, $"{(slot.IsCoOp ? "CO-OP" : "SOLO")}  |  {mapName.ToUpperInvariant()}  |  {difficultyName.ToUpperInvariant()}  |  {challengeName.ToUpperInvariant()}",
                 new Vector2(rect.X + 150, rect.Y + 12), ColorPalette.Ink, 0.58f, rect.Width - 164);
             var localTime = slot.SavedAtUtc.Kind == DateTimeKind.Unspecified
                 ? DateTime.SpecifyKind(slot.SavedAtUtc, DateTimeKind.Utc).ToLocalTime()
                 : slot.SavedAtUtc.ToLocalTime();
-            DrawText(batch, $"{localTime:g}  |  LIVES {slot.Lives}  |  CREDITS {slot.Credits}",
-                new Vector2(rect.X + 150, rect.Y + 39), ColorPalette.Muted, 0.48f);
+            DrawFittedText(batch, $"{progress}  |  {localTime:g}  |  LIVES {slot.Lives}  |  CREDITS {slot.Credits}",
+                new Vector2(rect.X + 150, rect.Y + 39), ColorPalette.Muted, 0.48f, rect.Width - 164);
         }
 
         var selectedSlot = _saveSlots.FirstOrDefault(slot => slot.Slot == _selectedSaveSlot);

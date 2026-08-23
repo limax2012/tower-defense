@@ -3919,6 +3919,26 @@ internal static class Program
         Check.Nearly(0, shell.Payload.Status?.Magnitude ?? 0, "mortar no longer hides a slow effect");
         Check.Equal(3, shell.CaptureCoOpState().SplashTargetLimit, "mortar cap survives active-projectile snapshots");
 
+        var slowedSession = Session();
+        var slowedTarget = new EnemyInstance(8, slowedSession.Content.Enemies["enemy"], slowedSession.Map.Path, 1, 1);
+        slowedTarget.UpdateMovement(10, slowedSession.Map.Path);
+        slowedTarget.ApplyStatus(new StatusApplication
+        {
+            Type = StatusType.Slow,
+            Duration = 10,
+            Magnitude = 0.5f,
+            SourceId = 1
+        });
+        TowerBehaviorRegistry.Create("splash_projectile").Attack(new TowerInstanceContext
+        {
+            Tower = tower,
+            Target = slowedTarget,
+            Session = slowedSession
+        });
+        var slowedShell = slowedSession.Projectiles.Projectiles.Single();
+        Check.True(slowedShell.AimPoint.X < shell.AimPoint.X,
+            "mortar prediction uses the target's slowed current speed at launch");
+
         var capSession = Session();
         var capDefinition = new TowerDefinition
         {
