@@ -6,6 +6,7 @@ namespace MinimalBastion.Audio;
 public sealed class AudioManager : IDisposable
 {
     private const int SampleRate = 44100;
+    private const float MusicSourceGain = 1.8f;
     private readonly Dictionary<Cue, SoundEffect> _sounds = new();
     private readonly Dictionary<string, SoundEffect> _towerImpacts = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, float> _towerImpactCooldowns = new(StringComparer.OrdinalIgnoreCase);
@@ -432,7 +433,7 @@ public sealed class AudioManager : IDisposable
             var clockPhase = time % theme.ClockSeconds;
             var clockEnvelope = MathF.Exp(-clockPhase * 22f);
             var clock = MathF.Sin(MathHelper.TwoPi * theme.ClockFrequency * time) * clockEnvelope * 0.08f;
-            samples[index] = ToSample((bass * breathing + melody * 0.34f + counter + clock) * theme.Gain);
+            samples[index] = ToSample((bass * breathing + melody * 0.34f + counter + clock) * theme.Gain * MusicSourceGain);
         }
         return CreateSoundEffect(samples);
     }
