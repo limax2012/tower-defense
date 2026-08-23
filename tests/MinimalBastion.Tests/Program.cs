@@ -1370,10 +1370,11 @@ internal static class Program
         Check.Equal(4, selector.Select(Vector2.Zero, 500, TargetMode.Armored, new[] { first, fast, armored })!.Id, "armored");
         var support = new EnemyInstance(5, Enemy("support", 100, 8, 1, 0, 0), path, 1, 1,
             signalRole: EnemySignalRole.Restorer);
-        Check.Equal(5, selector.Select(Vector2.Zero, 500, TargetMode.Support, new[] { second, support })!.Id,
-            "support mode prioritizes a signal carrier behind an ordinary target");
-        Check.Equal(2, selector.Select(Vector2.Zero, 500, TargetMode.Support, enemies)!.Id,
-            "support mode falls back to first when no signal carrier is in range");
+        var strong = new EnemyInstance(6, Enemy("strong", 300, 8, 1, 0, 0), path, 1, 1);
+        Check.Equal(5, selector.Select(Vector2.Zero, 500, TargetMode.Support, new[] { strong, support })!.Id,
+            "support mode prioritizes a signal carrier over a stronger ordinary target");
+        Check.Equal(6, selector.Select(Vector2.Zero, 500, TargetMode.Support, new[] { second, strong })!.Id,
+            "support mode falls back to strongest when no signal carrier is in range");
     }
 
     private static void DamageAndArmor()

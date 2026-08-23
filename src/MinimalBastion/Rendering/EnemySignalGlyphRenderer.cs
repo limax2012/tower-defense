@@ -54,17 +54,14 @@ public static class EnemySignalGlyphRenderer
                 primitives.DrawPolygon(batch, center, size * 0.48f, 4, false, ColorPalette.Navy, MathHelper.PiOver4);
                 break;
             case EnemySignalRole.Jammer:
-                primitives.Line(batch, center - new Vector2(size * 0.8f), center + new Vector2(size * 0.8f), color, stroke);
-                primitives.Line(batch, center + new Vector2(size * 0.8f, -size * 0.8f),
-                    center + new Vector2(-size * 0.8f, size * 0.8f), color, stroke);
+                primitives.Line(batch, center - new Vector2(size * 0.9f, 0),
+                    center + new Vector2(size * 0.9f, 0), color, stroke);
                 break;
             case EnemySignalRole.Disruptor:
-                var half = size * 0.78f;
-                primitives.Line(batch, center - new Vector2(half, 0), center - new Vector2(half * 0.28f, 0), color, stroke);
-                primitives.Line(batch, center + new Vector2(half * 0.28f, 0), center + new Vector2(half, 0), color, stroke);
-                primitives.Line(batch, center - new Vector2(0, half), center - new Vector2(0, half * 0.28f), color, stroke);
-                primitives.Line(batch, center + new Vector2(0, half * 0.28f), center + new Vector2(0, half), color, stroke);
-                primitives.DrawPolygon(batch, center, size * 0.36f, 4, false, color, MathHelper.PiOver4);
+                var half = size * 0.82f;
+                primitives.Line(batch, center - new Vector2(half), center + new Vector2(half), color, stroke);
+                primitives.Line(batch, center + new Vector2(half, -half),
+                    center + new Vector2(-half, half), color, stroke);
                 break;
         }
     }

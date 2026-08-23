@@ -4211,7 +4211,7 @@ public sealed class UIManager
                 "NEAREST: SHORTEST DISTANCE TO TOWER",
                 "FASTEST: HIGHEST CURRENT MOVE SPEED",
                 "ARMORED: HIGHEST CURRENT ARMOR",
-                "SUPPORT: SIGNAL CARRIERS, THEN FIRST"
+                "SUPPORT: SIGNAL CARRIERS, THEN STRONGEST"
             ]));
         var statusLines = DiscoveredStatusReferenceLines();
         if (statusLines.Count > 0)
@@ -4894,9 +4894,9 @@ public sealed class UIManager
             EnemySignalRole.Bulwark => new("signal:bulwark", "Bulwark Signal", null, role,
                 EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // FORMATION SHIELD", "CYAN DIAMOND"),
             EnemySignalRole.Jammer => new("signal:jammer", "Jammer Signal", null, role,
-                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // TOWER SUPPRESSION", "ORANGE CROSS"),
+                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // TOWER SUPPRESSION", "ORANGE MINUS"),
             EnemySignalRole.Disruptor => new("signal:disruptor", "Disruptor Signal", null, role,
-                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // GROUP DISRUPTION", "VIOLET BREAK"),
+                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // GROUP DISRUPTION", "VIOLET X"),
             _ => new("signal:none", "No Signal", null, role, ColorPalette.Muted, "circle", "NO SPECIAL ROLE", "NO SIGNAL")
         };
     }

@@ -21,7 +21,11 @@ public sealed class TargetSelector
             TargetMode.Nearest => eligible.OrderBy(x => Vector2.DistanceSquared(origin, x.Position)).ThenByDescending(x => x.PathProgress).ThenBy(x => x.Id).First(),
             TargetMode.Fastest => eligible.OrderByDescending(x => x.CurrentSpeed).ThenByDescending(x => x.PathProgress).ThenBy(x => x.Id).First(),
             TargetMode.Armored => eligible.OrderByDescending(x => x.EffectiveArmor).ThenByDescending(x => x.Health + x.Shield).ThenByDescending(x => x.PathProgress).ThenBy(x => x.Id).First(),
-            TargetMode.Support => eligible.OrderByDescending(x => x.SignalRole != EnemySignalRole.None).ThenByDescending(x => x.PathProgress).ThenBy(x => x.Id).First(),
+            TargetMode.Support => eligible.OrderByDescending(x => x.SignalRole != EnemySignalRole.None)
+                .ThenByDescending(x => x.Health + x.Shield)
+                .ThenByDescending(x => x.PathProgress)
+                .ThenBy(x => x.Id)
+                .First(),
             _ => eligible[0]
         };
     }
