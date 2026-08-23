@@ -174,19 +174,17 @@ internal sealed class MainMenuBattleScene
                 new Vector2(1213, 370),
                 new Vector2(1037, 548)
             };
-        var candidates = session.Content.Towers.Values.OrderBy(tower => tower.Id).ToList();
+        var candidates = session.Content.Towers.Values
+            .Where(tower => !tower.Id.Equals("signal_beacon", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(tower => tower.Id)
+            .ToList();
         Shuffle(candidates);
-        var chosen = candidates.Where(tower => !tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase))
-            .Take(2).ToList();
-        chosen.AddRange(candidates.Where(tower => !chosen.Contains(tower)).Take(positions.Length - chosen.Count));
-        Shuffle(chosen);
-        var levels = new List<int> { 1, 2, 3 };
-        Shuffle(levels);
+        var chosen = candidates.Take(positions.Length).ToList();
 
         for (var index = 0; index < Math.Min(positions.Length, chosen.Count); index++)
         {
             var tower = new TowerInstance(index + 1, chosen[index], positions[index]);
-            ApplyLevel(tower, levels[index]);
+            ApplyLevel(tower, _random.Next(1, 4));
             session.Towers.Add(tower);
         }
     }
