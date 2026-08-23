@@ -135,7 +135,7 @@ public sealed class UIManager
     private bool _remoteCoOpHasPlacementPreview;
     private Vector2 _remoteCoOpPlacementPreviewPosition;
     private bool _saveAvailable;
-    private string _persistenceStatus = "One rolling autosave plus protected manual slots are available between waves.";
+    private string _persistenceStatus = "One rolling autosave; manual slots are available between waves.";
     private IReadOnlyList<SaveSlotInfo> _saveSlots = Array.Empty<SaveSlotInfo>();
     private bool _saveSlotWriteMode;
     private int _selectedSaveSlot = 1;
@@ -150,7 +150,7 @@ public sealed class UIManager
     private bool _runHistoryCareerOpen;
     private int _careerMedalPage;
     private int _careerAchievementPage;
-    private string _runHistoryStatus = "Completed defenses are retained locally and updated by endless continuation.";
+    private string _runHistoryStatus = "Completed campaigns and endless progress are recorded locally.";
     private bool _readOnlyInspection;
     private bool _archivedLayoutInspection;
     private bool _towerLibraryOpen;
@@ -3042,7 +3042,6 @@ public sealed class UIManager
         DrawButton(batch, p, _mainMenuLibraryButton, "TACTICAL LIBRARY", true, ColorPalette.Cyan);
         DrawButton(batch, p, _mainMenuSettingsButton, "SETTINGS", true, ColorPalette.Orange, ColorPalette.Paper);
         DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
-        DrawText(batch, "Choose a mode, then configure its arena and rules.", new Vector2(640, 682), ColorPalette.Muted, 0.50f, true);
     }
 
     private void DrawGameSetup(SpriteBatch batch, PrimitiveRenderer p)
@@ -3050,10 +3049,9 @@ public sealed class UIManager
         DrawMenuFrame(batch, p);
         DrawText(batch, _setupForCoOp ? "ONLINE DEFENSE SETUP" : "NEW DEFENSE SETUP",
             new Vector2(640, 45), ColorPalette.Ink, 1.48f, true);
-        DrawText(batch, _setupForCoOp
-                ? "Configure the match your friend will receive when they join."
-                : "Choose one option from each row, then begin the defense.",
-            new Vector2(640, 78), ColorPalette.Muted, 0.54f, true);
+        if (_setupForCoOp)
+            DrawText(batch, "Host settings are shared with Player 2.",
+                new Vector2(640, 78), ColorPalette.Muted, 0.54f, true);
 
         DrawSetupRowLabel(batch, p, "ARENA", 110, ColorPalette.Berry);
         for (var index = 0; index < _maps.Count; index++)
@@ -3099,8 +3097,6 @@ public sealed class UIManager
             _setupForCoOp ? "START HOSTING" : challenge?.IsSandbox == true ? "ENTER SANDBOX" : "BEGIN DEFENSE", true,
             _setupForCoOp || challenge?.IsSandbox == true ? ColorPalette.Green : ColorPalette.Cobalt);
         DrawButton(batch, p, _setupBackButton, "BACK", true, ColorPalette.Violet);
-        DrawText(batch, "CLICK ONE OPTION IN EACH ROW   |   ESC BACK",
-            new Vector2(640, 676), ColorPalette.Muted, 0.43f, true);
     }
 
     private void DrawSetupRowLabel(SpriteBatch batch, PrimitiveRenderer p, string label, int y, Color color)
@@ -3169,11 +3165,9 @@ public sealed class UIManager
             true, ColorPalette.Violet);
         DrawButton(batch, p, _settingsBackButton, "BACK", true, ColorPalette.Coral);
 
-        DrawText(batch, "CLICK A CONTROL TO CHANGE IT   |   ESC BACK",
-            new Vector2(640, 596), ColorPalette.Navy, 0.50f, true);
         DrawText(batch, "Wave 1 is manual. Auto delays always earn +20; late manual calls do not. Click: OFF / 0 / 3 / 5 / 10s.",
-            new Vector2(640, 628), ColorPalette.Muted, 0.49f, true);
-        DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 662), ColorPalette.Cobalt, 0.50f, 900);
+            new Vector2(640, 612), ColorPalette.Muted, 0.49f, true);
+        DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 650), ColorPalette.Cobalt, 0.50f, 900);
     }
 
     private void DrawSaveSlots(SpriteBatch batch, PrimitiveRenderer p)
@@ -3496,7 +3490,7 @@ public sealed class UIManager
         var towers = entry.Towers.OrderByDescending(tower => tower.ContributionDamage).ThenBy(tower => tower.DisplayName).Take(10).ToArray();
         if (towers.Length == 0)
         {
-            DrawText(batch, entry.TopTowerName == "NONE" ? "NO TOWER CONTRIBUTION RECORDED" : $"LEGACY RECORD  |  TOP {entry.TopTowerName.ToUpperInvariant()}  |  {entry.TopTowerContribution:0} IMPACT",
+            DrawText(batch, entry.TopTowerName == "NONE" ? "NO TOWER CONTRIBUTION RECORDED" : $"SUMMARY ONLY  |  TOP {entry.TopTowerName.ToUpperInvariant()}  |  {entry.TopTowerContribution:0} IMPACT",
                 new Vector2(56, 250), ColorPalette.Muted, 0.52f);
         }
         for (var index = 0; index < towers.Length; index++)
@@ -3604,7 +3598,7 @@ public sealed class UIManager
         var focus = CoOpMenuActionRectangle(Math.Clamp(_coOpMenuSelection, 0, 2));
         focus.Inflate(3, 3);
         p.DrawRect(batch, focus, ColorPalette.Ink, 2);
-        DrawText(batch, "Shared credits, lives, and tower control; placement is still marked P1/P2.", new Vector2(640, 590), ColorPalette.Muted, 0.56f, true);
+        DrawText(batch, "Shared credits, lives, and tower control. Placement markers identify P1/P2.", new Vector2(640, 590), ColorPalette.Muted, 0.56f, true);
         DrawFittedCenteredText(batch, "UP/DOWN SELECTS ACTIONS; ENTER ACTIVATES. TAB SWITCHES FIELDS; CTRL+V PASTES; HOLD BACKSPACE ERASES.",
             new Vector2(640, 613), ColorPalette.Muted, 0.46f, 900);
         DrawFittedCenteredText(batch, "FIRST HOST: WINDOWS MAY REQUEST FIREWALL ACCESS  |  INTERNET HOSTS FORWARD TCP 28741",
@@ -4127,7 +4121,7 @@ public sealed class UIManager
         {
             "easy" => "INTENT: EXPERIMENT + RECOVERY",
             "normal" => "INTENT: BALANCED BREATHING ROOM",
-            "hard" => "INTENT: ORIGINAL THREAT + ECONOMY",
+            "hard" => "INTENT: FULL THREAT + STANDARD ECONOMY",
             "bastion" => "INTENT: SEVERE LOW-MARGIN TEST",
             _ => $"INTENT: {difficulty.Description.ToUpperInvariant()}"
         }

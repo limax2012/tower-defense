@@ -1155,7 +1155,7 @@ public sealed class Game1 : Game
         try
         {
             _ui.ConfigureRunHistory(RunHistoryStore.GetEntries(), preferredRunId);
-            _ui.SetRunHistoryStatus("Completed defenses are retained locally and updated by endless continuation.");
+            _ui.SetRunHistoryStatus("Completed campaigns and endless progress are recorded locally.");
         }
         catch (Exception exception)
         {
@@ -1192,7 +1192,7 @@ public sealed class Game1 : Game
             {
                 var entries = RunHistoryStore.GetEntries();
                 _ui.ConfigureRunHistory(entries);
-                _ui.SetRunHistoryStatus("Deleted the selected run record. Save checkpoints were not affected.");
+                _ui.SetRunHistoryStatus("Run record deleted.");
             }
         }
         catch (Exception exception)
@@ -1286,7 +1286,7 @@ public sealed class Game1 : Game
             var slots = SaveGameStore.GetSlots();
             _ui.ConfigureSaveSlots(slots, false, destinationSlot);
             _ui.SetSaveState(true,
-                $"Duplicated {SaveSlotLabel(sourceSlot).ToLowerInvariant()} to slot {destinationSlot}. Source unchanged.");
+                $"Duplicated {SaveSlotLabel(sourceSlot).ToLowerInvariant()} to slot {destinationSlot}.");
         }
         catch (Exception exception)
         {
@@ -1448,7 +1448,7 @@ public sealed class Game1 : Game
         try
         {
             UserSettingsStore.Save(_settings);
-            _ui.SetSettingsStatus("Settings saved. Tactical canvas, geometry, and palette are unchanged.");
+            _ui.SetSettingsStatus("Settings saved.");
         }
         catch (Exception exception)
         {

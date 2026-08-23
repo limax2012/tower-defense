@@ -2,7 +2,7 @@
   {
     "id": "easy",
     "displayName": "Easy",
-    "description": "More room to experiment and recover from leaks.",
+    "description": "Enemy health 80% | speed 95% | starting credits 125%.",
     "enemyHealthMultiplier": 0.80,
     "enemySpeedMultiplier": 0.95,
     "startingCreditsMultiplier": 1.25,
@@ -12,7 +12,7 @@
   {
     "id": "normal",
     "displayName": "Medium",
-    "description": "A balanced defense with a little strategic breathing room.",
+    "description": "Enemy health 90% | speed 98% | starting credits 113%.",
     "enemyHealthMultiplier": 0.90,
     "enemySpeedMultiplier": 0.98,
     "startingCreditsMultiplier": 1.125,
@@ -22,7 +22,7 @@
   {
     "id": "hard",
     "displayName": "Hard",
-    "description": "The original uncompromised defense economy and threat level.",
+    "description": "Enemy health 100% | speed 100% | standard starting credits.",
     "enemyHealthMultiplier": 1.0,
     "enemySpeedMultiplier": 1.0,
     "startingCreditsMultiplier": 1.0,
@@ -32,7 +32,7 @@
   {
     "id": "bastion",
     "displayName": "Bastion",
-    "description": "A severe tactical test with tougher, faster threats and little margin.",
+    "description": "Enemy health 112% | speed 102% | standard starting credits.",
     "enemyHealthMultiplier": 1.12,
     "enemySpeedMultiplier": 1.02,
     "startingCreditsMultiplier": 1.0,

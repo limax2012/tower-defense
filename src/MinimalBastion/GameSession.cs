@@ -1050,7 +1050,7 @@ public sealed class GameSession
         _sandboxDelayRemaining = wave.Groups.Count > 0 ? wave.Groups[0].DelayBefore : 0;
         _sandboxQueuedEnemies = wave.Groups.Sum(group => group.Count);
         AnnouncementTitle = $"TEST WAVE {wave.Number} // {wave.Archetype.ToUpperInvariant()}";
-        AnnouncementSubtitle = $"Real {Map.Definition.DisplayName} composition with {Difficulty.DisplayName} scaling.";
+        AnnouncementSubtitle = $"{Map.Definition.DisplayName} composition with {Difficulty.DisplayName} scaling.";
         AnnouncementPositive = false;
         AnnouncementRemaining = 2.8f;
         return wave.Groups.Count > 0;
