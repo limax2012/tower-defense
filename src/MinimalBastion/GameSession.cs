@@ -36,6 +36,8 @@ public sealed class GameSession
     private float _sandboxGroupTimer;
     private float _sandboxDelayRemaining;
     private int _sandboxQueuedEnemies;
+    private bool _counterSupportSimulationEnabled = true;
+    private bool _counterAttackersSimulationEnabled = true;
 
     public string RunId { get; private set; } = Guid.NewGuid().ToString("N");
     public GameContent Content => _content;
@@ -47,6 +49,8 @@ public sealed class GameSession
     public bool ProtocolsEnabled => Challenge.ProtocolsEnabled;
     public bool SellingEnabled => Challenge.SellingEnabled || IsSandbox;
     public bool CounterPressureEnabled => Challenge.CounterPressureEnabled;
+    internal bool CounterSupportEnabled => CounterPressureEnabled && _counterSupportSimulationEnabled;
+    internal bool CounterAttackersEnabled => CounterPressureEnabled && _counterAttackersSimulationEnabled;
     public bool IsSandbox => Challenge.IsSandbox;
     public MapRuntime Map { get; }
     public EconomyService Economy { get; }
@@ -1261,10 +1265,11 @@ public sealed class GameSession
     {
         if (!CounterPressureEnabled || wave.Number < 2 || group.Count <= 0) return EnemySignalRole.None;
         if (Enum.TryParse<EnemyRank>(group.Rank, true, out var rank) && rank is EnemyRank.Elite or EnemyRank.Boss)
-            return EnemySignalRole.Disruptor;
+            return CounterAttackersEnabled ? EnemySignalRole.Disruptor : EnemySignalRole.None;
 
         var carrierIndex = (group.Count - 1) / 2;
         if (spawnedInGroup != carrierIndex) return EnemySignalRole.None;
+        if (wave.Number >= 6 && (wave.Number + groupIndex) % 2 != 0) return EnemySignalRole.None;
 
         EnemySignalRole[] roles =
         [
@@ -1273,12 +1278,27 @@ public sealed class GameSession
             EnemySignalRole.Bulwark,
             EnemySignalRole.Jammer
         ];
+        EnemySignalRole role;
         if (wave.Number <= 5)
-            return groupIndex < wave.Number - 1 ? roles[groupIndex] : EnemySignalRole.None;
-        if (group.EnemyId.Contains("aegis", StringComparison.OrdinalIgnoreCase)) return EnemySignalRole.Bulwark;
-        if (group.EnemyId.Contains("regenerator", StringComparison.OrdinalIgnoreCase)) return EnemySignalRole.Restorer;
-        return roles[(wave.Number + groupIndex) % roles.Length];
+            role = groupIndex < wave.Number - 1 ? roles[groupIndex] : EnemySignalRole.None;
+        else if (group.EnemyId.Contains("aegis", StringComparison.OrdinalIgnoreCase)) role = EnemySignalRole.Bulwark;
+        else if (group.EnemyId.Contains("regenerator", StringComparison.OrdinalIgnoreCase)) role = EnemySignalRole.Restorer;
+        else role = roles[(wave.Number + groupIndex) % roles.Length];
+        return IsCounterRoleEnabled(role) ? role : EnemySignalRole.None;
     }
+
+    internal void ConfigureCounterPressureSimulation(bool supportEnabled, bool attackersEnabled)
+    {
+        _counterSupportSimulationEnabled = supportEnabled;
+        _counterAttackersSimulationEnabled = attackersEnabled;
+    }
+
+    private bool IsCounterRoleEnabled(EnemySignalRole role) => role switch
+    {
+        EnemySignalRole.Accelerator or EnemySignalRole.Restorer or EnemySignalRole.Bulwark => CounterSupportEnabled,
+        EnemySignalRole.Jammer or EnemySignalRole.Disruptor => CounterAttackersEnabled,
+        _ => true
+    };
 
     public void SpawnEnemy(string enemyId, float healthMultiplier, float speedMultiplier, string rank = "Standard",
         EnemySignalRole signalRole = EnemySignalRole.None)
@@ -1288,7 +1308,7 @@ public sealed class GameSession
             healthMultiplier * Difficulty.EnemyHealthMultiplier,
             speedMultiplier * Difficulty.EnemySpeedMultiplier,
             rank, signalRole: signalRole);
-        if (CounterPressureEnabled && signalRole is EnemySignalRole.Restorer or EnemySignalRole.Bulwark or
+        if (IsCounterRoleEnabled(signalRole) && signalRole is EnemySignalRole.Restorer or EnemySignalRole.Bulwark or
             EnemySignalRole.Jammer or EnemySignalRole.Disruptor)
         {
             var initialDelay = signalRole switch
@@ -1356,7 +1376,7 @@ public sealed class GameSession
     public void RefreshEnemySignalFormation()
     {
         foreach (var enemy in Enemies) enemy.SetFormationSpeedMultiplier(1f);
-        if (!CounterPressureEnabled) return;
+        if (!CounterSupportEnabled) return;
 
         var radiusSquared = Challenge.CounterSupportRadius * Challenge.CounterSupportRadius;
         var accelerators = Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped &&
@@ -1374,7 +1394,8 @@ public sealed class GameSession
 
     public void TryActivateEnemySignal(EnemyInstance enemy)
     {
-        if (!CounterPressureEnabled || enemy.SignalRole is EnemySignalRole.None or EnemySignalRole.Accelerator) return;
+        if (!CounterPressureEnabled || !IsCounterRoleEnabled(enemy.SignalRole) ||
+            enemy.SignalRole is EnemySignalRole.None or EnemySignalRole.Accelerator) return;
         if (enemy.SignalRole == EnemySignalRole.Disruptor)
         {
             TryEmitDisruption(enemy);

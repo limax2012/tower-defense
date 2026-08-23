@@ -31,6 +31,10 @@ internal static class SimulationCli
         var forcedBuilds = ResolveForcedBuilds(ReadValue(args, "--force-build"), content);
         var useProtocols = !args.Any(arg => arg.Equals("--no-protocols", StringComparison.OrdinalIgnoreCase));
         var useApexUpgrades = !args.Any(arg => arg.Equals("--no-apex", StringComparison.OrdinalIgnoreCase));
+        var useCounterSupport = !args.Any(arg => arg.Equals("--no-counter-support", StringComparison.OrdinalIgnoreCase) ||
+            arg.Equals("--no-counter-pressure", StringComparison.OrdinalIgnoreCase));
+        var useCounterAttackers = !args.Any(arg => arg.Equals("--no-counter-attackers", StringComparison.OrdinalIgnoreCase) ||
+            arg.Equals("--no-counter-pressure", StringComparison.OrdinalIgnoreCase));
         var holdBuild = args.Any(arg => arg.Equals("--hold-build", StringComparison.OrdinalIgnoreCase));
         var holdFootprint = args.Any(arg => arg.Equals("--hold-footprint", StringComparison.OrdinalIgnoreCase));
         var summaryOnly = args.Any(arg => arg.Equals("--summary-only", StringComparison.OrdinalIgnoreCase));
@@ -59,6 +63,8 @@ internal static class SimulationCli
                         ForcedSpecializationId = forcedBuild?.SpecializationId,
                         UseProtocols = useProtocols,
                         UseApexUpgrades = useApexUpgrades,
+                        UseCounterSupport = useCounterSupport,
+                        UseCounterAttackers = useCounterAttackers,
                         HoldBuild = holdBuild,
                         HoldFootprint = holdFootprint
                     };
@@ -83,6 +89,8 @@ internal static class SimulationCli
         else if (runs.Count > 0 && runs.All(run => !run.ProtocolsEnabled))
             Console.WriteLine("The selected directive disables Protocol activations.");
         if (!useApexUpgrades) Console.WriteLine("Apex purchases disabled for this control group.");
+        if (!useCounterSupport) Console.WriteLine("Enemy support carriers disabled for this control group.");
+        if (!useCounterAttackers) Console.WriteLine("Enemy attacking signals disabled for this control group.");
         if (holdBuild) Console.WriteLine("Checkpoint defenses held without purchases, upgrades, sales, or tactical actions.");
         else if (holdFootprint) Console.WriteLine("Checkpoint footprint held while upgrades and tactical actions remain available.");
         if (saveFile is not null) Console.WriteLine($"Simulation started from checkpoint: {Path.GetFullPath(saveFile)}");

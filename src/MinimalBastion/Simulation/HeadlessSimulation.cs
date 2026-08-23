@@ -9,17 +9,26 @@ namespace MinimalBastion.Simulation;
 public static class HeadlessSimulation
 {
     public static SimulationRunResult Run(Data.GameContent content, SimulationOptions options) =>
-        Run(new GameSession(content, options.MapId, options.DifficultyId, options.ChallengeId), options);
+        Run(CreateSession(content, options), options);
 
     internal static (GameSession Session, SimulationRunResult Result) RunForDiagnostics(
         Data.GameContent content, SimulationOptions options)
     {
-        var session = new GameSession(content, options.MapId, options.DifficultyId, options.ChallengeId);
+        var session = CreateSession(content, options);
         return (session, Run(session, options));
     }
 
     public static SimulationRunResult Run(Data.GameContent content, SaveGameData save, SimulationOptions options) =>
-        Run(GameSession.RestoreSaveGame(content, save), options);
+        Run(ConfigureSession(GameSession.RestoreSaveGame(content, save), options), options);
+
+    private static GameSession CreateSession(Data.GameContent content, SimulationOptions options) =>
+        ConfigureSession(new GameSession(content, options.MapId, options.DifficultyId, options.ChallengeId), options);
+
+    private static GameSession ConfigureSession(GameSession session, SimulationOptions options)
+    {
+        session.ConfigureCounterPressureSimulation(options.UseCounterSupport, options.UseCounterAttackers);
+        return session;
+    }
 
     private static SimulationRunResult Run(GameSession session, SimulationOptions options)
     {

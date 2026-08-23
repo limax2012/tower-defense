@@ -613,6 +613,7 @@ internal static class Program
         var wave3 = session.Waves.GetAuthoredWave(3)!;
         var wave4 = session.Waves.GetAuthoredWave(4)!;
         var wave5 = session.Waves.GetAuthoredWave(5)!;
+        var wave6 = session.Waves.GetAuthoredWave(6)!;
         Check.Equal(EnemySignalRole.None,
             session.ResolveEnemySignalRole(wave1, 0, 3, wave1.Groups[0]),
             "Gauntlet wave one remains a clean baseline");
@@ -631,6 +632,12 @@ internal static class Program
         Check.Equal(EnemySignalRole.None,
             session.ResolveEnemySignalRole(wave5, 3, 0, wave5.Groups[3]),
             "ordinary formation members do not inherit the carrier signal");
+        Check.True(session.ResolveEnemySignalRole(wave6, 0, (wave6.Groups[0].Count - 1) / 2, wave6.Groups[0]) !=
+                   EnemySignalRole.None,
+            "mature Gauntlet waves retain a carrier in alternating formations");
+        Check.Equal(EnemySignalRole.None,
+            session.ResolveEnemySignalRole(wave6, 1, (wave6.Groups[1].Count - 1) / 2, wave6.Groups[1]),
+            "mature Gauntlet waves leave room between carrier formations");
 
         session.SpawnEnemy("t1_crawler", 1, 1, signalRole: EnemySignalRole.Accelerator);
         session.SpawnEnemy("t1_crawler", 1, 1);
