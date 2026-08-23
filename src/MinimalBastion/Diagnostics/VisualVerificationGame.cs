@@ -198,6 +198,16 @@ public sealed class VisualVerificationGame : Game
 
         var localNodePlacementSession = new GameSession(content, "relay_divide", DifficultyCatalog.DefaultId,
             ChallengeCatalog.DefaultId);
+        var nodeTerrainPixels = RenderPixels(ui, GameState.Playing, localNodePlacementSession);
+        scenes.Add(Capture("03a0-power-node-glyphs.png", ui, GameState.Playing, localNodePlacementSession));
+        var amplifierNodePosition = localNodePlacementSession.Map.Definition.PowerNodes
+            .Single(node => node.Id == "inner_amplifier").Position.ToVector2();
+        var amplifierCoreCenter = ColorPixelCenter(nodeTerrainPixels,
+            new Rectangle((int)amplifierNodePosition.X - 6, (int)amplifierNodePosition.Y - 6, 12, 12),
+            ColorPalette.Paper);
+        Require(amplifierCoreCenter is { } coreCenter &&
+                Vector2.Distance(coreCenter, amplifierNodePosition) <= 0.05f,
+            "Power-node square layers share the authored node center.", assertions);
         localNodePlacementSession.BeginPlacement("needle_turret");
         localNodePlacementSession.HandleWorldInput(Pointer(285, 330));
         Require(localNodePlacementSession.HasPlacementPreview &&

@@ -66,16 +66,19 @@ public sealed class GameRenderer
         foreach (var node in session.Map.Definition.PowerNodes)
         {
             var position = node.Position.ToVector2();
+            var center = new Point((int)MathF.Round(position.X), (int)MathF.Round(position.Y));
+            var alignedCenter = center.ToVector2();
             const int nodeRingSegments = 32;
             // Center a dash on every cardinal/diagonal axis. The default phase
             // begins at an edge, which makes a compact ring look heavier in two
             // opposing quadrants even though its segment count is even.
-            p.DashedRing(batch, position, node.Radius, ColorPalette.WithAlpha(node.NodeColor, 95),
+            p.DashedRing(batch, alignedCenter, node.Radius, ColorPalette.WithAlpha(node.NodeColor, 95),
                 nodeRingSegments, 2, -MathHelper.Pi / nodeRingSegments);
-            p.DrawPolygon(batch, position, 14, 4, false, ColorPalette.WithAlpha(node.NodeColor, 210), MathHelper.PiOver4);
-            p.DrawPolygon(batch, position, 7, 4, false, ColorPalette.Paper, MathHelper.PiOver4);
-            p.Line(batch, position - new Vector2(22, 0), position - new Vector2(10, 0), node.NodeColor, 2);
-            p.Line(batch, position + new Vector2(10, 0), position + new Vector2(22, 0), node.NodeColor, 2);
+            p.FillRect(batch, new Rectangle(center.X - 10, center.Y - 10, 20, 20),
+                ColorPalette.WithAlpha(node.NodeColor, 210));
+            p.FillRect(batch, new Rectangle(center.X - 5, center.Y - 5, 10, 10), ColorPalette.Paper);
+            p.Line(batch, alignedCenter - new Vector2(22, 0), alignedCenter - new Vector2(10, 0), node.NodeColor, 2);
+            p.Line(batch, alignedCenter + new Vector2(10, 0), alignedCenter + new Vector2(22, 0), node.NodeColor, 2);
         }
 
         p.DrawRect(batch, mapRect, ColorPalette.MapBoundary, 1);
