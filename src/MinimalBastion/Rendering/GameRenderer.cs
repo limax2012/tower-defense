@@ -738,9 +738,23 @@ public sealed class GameRenderer
     {
         var time = presentation.TimeSeconds;
         DrawEnemySignalFields(batch, p, session, presentation, time);
+        DrawEnemyLayer(batch, p, session, presentation, signalCarriers: false);
+        DrawEnemyLayer(batch, p, session, presentation, signalCarriers: true);
         foreach (var enemy in session.Enemies)
         {
-            if (enemy.IsDead || enemy.HasEscaped) continue;
+            if (enemy.IsDead || enemy.HasEscaped || enemy.SignalRole == EnemySignalRole.None) continue;
+            DrawEnemySignalMarker(batch, p, enemy, presentation.EnemyPosition(enemy));
+        }
+    }
+
+    private static void DrawEnemyLayer(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session,
+        PresentationFrame presentation, bool signalCarriers)
+    {
+        var time = presentation.TimeSeconds;
+        foreach (var enemy in session.Enemies)
+        {
+            if (enemy.IsDead || enemy.HasEscaped ||
+                (enemy.SignalRole != EnemySignalRole.None) != signalCarriers) continue;
             var position = presentation.EnemyPosition(enemy);
             var pulseRate = enemy.IsBoss ? 8f : 5f;
             var pulseAmount = enemy.IsBoss ? 0.09f : 0.05f;
@@ -787,7 +801,6 @@ public sealed class GameRenderer
                     (MathF.Sin(time * 11f + enemy.Id) + 1f) * 0.5f);
             if (enemy.Definition.RegenerationPerSecond > 0)
                 p.Ring(batch, position, enemy.Radius + 11, ColorPalette.Lime, 2);
-            DrawEnemySignalMarker(batch, p, enemy, position);
         }
     }
 
