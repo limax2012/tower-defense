@@ -4210,7 +4210,8 @@ public sealed class UIManager
                 "WEAKEST: LOWEST HEALTH PERCENTAGE",
                 "NEAREST: SHORTEST DISTANCE TO TOWER",
                 "FASTEST: HIGHEST CURRENT MOVE SPEED",
-                "ARMORED: HIGHEST CURRENT ARMOR"
+                "ARMORED: HIGHEST CURRENT ARMOR",
+                "SUPPORT: SIGNAL CARRIERS, THEN FIRST"
             ]));
         var statusLines = DiscoveredStatusReferenceLines();
         if (statusLines.Count > 0)

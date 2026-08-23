@@ -29,7 +29,7 @@ The initial content contains:
 - 10 towers, each with three total levels.
 - 5 enemy tiers.
 - A single path with nine turns and approximately 20 sensible tower locations.
-- First/Last/Strongest/Weakest/Nearest targeting.
+- First/Last/Strongest/Weakest/Nearest/Fastest/Armored/Support targeting.
 - Straight projectiles, splash projectiles, chain attacks, a beam, damage-over-time, slowing, armor reduction, area buffs, health bars, pause, 1x/2x speed, victory, defeat, and restart.
 
 The intended implementation style is a conventional object-oriented game loop:
@@ -490,7 +490,7 @@ Signal Beacon has no target. Each frame or whenever towers move/level—which is
 Targeting is a reusable service, not code copied into tower classes.
 
 ```csharp
-public enum TargetMode { First, Last, Strongest, Weakest, Nearest }
+public enum TargetMode { First, Last, Strongest, Weakest, Nearest, Fastest, Armored, Support }
 
 public interface ITargetSelector
 {

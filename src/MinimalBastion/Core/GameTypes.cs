@@ -61,7 +61,8 @@ public enum TargetMode
     Weakest,
     Nearest,
     Fastest,
-    Armored
+    Armored,
+    Support
 }
 
 public enum EnemyRank

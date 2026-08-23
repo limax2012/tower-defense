@@ -113,7 +113,7 @@ This command creates `.build\publish\MinimalBastion.exe`. The output is self-con
 - `X`: promote an eligible selected tier-three tower to Apex during Mastery or Endless.
 - `D`: enable or disable the selected tower in Sandbox Lab.
 - `Delete`: sell the selected tower or Charge Forge.
-- `T`: open or close the selected tower's targeting picker. The current mode does not change until a replacement is chosen.
+- `T`: open or close the selected tower's targeting picker. The current mode does not change until a replacement is chosen. `SUPPORT` prioritizes Signal Gauntlet carriers and falls back to `FIRST` when none are in range.
 - `Space`: start/ready the next wave or claim the early-call reward.
 - `S`: toggle 1x/2x speed.
 - `P` or `Escape`: pause/resume in solo play.
