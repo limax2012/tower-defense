@@ -78,13 +78,12 @@ public sealed class ContentLoader
     private Dictionary<string, MapDefinition> LoadMaps()
     {
         var result = new Dictionary<string, MapDefinition>(StringComparer.OrdinalIgnoreCase);
-        var directory = Path.Combine(_root, "Maps");
-        foreach (var path in Directory.EnumerateFiles(directory, "*.json").OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        foreach (var file in EnumerateJsonFiles("Maps"))
         {
-            if (!HasTopLevelProperty(path, "path")) continue;
-            var map = JsonSerializer.Deserialize<MapDefinition>(File.ReadAllText(path), ContentJson.Options);
+            if (!HasTopLevelProperty(file.Json, "path")) continue;
+            var map = JsonSerializer.Deserialize<MapDefinition>(file.Json, ContentJson.Options);
             if (map is null || string.IsNullOrWhiteSpace(map.Id) || map.Path.Count < 2)
-                throw new InvalidDataException($"Invalid map definition: {path}");
+                throw new InvalidDataException($"Invalid map definition: {file.Name}");
             if (!result.TryAdd(map.Id, map))
                 throw new InvalidDataException($"Duplicate map ID: {map.Id}");
         }
@@ -94,14 +93,13 @@ public sealed class ContentLoader
     private Dictionary<string, WaveSetDefinition> LoadWaveSets()
     {
         var result = new Dictionary<string, WaveSetDefinition>(StringComparer.OrdinalIgnoreCase);
-        var directory = Path.Combine(_root, "Maps");
-        foreach (var path in Directory.EnumerateFiles(directory, "*.json").OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        foreach (var file in EnumerateJsonFiles("Maps"))
         {
-            if (!HasTopLevelProperty(path, "waves")) continue;
-            var waves = JsonSerializer.Deserialize<WaveSetDefinition>(File.ReadAllText(path), ContentJson.Options);
+            if (!HasTopLevelProperty(file.Json, "waves")) continue;
+            var waves = JsonSerializer.Deserialize<WaveSetDefinition>(file.Json, ContentJson.Options);
             if (waves is null || string.IsNullOrWhiteSpace(waves.Id) || string.IsNullOrWhiteSpace(waves.MapId) || waves.Waves.Count == 0)
-                throw new InvalidDataException($"Invalid wave-set definition: {path}");
-            AddWaveSetAlias(result, Path.GetFileNameWithoutExtension(path), waves);
+                throw new InvalidDataException($"Invalid wave-set definition: {file.Name}");
+            AddWaveSetAlias(result, Path.GetFileNameWithoutExtension(file.Name), waves);
             AddWaveSetAlias(result, waves.MapId, waves);
             AddWaveSetAlias(result, waves.Id, waves);
         }
@@ -115,9 +113,9 @@ public sealed class ContentLoader
         result[alias] = waves;
     }
 
-    private static bool HasTopLevelProperty(string path, string propertyName)
+    private static bool HasTopLevelProperty(string json, string propertyName)
     {
-        using var document = JsonDocument.Parse(File.ReadAllText(path), new JsonDocumentOptions
+        using var document = JsonDocument.Parse(json, new JsonDocumentOptions
         {
             CommentHandling = JsonCommentHandling.Skip,
             AllowTrailingCommas = true
@@ -128,11 +126,44 @@ public sealed class ContentLoader
 
     private T Read<T>(string relativePath)
     {
+#if BLAZORGL
+        var resourceName = $"MinimalBastion.ContentData.{relativePath.Replace('/', '\\')}";
+        using var stream = typeof(ContentLoader).Assembly.GetManifestResourceStream(resourceName)
+            ?? throw new FileNotFoundException($"Missing embedded content file: {relativePath}", relativePath);
+        using var reader = new StreamReader(stream);
+        var json = reader.ReadToEnd();
+        var value = JsonSerializer.Deserialize<T>(json, ContentJson.Options);
+        return value ?? throw new InvalidDataException($"Content file is empty or invalid: {relativePath}");
+#else
         var path = Path.Combine(_root, relativePath);
         if (!File.Exists(path)) throw new FileNotFoundException($"Missing content file: {path}", path);
         var value = JsonSerializer.Deserialize<T>(File.ReadAllText(path), ContentJson.Options);
         return value ?? throw new InvalidDataException($"Content file is empty or invalid: {path}");
+#endif
     }
+
+    private IEnumerable<ContentJsonFile> EnumerateJsonFiles(string relativeDirectory)
+    {
+#if BLAZORGL
+        var prefix = $"MinimalBastion.ContentData.{relativeDirectory.Replace('/', '\\')}\\";
+        foreach (var resourceName in typeof(ContentLoader).Assembly.GetManifestResourceNames()
+                     .Where(name => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&
+                         name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                     .OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
+        {
+            using var stream = typeof(ContentLoader).Assembly.GetManifestResourceStream(resourceName)
+                ?? throw new FileNotFoundException($"Missing embedded content file: {resourceName}", resourceName);
+            using var reader = new StreamReader(stream);
+            yield return new ContentJsonFile(resourceName[prefix.Length..], reader.ReadToEnd());
+        }
+#else
+        var directory = Path.Combine(_root, relativeDirectory);
+        foreach (var path in Directory.EnumerateFiles(directory, "*.json").OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+            yield return new ContentJsonFile(Path.GetFileName(path), File.ReadAllText(path));
+#endif
+    }
+
+    private sealed record ContentJsonFile(string Name, string Json);
 }
 
 public static class DataValidator

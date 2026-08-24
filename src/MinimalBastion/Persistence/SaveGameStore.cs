@@ -382,9 +382,7 @@ public sealed class SaveSlotRepository
 
 public static class SaveGameStore
 {
-    private static SaveSlotRepository DefaultRepository => new(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "MinimalBastion"));
+    private static SaveSlotRepository DefaultRepository => new(PlatformServices.PersistentRootDirectory);
 
     public static string SavesDirectory => DefaultRepository.SavesDirectory;
     public static string SavePath => DefaultRepository.GetSlotPath(SaveSlotRepository.AutosaveSlot);
@@ -392,9 +390,24 @@ public static class SaveGameStore
     public static string GetSlotPath(int slot) => DefaultRepository.GetSlotPath(slot);
     public static IReadOnlyList<SaveSlotInfo> GetSlots() => DefaultRepository.GetSlots();
     public static int? FindFirstEmptySlot() => DefaultRepository.FindFirstEmptySlot();
-    public static void Save(GameSession session, int slot = 1) => DefaultRepository.Save(session, slot);
+    public static void Save(GameSession session, int slot = 1)
+    {
+        DefaultRepository.Save(session, slot);
+        PlatformServices.FlushPersistentFiles();
+    }
     public static GameSession Load(GameContent content, int slot = 1) => DefaultRepository.Load(content, slot);
     public static SaveGameData LoadData(int slot) => DefaultRepository.LoadData(slot);
-    public static int Duplicate(int sourceSlot) => DefaultRepository.Duplicate(sourceSlot);
-    public static bool Delete(int slot) => DefaultRepository.Delete(slot);
+    public static int Duplicate(int sourceSlot)
+    {
+        var slot = DefaultRepository.Duplicate(sourceSlot);
+        PlatformServices.FlushPersistentFiles();
+        return slot;
+    }
+
+    public static bool Delete(int slot)
+    {
+        var deleted = DefaultRepository.Delete(slot);
+        if (deleted) PlatformServices.FlushPersistentFiles();
+        return deleted;
+    }
 }

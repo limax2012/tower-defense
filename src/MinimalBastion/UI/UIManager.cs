@@ -192,12 +192,12 @@ public sealed class UIManager
     private DiscoverySnapshot _discovery = DiscoverySnapshot.Everything;
     private TacticsDefinition _libraryTactics = new();
     private readonly Dictionary<string, IReadOnlyList<CampaignWaveReference>> _libraryCampaignWaves = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Rectangle _playButton = new(490, 370, 300, 42);
+    private readonly Rectangle _playButton = new(490, PlatformCapabilities.OnlineCoOp ? 370 : PlatformCapabilities.ExitCommand ? 395 : 420, 300, 42);
     private readonly Rectangle _coOpButton = new(490, 420, 300, 42);
-    private readonly Rectangle _continueButton = new(490, 470, 300, 42);
-    private readonly Rectangle _mainMenuLibraryButton = new(490, 520, 300, 42);
-    private readonly Rectangle _mainMenuSettingsButton = new(490, 570, 300, 42);
-    private readonly Rectangle _quitButton = new(490, 620, 300, 42);
+    private readonly Rectangle _continueButton = new(490, PlatformCapabilities.OnlineCoOp ? 470 : PlatformCapabilities.ExitCommand ? 445 : 470, 300, 42);
+    private readonly Rectangle _mainMenuLibraryButton = new(490, PlatformCapabilities.OnlineCoOp ? 520 : PlatformCapabilities.ExitCommand ? 495 : 520, 300, 42);
+    private readonly Rectangle _mainMenuSettingsButton = new(490, PlatformCapabilities.OnlineCoOp ? 570 : PlatformCapabilities.ExitCommand ? 545 : 570, 300, 42);
+    private readonly Rectangle _quitButton = new(490, PlatformCapabilities.OnlineCoOp ? 620 : 595, 300, 42);
     private readonly Rectangle _setupConfirmButton = new(438, 586, 270, 46);
     private readonly Rectangle _setupBackButton = new(722, 586, 120, 46);
     private readonly Rectangle[] _saveSlotRows =
@@ -208,10 +208,14 @@ public sealed class UIManager
         new(330, 358, 620, 66),
         new(330, 434, 620, 66)
     };
-    private readonly Rectangle _saveSlotConfirmButton = new(330, 520, 170, 46);
+    private readonly Rectangle _saveSlotConfirmButton = new(330, 520, PlatformCapabilities.OnlineCoOp ? 170 : 200, 46);
     private readonly Rectangle _saveSlotHostButton = new(510, 520, 170, 46);
-    private readonly Rectangle _saveSlotDuplicateButton = new(690, 520, 130, 46);
-    private readonly Rectangle _saveSlotDeleteButton = new(830, 520, 120, 46);
+    private readonly Rectangle _saveSlotDuplicateButton = PlatformCapabilities.OnlineCoOp
+        ? new Rectangle(690, 520, 130, 46)
+        : new Rectangle(540, 520, 200, 46);
+    private readonly Rectangle _saveSlotDeleteButton = PlatformCapabilities.OnlineCoOp
+        ? new Rectangle(830, 520, 120, 46)
+        : new Rectangle(750, 520, 200, 46);
     private readonly Rectangle _saveSlotWriteConfirmButton = new(330, 520, 400, 46);
     private readonly Rectangle _saveSlotWriteDeleteButton = new(740, 520, 210, 46);
     private readonly Rectangle _saveSlotPreviousButton = new(330, 582, 160, 44);
@@ -588,7 +592,8 @@ public sealed class UIManager
     {
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
-        for (var index = 0; index < 6; index++)
+        var optionCount = PlatformCapabilities.OnlineCoOp ? 6 : PlatformCapabilities.ExitCommand ? 5 : 4;
+        for (var index = 0; index < optionCount; index++)
         {
             if (!MainMenuOptionRectangle(index).Contains(point)) continue;
             return ActivateMainMenuSelection(index);
@@ -598,6 +603,19 @@ public sealed class UIManager
 
     private UiAction ActivateMainMenuSelection(int selection)
     {
+        if (!PlatformCapabilities.OnlineCoOp)
+        {
+            return selection switch
+            {
+                0 => UiAction.OpenSoloSetup,
+                1 when _saveAvailable => UiAction.LoadGame,
+                2 => UiAction.TowerLibrary,
+                3 => UiAction.Settings,
+                4 when PlatformCapabilities.ExitCommand => UiAction.Exit,
+                _ => UiAction.None
+            };
+        }
+
         return selection switch
         {
             0 => UiAction.OpenSoloSetup,
@@ -659,16 +677,32 @@ public sealed class UIManager
         ? _challenges.Where(challenge => !challenge.IsSandbox).ToArray()
         : _challenges;
 
-    private Rectangle MainMenuOptionRectangle(int index) => index switch
+    private Rectangle MainMenuOptionRectangle(int index)
     {
-        0 => _playButton,
-        1 => _coOpButton,
-        2 => _continueButton,
-        3 => _mainMenuLibraryButton,
-        4 => _mainMenuSettingsButton,
-        5 => _quitButton,
-        _ => Rectangle.Empty
-    };
+        if (!PlatformCapabilities.OnlineCoOp)
+        {
+            return index switch
+            {
+                0 => _playButton,
+                1 => _continueButton,
+                2 => _mainMenuLibraryButton,
+                3 => _mainMenuSettingsButton,
+                4 when PlatformCapabilities.ExitCommand => _quitButton,
+                _ => Rectangle.Empty
+            };
+        }
+
+        return index switch
+        {
+            0 => _playButton,
+            1 => _coOpButton,
+            2 => _continueButton,
+            3 => _mainMenuLibraryButton,
+            4 => _mainMenuSettingsButton,
+            5 => _quitButton,
+            _ => Rectangle.Empty
+        };
+    }
 
     private static Rectangle SetupCardRectangle(int row, int index, int count)
     {
@@ -703,6 +737,7 @@ public sealed class UIManager
                 _settings.Fullscreen = !_settings.Fullscreen;
                 break;
             case 1:
+                if (!PlatformCapabilities.ConfigurableVSync) return UiAction.None;
                 _settings.VSync = !_settings.VSync;
                 break;
             case 2:
@@ -829,7 +864,7 @@ public sealed class UIManager
         var confirmButton = _saveSlotWriteMode ? _saveSlotWriteConfirmButton : _saveSlotConfirmButton;
         var deleteButton = _saveSlotWriteMode ? _saveSlotWriteDeleteButton : _saveSlotDeleteButton;
         if (confirmButton.Contains(point) && canConfirm) return UiAction.ConfirmSaveSlot;
-        if (!_saveSlotWriteMode && _saveSlotHostButton.Contains(point) && selected is { IsOccupied: true, Error: null })
+        if (PlatformCapabilities.OnlineCoOp && !_saveSlotWriteMode && _saveSlotHostButton.Contains(point) && selected is { IsOccupied: true, Error: null })
             return UiAction.HostSavedGame;
         if (!_saveSlotWriteMode && _saveSlotDuplicateButton.Contains(point) && selected is { IsOccupied: true, Error: null })
             return UiAction.DuplicateSaveSlot;
@@ -3031,11 +3066,13 @@ public sealed class UIManager
         DrawText(batch, "MINIMAL BASTION", new Vector2(640, 295), ColorPalette.Ink, 2.2f, true);
         DrawText(batch, "A colorful geometric tower-defense game", new Vector2(640, 345), ColorPalette.Muted, 0.9f, true);
         DrawButton(batch, p, _playButton, "NEW GAME", true, ColorPalette.Cobalt);
-        DrawButton(batch, p, _coOpButton, "ONLINE CO-OP", true, ColorPalette.Green);
+        if (PlatformCapabilities.OnlineCoOp)
+            DrawButton(batch, p, _coOpButton, "ONLINE CO-OP", true, ColorPalette.Green);
         DrawButton(batch, p, _continueButton, "LOAD SAVES", _saveAvailable, ColorPalette.Violet);
         DrawButton(batch, p, _mainMenuLibraryButton, "TACTICAL LIBRARY", true, ColorPalette.Cyan);
         DrawButton(batch, p, _mainMenuSettingsButton, "SETTINGS", true, ColorPalette.Orange, ColorPalette.Paper);
-        DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
+        if (PlatformCapabilities.ExitCommand)
+            DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
     }
 
     private void DrawGameSetup(SpriteBatch batch, PrimitiveRenderer p)
@@ -3136,8 +3173,11 @@ public sealed class UIManager
 
         DrawButton(batch, p, _windowModeButton, _settings.Fullscreen ? "DISPLAY MODE  FULLSCREEN" : "DISPLAY MODE  WINDOWED",
             true, ColorPalette.Cobalt);
-        DrawButton(batch, p, _vsyncButton, _settings.VSync ? "VSYNC  ON" : "VSYNC  OFF",
-            true, ColorPalette.Green);
+        DrawButton(batch, p, _vsyncButton,
+            PlatformCapabilities.ConfigurableVSync
+                ? _settings.VSync ? "VSYNC  ON" : "VSYNC  OFF"
+                : "VSYNC  BROWSER CONTROLLED",
+            PlatformCapabilities.ConfigurableVSync, ColorPalette.Green);
         DrawButton(batch, p, _effectsButton, _settings.ReducedEffects ? "EFFECTS  REDUCED" : "EFFECTS  FULL",
             true, ColorPalette.Cyan);
         DrawButton(batch, p, _autoStartButton,
@@ -3167,7 +3207,9 @@ public sealed class UIManager
         DrawText(batch,
             _saveSlotWriteMode
                 ? "Choose a slot. Overwriting occurs only after pressing the confirmation button."
-                : "Every readable save can continue solo, host online, or be duplicated into a protected slot.",
+                : PlatformCapabilities.OnlineCoOp
+                    ? "Every readable save can continue solo, host online, or be duplicated into a protected slot."
+                    : "Every readable save can continue solo or be duplicated into a protected slot.",
             new Vector2(640, 102), ColorPalette.Muted, 0.58f, true);
         DrawButton(batch, p, _saveSlotHistoryButton, "RUN HISTORY", true, ColorPalette.Cyan);
 
@@ -3227,8 +3269,9 @@ public sealed class UIManager
         var canDelete = selectedSlot is { IsOccupied: true };
         if (!_saveSlotWriteMode)
         {
-            DrawButton(batch, p, _saveSlotHostButton, "HOST CO-OP",
-                selectedSlot is { IsOccupied: true, Error: null }, ColorPalette.Violet);
+            if (PlatformCapabilities.OnlineCoOp)
+                DrawButton(batch, p, _saveSlotHostButton, "HOST CO-OP",
+                    selectedSlot is { IsOccupied: true, Error: null }, ColorPalette.Violet);
             DrawButton(batch, p, _saveSlotDuplicateButton, "DUPLICATE",
                 selectedSlot is { IsOccupied: true, Error: null }, ColorPalette.Cobalt);
         }

@@ -1,6 +1,6 @@
 # Minimal Bastion
 
-Minimal Bastion is a colorful geometric tower-defense game built with C#, .NET 10, and MonoGame DesktopGL. It combines authored campaigns, a ten-wave Mastery extension, generated Endless play, branching tower upgrades, tactical devices, persistent progression, deterministic balance tools, and direct two-player online co-op.
+Minimal Bastion is a colorful geometric tower-defense game built with C# and .NET 10. The Windows build uses MonoGame DesktopGL, and the solo browser build uses WebAssembly and WebGL. Both versions combine authored campaigns, a ten-wave Mastery extension, generated Endless play, branching tower upgrades, tactical devices, persistent progression, and deterministic balance tools. The Windows build also supports direct two-player online co-op.
 
 ## Current feature set
 
@@ -12,7 +12,7 @@ Minimal Bastion is a colorful geometric tower-defense game built with C#, .NET 1
 - Pulse Plates, a three-level Charge Forge, Surge Nodes, automatic Protocol activation, and configurable wave auto-start.
 - One rolling autosave, expandable manual save slots, save duplication/deletion, recovery generations, run history, final-layout inspection, medals, achievements, and career records.
 - A discovery-driven Tactical Library for towers, enemies, signal roles, maps, waves, profiles, directives, statuses, and game systems.
-- Direct two-player co-op with host-authoritative commands, deterministic local simulation, reconnect repair, shared defenses, and visible remote cursor/placement state.
+- Direct two-player Windows co-op with host-authoritative commands, deterministic local simulation, reconnect repair, shared defenses, and visible remote cursor/placement state.
 - Runtime-generated vector-like visuals, procedural music, and synthesized sound effects; no external art or audio files are required.
 - Headless deterministic agents, isolated regression tests, and a hidden UI renderer for verification without taking desktop focus.
 
@@ -45,6 +45,26 @@ dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --
 ```
 
 The published application is `.build\publish\MinimalBastion.exe`.
+
+### Browser build
+
+Run the solo WebAssembly version locally with:
+
+```powershell
+dotnet run --project src\MinimalBastion.Web\MinimalBastion.Web.csproj -c Release
+```
+
+Open the local HTTP address printed by the command. The browser build must be served over HTTP or HTTPS; opening `index.html` directly from the filesystem is not supported by WebAssembly asset loading.
+
+Create a static browser package with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\publish-browser.ps1
+```
+
+The script writes the static site to `.build\browser` and creates `.build\MinimalBastion-Browser.zip`. The archive has `index.html` at its root and can be uploaded as an HTML game to a static host such as itch.io. Browser saves, discoveries, records, and settings are retained by the site origin and are separate from the Windows files under `%LocalAppData%`.
+
+The browser build contains the complete solo campaign, Mastery, Endless, Sandbox, persistence, library, records, audio, settings, and fullscreen flow. Online co-op remains a Windows feature.
 
 ## Campaign structure
 

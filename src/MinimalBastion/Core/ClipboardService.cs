@@ -6,6 +6,9 @@ public static class ClipboardService
 {
     public static string? TryGetText()
     {
+#if BLAZORGL
+        return PlatformServices.ClipboardReader?.Invoke();
+#else
         try
         {
             var pointer = SDL_GetClipboardText();
@@ -15,15 +18,21 @@ public static class ClipboardService
         }
         catch (DllNotFoundException) { return null; }
         catch (EntryPointNotFoundException) { return null; }
+#endif
     }
 
     public static bool TrySetText(string text)
     {
+#if BLAZORGL
+        return PlatformServices.ClipboardWriter?.Invoke(text ?? "") == true;
+#else
         try { return SDL_SetClipboardText(text ?? "") == 0; }
         catch (DllNotFoundException) { return false; }
         catch (EntryPointNotFoundException) { return false; }
+#endif
     }
 
+#if !BLAZORGL
     [DllImport("SDL2", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr SDL_GetClipboardText();
 
@@ -32,4 +41,5 @@ public static class ClipboardService
 
     [DllImport("SDL2", CallingConvention = CallingConvention.Cdecl)]
     private static extern void SDL_free(IntPtr memory);
+#endif
 }

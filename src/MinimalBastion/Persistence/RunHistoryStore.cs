@@ -505,11 +505,19 @@ public sealed class RunHistoryRepository
 
 public static class RunHistoryStore
 {
-    private static RunHistoryRepository DefaultRepository => new(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "MinimalBastion"));
+    private static RunHistoryRepository DefaultRepository => new(PlatformServices.PersistentRootDirectory);
 
     public static IReadOnlyList<RunHistoryEntry> GetEntries() => DefaultRepository.GetEntries();
-    public static void Upsert(RunHistoryEntry entry) => DefaultRepository.Upsert(entry);
-    public static bool Delete(string runId) => DefaultRepository.Delete(runId);
+    public static void Upsert(RunHistoryEntry entry)
+    {
+        DefaultRepository.Upsert(entry);
+        PlatformServices.FlushPersistentFiles();
+    }
+
+    public static bool Delete(string runId)
+    {
+        var deleted = DefaultRepository.Delete(runId);
+        if (deleted) PlatformServices.FlushPersistentFiles();
+        return deleted;
+    }
 }

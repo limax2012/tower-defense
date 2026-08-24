@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MinimalBastion.Core;
 using MinimalBastion.Enemies;
 using MinimalBastion.Effects;
 
@@ -318,10 +319,13 @@ public sealed class DiscoveryProgressRepository
 
 public static class DiscoveryProgressStore
 {
-    private static DiscoveryProgressRepository DefaultRepository => new(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MinimalBastion"));
+    private static DiscoveryProgressRepository DefaultRepository => new(PlatformServices.PersistentRootDirectory);
 
     public static string ProgressPath => DefaultRepository.ProgressPath;
     public static DiscoveryProgress Load() => DefaultRepository.Load();
-    public static void Save(DiscoveryProgress progress) => DefaultRepository.Save(progress);
+    public static void Save(DiscoveryProgress progress)
+    {
+        DefaultRepository.Save(progress);
+        PlatformServices.FlushPersistentFiles();
+    }
 }

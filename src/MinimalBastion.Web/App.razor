@@ -1,0 +1,10 @@
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" />
+    </Found>
+    <NotFound>
+        <LayoutView>
+            <p role="alert">Minimal Bastion could not open this address.</p>
+        </LayoutView>
+    </NotFound>
+</Router>

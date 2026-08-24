@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MinimalBastion.Core;
 
 namespace MinimalBastion.Persistence;
 
@@ -130,11 +131,13 @@ public sealed class UserSettingsRepository
 
 public static class UserSettingsStore
 {
-    private static UserSettingsRepository DefaultRepository => new(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "MinimalBastion"));
+    private static UserSettingsRepository DefaultRepository => new(PlatformServices.PersistentRootDirectory);
 
     public static string SettingsPath => DefaultRepository.SettingsPath;
     public static UserSettings Load() => DefaultRepository.Load();
-    public static void Save(UserSettings settings) => DefaultRepository.Save(settings);
+    public static void Save(UserSettings settings)
+    {
+        DefaultRepository.Save(settings);
+        PlatformServices.FlushPersistentFiles();
+    }
 }

@@ -246,7 +246,12 @@ public sealed class InputRouter
     {
         var keyboard = Microsoft.Xna.Framework.Input.Keyboard.GetState();
         var mouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
-        var logical = _transform.ScreenToLogical(new Point(mouse.X, mouse.Y));
+        var platformPointer = PlatformServices.PointerStateReader?.Invoke();
+        if (platformPointer is not null) windowActive &= platformPointer.Active;
+        var screenPoint = platformPointer is null
+            ? new Point(mouse.X, mouse.Y)
+            : new Point(platformPointer.X, platformPointer.Y);
+        var logical = _transform.ScreenToLogical(screenPoint);
 
         // Keyboard.GetState and Mouse.GetState can report global device state even
         // while the game is covered or minimized. Synchronize the physical state
@@ -270,10 +275,10 @@ public sealed class InputRouter
             textEntered = ClipboardService.TryGetText() ?? "";
         var snapshot = new InputSnapshot(
             logical,
-            mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed && _previousMouse.LeftButton != Microsoft.Xna.Framework.Input.ButtonState.Pressed,
-            mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Released && _previousMouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed,
-            mouse.RightButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed && _previousMouse.RightButton != Microsoft.Xna.Framework.Input.ButtonState.Pressed,
-            mouse.MiddleButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed && _previousMouse.MiddleButton != Microsoft.Xna.Framework.Input.ButtonState.Pressed,
+            platformPointer?.LeftPressed ?? mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed && _previousMouse.LeftButton != Microsoft.Xna.Framework.Input.ButtonState.Pressed,
+            platformPointer?.LeftReleased ?? mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Released && _previousMouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed,
+            platformPointer?.RightPressed ?? mouse.RightButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed && _previousMouse.RightButton != Microsoft.Xna.Framework.Input.ButtonState.Pressed,
+            platformPointer?.MiddlePressed ?? mouse.MiddleButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed && _previousMouse.MiddleButton != Microsoft.Xna.Framework.Input.ButtonState.Pressed,
             IsPressed(keyboard, _previousKeyboard, Microsoft.Xna.Framework.Input.Keys.Escape),
             IsPressed(keyboard, _previousKeyboard, Microsoft.Xna.Framework.Input.Keys.P),
             IsPressed(keyboard, _previousKeyboard, Microsoft.Xna.Framework.Input.Keys.F4),

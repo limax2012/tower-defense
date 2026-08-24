@@ -77,6 +77,10 @@ public sealed class Game1 : Game
     public Game1()
     {
         _settings = UserSettingsStore.Load();
+#if BLAZORGL
+        // Browsers require a fresh user gesture for each fullscreen session.
+        _settings.Fullscreen = false;
+#endif
         var desktopMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
         var outputSize = _settings.ResolveBackBufferSize(desktopMode.Width, desktopMode.Height);
         if (!_settings.Fullscreen)
@@ -92,6 +96,9 @@ public sealed class Game1 : Game
             IsFullScreen = _settings.Fullscreen,
             HardwareModeSwitch = false
         };
+#if BLAZORGL
+        _graphics.GraphicsProfile = GraphicsProfile.HiDef;
+#endif
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
         Window.AllowUserResizing = true;
@@ -107,7 +114,7 @@ public sealed class Game1 : Game
         _input = new InputRouter(_viewportTransform);
         Window.TextInput += (_, args) =>
         {
-            if (IsActive) _input.QueueTextInput(args.Character);
+            if (PlatformServices.InputFocusReader?.Invoke() ?? IsActive) _input.QueueTextInput(args.Character);
         };
         Deactivated += (_, _) =>
         {
@@ -128,7 +135,11 @@ public sealed class Game1 : Game
         {
             var contentDirectory = Path.Combine(AppContext.BaseDirectory, "ContentData");
             _content = new ContentLoader(contentDirectory).Load();
+#if BLAZORGL
+            _contentFingerprint = "browser-solo";
+#else
             _contentFingerprint = BuildFingerprint.Compute(contentDirectory);
+#endif
             _discovery = DiscoveryProgressStore.Load();
             var font = Content.Load<SpriteFont>("Fonts/Interface");
             _ui = new UIManager(font);
@@ -164,7 +175,7 @@ public sealed class Game1 : Game
     protected override void Update(GameTime gameTime)
     {
         _viewportTransform.Update(GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
-        var input = _input.Update(IsActive);
+        var input = _input.Update(PlatformServices.InputFocusReader?.Invoke() ?? IsActive);
         if (input.FullscreenPressed) ToggleFullscreenFromHotkey();
         var elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
         AdvanceWindowSizePersistence(elapsedSeconds);
@@ -1538,6 +1549,16 @@ public sealed class Game1 : Game
 
     private void ApplyGraphicsSettings()
     {
+#if BLAZORGL
+        // Browser presentation follows the canvas size and requestAnimationFrame.
+        // Reapplying the desktop backbuffer here can restore the browser's
+        // startup drawing-buffer size after entering fullscreen.
+        PlatformServices.FullscreenSetter?.Invoke(_settings.Fullscreen);
+        _viewportTransform.Update(
+            GraphicsDevice.PresentationParameters.BackBufferWidth,
+            GraphicsDevice.PresentationParameters.BackBufferHeight);
+        ApplyPresentationSettings();
+#else
         // Borderless fullscreen must use the desktop-sized backbuffer. Using a
         // smaller remembered window size here leaves SDL's borderless window at desktop
         // size while shrinking only the render surface, which also separates
@@ -1573,6 +1594,7 @@ public sealed class Game1 : Game
             GraphicsDevice.PresentationParameters.BackBufferWidth,
             GraphicsDevice.PresentationParameters.BackBufferHeight);
         ApplyPresentationSettings();
+#endif
     }
 
     private void CaptureWindowedClientSize(bool scheduleSave)
@@ -1621,11 +1643,13 @@ public sealed class Game1 : Game
         }
     }
 
+#if !BLAZORGL
     protected override void OnExiting(object sender, ExitingEventArgs args)
     {
         PersistPendingWindowSize();
         base.OnExiting(sender, args);
     }
+#endif
 
     private void AssignSession(GameSession? session)
     {
