@@ -1438,6 +1438,11 @@ public sealed class Game1 : Game
         var desiredScale = GameConstants.RenderScaleForOutput(
             presentation.BackBufferWidth,
             presentation.BackBufferHeight);
+#if BLAZORGL
+        // Keep the WebGL intermediate canvas at 2x. The browser backing canvas
+        // handles final display scaling without a second 4K scene allocation.
+        desiredScale = Math.Min(desiredScale, GameConstants.RenderScale);
+#endif
         if (_sceneTarget is not null && !_sceneTarget.IsDisposed &&
             _sceneRenderScale == desiredScale) return;
 

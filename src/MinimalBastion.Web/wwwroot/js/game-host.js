@@ -8,7 +8,12 @@ window.minimalBastion = (() => {
     let maximumTickTime = 0;
     let maximumFrameGap = 0;
     let previousFrameAt = 0;
+    let pendingFrameTime = 0;
     let lastError = "";
+    const targetFrameTime = 1000 / 60;
+    const maximumCanvasWidth = 2560;
+    const maximumCanvasHeight = 1440;
+    const maximumCanvasPixels = maximumCanvasWidth * maximumCanvasHeight;
     const storagePrefix = "minimal-bastion:file:";
     const pointer = {
         x: 0,
@@ -31,28 +36,55 @@ window.minimalBastion = (() => {
         const canvas = document.getElementById("theCanvas");
         const holder = document.getElementById("canvasHolder");
         if (!canvas || !holder) return;
-        const pixelRatio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
-        canvas.width = Math.max(1, Math.round(holder.clientWidth * pixelRatio));
-        canvas.height = Math.max(1, Math.round(holder.clientHeight * pixelRatio));
-        canvas.style.width = `${holder.clientWidth}px`;
-        canvas.style.height = `${holder.clientHeight}px`;
+        const cssWidth = Math.max(1, holder.clientWidth);
+        const cssHeight = Math.max(1, holder.clientHeight);
+        const desiredPixelRatio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+        const pixelRatio = Math.min(
+            desiredPixelRatio,
+            maximumCanvasWidth / cssWidth,
+            maximumCanvasHeight / cssHeight,
+            Math.sqrt(maximumCanvasPixels / (cssWidth * cssHeight)));
+        const width = Math.max(1, Math.round(cssWidth * pixelRatio));
+        const height = Math.max(1, Math.round(cssHeight * pixelRatio));
+        if (canvas.width !== width) canvas.width = width;
+        if (canvas.height !== height) canvas.height = height;
+        canvas.style.width = `${cssWidth}px`;
+        canvas.style.height = `${cssHeight}px`;
+    }
+
+    function stopWithError(error, summary) {
+        running = false;
+        lastError = error?.stack || error?.message || String(error);
+        console.error(summary, error);
+        publishDiagnostics();
+        const errorUi = document.getElementById("blazor-error-ui");
+        const errorSummary = document.getElementById("browser-error-summary");
+        if (errorSummary) errorSummary.textContent = summary;
+        errorUi?.classList.add("visible");
     }
 
     function frame(timestamp) {
         if (!running || !instance) return;
-        if (previousFrameAt > 0)
-            maximumFrameGap = Math.max(maximumFrameGap, timestamp - previousFrameAt);
+        if (previousFrameAt > 0) {
+            const frameGap = timestamp - previousFrameAt;
+            maximumFrameGap = Math.max(maximumFrameGap, frameGap);
+            pendingFrameTime = Math.min(targetFrameTime * 2, pendingFrameTime + frameGap);
+        } else {
+            pendingFrameTime = targetFrameTime;
+        }
         previousFrameAt = timestamp;
+
+        if (pendingFrameTime + 0.25 < targetFrameTime) {
+            window.requestAnimationFrame(frame);
+            return;
+        }
+        pendingFrameTime = Math.max(0, pendingFrameTime - targetFrameTime);
 
         const tickStartedAt = performance.now();
         try {
             instance.invokeMethod("Tick");
         } catch (error) {
-            running = false;
-            lastError = error?.stack || error?.message || String(error);
-            console.error("Minimal Bastion stopped after an unrecoverable game-loop error.", error);
-            publishDiagnostics();
-            document.getElementById("blazor-error-ui")?.classList.add("visible");
+            stopWithError(error, "The browser build stopped during gameplay.");
             return;
         }
 
@@ -77,6 +109,8 @@ window.minimalBastion = (() => {
             maximumFrameGapMs: maximumFrameGap,
             canvasWidth: document.getElementById("theCanvas")?.width || 0,
             canvasHeight: document.getElementById("theCanvas")?.height || 0,
+            canvasPixelRatio: (document.getElementById("theCanvas")?.width || 0) /
+                Math.max(1, document.getElementById("theCanvas")?.clientWidth || 1),
             devicePixelRatio: window.devicePixelRatio || 1,
             lastError
         };
@@ -159,6 +193,7 @@ window.minimalBastion = (() => {
                     maximumTickTime = 0;
                     maximumFrameGap = 0;
                     previousFrameAt = 0;
+                    pendingFrameTime = 0;
                     lastError = "";
                 }
                 publishDiagnostics();
@@ -177,6 +212,10 @@ window.minimalBastion = (() => {
             window.addEventListener("wheel", event => event.preventDefault(), { passive: false });
             document.getElementById("theCanvas")?.addEventListener("contextmenu", event => event.preventDefault());
             const canvas = document.getElementById("theCanvas");
+            canvas?.addEventListener("webglcontextlost", event => {
+                event.preventDefault();
+                stopWithError(new Error("WebGL graphics context lost"), "Browser graphics resources were interrupted.");
+            });
             canvas?.addEventListener("pointermove", updatePointerPosition);
             canvas?.addEventListener("pointerdown", event => {
                 updatePointerPosition(event);
@@ -192,6 +231,8 @@ window.minimalBastion = (() => {
             });
             running = true;
             sampleStartedAt = performance.now();
+            previousFrameAt = 0;
+            pendingFrameTime = 0;
             publishDiagnostics();
             window.requestAnimationFrame(frame);
         }
