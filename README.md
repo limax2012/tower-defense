@@ -57,18 +57,18 @@ dotnet workload install wasm-tools
 Run the solo WebAssembly version locally with:
 
 ```powershell
-dotnet run --project src\MinimalBastion.Web\MinimalBastion.Web.csproj -c Release
+powershell -ExecutionPolicy Bypass -File scripts\serve-browser.ps1
 ```
 
-Open the local HTTP address printed by the command. The browser build must be served over HTTP or HTTPS; opening `index.html` directly from the filesystem is not supported by WebAssembly asset loading.
+Open `http://127.0.0.1:5080/`. This command uses a non-AOT Debug build for quick local iteration. The browser build must be served over HTTP or HTTPS; opening `index.html` directly from the filesystem is not supported by WebAssembly asset loading.
 
-The development server favors quick iteration. To test the optimized AOT release locally, publish and serve it with:
+To rebuild and test the optimized AOT release locally, run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\serve-browser.ps1 -Publish
 ```
 
-Open `http://127.0.0.1:5080/`. Later runs can omit `-Publish` when the existing release package is current.
+Release publishing performs WebAssembly ahead-of-time compilation and can take several minutes. Use the command without `-Publish` during normal development.
 
 Create a static browser package with:
 
