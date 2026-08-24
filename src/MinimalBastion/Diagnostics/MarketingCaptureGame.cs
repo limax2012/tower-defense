@@ -73,27 +73,28 @@ public sealed class MarketingCaptureGame : Game
         ConfigureUi(ui, content);
 
         var foundry = BuildActiveSession(content, "foundry_loop", "hard", "standard",
-            AutoPlayerStrategy.Adaptive, 1421, 17, minimumSeconds: 4.8f);
+            AutoPlayerStrategy.Adaptive, 1421, 17, minimumSeconds: 12f);
         SelectTower(foundry, "breaker_cannon");
         CaptureGameplay("01-foundry-loop-battle.png", ui, foundry);
 
         var crosswind = BuildActiveSession(content, "crosswind_basin", "hard", "standard",
-            AutoPlayerStrategy.Conservative, 2917, 15, minimumSeconds: 5.2f);
+            AutoPlayerStrategy.Conservative, 2917, 15, minimumSeconds: 12f);
         SelectTower(crosswind, "frost_spire");
         CaptureGameplay("02-crosswind-basin-battle.png", ui, crosswind);
 
         var prism = BuildActiveSession(content, "prism_circuit", "hard", "core_six",
-            AutoPlayerStrategy.AntiArmor, 4759, 18, minimumSeconds: 5.0f);
+            AutoPlayerStrategy.AntiArmor, 4759, 18, minimumSeconds: 12f);
         SelectTower(prism, "ember_coil");
         CaptureGameplay("03-prism-circuit-core-six.png", ui, prism);
 
         var surge = BuildActiveSession(content, "relay_divide", "hard", "standard",
-            AutoPlayerStrategy.Synergy, 9256, 18, minimumSeconds: 5.0f);
+            AutoPlayerStrategy.Synergy, 9256, 19, minimumSeconds: 12f,
+            minimumLeadingProgress: 0.45f, minimumMiddleEnemies: 8);
         SelectPoweredTower(surge);
         CaptureGameplay("04-surge-divide-nodes.png", ui, surge);
 
         var gauntlet = BuildActiveSession(content, "foundry_loop", "normal", "close_quarters",
-            AutoPlayerStrategy.Synergy, 6841, 14, minimumSeconds: 5.4f, requireSignalCarrier: true);
+            AutoPlayerStrategy.Synergy, 6841, 14, minimumSeconds: 12f, requireSignalCarrier: true);
         gauntlet.ConfigureCoOp(1);
         ui.SetCoOpConnectionState(true);
         ui.SetCoOpWaveReadyState(0, false);
@@ -136,7 +137,7 @@ public sealed class MarketingCaptureGame : Game
 
     private static GameSession BuildActiveSession(GameContent content, string mapId, string difficultyId,
         string challengeId, AutoPlayerStrategy strategy, int seed, int waveNumber, float minimumSeconds,
-        bool requireSignalCarrier = false)
+        bool requireSignalCarrier = false, float minimumLeadingProgress = 0.58f, int minimumMiddleEnemies = 10)
     {
         if (waveNumber < 2) throw new ArgumentOutOfRangeException(nameof(waveNumber));
         var options = new SimulationOptions
@@ -162,7 +163,8 @@ public sealed class MarketingCaptureGame : Game
         const float step = 0.05f;
         var elapsed = 0f;
         var reaction = 0f;
-        while (session.Waves.IsActive && elapsed < 11f)
+        var frameReady = false;
+        while (session.Waves.IsActive && elapsed < 55f)
         {
             session.Update(step);
             elapsed += step;
@@ -173,15 +175,29 @@ public sealed class MarketingCaptureGame : Game
                 reaction = 0f;
             }
 
-            var hasCombatArt = session.Projectiles.Projectiles.Count > 0 || session.Effects.Effects.Count >= 2;
+            var middleEnemies = session.Enemies.Count(enemy => enemy.PathProgress is >= 0.35f and <= 0.78f);
+            var centralEnemies = session.Enemies.Count(enemy =>
+                enemy.Position.X is >= 240f and <= 720f && enemy.Position.Y is >= 100f and <= 630f);
+            var leadingProgress = session.Enemies.Count == 0 ? 0 : session.Enemies.Max(enemy => enemy.PathProgress);
+            var attackingTowers = session.Towers.Count(tower => !tower.IsSupport && session.Enemies.Any(enemy =>
+                Vector2.DistanceSquared(tower.Position, enemy.Position) <=
+                session.GetEffectiveRange(tower) * session.GetEffectiveRange(tower)));
+            var hasCombatArt = session.Projectiles.Projectiles.Count >= 2 || session.Effects.Effects.Count >= 4;
             var hasSignalCarrier = !requireSignalCarrier || session.Enemies.Any(enemy => enemy.SignalRole != EnemySignalRole.None);
-            if (elapsed >= minimumSeconds && session.Enemies.Count >= 5 && hasCombatArt && hasSignalCarrier &&
-                session.AnnouncementRemaining <= 0)
+            if (elapsed >= minimumSeconds && middleEnemies >= minimumMiddleEnemies && centralEnemies >= 6 &&
+                leadingProgress >= minimumLeadingProgress &&
+                attackingTowers >= 8 && hasCombatArt && hasSignalCarrier && session.AnnouncementRemaining <= 0)
+            {
+                Console.WriteLine($"{mapId} W{waveNumber}: {session.Enemies.Count} enemies, " +
+                                  $"{middleEnemies} mid-route, {centralEnemies} central, " +
+                                  $"{attackingTowers} towers in range at {elapsed:0.0}s.");
+                frameReady = true;
                 break;
+            }
         }
 
-        if (!session.Waves.IsActive || session.Enemies.Count == 0)
-            throw new InvalidOperationException($"{mapId} wave {waveNumber} ended before a gameplay frame was available.");
+        if (!frameReady)
+            throw new InvalidOperationException($"{mapId} wave {waveNumber} ended before a mid-route combat frame was available.");
         return session;
     }
 
