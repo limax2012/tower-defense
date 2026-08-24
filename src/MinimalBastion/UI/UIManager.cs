@@ -2048,6 +2048,12 @@ public sealed class UIManager
             DrawGameSetup(batch, p);
             return;
         }
+        if (state == GameState.LoadingDefense)
+        {
+            DrawGameSetup(batch, p);
+            DrawDefenseLoading(batch, p);
+            return;
+        }
         if (state == GameState.TowerLibrary)
         {
             DrawTowerLibrary(batch, p, "title screen");
@@ -3128,6 +3134,34 @@ public sealed class UIManager
             _setupForCoOp ? "START HOSTING" : challenge?.IsSandbox == true ? "ENTER SANDBOX" : "BEGIN DEFENSE", true,
             _setupForCoOp || challenge?.IsSandbox == true ? ColorPalette.Green : ColorPalette.Cobalt);
         DrawButton(batch, p, _setupBackButton, "BACK", true, ColorPalette.Violet);
+    }
+
+    private float _defenseLoadingProgress;
+    private string _defenseLoadingStatus = "PREPARING SELECTED ARENA";
+
+    public void SetDefenseLoading(float progress, string status)
+    {
+        _defenseLoadingProgress = MathHelper.Clamp(progress, 0, 1);
+        _defenseLoadingStatus = status;
+    }
+
+    private void DrawDefenseLoading(SpriteBatch batch, PrimitiveRenderer p)
+    {
+        p.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight),
+            ColorPalette.WithAlpha(ColorPalette.Navy, 214));
+        var panel = new Rectangle(300, 252, 680, 218);
+        p.FillRect(batch, panel, ColorPalette.Navy);
+        p.DrawRect(batch, panel, ColorPalette.Cyan, 3);
+        DrawText(batch, "LOADING DEFENSE SYSTEMS", new Vector2(640, 304), ColorPalette.Paper, 1.35f, true);
+        DrawText(batch, _defenseLoadingStatus, new Vector2(640, 346), ColorPalette.Disabled, 0.58f, true);
+
+        var track = new Rectangle(354, 382, 572, 18);
+        p.FillRect(batch, track, ColorPalette.MapBoundary);
+        p.FillRect(batch, new Rectangle(track.X, track.Y,
+            Math.Max(4, (int)MathF.Round(track.Width * _defenseLoadingProgress)), track.Height), ColorPalette.Green);
+        p.DrawRect(batch, track, ColorPalette.Paper, 2);
+        DrawText(batch, $"{MathF.Round(_defenseLoadingProgress * 100):0}%", new Vector2(640, 430),
+            ColorPalette.Gold, 0.72f, true);
     }
 
     private void DrawSetupRowLabel(SpriteBatch batch, PrimitiveRenderer p, string label, int y, Color color)

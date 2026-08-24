@@ -47,6 +47,7 @@ public enum GameState
 {
     MainMenu,
     GameSetup,
+    LoadingDefense,
     TowerLibrary,
     Settings,
     SaveSlots,

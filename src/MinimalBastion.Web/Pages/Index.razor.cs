@@ -22,6 +22,7 @@ public partial class Index
         PlatformServices.ClipboardReader = () => browser.Invoke<string?>("minimalBastion.clipboard.read");
         PlatformServices.ClipboardWriter = text => browser.Invoke<bool>("minimalBastion.clipboard.write", text);
         PlatformServices.FullscreenSetter = enabled => browser.InvokeVoid("minimalBastion.setFullscreen", enabled);
+        PlatformServices.RuntimeStageSetter = stage => browser.InvokeVoid("minimalBastion.setRuntimeStage", stage);
         PlatformServices.InputFocusReader = () => browser.Invoke<bool>("minimalBastion.hasInputFocus");
         PlatformServices.PointerStateReader = () => browser.Invoke<PlatformPointerState>("minimalBastion.pointer.read");
         _ = JsRuntime.InvokeVoidAsync("minimalBastion.start", DotNetObjectReference.Create(this));

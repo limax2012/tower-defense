@@ -62,6 +62,14 @@ dotnet run --project src\MinimalBastion.Web\MinimalBastion.Web.csproj -c Release
 
 Open the local HTTP address printed by the command. The browser build must be served over HTTP or HTTPS; opening `index.html` directly from the filesystem is not supported by WebAssembly asset loading.
 
+The development server favors quick iteration. To test the optimized AOT release locally, publish and serve it with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\serve-browser.ps1 -Publish
+```
+
+Open `http://127.0.0.1:5080/`. Later runs can omit `-Publish` when the existing release package is current.
+
 Create a static browser package with:
 
 ```powershell

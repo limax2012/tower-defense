@@ -10,13 +10,16 @@
     <link href="css/app.css" rel="stylesheet" />
 </head>
 <body>
-    <div id="app">
-        <div class="loading-screen">
-            <div class="loading-mark" aria-hidden="true"></div>
-            <div class="loading-title">MINIMAL BASTION</div>
-            <div class="loading-copy">LOADING DEFENSE SYSTEMS</div>
+    <div id="browser-loading" class="loading-screen" role="status" aria-live="polite">
+        <div class="loading-mark" aria-hidden="true"></div>
+        <div class="loading-title">MINIMAL BASTION</div>
+        <div id="browser-loading-copy" class="loading-copy">STARTING BROWSER RUNTIME</div>
+        <div class="loading-track" aria-hidden="true">
+            <div id="browser-loading-fill" class="loading-fill"></div>
         </div>
+        <div id="browser-loading-percent" class="loading-percent">8%</div>
     </div>
+    <div id="app"></div>
 
     <div id="blazor-error-ui" role="alert">
         <span id="browser-error-summary">The browser build stopped unexpectedly.</span>
@@ -25,7 +28,51 @@
 
     <script src="_framework/blazor.webassembly.js" autostart="false"></script>
     <script>
-        Blazor.start();
+        window.minimalBastionLoading = (() => {
+            const overlay = document.getElementById("browser-loading");
+            const copy = document.getElementById("browser-loading-copy");
+            const fill = document.getElementById("browser-loading-fill");
+            const percent = document.getElementById("browser-loading-percent");
+            let currentProgress = 0;
+            return {
+                update(progress, message) {
+                    const bounded = Math.max(currentProgress, Math.max(0, Math.min(1, progress || 0)));
+                    currentProgress = bounded;
+                    if (copy) copy.textContent = message || "LOADING DEFENSE SYSTEMS";
+                    if (fill) fill.style.width = `${Math.round(bounded * 100)}%`;
+                    if (percent) percent.textContent = `${Math.round(bounded * 100)}%`;
+                },
+                complete() {
+                    this.update(1, "DEFENSE SYSTEMS READY");
+                    window.requestAnimationFrame(() => window.requestAnimationFrame(() => overlay?.classList.add("complete")));
+                },
+                fail() {
+                    overlay?.classList.add("complete");
+                }
+            };
+        })();
+        minimalBastionLoading.update(0.08, "STARTING BROWSER RUNTIME");
+        let frameworkLoading = true;
+        function trackFrameworkLoading() {
+            if (!frameworkLoading) return;
+            const rawProgress = getComputedStyle(document.documentElement)
+                .getPropertyValue("--blazor-load-percentage");
+            const resourceProgress = Number.parseFloat(rawProgress);
+            if (Number.isFinite(resourceProgress))
+                minimalBastionLoading.update(0.08 + resourceProgress * 0.0062, "DOWNLOADING GAME DATA");
+            window.requestAnimationFrame(trackFrameworkLoading);
+        }
+        window.requestAnimationFrame(trackFrameworkLoading);
+        Blazor.start()
+            .then(() => {
+                frameworkLoading = false;
+                minimalBastionLoading.update(0.72, "PREPARING GAME ASSEMBLIES");
+            })
+            .catch(error => {
+                frameworkLoading = false;
+                console.error("Browser startup failed", error);
+                minimalBastionLoading.fail();
+            });
     </script>
     <script src="_content/nkast.Wasm.JSInterop/js/JSObject.10.0.3.js"></script>
     <script src="_content/nkast.Wasm.Dom/js/Window.10.0.3.js"></script>

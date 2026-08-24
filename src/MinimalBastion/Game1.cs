@@ -27,8 +27,13 @@ public sealed class Game1 : Game
     private InputRouter _input = null!;
     private SpriteBatch _spriteBatch = null!;
     private RenderTarget2D _sceneTarget = null!;
+#if !BLAZORGL
     private int _sceneRenderScale = GameConstants.RenderScale;
+#endif
     private PrimitiveRenderer _primitives = null!;
+#if BLAZORGL
+    private RasterizerState _browserScissorRasterizer = null!;
+#endif
     private GameRenderer _gameRenderer = null!;
     private UIManager _ui = null!;
     private DebugOverlay _debug = null!;
@@ -73,6 +78,10 @@ public sealed class Game1 : Game
     private bool _discoveryDirty;
     private bool _windowSizeSavePending;
     private float _windowSizeSaveRemaining;
+    private string? _pendingDefenseMapId;
+    private string? _pendingDefenseDifficultyId;
+    private string? _pendingDefenseChallengeId;
+    private int _defenseLoadingPhase;
 
     public Game1()
     {
@@ -129,6 +138,13 @@ public sealed class Game1 : Game
     protected override void LoadContent()
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
+#if BLAZORGL
+        _browserScissorRasterizer = new RasterizerState
+        {
+            CullMode = CullMode.None,
+            ScissorTestEnable = true
+        };
+#endif
         EnsureSceneRenderResources();
         _gameRenderer = new GameRenderer();
         try
@@ -199,6 +215,9 @@ public sealed class Game1 : Game
                 break;
             case GameState.GameSetup:
                 HandleMenuAction(WithUiAudio(_ui.HandleGameSetup(input)));
+                break;
+            case GameState.LoadingDefense:
+                AdvanceDefenseLoading();
                 break;
             case GameState.TowerLibrary:
                 HandleMenuAction(WithUiAudio(_ui.HandleTitleTowerLibrary(input)));
@@ -358,10 +377,7 @@ public sealed class Game1 : Game
         }
         else if (action == UiAction.Play)
         {
-            AssignSession(new GameSession(_content, _ui.SelectedMapId, _ui.SelectedDifficultyId, _ui.SelectedChallengeId));
-            _lastAutosaveAttemptedWave = -1;
-            _activeSaveSlot = null;
-            _state = GameState.Playing;
+            BeginDefenseLoading(_ui.SelectedMapId, _ui.SelectedDifficultyId, _ui.SelectedChallengeId);
         }
         else if (action == UiAction.HostCoOp) BeginHostingCoOp();
         else if (action == UiAction.TowerLibrary) _state = GameState.TowerLibrary;
@@ -374,6 +390,52 @@ public sealed class Game1 : Game
         else if (action == UiAction.MainMenu) _state = GameState.MainMenu;
         else if (action == UiAction.CoOp) _state = GameState.CoOpMenu;
         else if (action == UiAction.Exit) Exit();
+    }
+
+    private void BeginDefenseLoading(string mapId, string difficultyId, string challengeId)
+    {
+        PlatformServices.RuntimeStageSetter?.Invoke("defense loading");
+        _pendingDefenseMapId = mapId;
+        _pendingDefenseDifficultyId = difficultyId;
+        _pendingDefenseChallengeId = challengeId;
+        _defenseLoadingPhase = 0;
+        _ui.SetDefenseLoading(0.12f, "PREPARING SELECTED ARENA");
+        _state = GameState.LoadingDefense;
+    }
+
+    private void AdvanceDefenseLoading()
+    {
+        switch (_defenseLoadingPhase)
+        {
+            case 0:
+                _ui.SetDefenseLoading(0.34f, "INITIALIZING WAVE SYSTEMS");
+                _defenseLoadingPhase = 1;
+                return;
+            case 1:
+                AssignSession(new GameSession(
+                    _content,
+                    _pendingDefenseMapId,
+                    _pendingDefenseDifficultyId,
+                    _pendingDefenseChallengeId));
+                _lastAutosaveAttemptedWave = -1;
+                _activeSaveSlot = null;
+                _ui.SetDefenseLoading(0.78f, "RENDERING DEFENSE GRID");
+                _defenseLoadingPhase = 2;
+                return;
+            case 2:
+                // Keep one complete rendered frame behind the loading panel so
+                // browser graphics resources are ready before play is exposed.
+                _ui.SetDefenseLoading(0.96f, "FINALIZING TOWER WORKSHOP");
+                _defenseLoadingPhase = 3;
+                return;
+            default:
+                _pendingDefenseMapId = null;
+                _pendingDefenseDifficultyId = null;
+                _pendingDefenseChallengeId = null;
+                _state = GameState.Playing;
+                PlatformServices.RuntimeStageSetter?.Invoke("gameplay");
+                return;
+        }
     }
 
     private UiAction WithUiAudio(UiAction action)
@@ -1381,6 +1443,31 @@ public sealed class Game1 : Game
     protected override void Draw(GameTime gameTime)
     {
         EnsureSceneRenderResources();
+#if BLAZORGL
+        GraphicsDevice.SetRenderTarget(null);
+        GraphicsDevice.Clear(ColorPalette.Paper);
+        _viewportTransform.Update(
+            GraphicsDevice.PresentationParameters.BackBufferWidth,
+            GraphicsDevice.PresentationParameters.BackBufferHeight);
+        var backBufferBounds = new Rectangle(
+            0,
+            0,
+            GraphicsDevice.PresentationParameters.BackBufferWidth,
+            GraphicsDevice.PresentationParameters.BackBufferHeight);
+        GraphicsDevice.ScissorRectangle = Rectangle.Intersect(
+            backBufferBounds,
+            _viewportTransform.DestinationRectangle);
+        _spriteBatch.Begin(
+            SpriteSortMode.Deferred,
+            BlendState.AlphaBlend,
+            SamplerState.LinearClamp,
+            null,
+            _browserScissorRasterizer,
+            null,
+            _viewportTransform.DrawMatrix);
+        DrawLogicalScene(gameTime);
+        _spriteBatch.End();
+#else
         GraphicsDevice.SetRenderTarget(_sceneTarget);
         GraphicsDevice.Clear(ColorPalette.Paper);
         _spriteBatch.Begin(
@@ -1391,36 +1478,9 @@ public sealed class Game1 : Game
             null,
             null,
             Matrix.CreateScale(_sceneRenderScale));
-
-        if (_loadError is not null)
-        {
-            _primitives.FillRect(_spriteBatch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight), ColorPalette.Paper);
-            _primitives.DrawRect(_spriteBatch, new Rectangle(120, 210, 1040, 220), ColorPalette.Coral, 5);
-            _spriteBatch.DrawString(Content.Load<SpriteFont>("Fonts/Interface"), "CONTENT ERROR", new Vector2(460, 280), ColorPalette.Ink, 0, Vector2.Zero, 2 * GameConstants.FontDrawScale, SpriteEffects.None, 0);
-            _spriteBatch.DrawString(Content.Load<SpriteFont>("Fonts/Interface"), _loadError, new Vector2(120, 350), ColorPalette.Muted, 0, Vector2.Zero, 0.9f * GameConstants.FontDrawScale, SpriteEffects.None, 0);
-        }
-        else
-        {
-            var presentedSession = _state == GameState.RunHistoryField ? _historyInspectionSession : _session;
-            if (presentedSession is not null && _state != GameState.MainMenu)
-            {
-                _gameRenderer.Draw(_spriteBatch, _primitives, presentedSession,
-                    showTransientCombat: _state is not (GameState.DefeatField or GameState.RunHistoryField),
-                    presentationLeadSeconds: _state == GameState.Playing
-                        ? _networkRunner?.PresentationLeadSeconds ?? 0
-                        : 0,
-                    foregroundTowerId: _state == GameState.Playing ? _ui.RemoteCoOpSelectedTowerId : 0);
-                if (_state == GameState.Playing || _state == GameState.Paused)
-                    _debug.Draw(_spriteBatch, _primitives, presentedSession, gameTime.ElapsedGameTime.TotalSeconds > 0 ? (float)(1 / gameTime.ElapsedGameTime.TotalSeconds) : 0);
-            }
-            _ui.Draw(_spriteBatch, _primitives, _state, presentedSession);
-        }
-
+        DrawLogicalScene(gameTime);
         _spriteBatch.End();
 
-        // Rendering into a fixed 2560x1440 canvas both supersamples the
-        // geometric art and clips every primitive before the canvas is
-        // letterboxed. Wide roads at x=0 therefore cannot bleed into the bars.
         GraphicsDevice.SetRenderTarget(null);
         GraphicsDevice.Clear(ColorPalette.Paper);
         _viewportTransform.Update(GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
@@ -1429,20 +1489,47 @@ public sealed class Game1 : Game
         _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.Opaque, SamplerState.LinearClamp);
         _spriteBatch.Draw(_sceneTarget, _viewportTransform.DestinationRectangle, Color.White);
         _spriteBatch.End();
+#endif
         base.Draw(gameTime);
+    }
+
+    private void DrawLogicalScene(GameTime gameTime)
+    {
+        if (_loadError is not null)
+        {
+            _primitives.FillRect(_spriteBatch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight), ColorPalette.Paper);
+            _primitives.DrawRect(_spriteBatch, new Rectangle(120, 210, 1040, 220), ColorPalette.Coral, 5);
+            _spriteBatch.DrawString(Content.Load<SpriteFont>("Fonts/Interface"), "CONTENT ERROR", new Vector2(460, 280), ColorPalette.Ink, 0, Vector2.Zero, 2 * GameConstants.FontDrawScale, SpriteEffects.None, 0);
+            _spriteBatch.DrawString(Content.Load<SpriteFont>("Fonts/Interface"), _loadError, new Vector2(120, 350), ColorPalette.Muted, 0, Vector2.Zero, 0.9f * GameConstants.FontDrawScale, SpriteEffects.None, 0);
+            return;
+        }
+
+        var presentedSession = _state == GameState.RunHistoryField ? _historyInspectionSession : _session;
+        if (presentedSession is not null && _state != GameState.MainMenu)
+        {
+            _gameRenderer.Draw(_spriteBatch, _primitives, presentedSession,
+                showTransientCombat: _state is not (GameState.DefeatField or GameState.RunHistoryField or GameState.LoadingDefense),
+                presentationLeadSeconds: _state == GameState.Playing
+                    ? _networkRunner?.PresentationLeadSeconds ?? 0
+                    : 0,
+                foregroundTowerId: _state == GameState.Playing ? _ui.RemoteCoOpSelectedTowerId : 0);
+            if (_state == GameState.Playing || _state == GameState.Paused)
+                _debug.Draw(_spriteBatch, _primitives, presentedSession, gameTime.ElapsedGameTime.TotalSeconds > 0 ? (float)(1 / gameTime.ElapsedGameTime.TotalSeconds) : 0);
+        }
+        _ui.Draw(_spriteBatch, _primitives, _state, presentedSession);
     }
 
     private void EnsureSceneRenderResources()
     {
+#if BLAZORGL
+        if (_primitives is null)
+            _primitives = new PrimitiveRenderer(GraphicsDevice, GameConstants.RenderScale);
+        return;
+#else
         var presentation = GraphicsDevice.PresentationParameters;
         var desiredScale = GameConstants.RenderScaleForOutput(
             presentation.BackBufferWidth,
             presentation.BackBufferHeight);
-#if BLAZORGL
-        // Keep the WebGL intermediate canvas at 2x. The browser backing canvas
-        // handles final display scaling without a second 4K scene allocation.
-        desiredScale = Math.Min(desiredScale, GameConstants.RenderScale);
-#endif
         if (_sceneTarget is not null && !_sceneTarget.IsDisposed &&
             _sceneRenderScale == desiredScale) return;
 
@@ -1461,6 +1548,7 @@ public sealed class Game1 : Game
         _sceneTarget = replacementTarget;
         _primitives = replacementPrimitives;
         _sceneRenderScale = desiredScale;
+#endif
     }
 
     private void HandleSettingsAction(UiAction action)
@@ -1702,6 +1790,9 @@ public sealed class Game1 : Game
             _audio?.Dispose();
             _sceneTarget?.Dispose();
             _primitives?.Dispose();
+#if BLAZORGL
+            _browserScissorRasterizer?.Dispose();
+#endif
         }
         base.Dispose(disposing);
     }

@@ -65,8 +65,9 @@ internal sealed class MainMenuBattleScene
 
     private static void WarmUp(LaneBattle lane, float seconds)
     {
-        var ticks = (int)MathF.Round(seconds / FixedStepSeconds);
-        for (var index = 0; index < ticks; index++) lane.Session.Update(FixedStepSeconds);
+        const float warmUpStepSeconds = 1f / 15f;
+        var ticks = (int)MathF.Round(seconds / warmUpStepSeconds);
+        for (var index = 0; index < ticks; index++) lane.Session.Update(warmUpStepSeconds);
     }
 
     private LaneBattle CreateLane(bool leftLane, int previousKills = 0, int previousEscapes = 0)

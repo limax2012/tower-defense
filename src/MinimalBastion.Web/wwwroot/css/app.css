@@ -33,12 +33,22 @@ body {
 }
 
 .loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 900;
     display: grid;
     place-content: center;
     justify-items: center;
     min-height: 100%;
     color: #f4f5f8;
     letter-spacing: 0.12em;
+    background: #152d36;
+    transition: opacity 180ms ease;
+}
+
+.loading-screen.complete {
+    pointer-events: none;
+    opacity: 0;
 }
 
 .loading-mark {
@@ -59,6 +69,28 @@ body {
     margin-top: 12px;
     color: #aebdca;
     font-size: 13px;
+}
+
+.loading-track {
+    width: min(420px, 70vw);
+    height: 12px;
+    margin-top: 22px;
+    border: 2px solid #f4f5f8;
+    background: #152b46;
+}
+
+.loading-fill {
+    width: 8%;
+    height: 100%;
+    background: #2ac275;
+    transition: width 180ms ease;
+}
+
+.loading-percent {
+    margin-top: 9px;
+    color: #e8b637;
+    font-size: 14px;
+    letter-spacing: 0.08em;
 }
 
 #blazor-error-ui {

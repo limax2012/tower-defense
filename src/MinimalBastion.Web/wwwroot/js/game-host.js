@@ -10,6 +10,8 @@ window.minimalBastion = (() => {
     let previousFrameAt = 0;
     let pendingFrameTime = 0;
     let lastError = "";
+    let initialTickComplete = false;
+    let runtimeStage = "browser startup";
     const targetFrameTime = 1000 / 60;
     const maximumCanvasWidth = 2560;
     const maximumCanvasHeight = 1440;
@@ -59,8 +61,11 @@ window.minimalBastion = (() => {
         publishDiagnostics();
         const errorUi = document.getElementById("blazor-error-ui");
         const errorSummary = document.getElementById("browser-error-summary");
-        if (errorSummary) errorSummary.textContent = summary;
+        const detail = error?.message || String(error);
+        if (errorSummary)
+            errorSummary.textContent = `${summary} (${runtimeStage}) ${detail}`;
         errorUi?.classList.add("visible");
+        window.minimalBastionLoading?.fail();
     }
 
     function frame(timestamp) {
@@ -82,7 +87,16 @@ window.minimalBastion = (() => {
 
         const tickStartedAt = performance.now();
         try {
+            if (!initialTickComplete) {
+                runtimeStage = "game initialization";
+                window.minimalBastionLoading?.update(0.82, "INITIALIZING GRAPHICS AND GAME DATA");
+            }
             instance.invokeMethod("Tick");
+            if (!initialTickComplete) {
+                initialTickComplete = true;
+                runtimeStage = "main menu";
+                window.minimalBastionLoading?.complete();
+            }
         } catch (error) {
             stopWithError(error, "The browser build stopped during gameplay.");
             return;
@@ -112,6 +126,7 @@ window.minimalBastion = (() => {
             canvasPixelRatio: (document.getElementById("theCanvas")?.width || 0) /
                 Math.max(1, document.getElementById("theCanvas")?.clientWidth || 1),
             devicePixelRatio: window.devicePixelRatio || 1,
+            runtimeStage,
             lastError
         };
     }
@@ -179,6 +194,9 @@ window.minimalBastion = (() => {
             else if (!enabled && document.fullscreenElement)
                 document.exitFullscreen().catch(() => {});
         },
+        setRuntimeStage(stage) {
+            runtimeStage = stage || "gameplay";
+        },
         hasInputFocus() {
             return !document.hidden && document.hasFocus();
         },
@@ -230,6 +248,9 @@ window.minimalBastion = (() => {
                 canvas.releasePointerCapture?.(event.pointerId);
             });
             running = true;
+            initialTickComplete = false;
+            runtimeStage = "first game frame";
+            window.minimalBastionLoading?.update(0.76, "STARTING GRAPHICS PIPELINE");
             sampleStartedAt = performance.now();
             previousFrameAt = 0;
             pendingFrameTime = 0;

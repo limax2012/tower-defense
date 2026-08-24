@@ -20,6 +20,7 @@ public static class PlatformServices
     public static Func<string?>? ClipboardReader { get; set; }
     public static Func<string, bool>? ClipboardWriter { get; set; }
     public static Action<bool>? FullscreenSetter { get; set; }
+    public static Action<string>? RuntimeStageSetter { get; set; }
     public static Func<bool>? InputFocusReader { get; set; }
     public static Func<PlatformPointerState?>? PointerStateReader { get; set; }
 
