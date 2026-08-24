@@ -3916,8 +3916,8 @@ public sealed class UIManager
         DrawText(batch, _libraryShowsCampaign ? "SELECT ARENA" : _libraryShowsThreats ? "SELECT THREAT" : "SELECT TOWER",
             new Vector2(68, 122), ColorPalette.Navy, 0.63f);
         var listCount = _libraryShowsCampaign ? _libraryMaps.Count : _libraryShowsThreats ? _libraryThreats.Count : _libraryTowers.Count;
-        DrawText(batch, listCount > 0 ? $"1-{listCount}" : "0 DISCOVERED",
-            new Vector2(302, 122), ColorPalette.Muted, 0.48f, true);
+        DrawTextRight(batch, listCount > 0 ? $"1-{listCount}" : "0 DISCOVERED",
+            new Vector2(listPanel.Right - 10, 122), ColorPalette.Muted, 0.48f);
 
         if (_libraryShowsCampaign)
         {
@@ -4101,7 +4101,9 @@ public sealed class UIManager
         }
 
         var shownChallenges = Math.Min(5, _libraryChallenges.Count);
-        var challengeCardWidth = shownChallenges == 0 ? cardWidth : (panel.Width - 36 - gap * (shownChallenges - 1)) / shownChallenges;
+        var challengeCardWidth = shownChallenges == 0
+            ? cardWidth
+            : Math.Min(cardWidth, (panel.Width - 36 - gap * (shownChallenges - 1)) / shownChallenges);
         for (var index = 0; index < shownChallenges; index++)
         {
             var challenge = _libraryChallenges[index];

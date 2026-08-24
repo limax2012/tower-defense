@@ -513,7 +513,26 @@ public sealed class VisualVerificationGame : Game
         Require(ui.SelectedLibraryEnemyId is null && ui.SelectedLibraryTowerId is null &&
                 ui.SelectedLibraryCampaignMapId is null,
             "A fresh Tactical Library exposes no undiscovered threats, towers, or campaigns.", assertions);
+        _ = ui.HandleTitleTowerLibrary(Pointer(666, 57, leftPressed: true));
+        var undiscoveredTowerPixels = RenderPixels(ui, GameState.TowerLibrary, null);
+        Require(CountColorPixels(undiscoveredTowerPixels, new Rectangle(321, 118, 12, 24), ColorPalette.Muted) == 0,
+            "The empty discovered count remains inside the selector panel.", assertions);
         scenes.Add(Capture("06b2-undiscovered-library.png", ui, GameState.TowerLibrary, null));
+
+        ui.ConfigureDiscovery(new DiscoveryProgress(new DiscoveryProgressData
+        {
+            Difficulties = [DifficultyCatalog.DefaultId],
+            Challenges = ["no_reserves"]
+        }).Snapshot());
+        _ = ui.HandleTitleTowerLibrary(Pointer(980, 57, leftPressed: true));
+        Require(ui.LibraryShowsProfiles,
+            "Sparse discovery verification opens the Profiles page.", assertions);
+        var sparseProfilePixels = RenderPixels(ui, GameState.TowerLibrary, null);
+        var directiveAccent = content.Challenges["no_reserves"].AccentColor;
+        Require(CountColorPixels(sparseProfilePixels, new Rectangle(350, 380, 874, 6), directiveAccent) == 0,
+            "A single discovered directive retains the standard card width instead of spanning the library.", assertions);
+        scenes.Add(Capture("06b3-sparse-profiles-library.png", ui, GameState.TowerLibrary, null));
+
         ui.ConfigureDiscovery(DiscoverySnapshot.Everything);
         _ = ui.HandleTitleTowerLibrary(Pointer(850, 57, leftPressed: true));
         Require(ui.LibraryShowsCampaign, "Tactical Library contrast scene opens campaign wave scaling.", assertions);
