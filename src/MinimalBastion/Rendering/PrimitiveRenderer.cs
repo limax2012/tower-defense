@@ -7,6 +7,10 @@ namespace MinimalBastion.Rendering;
 
 public sealed class PrimitiveRenderer : IDisposable
 {
+#if BLAZORGL
+    private const int SharedCircleRadius = 128;
+    private const int SharedPolygonRadius = 64;
+#endif
     private readonly int _rasterQuality;
     private readonly GraphicsDevice _graphicsDevice;
     private readonly Dictionary<(int Radius, int Thickness), Texture2D> _rings = new();
@@ -42,7 +46,11 @@ public sealed class PrimitiveRenderer : IDisposable
 
     public void Circle(SpriteBatch batch, Vector2 center, float radius, Color color)
     {
+#if BLAZORGL
+        var logicalRadius = SharedCircleRadius;
+#else
         var logicalRadius = Math.Max(1, (int)MathF.Ceiling(radius));
+#endif
         var texture = GetCircle(logicalRadius);
         var scale = radius / (logicalRadius * _rasterQuality);
         batch.Draw(texture, center, null, color, 0, new Vector2(texture.Width / 2f, texture.Height / 2f), scale, SpriteEffects.None, 0);
@@ -50,8 +58,15 @@ public sealed class PrimitiveRenderer : IDisposable
 
     public void Ring(SpriteBatch batch, Vector2 center, float radius, Color color, int thickness = 2)
     {
+#if BLAZORGL
+        var logicalRadius = SharedCircleRadius;
+        var logicalThickness = Math.Max(1,
+            (int)MathF.Round(Math.Max(1, thickness) * SharedCircleRadius / Math.Max(1f, radius)));
+#else
         var logicalRadius = Math.Max(1, (int)MathF.Ceiling(radius));
-        var texture = GetRing(logicalRadius, Math.Max(1, thickness));
+        var logicalThickness = Math.Max(1, thickness);
+#endif
+        var texture = GetRing(logicalRadius, logicalThickness);
         var scale = radius / (logicalRadius * _rasterQuality);
         batch.Draw(texture, center, null, color, 0, new Vector2(texture.Width / 2f, texture.Height / 2f), scale, SpriteEffects.None, 0);
     }
@@ -150,7 +165,11 @@ public sealed class PrimitiveRenderer : IDisposable
 
     public void DrawPolygon(SpriteBatch batch, Vector2 center, float radius, int sides, bool star, Color color, float rotation = 0)
     {
+#if BLAZORGL
+        var textureRadius = SharedPolygonRadius;
+#else
         var textureRadius = Math.Max(4, (int)MathF.Ceiling(radius));
+#endif
         var texture = GetPolygon(sides, textureRadius, star);
         batch.Draw(texture, center, null, color, rotation, new Vector2(texture.Width / 2f, texture.Height / 2f), radius / (textureRadius * _rasterQuality), SpriteEffects.None, 0);
     }
@@ -168,12 +187,16 @@ public sealed class PrimitiveRenderer : IDisposable
         var size = rasterRadius * 2 + 2;
         texture = new Texture2D(_graphicsDevice, size, size);
         var data = new Color[size * size];
-        var center = new Vector2(size / 2f);
+        var center = size / 2f;
+        var radiusSquared = rasterRadius * rasterRadius;
         for (var y = 0; y < size; y++)
             for (var x = 0; x < size; x++)
             {
-                var distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), center);
-                data[y * size + x] = distance <= rasterRadius ? Color.White : Color.Transparent;
+                var offsetX = x + 0.5f - center;
+                var offsetY = y + 0.5f - center;
+                data[y * size + x] = offsetX * offsetX + offsetY * offsetY <= radiusSquared
+                    ? Color.White
+                    : Color.Transparent;
             }
         texture.SetData(data);
         _circles[radius] = texture;
@@ -189,12 +212,19 @@ public sealed class PrimitiveRenderer : IDisposable
         var size = rasterRadius * 2 + 2;
         texture = new Texture2D(_graphicsDevice, size, size);
         var data = new Color[size * size];
-        var center = new Vector2(size / 2f);
+        var center = size / 2f;
+        var outerRadiusSquared = rasterRadius * rasterRadius;
+        var innerRadius = Math.Max(0, rasterRadius - rasterThickness);
+        var innerRadiusSquared = innerRadius * innerRadius;
         for (var y = 0; y < size; y++)
             for (var x = 0; x < size; x++)
             {
-                var distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), center);
-                data[y * size + x] = distance <= rasterRadius && distance >= rasterRadius - rasterThickness ? Color.White : Color.Transparent;
+                var offsetX = x + 0.5f - center;
+                var offsetY = y + 0.5f - center;
+                var distanceSquared = offsetX * offsetX + offsetY * offsetY;
+                data[y * size + x] = distanceSquared <= outerRadiusSquared && distanceSquared >= innerRadiusSquared
+                    ? Color.White
+                    : Color.Transparent;
             }
         texture.SetData(data);
         _rings[key] = texture;

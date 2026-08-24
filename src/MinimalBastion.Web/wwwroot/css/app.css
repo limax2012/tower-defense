@@ -74,6 +74,10 @@ body {
     color: #f4f5f8;
 }
 
+#blazor-error-ui.visible {
+    display: block;
+}
+
 #blazor-error-ui a {
     margin-left: 12px;
     color: #f7c137;

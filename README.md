@@ -41,12 +41,18 @@ Create a self-contained Windows x64 package with:
 
 ```powershell
 dotnet restore MinimalBastion.sln -r win-x64 --disable-build-servers
-dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --no-restore -o .build\publish --disable-build-servers /nodeReuse:false /p:UseSharedCompilation=false
+powershell -ExecutionPolicy Bypass -File scripts\publish-windows.ps1
 ```
 
-The published application is `.build\publish\MinimalBastion.exe`.
+The published application is `.build\releases\windows\MinimalBastion.exe`, and the distributable archive is `.build\releases\MinimalBastion-Windows.zip`.
 
 ### Browser build
+
+Install the WebAssembly build tools once for optimized Release packages:
+
+```powershell
+dotnet workload install wasm-tools
+```
 
 Run the solo WebAssembly version locally with:
 
@@ -62,7 +68,13 @@ Create a static browser package with:
 powershell -ExecutionPolicy Bypass -File scripts\publish-browser.ps1
 ```
 
-The script writes the static site to `.build\browser` and creates `.build\MinimalBastion-Browser.zip`. The archive has `index.html` at its root and can be uploaded as an HTML game to a static host such as itch.io. Browser saves, discoveries, records, and settings are retained by the site origin and are separate from the Windows files under `%LocalAppData%`.
+The script writes the static site to `.build\releases\browser` and creates `.build\releases\MinimalBastion-Browser.zip`. The archive has `index.html` at its root and can be uploaded as an HTML game to a static host such as itch.io. Browser saves, discoveries, records, and settings are retained by the site origin and are separate from the Windows files under `%LocalAppData%`.
+
+Build both release packages with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\publish-releases.ps1
+```
 
 The browser build contains the complete solo campaign, Mastery, Endless, Sandbox, persistence, library, records, audio, settings, and fullscreen flow. Online co-op remains a Windows feature.
 

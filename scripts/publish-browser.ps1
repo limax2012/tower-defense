@@ -6,18 +6,19 @@ param(
 $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
 $buildRoot = Join-Path $repository ".build"
-$publishRoot = Join-Path $buildRoot "browser-publish"
-$siteRoot = Join-Path $buildRoot "browser"
-$archivePath = Join-Path $buildRoot "MinimalBastion-Browser.zip"
+$releasesRoot = Join-Path $buildRoot "releases"
+$publishRoot = Join-Path $releasesRoot ".browser-publish"
+$siteRoot = Join-Path $releasesRoot "browser"
+$archivePath = Join-Path $releasesRoot "MinimalBastion-Browser.zip"
 $projectPath = Join-Path $repository "src\MinimalBastion.Web\MinimalBastion.Web.csproj"
 $localDotnet = Join-Path $repository ".dotnet\dotnet.exe"
 $dotnet = if (Test-Path -LiteralPath $localDotnet) { $localDotnet } else { (Get-Command dotnet).Source }
 
-New-Item -ItemType Directory -Path $buildRoot -Force | Out-Null
+New-Item -ItemType Directory -Path $releasesRoot -Force | Out-Null
 foreach ($target in @($publishRoot, $siteRoot)) {
     $resolvedParent = [System.IO.Path]::GetFullPath((Split-Path -Parent $target))
-    if ($resolvedParent -ne [System.IO.Path]::GetFullPath($buildRoot)) {
-        throw "Browser package target must remain inside .build."
+    if ($resolvedParent -ne [System.IO.Path]::GetFullPath($releasesRoot)) {
+        throw "Browser package target must remain inside .build\releases."
     }
     if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
 }
@@ -36,6 +37,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $publishedSite "index.html"))) {
 New-Item -ItemType Directory -Path $siteRoot -Force | Out-Null
 Copy-Item -Path (Join-Path $publishedSite "*") -Destination $siteRoot -Recurse -Force
 Compress-Archive -Path (Join-Path $siteRoot "*") -DestinationPath $archivePath -CompressionLevel Optimal
+Remove-Item -LiteralPath $publishRoot -Recurse -Force
 
 Write-Host "Browser site: $siteRoot"
 Write-Host "Upload archive: $archivePath"

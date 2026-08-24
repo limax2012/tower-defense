@@ -10,6 +10,7 @@
     <BlazorEnableTimeZoneSupport>true</BlazorEnableTimeZoneSupport>
     <InvariantGlobalization>false</InvariantGlobalization>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <RunAOTCompilation Condition="'$(Configuration)' == 'Release'">true</RunAOTCompilation>
   </PropertyGroup>
 
   <ItemGroup>

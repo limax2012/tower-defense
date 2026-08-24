@@ -2,6 +2,13 @@ window.minimalBastion = (() => {
     let instance = null;
     let running = false;
     let clipboardText = "";
+    let frameCount = 0;
+    let sampleStartedAt = 0;
+    let accumulatedTickTime = 0;
+    let maximumTickTime = 0;
+    let maximumFrameGap = 0;
+    let previousFrameAt = 0;
+    let lastError = "";
     const storagePrefix = "minimal-bastion:file:";
     const pointer = {
         x: 0,
@@ -24,16 +31,61 @@ window.minimalBastion = (() => {
         const canvas = document.getElementById("theCanvas");
         const holder = document.getElementById("canvasHolder");
         if (!canvas || !holder) return;
-        canvas.width = Math.max(1, Math.round(holder.clientWidth));
-        canvas.height = Math.max(1, Math.round(holder.clientHeight));
+        const pixelRatio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+        canvas.width = Math.max(1, Math.round(holder.clientWidth * pixelRatio));
+        canvas.height = Math.max(1, Math.round(holder.clientHeight * pixelRatio));
         canvas.style.width = `${holder.clientWidth}px`;
         canvas.style.height = `${holder.clientHeight}px`;
     }
 
-    function frame() {
+    function frame(timestamp) {
         if (!running || !instance) return;
-        instance.invokeMethod("Tick");
+        if (previousFrameAt > 0)
+            maximumFrameGap = Math.max(maximumFrameGap, timestamp - previousFrameAt);
+        previousFrameAt = timestamp;
+
+        const tickStartedAt = performance.now();
+        try {
+            instance.invokeMethod("Tick");
+        } catch (error) {
+            running = false;
+            lastError = error?.stack || error?.message || String(error);
+            console.error("Minimal Bastion stopped after an unrecoverable game-loop error.", error);
+            publishDiagnostics();
+            document.getElementById("blazor-error-ui")?.classList.add("visible");
+            return;
+        }
+
+        const tickTime = performance.now() - tickStartedAt;
+        frameCount++;
+        accumulatedTickTime += tickTime;
+        maximumTickTime = Math.max(maximumTickTime, tickTime);
+        if (frameCount % 30 === 0)
+            publishDiagnostics();
         window.requestAnimationFrame(frame);
+    }
+
+    function getDiagnostics() {
+        const now = performance.now();
+        const elapsed = Math.max(1, now - sampleStartedAt);
+        return {
+            frames: frameCount,
+            elapsedMs: elapsed,
+            framesPerSecond: frameCount * 1000 / elapsed,
+            averageTickMs: frameCount > 0 ? accumulatedTickTime / frameCount : 0,
+            maximumTickMs: maximumTickTime,
+            maximumFrameGapMs: maximumFrameGap,
+            canvasWidth: document.getElementById("theCanvas")?.width || 0,
+            canvasHeight: document.getElementById("theCanvas")?.height || 0,
+            devicePixelRatio: window.devicePixelRatio || 1,
+            lastError
+        };
+    }
+
+    function publishDiagnostics() {
+        const canvas = document.getElementById("theCanvas");
+        if (canvas)
+            canvas.setAttribute("data-performance", JSON.stringify(getDiagnostics()));
     }
 
     function preventBrowserShortcuts(event) {
@@ -96,6 +148,23 @@ window.minimalBastion = (() => {
         hasInputFocus() {
             return !document.hidden && document.hasFocus();
         },
+        diagnostics: {
+            read(reset = false) {
+                const now = performance.now();
+                const result = getDiagnostics();
+                if (reset) {
+                    frameCount = 0;
+                    sampleStartedAt = now;
+                    accumulatedTickTime = 0;
+                    maximumTickTime = 0;
+                    maximumFrameGap = 0;
+                    previousFrameAt = 0;
+                    lastError = "";
+                }
+                publishDiagnostics();
+                return result;
+            }
+        },
         start(dotNetInstance) {
             instance = dotNetInstance;
             resizeCanvas();
@@ -122,6 +191,8 @@ window.minimalBastion = (() => {
                 canvas.releasePointerCapture?.(event.pointerId);
             });
             running = true;
+            sampleStartedAt = performance.now();
+            publishDiagnostics();
             window.requestAnimationFrame(frame);
         }
     };
