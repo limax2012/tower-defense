@@ -2858,7 +2858,7 @@ public sealed class UIManager
     }
 
     private static Color PowerNodeIntelTextColor(Color nodeColor) =>
-        ColorPalette.ReadableAccent(nodeColor, ColorPalette.PanelAlt, 3f);
+        ColorPalette.BalancedAccentText(nodeColor, ColorPalette.PanelAlt);
 
     private static string PowerNodeNames(IReadOnlyList<PowerNodeData> nodes) => nodes.Count == 1
         ? nodes[0].DisplayName.ToUpperInvariant()

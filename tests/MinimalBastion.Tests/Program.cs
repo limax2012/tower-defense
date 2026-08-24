@@ -1052,9 +1052,9 @@ internal static class Program
         Check.True(ColorPalette.ContrastRatio(
                 ColorPalette.BalancedAccentText(ColorPalette.Green, ColorPalette.PanelAlt), ColorPalette.PanelAlt) >= 2.59f,
             "light green text receives only its targeted readability adjustment");
-        Check.True(ColorPalette.ContrastRatio(
-                ColorPalette.BalancedAccentText(ColorPalette.Gold, ColorPalette.PanelAlt), ColorPalette.PanelAlt) >= 2.59f,
-            "yellow text receives a moderate readability adjustment");
+        Check.Equal(ColorPalette.AmberText,
+            ColorPalette.BalancedAccentText(ColorPalette.Gold, ColorPalette.PanelAlt),
+            "yellow text uses the saturated amber ink instead of a muddy darkened gold");
         Check.True(ColorPalette.ContrastRatio(ColorPalette.GreenText, ColorPalette.PanelAlt) >= 4.5f,
             "dark success ink keeps upgrade gains readable on Tower Intel panels");
         Check.True(ColorPalette.ContrastRatio(ColorPalette.AmberText, ColorPalette.PanelAlt) >= 3f,

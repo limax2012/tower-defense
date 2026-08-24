@@ -32,8 +32,8 @@ public static class ColorPalette
     public static readonly Color Orange = new(229, 138, 50);
     public static readonly Color Gold = new(232, 182, 55);
     public static readonly Color Amber = new(218, 145, 52);
-    // Saturated amber ink preserves the gold family on light archive panels
-    // without the low contrast of the brighter effect color.
+    // Saturated amber ink keeps gold-family text readable on light panels
+    // without muddying yellow by blending it toward navy.
     public static readonly Color AmberText = new(189, 117, 16);
     public static readonly Color Green = new(42, 194, 117);
     // Dark success ink for text drawn on Paper/PanelAlt. Keep the brighter
@@ -87,7 +87,7 @@ public static class ColorPalette
     // palette hues deliberately pass through unchanged.
     public static Color BalancedAccentText(Color accent, Color background)
     {
-        if (IsYellowAccent(accent)) return ReadableAccent(accent, background, 2.6f);
+        if (IsYellowAccent(accent)) return ReadableAccent(AmberText, background, 2.6f);
         if (IsLightGreenAccent(accent)) return ReadableAccent(accent, background, 2.6f);
         return accent;
     }

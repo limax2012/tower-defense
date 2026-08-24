@@ -236,7 +236,7 @@ public sealed class VisualVerificationGame : Game
         breachNodePlacementSession.HandleWorldInput(Pointer(290, 425));
         var breachNode = breachNodePlacementSession.Map.GetPowerNodes(
             breachNodePlacementSession.PlacementPreviewPosition).Single();
-        var breachTextColor = ColorPalette.ReadableAccent(breachNode.NodeColor, ColorPalette.PanelAlt, 3f);
+        var breachTextColor = ColorPalette.BalancedAccentText(breachNode.NodeColor, ColorPalette.PanelAlt);
         Require(ColorPalette.ContrastRatio(breachTextColor, ColorPalette.PanelAlt) >= 2.99f,
             "Gold Surge Node Intel uses readable accent text on the light panel.", assertions);
         var breachNodePlacementPixels = RenderPixels(ui, GameState.Playing, breachNodePlacementSession);
