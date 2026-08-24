@@ -104,7 +104,7 @@ public sealed class MarketingCaptureGame : Game
             .OrderByDescending(tower => tower.LevelIndex)
             .ThenBy(tower => tower.Id)
             .First();
-        ui.SetRemoteCoOpCursor(new Vector2(742, 250), 2, selectedTowerId: remoteTower.Id);
+        ui.SetRemoteCoOpCursor(new Vector2(840, 345), 2, selectedTowerId: remoteTower.Id);
         SelectTower(gauntlet, "arc_relay");
         CaptureGameplay("05-online-coop-signal-gauntlet.png", ui, gauntlet);
         ui.SetRemoteCoOpCursor(null, 0);
