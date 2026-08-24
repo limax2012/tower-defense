@@ -4497,8 +4497,14 @@ internal static class Program
             {
                 var lines = TowerInfo.LibraryStatLines(definition, level);
                 Check.True(lines.Count > 0, $"{definition.Id} level library stats");
-                Check.True(lines.All(line => line.All(character => character is >= ' ' and <= '~' or '°')),
+                Check.True(lines.All(line => line.All(character => character is >= ' ' and <= '~')),
                     $"{definition.Id} library stats use compiled interface glyphs");
+                var combatStats = TowerInfo.ComparisonStats(definition, level);
+                Check.True(combatStats.All(stat =>
+                        stat.Label.All(character => character is >= ' ' and <= '~') &&
+                        stat.Value.All(character => character is >= ' ' and <= '~') &&
+                        (stat.PreviousValue is null || stat.PreviousValue.All(character => character is >= ' ' and <= '~'))),
+                    $"{definition.Id} combat stats use compiled browser glyphs");
             }
 
             foreach (var specialization in definition.Specializations)

@@ -94,7 +94,7 @@ public static class TowerInfo
         Add("RANGE", current.Range * rangeMultiplier, shown.Range * rangeMultiplier, "0");
         AddPotential("SPEED", level => level.ProjectileSpeed, current.ProjectileSpeed, shown.ProjectileSpeed, "0");
         AddPotential("SHOTS", level => level.PelletCount > 1 ? level.PelletCount : 0, current.PelletCount > 1 ? current.PelletCount : 0, shown.PelletCount > 1 ? shown.PelletCount : 0, "0");
-        AddPotential("SPREAD", level => level.PelletSpreadDegrees, current.PelletSpreadDegrees, shown.PelletSpreadDegrees, "0.#", "°");
+        AddPotential("SPREAD", level => level.PelletSpreadDegrees, current.PelletSpreadDegrees, shown.PelletSpreadDegrees, "0.#", "deg");
         AddPotential("AREA", level => level.SplashRadius, current.SplashRadius, shown.SplashRadius, "0");
         AddPotential("CAP", level => level.SplashTargetLimit, current.SplashTargetLimit, shown.SplashTargetLimit, "0");
         AddPotential("RICOCHET", level => level.RicochetDamageMultiplier, current.RicochetDamageMultiplier, shown.RicochetDamageMultiplier, "P0");
@@ -312,7 +312,7 @@ public static class TowerInfo
         if (level.PriorityDamageMultiplier > 1f)
             lines.Add($"HEAVY TARGET DAMAGE  x{level.PriorityDamageMultiplier:0.##}");
         if (level.ProjectileSpeed > 0) lines.Add($"PROJECTILE SPEED  {level.ProjectileSpeed:0}");
-        if (level.PelletCount > 1) lines.Add($"PROJECTILES  {level.PelletCount}    SPREAD  {level.PelletSpreadDegrees:0.#}°");
+        if (level.PelletCount > 1) lines.Add($"PROJECTILES  {level.PelletCount}    SPREAD  {level.PelletSpreadDegrees:0.#}deg");
         if (level.RicochetRange > 0)
             lines.Add($"RICOCHET  {level.RicochetDamageMultiplier:P0} DAMAGE    REACH  {level.RicochetRange:0}");
         if (level.SplashRadius > 0) lines.Add($"SPLASH RADIUS  {level.SplashRadius:0.#}");
@@ -357,7 +357,7 @@ public static class TowerInfo
         return definition.Behavior.ToLowerInvariant() switch
         {
             "single_projectile" => DirectProjectileSummary(level),
-            "pellet_burst" => $"{level.PelletCount} projectiles; spread {level.PelletSpreadDegrees:0.#}°; pierce {level.ArmorPierce:0.#}",
+            "pellet_burst" => $"{level.PelletCount} projectiles; spread {level.PelletSpreadDegrees:0.#}deg; pierce {level.ArmorPierce:0.#}",
             "slow_projectile" => $"Impact area {level.SplashRadius:0}; slow {level.SlowPercent:P0} for {level.SlowDuration:0.#}s",
             "burn_projectile" => level.SplashRadius > 0
                 ? $"Burn {level.BurnDamagePerSecond:0.#}/s for {level.BurnDuration:0.#}s; area {level.SplashRadius:0}; armor -2"
@@ -466,7 +466,7 @@ public static class TowerInfo
         AddFloat("SPEED", "SPEED", current.ProjectileSpeed, next.ProjectileSpeed, "0");
         if (next.PelletCount != current.PelletCount)
             changes["SHOTS"] = $"SHOTS {current.PelletCount}>{next.PelletCount}";
-        AddFloat("SPREAD", "SPREAD", current.PelletSpreadDegrees, next.PelletSpreadDegrees, "0.#", "°");
+        AddFloat("SPREAD", "SPREAD", current.PelletSpreadDegrees, next.PelletSpreadDegrees, "0.#", "deg");
         var impactChanges = new List<string>();
         if (Changed(current.SplashRadius, next.SplashRadius))
             impactChanges.Add($"SPLASH {current.SplashRadius:0.#}>{next.SplashRadius:0.#}");
