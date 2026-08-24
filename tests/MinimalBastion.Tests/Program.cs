@@ -914,8 +914,8 @@ internal static class Program
     {
         var settings = new UserSettings { WindowWidth = 10, WindowHeight = 9000, SfxVolume = -2, MusicVolume = 4 };
         settings.Normalize();
-        Check.Equal(960, settings.WindowWidth, "minimum output width");
-        Check.Equal(2160, settings.WindowHeight, "maximum output height");
+        Check.Equal(320, settings.WindowWidth, "minimum persisted window width");
+        Check.Equal(4320, settings.WindowHeight, "maximum persisted window height");
         Check.Nearly(0, settings.SfxVolume, "sound volume clamp");
         Check.Nearly(1, settings.MusicVolume, "music volume clamp");
         Check.True(settings.ShowHotkeyBadges, "hotkey badges are visible by default");
@@ -931,16 +931,24 @@ internal static class Program
         Check.True(AudioManager.CombatCueCooldown("signal_beacon") >= 0.4f,
             "support contribution chimes stay sparse in dense defenses");
 
-        settings.CycleResolution();
-        Check.Equal(1280, settings.WindowWidth, "unknown resolution enters first preset");
-        Check.Equal(720, settings.WindowHeight, "first preset aspect ratio");
-        settings.CycleResolution();
-        Check.Equal(1600, settings.WindowWidth, "resolution preset cycles");
-        Check.Equal((1600, 900), settings.ResolveBackBufferSize(2560, 1440),
-            "windowed output uses the selected preset");
+        settings.CycleWindowSize();
+        Check.Equal(960, settings.WindowWidth, "unknown window size enters first preset");
+        Check.Equal(540, settings.WindowHeight, "first window preset keeps the authored aspect ratio");
+        settings.CycleWindowSize();
+        Check.Equal(1280, settings.WindowWidth, "window-size preset cycles");
+        Check.Equal((1280, 720), settings.ResolveBackBufferSize(2560, 1440),
+            "windowed output uses the selected client size");
+        Check.True(settings.CaptureWindowedClientSize(1475, 830),
+            "manual window resizing updates the persisted client size");
+        Check.True(!settings.CaptureWindowedClientSize(1475, 830),
+            "unchanged client bounds do not trigger redundant persistence");
+        settings.CycleWindowSize();
+        Check.Equal(960, settings.WindowWidth, "custom window sizes cycle back into fitting presets");
+        settings.CycleWindowSize();
+        Check.Equal(1280, settings.WindowWidth, "window preset cycle remains deterministic");
 
         var ui = new UIManager(null!);
-        ui.ConfigureSettings(settings);
+        ui.ConfigureSettings(settings, 2560, 1440);
         Check.Equal(UiAction.Settings,
             ui.HandleMainMenu(WorldInput(new Vector2(640, 590)) with { LeftPressed = true }),
             "main menu settings button");
@@ -956,11 +964,22 @@ internal static class Program
         Check.Equal(0, ui.SelectedSettingsIndex, "settings keyboard input does not move selection");
         Check.Equal(UiAction.None,
             ui.HandleSettingsInput(WorldInput(new Vector2(800, 245)) with { LeftPressed = true }),
-            "fullscreen ignores clicked windowed resolution adjustments");
-        Check.Equal(1, ui.SelectedSettingsIndex, "clicked resolution remains identifiable to graphics handling");
-        Check.Equal(1600, settings.WindowWidth, "fullscreen preserves the selected windowed size");
+            "fullscreen ignores clicked window-size adjustments");
+        Check.Equal(1, ui.SelectedSettingsIndex, "clicked window size remains identifiable to graphics handling");
+        Check.Equal(1280, settings.WindowWidth, "fullscreen preserves the selected windowed size");
         Check.Equal((2560, 1440), settings.ResolveBackBufferSize(2560, 1440),
             "fullscreen resolves to the desktop-sized backbuffer");
+        Check.Equal(UiAction.ApplySettings,
+            ui.HandleSettingsInput(WorldInput(new Vector2(500, 245)) with { LeftPressed = true }),
+            "display mode returns to windowed operation");
+        Check.True(!settings.Fullscreen, "windowed display mode is restored");
+        ui.HandleSettingsInput(WorldInput(new Vector2(800, 245)) with { LeftPressed = true });
+        Check.Equal(1600, settings.WindowWidth, "window-size control advances to the next fitting preset");
+        ui.HandleSettingsInput(WorldInput(new Vector2(800, 245)) with { LeftPressed = true });
+        Check.Equal(1920, settings.WindowWidth, "largest fitting QHD window preset remains available");
+        ui.HandleSettingsInput(WorldInput(new Vector2(800, 245)) with { LeftPressed = true });
+        Check.Equal(960, settings.WindowWidth,
+            "desktop-sized 2560 preset is omitted when its window decorations would not fit");
         Check.Equal(UiAction.None,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EnterPressed = true }),
             "settings ignores keyboard activation");

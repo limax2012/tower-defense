@@ -712,6 +712,17 @@ public sealed class VisualVerificationGame : Game
 
         var settings = new UserSettings { AutoStartWaves = true, AutoStartDelaySeconds = 10 };
         ui.ConfigureSettings(settings);
+        Require(UIManager.WindowSizeButtonLabel(settings) == "WINDOW SIZE  1280 x 720",
+            "Settings identify a preset as a window size rather than a render-quality choice.", assertions);
+        settings.CaptureWindowedClientSize(1475, 830);
+        Require(UIManager.WindowSizeButtonLabel(settings) == "WINDOW SIZE  1475 x 830  |  CUSTOM",
+            "Settings report the live dimensions of a manually resized window.", assertions);
+        settings.Fullscreen = true;
+        Require(UIManager.WindowSizeButtonLabel(settings) == "FULLSCREEN SIZE  DESKTOP NATIVE",
+            "Fullscreen clearly identifies its desktop-native output.", assertions);
+        settings.Fullscreen = false;
+        settings.WindowWidth = 1280;
+        settings.WindowHeight = 720;
         scenes.Add(Capture("11-settings-auto-start.png", ui, GameState.Settings, null));
         Require(ui.HandleSettingsInput(Pointer(640, 357, leftPressed: true)) == UiAction.ApplySettings &&
                 !settings.AutoStartWaves,

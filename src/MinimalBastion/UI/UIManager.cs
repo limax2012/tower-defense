@@ -168,6 +168,8 @@ public sealed class UIManager
     internal IReadOnlyDictionary<TargetMode, Rectangle> TargetModeButtonBounds => _targetModeButtons;
     private UserSettings _settings = new();
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
+    private int _settingsDesktopWidth = 2560;
+    private int _settingsDesktopHeight = 1440;
     private bool _setupForCoOp;
     private int _settingsSelection;
     private int _resultMenuSelection;
@@ -299,7 +301,12 @@ public sealed class UIManager
     public int SelectedSandboxWave => _sandboxWaveNumber;
     public bool IsGameplayOverlayOpen => _towerLibraryOpen;
 
-    public void ConfigureSettings(UserSettings settings) => _settings = settings;
+    public void ConfigureSettings(UserSettings settings, int desktopWidth = 2560, int desktopHeight = 1440)
+    {
+        _settings = settings;
+        _settingsDesktopWidth = Math.Max(1, desktopWidth);
+        _settingsDesktopHeight = Math.Max(1, desktopHeight);
+    }
     public void SetSettingsStatus(string status) => _settingsStatus = status;
 
     public void AdvanceVisualTime(float elapsedSeconds)
@@ -706,10 +713,15 @@ public sealed class UIManager
             case 1:
                 if (_settings.Fullscreen)
                 {
-                    _settingsStatus = "Fullscreen always matches the desktop. Switch to WINDOWED to choose an output size.";
+                    _settingsStatus = "Fullscreen always uses the desktop resolution. Switch to WINDOWED to choose a window size.";
                     return UiAction.None;
                 }
-                _settings.CycleResolution(direction);
+                var fittingPresets = UserSettings.WindowSizePresets
+                    .Where(size => WindowLayout.FitClientInsideDesktop(
+                        size.Width, size.Height, _settingsDesktopWidth, _settingsDesktopHeight) == size)
+                    .ToArray();
+                if (fittingPresets.Length > 0)
+                    _settings.CycleWindowSize(fittingPresets, direction);
                 break;
             case 2:
                 _settings.VSync = !_settings.VSync;
@@ -3143,13 +3155,12 @@ public sealed class UIManager
     {
         DrawMenuFrame(batch, p);
         DrawText(batch, "SETTINGS", new Vector2(640, 112), ColorPalette.Ink, 1.9f, true);
-        DrawText(batch, "F11 toggles fullscreen; windowed output can be selected independently.",
+        DrawText(batch, "Fullscreen uses the desktop resolution. Windowed size can be selected or resized freely.",
             new Vector2(640, 162), ColorPalette.Muted, 0.58f, true);
 
-        DrawButton(batch, p, _windowModeButton, _settings.Fullscreen ? "DISPLAY  FULLSCREEN" : "DISPLAY  WINDOWED",
+        DrawButton(batch, p, _windowModeButton, _settings.Fullscreen ? "DISPLAY MODE  FULLSCREEN" : "DISPLAY MODE  WINDOWED",
             true, ColorPalette.Cobalt);
-        DrawButton(batch, p, _resolutionButton,
-            _settings.Fullscreen ? "OUTPUT  DESKTOP NATIVE" : $"OUTPUT  {_settings.WindowWidth} x {_settings.WindowHeight}",
+        DrawButton(batch, p, _resolutionButton, WindowSizeButtonLabel(_settings),
             !_settings.Fullscreen, ColorPalette.Violet);
         DrawButton(batch, p, _vsyncButton, _settings.VSync ? "VSYNC  ON" : "VSYNC  OFF",
             true, ColorPalette.Green);
@@ -3172,6 +3183,14 @@ public sealed class UIManager
         DrawText(batch, "Wave 1 is manual. Auto delays always earn +20; late manual calls do not. Click: OFF / 0 / 3 / 5 / 10s.",
             new Vector2(640, 612), ColorPalette.Muted, 0.49f, true);
         DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 650), ColorPalette.Cobalt, 0.50f, 900);
+    }
+
+    internal static string WindowSizeButtonLabel(UserSettings settings)
+    {
+        if (settings.Fullscreen) return "FULLSCREEN SIZE  DESKTOP NATIVE";
+        var isPreset = UserSettings.WindowSizePresets.Any(size =>
+            size.Width == settings.WindowWidth && size.Height == settings.WindowHeight);
+        return $"WINDOW SIZE  {settings.WindowWidth} x {settings.WindowHeight}" + (isPreset ? "" : "  |  CUSTOM");
     }
 
     private void DrawSaveSlots(SpriteBatch batch, PrimitiveRenderer p)

@@ -20,6 +20,7 @@ public sealed class Game1 : Game
     private const int NetworkInputDelayTicks = DeterministicSessionRunner.SimulationTicksPerSecond / 5;
     private const int NetworkChecksumIntervalTicks = DeterministicSessionRunner.SimulationTicksPerSecond;
     private const int NetworkChecksumHistoryTicks = DeterministicSessionRunner.SimulationTicksPerSecond * 12;
+    private const float WindowSizeSaveDelaySeconds = 0.45f;
     private readonly GraphicsDeviceManager _graphics;
     private readonly UserSettings _settings;
     private readonly ViewportTransform _viewportTransform = new();
@@ -69,6 +70,8 @@ public sealed class Game1 : Game
     private string _lastRecordedResultKey = "";
     private DiscoveryProgress _discovery = null!;
     private bool _discoveryDirty;
+    private bool _windowSizeSavePending;
+    private float _windowSizeSaveRemaining;
 
     public Game1()
     {
@@ -105,8 +108,14 @@ public sealed class Game1 : Game
         {
             if (IsActive) _input.QueueTextInput(args.Character);
         };
-        Deactivated += (_, _) => _input.LoseWindowFocus();
+        Deactivated += (_, _) =>
+        {
+            _input.LoseWindowFocus();
+            PersistPendingWindowSize();
+        };
+        Window.ClientSizeChanged += (_, _) => CaptureWindowedClientSize(scheduleSave: true);
         base.Initialize();
+        CaptureWindowedClientSize(scheduleSave: true);
     }
 
     protected override void LoadContent()
@@ -137,7 +146,8 @@ public sealed class Game1 : Game
             _ui.ConfigureTowerLibrary(_content.Towers.Values, _content.Enemies.Values, _content.Tactics);
             _ui.ConfigureMainMenuBattle(_content);
             _ui.ConfigureDiscovery(_discovery.Snapshot());
-            _ui.ConfigureSettings(_settings);
+            var desktopMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            _ui.ConfigureSettings(_settings, desktopMode.Width, desktopMode.Height);
             _ui.SetSaveState(SaveSlotsExistSafely());
             RefreshRunHistoryCache();
             _debug = new DebugOverlay(font);
@@ -165,6 +175,7 @@ public sealed class Game1 : Game
         var input = _input.Update(IsActive);
         if (input.FullscreenPressed) ToggleFullscreenFromHotkey();
         var elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        AdvanceWindowSizePersistence(elapsedSeconds);
         _ui.AdvanceVisualTime(elapsedSeconds);
         if (_state == GameState.MainMenu) _ui.AdvanceMainMenuBattle(elapsedSeconds);
         _audio?.Update(elapsedSeconds);
@@ -1448,6 +1459,7 @@ public sealed class Game1 : Game
         try
         {
             UserSettingsStore.Save(_settings);
+            _windowSizeSavePending = false;
             _ui.SetSettingsStatus("Settings saved.");
         }
         catch (Exception exception)
@@ -1493,6 +1505,7 @@ public sealed class Game1 : Game
         {
             ApplyGraphicsSettings();
             UserSettingsStore.Save(_settings);
+            _windowSizeSavePending = false;
             _ui.SetSettingsStatus(_settings.Fullscreen
                 ? "Fullscreen enabled with F11."
                 : "Windowed mode restored with F11.");
@@ -1537,11 +1550,49 @@ public sealed class Game1 : Game
                 resizedClientBounds.Height,
                 desktopMode.Width,
                 desktopMode.Height);
+            CaptureWindowedClientSize(scheduleSave: false);
         }
         _viewportTransform.Update(
             GraphicsDevice.PresentationParameters.BackBufferWidth,
             GraphicsDevice.PresentationParameters.BackBufferHeight);
         ApplyPresentationSettings();
+    }
+
+    private void CaptureWindowedClientSize(bool scheduleSave)
+    {
+        if (_settings.Fullscreen || _graphics.IsFullScreen) return;
+        var bounds = Window.ClientBounds;
+        if (bounds.Width <= 0 || bounds.Height <= 0) return;
+        _viewportTransform.Update(bounds.Width, bounds.Height);
+        if (!_settings.CaptureWindowedClientSize(bounds.Width, bounds.Height)) return;
+        if (!scheduleSave) return;
+        _windowSizeSavePending = true;
+        _windowSizeSaveRemaining = WindowSizeSaveDelaySeconds;
+    }
+
+    private void AdvanceWindowSizePersistence(float elapsedSeconds)
+    {
+        if (!_windowSizeSavePending) return;
+        _windowSizeSaveRemaining -= Math.Max(0, elapsedSeconds);
+        if (_windowSizeSaveRemaining > 0) return;
+        PersistPendingWindowSize();
+    }
+
+    private void PersistPendingWindowSize()
+    {
+        if (!_windowSizeSavePending) return;
+        _windowSizeSavePending = false;
+        try
+        {
+            UserSettingsStore.Save(_settings);
+            if (_state == GameState.Settings)
+                _ui.SetSettingsStatus($"Window size {_settings.WindowWidth} x {_settings.WindowHeight} saved.");
+        }
+        catch (Exception exception)
+        {
+            if (_state == GameState.Settings)
+                _ui.SetSettingsStatus($"Window size changed but could not be saved: {exception.GetBaseException().Message}");
+        }
     }
 
     private void ApplyPresentationSettings()
@@ -1552,6 +1603,12 @@ public sealed class Game1 : Game
             _audio.SfxVolume = _settings.SfxVolume;
             _audio.MusicVolume = _settings.MusicVolume;
         }
+    }
+
+    protected override void OnExiting(object sender, ExitingEventArgs args)
+    {
+        PersistPendingWindowSize();
+        base.OnExiting(sender, args);
     }
 
     private void AssignSession(GameSession? session)
