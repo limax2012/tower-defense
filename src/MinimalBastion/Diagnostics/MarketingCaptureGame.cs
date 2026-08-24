@@ -90,8 +90,9 @@ public sealed class MarketingCaptureGame : Game
         var surge = BuildActiveSession(content, "relay_divide", "hard", "standard",
             AutoPlayerStrategy.Synergy, 9256, 19, minimumSeconds: 12f,
             minimumLeadingProgress: 0.45f, minimumMiddleEnemies: 8);
-        SelectPoweredTower(surge);
+        var featuredProtocolTower = StageActiveSystems(surge);
         CaptureGameplay("04-surge-divide-nodes.png", ui, surge);
+        ClearActiveSystems(surge, featuredProtocolTower.Id);
 
         var gauntlet = BuildActiveSession(content, "foundry_loop", "normal", "close_quarters",
             AutoPlayerStrategy.Synergy, 6841, 14, minimumSeconds: 12f, requireSignalCarrier: true);
@@ -211,14 +212,28 @@ public sealed class MarketingCaptureGame : Game
         session.HandleInspectionInput(Pointer(tower.Position, leftPressed: true));
     }
 
-    private static void SelectPoweredTower(GameSession session)
+    private static Towers.TowerInstance StageActiveSystems(GameSession session)
     {
         var tower = session.Towers
-            .Where(candidate => session.Map.GetPowerBuff(candidate.Position).IsPowered)
-            .OrderByDescending(candidate => candidate.LevelIndex)
+            .Where(candidate => !candidate.IsSupport)
+            .OrderByDescending(candidate => candidate.IsOverdriven)
+            .ThenByDescending(candidate => session.Map.GetPowerBuff(candidate.Position).IsPowered)
+            .ThenByDescending(candidate => candidate.LevelIndex)
             .ThenBy(candidate => candidate.Id)
-            .FirstOrDefault() ?? session.Towers.OrderByDescending(candidate => candidate.LevelIndex).First();
+            .First();
+        tower.ActivateOverdrive();
+        if (session.AutoOverdriveTowerId != tower.Id)
+            session.TryToggleAutoProtocol(tower.Id);
         session.HandleInspectionInput(Pointer(tower.Position, leftPressed: true));
+        return tower;
+    }
+
+    private static void ClearActiveSystems(GameSession session, int autoTowerId)
+    {
+        if (session.AutoOverdriveTowerId == autoTowerId)
+            session.TryToggleAutoProtocol(autoTowerId);
+        foreach (var tower in session.Towers)
+            tower.ClearOverdrive();
     }
 
     private static void ClearSelection(GameSession session) =>
