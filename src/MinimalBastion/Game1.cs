@@ -1479,7 +1479,7 @@ public sealed class Game1 : Game
         {
             UserSettingsStore.Save(_settings);
             _windowSizeSavePending = false;
-            _ui.SetSettingsStatus("Settings saved.");
+            _ui.SetSettingsStatus("");
         }
         catch (Exception exception)
         {
@@ -1525,9 +1525,7 @@ public sealed class Game1 : Game
             ApplyGraphicsSettings();
             UserSettingsStore.Save(_settings);
             _windowSizeSavePending = false;
-            _ui.SetSettingsStatus(_settings.Fullscreen
-                ? "Fullscreen enabled with F11."
-                : "Windowed mode restored with F11.");
+            _ui.SetSettingsStatus("");
         }
         catch (Exception exception)
         {
@@ -1604,8 +1602,7 @@ public sealed class Game1 : Game
         try
         {
             UserSettingsStore.Save(_settings);
-            if (_state == GameState.Settings)
-                _ui.SetSettingsStatus($"Window size {_settings.WindowWidth} x {_settings.WindowHeight} saved.");
+            if (_state == GameState.Settings) _ui.SetSettingsStatus("");
         }
         catch (Exception exception)
         {

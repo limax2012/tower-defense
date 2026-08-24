@@ -167,7 +167,7 @@ public sealed class UIManager
     internal int CareerAchievementPage => _careerAchievementPage;
     internal IReadOnlyDictionary<TargetMode, Rectangle> TargetModeButtonBounds => _targetModeButtons;
     private UserSettings _settings = new();
-    private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
+    private string _settingsStatus = "";
     private bool _setupForCoOp;
     private int _settingsSelection;
     private int _resultMenuSelection;
@@ -3133,8 +3133,6 @@ public sealed class UIManager
     {
         DrawMenuFrame(batch, p);
         DrawText(batch, "SETTINGS", new Vector2(640, 112), ColorPalette.Ink, 1.9f, true);
-        DrawText(batch, "Fullscreen uses the desktop resolution. Windowed mode is freely resizable and remembers its size.",
-            new Vector2(640, 162), ColorPalette.Muted, 0.58f, true);
 
         DrawButton(batch, p, _windowModeButton, _settings.Fullscreen ? "DISPLAY MODE  FULLSCREEN" : "DISPLAY MODE  WINDOWED",
             true, ColorPalette.Cobalt);
@@ -3156,9 +3154,10 @@ public sealed class UIManager
             true, ColorPalette.Violet);
         DrawButton(batch, p, _settingsBackButton, "BACK", true, ColorPalette.Coral);
 
-        DrawText(batch, "Wave 1 is manual. Auto delays always earn +20; late manual calls do not. Click: OFF / 0 / 3 / 5 / 10s.",
+        DrawText(batch, "Configured auto-starts earn +20. Wave 1 starts manually.",
             new Vector2(640, 612), ColorPalette.Muted, 0.49f, true);
-        DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 650), ColorPalette.Cobalt, 0.50f, 900);
+        if (!string.IsNullOrWhiteSpace(_settingsStatus))
+            DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 650), ColorPalette.Cobalt, 0.50f, 900);
     }
 
     private void DrawSaveSlots(SpriteBatch batch, PrimitiveRenderer p)
