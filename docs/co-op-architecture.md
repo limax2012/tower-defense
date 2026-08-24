@@ -1,89 +1,129 @@
-# Two-Player Online Co-op Architecture
+# Two-Player Co-op Architecture
 
-## Current player workflow
+Minimal Bastion uses direct two-player TCP with host-authoritative command order and deterministic simulation on both peers. The goal is responsive private friend-to-friend play without matchmaking or dedicated infrastructure.
 
-Minimal Bastion supports direct internet co-op between two copies of the same build:
+## Connection model
 
-1. Host chooses **Online Co-op > Host Online Game**, then selects the arena, difficulty, and directive.
-2. Host forwards TCP `28741` to the host PC and allows the executable through the firewall if required.
-3. Host shares the displayed six-character code plus public IP/DNS name.
-4. Player 2 enters `host`, `host:port`, IPv4, DNS, or bracketed IPv6 plus the code.
+- Default TCP port: `28741`.
+- The host PC accepts one guest and acts as the authority.
+- An address without a port automatically uses 28741.
+- Internet hosting requires the host to be reachable through router/firewall configuration or a peer VPN.
+- There is no public matchmaking, hosted relay, UPnP, NAT traversal, or encrypted transport.
+- A six-character code prevents an unintended client from entering the waiting session.
 
-The listener is dual-stack and binds all adapters. The join code is a lightweight session gate, not encryption or account authentication. A peer-to-peer VPN can provide reachability when router forwarding is unavailable. Large state snapshots use bounded Brotli frames: wire payloads remain capped at 2 MiB and decoded payloads at 8 MiB, while ordinary commands remain uncompressed.
+The host chooses arena, difficulty, and directive after selecting Host. A joining client does not select match settings; it receives the authoritative setup.
 
-## Match rules
+## Handshake
 
-- Two players share credits, lives, wave state, speed, emergency inventory, and the single Charge Forge.
-- Towers and the forge retain their original placer for the P1/P2 field ring and analytics, but ownership never restricts control. Either player may retarget, choose either upgrade branch, arm or trigger a Protocol, upgrade the forge, or sell any shared structure.
-- Either player may place towers and use shared Pulse Plates.
-- Both players must ready every wave. The host queues the authoritative start only after both bits are set.
-- A jointly early-called intermission awards the normal shared 20-credit reward only when the second ready signal reaches the host before the countdown expires.
-- Either player can pause or resume the shared match with Esc, P, or the HUD control. Combat freezes on the same deterministic tick for both peers, the compact sidebar leaves the field visible, and all mutable battlefield commands are locked until resume. A between-wave early-call deadline continues during pause, and the pause owner is preserved through reconnect snapshots.
-- Middle-click emits a transient cyan/coral player ping.
-- **Restart Co-op** retains the connection and asks the host to create and broadcast a fresh authoritative match on the same map. **Main Menu** explicitly ends the session.
+The connection handshake is bounded to ten seconds and validates:
 
-Shared economy and unrestricted shared control make the defense a genuinely joint plan. Placer identity is presentation metadata rather than a permission boundary, and resource gifting is unnecessary because all spend already uses the same pool.
+- protocol/build identity
+- recursive gameplay and campaign content fingerprint
+- join code
+- frame shape and direction
 
-## Deterministic command seam
+Mismatched executable/content versions are rejected before gameplay. Content fingerprinting includes authored JSON recursively, so equal assemblies with different tower or wave data cannot begin a deterministic match.
 
-Remote intent is a `GameCommand` applied through `GameCommandProcessor`. Commands carry player identity, request/sequence IDs, action type, entity/definition identity, placement coordinates, branch, targeting mode, and speed where relevant.
+## Authority and simulation
+
+Both peers run `GameSession` through `DeterministicSessionRunner` at 60 fixed ticks per second. Rendering is variable-rate and may interpolate locally without changing synchronized state.
 
 The host:
 
-1. receives a local or remote request;
-2. assigns a monotonic sequence and duplicate-safe receipt;
-3. schedules accepted input on a future fixed tick;
-4. applies the same scheduled command locally;
-5. broadcasts the authoritative command and tick.
+- validates gameplay requests
+- assigns sequence numbers and simulation ticks
+- broadcasts accepted commands
+- sends periodic state checksums
+- owns autosave/manual save writes and run-history persistence
+- supplies authoritative snapshots for reconnect or divergence repair
 
-Both peers advance `DeterministicSessionRunner` locally at 60 deterministic ticks per second. Rendering is variable-rate and extrapolates only the remaining fraction of the current tick, so enemy/projectile motion and short effects stay smooth at 60/120/144 Hz without writing predicted values into gameplay state, snapshots, or checksums. `SessionChecksum` includes map, waves, shared economy, enemies, towers, ownership, targeting, branches, Protocol state/cooldown, shared pause state, projectiles, Pulse Plate handled-enemy IDs, and forge state. Peers exchange one checksum sample per second; divergence or a command arriving after its tick pauses play and requests a clean host-authoritative snapshot. A snapshot-tick fence rejects checksums still in flight from the state that was just repaired.
+Commands are normally scheduled about 200 ms ahead. The runner bounds future scheduling, pending commands, duplicate history, and sequence expiry. Commands received for an invalid direction, state, entity, tower path, target mode, position, tick, or directive are rejected.
 
-Network code never implements a second copy of placement, affordability, upgrade, tactical, or selling rules; it calls the same validated `GameSession` methods as solo UI and automated players.
+Shared synchronized actions include:
 
-## Transport
+- tower/Forge/Plate placement
+- upgrades, final roles, and Apex
+- targeting and automatic Protocol selection
+- Protocol activation
+- sales/removal
+- wave readiness and start
+- speed and shared pause
+- restart
 
-- Length-prefixed UTF-8 JSON envelopes over `TcpClient`/`TcpListener`.
-- Protocol, message-kind, direction, player identity, semantic field, command, receipt, and snapshot validation before gameplay dispatch.
-- Snapshot reconstruction cross-checks authored wave/group progress against queued contacts, enforces legal tower branch progression, bounds status tick phase, and rejects orphaned homing targets before the repaired simulation resumes.
-- Maximum frame size: 2 MiB. Declared size is checked before payload allocation, and each connection permits at most 64 queued outbound frames.
-- TCP `NoDelay` enabled for command responsiveness.
-- Six-character code and recursive executable/content fingerprint handshake before the host accepts Player 2. Both sides abandon a half-open handshake after ten seconds.
-- Message types: hello/welcome/rejected, command request/receipt/authoritative command, state snapshot/resync request, ready/wave ready, tick sync, restart request, ping, and disconnect.
-- Map, difficulty, challenge, active combat, pending commands, economy, ready state, and run identity travel in the authoritative snapshot. Player 2 reconstructs the exact host session before readying.
-- Host command input delay: twelve 60 Hz ticks (200 ms), preserving a practical internet jitter buffer while improving on the former 300 ms delay.
-- The periodic checksum exchange also acts as a heartbeat. Fifteen seconds without valid inbound traffic preserves the match and enters reconnect instead of waiting for a platform TCP timeout.
+Credits, lives, kills, waves, enemies, towers, tactical devices, and results are shared. Either player may manage any defense. `OwnerPlayerId` is retained for visual attribution and history only.
 
-## Test coverage
+## Checksums and repair
 
-- Valid direct transport handshake and command/receipt serialization through `localhost`.
-- Invalid join-code rejection at client and host.
-- DNS, IPv4/default-port, explicit-port, and bracketed IPv6 endpoint parsing.
-- Shared cross-player targeting, doctrine/final upgrades, Protocol control, selling, forge management, and duplicate rejection while preserving original placer identity.
-- Mirrored deterministic placement, wave start, Protocol activation, active duration, cooldown, ownership, and final checksum.
-- Wave-ready coordinator behavior.
-- Map/difficulty/challenge identity and latent future-entity state in checksums and session construction.
-- Active-combat snapshot round trip, future-command restoration, authored wave-progress invariants, branch/status/projectile rejection, post-reconnect combat soak, repeated loopback reconnection, and graceful connection close detection.
-- Per-connection Player 2 request-session rotation, allowing a restarted client to begin request numbering again without resetting authoritative command sequence or pending simulation state.
-- Jittered command delivery across shared placement, branching, targeting, Protocols, speed, and selling, plus explicit rejection after an authoritative tick has been missed.
-- 60 Hz local deterministic cadence, high-refresh sub-tick presentation, and proof that presentation does not mutate authoritative enemy progress.
-- Real loopback coverage for bounded framing, malformed-envelope rejection, shared pause transport, restart requests, reconnect listener reuse, and post-snapshot checksum fencing.
-- Heartbeat tolerance, activity refresh, sustained-silence timeout, and resumed-frame clamping.
+`SessionChecksum` covers all gameplay-relevant state, including:
 
-The native menu, address/code fields, map selection label, and lobby presentation have also been visually inspected.
+- map/profile/directive and current tick
+- economy and categorized statistics
+- wave groups, timers, intermission, and progression mode
+- enemy identity/rank/role, route position, health/shield, statuses, and ability timers
+- tower ownership, position, doctrine/final role/Apex, cooldowns, targeting, Protocol/disruption state, and lifetime metrics
+- projectiles
+- Pulse Plates and Charge Forge
+- pause, speed, ready state, IDs, and other deterministic counters
 
-## Current limitations
+The host sends one checksum per second. A mismatch requests an authoritative repair instead of ending the match. A post-snapshot fence ignores stale checksums and commands that were already in flight before replacement.
 
-- No matchmaking, lobby directory, hosted relay, automatic NAT traversal, or UPnP/NAT-PMP mapping.
-- Host must be reachable through manual port forwarding or a VPN.
-- Transport is not encrypted; do not send secrets through the protocol. Current messages contain gameplay commands, reconnect state, and state hashes only.
-- Reconnect is supported through the existing join code and a host-authoritative recovery snapshot, but host migration, spectators, and more-than-two-player support are not.
-- Both peers must run identical executable/content versions; build/content fingerprints reject incompatible peers before play.
-- The 200 ms command buffer is suitable for ordinary direct connections but has not been field-tested across high-latency remote routes.
-- Windows firewall/router behavior cannot be configured by the game.
+`CoOpStateSnapshot` reconstructs the complete match. Snapshots are structurally validated before use. Brotli-framed messages are limited to 2 MiB on the wire and 8 MiB decoded. Ordinary framing, send queues, string lengths, entity counts, coordinates, finite values, and progression fields are bounded as well.
 
-## Highest-value networking follow-up
+## Disconnect and reconnect
 
-1. Field-test two remote PCs under latency/loss and tune the command buffer.
-2. Evaluate automatic port mapping as an optional convenience.
-3. If infrastructure is authorized, add a small encrypted rendezvous/relay service so players do not need router configuration.
-4. Add host migration only if private two-player testing demonstrates that it justifies the added state-transfer complexity.
+Valid inbound traffic resets a 15-second heartbeat timer. The sidebar distinguishes healthy, delayed, stalled, and resynchronizing states. When the timer expires:
+
+- the shared match pauses
+- the host keeps the authoritative session and rejoin code
+- the guest retries automatically
+- the guest may restart the application and join with the same address/code
+- successful rejoin receives a complete snapshot and pending command state
+
+Relevant wave, enemies, defenses, credits, lives, timers, pause, ready, tactical, Protocol animation, and progression state are restored. The host can keep the preserved session indefinitely or explicitly leave it.
+
+## Pause and library
+
+Escape, P, or the HUD control requests a shared pause. Both peers stop on the same fixed tick. While paused, placement, upgrades, sales, targeting, tactical systems, speed, and ready commands are locked. Combat, spawning, Forge production, cooldowns, and effects freeze.
+
+An already-running early-call deadline continues during shared pause so pausing cannot create extra rewarded planning time. Both peers must ready before the deadline to earn the co-op early bonus.
+
+Tab toggles the Tactical Library at any time in co-op. This is a local overlay: network polling and the shared simulation continue, but local battlefield input is blocked until the library closes.
+
+## Presentation-only collaboration
+
+Remote intent is intentionally excluded from deterministic checksums:
+
+- cursor/crosshair
+- location pings
+- selected deployed tower label
+- snapped tower or Plate placement ghost
+- transient connection banners
+
+Cursor state is heartbeat-refreshed and expires quickly when stale. Placement ghosts show the resolved candidate without creating an entity. A confirmed click still goes through the normal host-validated command path.
+
+Auto selection, remote inspection, player ownership, and placement preview use distinct visual treatments so they do not resemble Slow or other enemy effects. Relevant towers/previews are raised above crowded defenses while the cue is active, then return to normal draw ordering.
+
+## Save and restart behavior
+
+The host writes co-op checkpoints at safe intermissions. Loading a co-op save can reopen it as a hosted match or continue it alone; all defense and progression state remains intact. Guest ownership markers remain informational in solo continuation.
+
+Restart is a synchronized confirmed command. It retains the transport, recreates the selected profile from its initial state, clears both ready states, and waits for authoritative initialization before resuming. Main Menu ends the connection.
+
+## Security and scope
+
+The transport is intended for a trusted private friend connection. It validates and bounds all incoming data but does not provide confidentiality, account identity, anti-cheat, public discovery, relay service, or hostile-internet server hardening. Do not expose the port as a public long-running service.
+
+## Required test coverage
+
+Co-op changes should cover:
+
+- handshake match/mismatch/timeout
+- message direction and command validation
+- duplicate and out-of-window sequence handling
+- deterministic fixed-tick parity and checksums
+- snapshot bounds, validation, capture, and reconstruction
+- disconnect timeout and reconnect repair
+- shared pause/ready/early-bonus rules
+- shared tower control and original-owner retention
+- restart and save continuation behavior
+- presentation state isolation from checksums

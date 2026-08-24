@@ -1,110 +1,145 @@
-# Minimal Bastion Game Design
+# Minimal Bastion — Current Game Design
 
-## Core loop
+## Design goals
 
-Spend credits to place geometric defenses in continuous build zones around a fixed route. Read the next mixed threat, choose coverage and counters, upgrade or specialize towers, use targeting priorities, and intervene with Pulse Plates or tower-specific Protocols. Calling a wave during its ten-second preparation window grants 20 credits. Survive all 20 waves and the phased Bastion Core boss.
+Minimal Bastion is a tactical tower-defense game about readable positioning, permanent build decisions, complementary tower roles, and adapting to authored threat compositions. Its presentation uses flat geometric forms and a restrained tactical palette so target priority, tower identity, range, routes, statuses, and multiplayer intent remain legible in dense late waves.
 
-Permanent tower damage is mechanically consistent from wave 1 through wave 20. There is no hidden early-game damage lift.
+The core campaign is intended to be learnable without being solved by one universal build. Maps, profiles, and directives change which openings, coverage patterns, and support combinations are efficient. Mastery and Endless convert a successful campaign defense into a reinvestment and scaling problem rather than a separate match.
+
+## Match flow
+
+1. Choose solo or online co-op.
+2. Choose an arena, difficulty, and directive. Sandbox is solo-only.
+3. Spend shared credits on continuous legal placement inside authored build areas.
+4. Start or ready the next authored wave. Manual early calls and configured automatic starts can award 20 credits.
+5. Defeat enemies before they traverse the complete route. Escapes remove lives according to enemy rank/type.
+6. Between waves, add, upgrade, specialize, retarget, sell, save, or inspect the Tactical Library as the selected directive permits.
+7. Clear wave 20 to secure the campaign. Continue into authored Mastery waves 21–30 or end the run.
+8. After Mastery, continue into generated Endless waves beginning at 31.
+
+Defeat occurs when lives reach zero. Victory/results preserve a read-only final layout and detailed contribution/economy/tactical statistics.
+
+## Arenas
+
+- **Foundry Loop** is the baseline route with eight broad build areas and a 400-credit opening.
+- **Crosswind Basin** uses a long earth trail and compact crossfire opportunities. It starts at 390 credits.
+- **Prism Circuit** compresses placement into six areas around three Surge Nodes and starts at 380 credits.
+- **Surge Divide** is the most demanding authored arena. Its low 360-credit opening and stronger late pressure are offset by nine small specialized Surge Nodes that reward deliberate placement.
+
+Every arena owns its campaign and Mastery wave data. Route length, build geometry, node access, economy, roster order, density, and scaling are balanced together rather than applying one universal wave list.
+
+## Difficulty and directives
+
+Difficulty changes enemy health/speed, starting credits, and lives. Hard is the authored 100% baseline; Bastion adds health and speed pressure while retaining baseline credits.
+
+Directives change available decisions:
+
+- **Standard** is the complete ruleset.
+- **Signal Gauntlet** adds enemy support and disruption roles while preserving the full defensive toolset.
+- **Core Six** removes the four most specialized late-game towers and compensates with opening credits.
+- **Entrenched** preserves all permanent towers but removes Plates, Forge, Protocols, and selling.
+- **Sandbox Lab** exposes real combat and authored waves in a noncompetitive test environment.
+
+Directive compensation is applied once when the run is created. It never changes tower damage or utility over time.
 
 ## Economy
 
-- Hard difficulty uses each arena's base economy: Foundry Loop 400 credits, Crosswind Basin 390, Prism Circuit 380, and Surge Divide 360, all with 20 lives.
-- Easy and Normal multiply those map-specific credits and provide 30 or 24 lives; Bastion preserves base credits while applying 112% enemy health, 102% enemy speed, and a reduced but recoverable margin of 18 lives.
-- Enemies award kill credits; completed waves award `40 + 10 * wave`.
-- Skipping a live preparation countdown awards 20 credits. Solo auto-start can call after a configured 0, 3, 5, or 10 seconds and follows the same reward deadline; the first wave always remains manual and never grants this reward.
-- Towers and the Charge Forge sell for 60% of total invested cost.
-- One Pulse Plate begins in storage. Direct replacements are available during active waves. Every wave starts at the same 60-credit price; additional direct purchases within that wave add 15 credits, and the price resets to 60 at the next wave.
-- The 300-credit Charge Forge converts a large current investment into capped future plate inventory, but produces only during active waves.
+- Credits are shared in co-op.
+- Enemy rewards and wave rewards fund towers, upgrades, Apex promotions, tactical devices, and emergency responses.
+- Selling normally returns 60% of invested tower/Forge cost. Entrenched disables selling.
+- Direct Pulse Plate purchases start at 60 credits and rise by 15 for each additional purchase in the same active wave. The price resets next wave.
+- A Charge Forge exchanges a large permanent investment and remote build freedom for recurring stored Plates during active waves.
+- Apex promotions provide a compact late-game credit sink once Mastery begins.
 
-## Towers and specializations
+The economy is intentionally tight during campaign openings and increasingly flexible later. Mastery waves absorb campaign reserves through Apex and coverage investment; Endless health growth eventually outpaces a static defense.
 
-| Tower | Identity | Final specialization choice |
-| --- | --- | --- |
-| Needle Turret | Cheap, reliable short-range generalist. | Ricochet Array for two-target pressure or Piercing Rail for heavy armor-piercing shots. |
-| Frost Spire | Low-damage area control that extends exposure time. | Permafrost for maximum slow strength and duration or Hail Barrage for faster direct damage with a weaker, shorter slow. |
-| Shard Fan | Short-range multi-projectile swarm control. | Shard Barrage for wide seven-shard clear or Piercing Fan for a tight armor-piercing burst. |
-| Watchtower | Long-range priority damage for runners and durable targets. | Rapid Sentinel for steady interception or Piercing Sniper for extreme-range priority shots. |
-| Ember Coil | Persistent burn pressure after range contact. | Wildfire Splash for crowded-route burn or Piercing Burn for long-range, armor-piercing boss burn. |
-| Breaker Cannon | Heavy anti-armor hit and armor reduction. | Piercing Round for elite/boss penetration or Armor Shatter for area armor-break. |
-| Arc Relay | Density-dependent chaining with late stun. | Chain Storm for long damage chains or Stun Coil for fewer, heavier control arcs. |
-| Siege Mortar | Slow, long-range area burst against packed groups. | Rapid Salvo for frequent compact shells or Shockwave Shell for wider control at lower DPS. |
-| Prism Beam | Rapid focused damage and Exposed amplification. | Shield Piercer for shield-bypassing focus or Split Beam for branched beams. |
-| Signal Beacon | Position-dependent range and attack-speed support. | Rapid Field for maximum cadence or Extended Field for wider reach. |
+## Tower progression
 
-Branch choices occur after level 2, are mutually exclusive and permanent, and preview exact role/stat changes. Every placed tower uses the same integrated level language: one top spoke at level 1, a second at 120 degrees for level 2, and a third at 240 degrees for level 3.
+Each tower has three permanent levels:
 
-## Enemies, elites, and boss
+- Level 1 establishes the base role.
+- Level 2 chooses one of two doctrines.
+- Level 3 chooses one of two final roles compatible with either doctrine.
 
-- Crawler: baseline pressure.
-- Runner: fast, fragile leak threat.
-- Brute: slow armored target.
-- Aegis: shielded, heavily armored, costs 3 lives.
-- Regenerator: durable sustain threat, costs 5 lives.
-- Elite rank: 1.85x health, modest speed/armor/reward increase, +1 leak damage, and 30% control resistance.
-- Bastion Core boss: 4.5x base health, bonus armor and shield, at least 10 leak damage, 60% control resistance, and a telegraphed half-health phase that restores shield and accelerates.
+This produces four complete builds per tower. Doctrines emphasize a statistical or delivery approach; final roles provide the larger mechanical identity. Upgrade previews show exact current-to-next values, including utility fields such as slow strength/duration, projectile speed, arcs, splash, Expose, Armor Break, or Beacon aura changes.
 
-Traits remain visible through silhouette, health/shield treatment, rank rings, motion, and wave warnings. Avoid immunity spam.
+Mastery unlocks one authored Apex promotion for completed level-three towers. Apex preserves the selected build's identity while raising its late-game ceiling. It is a permanent upgrade, remains available in Entrenched, and is recorded in saves, co-op snapshots, history layouts, and contribution data.
 
-## Waves and difficulty
+## Tower roles
 
-- Every arena has its own authored 20-wave campaign: Foundry 1,090 contacts, Crosswind 1,066, Prism 1,192, and Surge 1,063 before difficulty multipliers.
-- Mixed compositions include screens, rushes, escorts, feints, armored pressure, elites, layered assaults, endurance streams, and a final boss.
-- Wave intel communicates approximate count plus swarm, speed, armor, shield, regeneration, elite, and boss threats.
-- Health/speed progression is authored and deterministic.
-- Easy, Normal, Hard, and Bastion are player-selectable. They consistently modify enemy health/speed, starting credits, and lives without changing tower stats by wave or elapsed time.
+- **Needle Turret:** low-cost direct coverage; develops ricochet or piercing pressure.
+- **Frost Spire:** area slow and damage; defaults to Fastest so it spreads control efficiently.
+- **Shard Fan:** short-range multi-projectile coverage against groups.
+- **Watchtower:** long-range priority damage and remote coverage.
+- **Ember Coil:** persistent burn, with paths for faster application, intensity, area spread, or armor interaction.
+- **Breaker Cannon:** armored/shielded target counter with heavy-hit and wider break options.
+- **Signal Beacon:** non-targeting aura support. Overlapping Beacons use the strongest applicable bonus rather than stacking identical effects.
+- **Arc Relay:** chained damage and control; gains value from groups and slowed targets without making that synergy mandatory.
+- **Siege Mortar:** predictive long-range area fire. It uses current target movement at launch and authored impact caps to prevent unbounded packed-wave damage.
+- **Prism Beam:** sustained durable-target pressure and Expose support.
 
-## Status, synergy, and targeting
+Targeting remains a player-controlled tactical layer. Support prioritizes Signal Gauntlet carriers; other modes weight route progress, health, distance, speed, or armor. A targeting choice opens a menu and does not change until the replacement is confirmed.
 
-- Slow: the strongest slow applies. Arc Relay gains a Conductive damage bonus equal to the target's Slow strength, capped at 30%.
-- Burn: capped at two sources; burning lowers effective armor by 2.
-- Armor reduction/pierce: creates follow-up value for rapid attacks.
-- Exposed: increases incoming damage and rewards focus fire.
-- Stun: short, resistance-scaled control.
-- Statuses remain compatible. Their strongest-only/capped stacking rules create soft diminishing returns without making mixed Frost, Burn, Breaker, Prism, and Arc defenses invalid.
-- Signal Beacon: nearby attack-rate and range aura. Affected towers show a compact gold broadcast marker, while Tower Intel reports the exact Beacon-only rate and range deltas alongside effective combined stats.
-- Surge Nodes: map-authored attack-rate, range, damage, or armor-pierce bonuses with deliberately small footprints. A tower center must be inside a node; bonuses stack additively with Beacon and active Protocols.
+## Protocols and automatic activation
 
-Targeting modes are First, Last, Strongest, Weakest, Nearest, Fastest, and Armored. Fastest uses current post-control speed; Armored prioritizes effective armor and then durability. Non-attacking support structures do not expose targeting controls.
+Every tower has a named temporary Protocol with authored duration, cooldown, effects, and an automatic trigger. Manual activation rewards timing; automation reduces repetitive input and selects only one armed tower at a time. Automatic conditions reflect the tower's role, such as enemy density, armored pressure, engaged supported towers, or elite/boss presence.
 
-## Placement and maps
+Protocol state is visually separate from tower level, player ownership, selected-tower state, placement ghosts, and enemy statuses. Entrenched removes Protocols entirely.
 
-Placement is continuous inside authored build regions. Towers cannot overlap towers/forge, violate route clearance, leave map bounds, or use a placement grid. Build fields use quiet tint and exact corner brackets; tower and Forge ghosts carry a green check or red X directly at their center.
+## Tactical devices
 
-- Foundry Loop: broad classic road and forgiving fields; the baseline campaign mixes threats progressively.
-- Crosswind Basin: cyan-banked current channel around three crossfire islands; its campaign leads with runner and alternating-speed pressure.
-- Prism Circuit: violet conduit, isolated build pockets, and three modest nodes; its denser campaign emphasizes layered armor and speed.
-- Surge Divide: tight road pockets and nine small nodes under the hardest authored campaign pressure. The power is real, but concentrating inside nodes creates coverage and composition tradeoffs.
+Pulse Plates snap to legal route positions and trigger twice. They deal fixed area damage, stun, slow, and bounded knockback. A per-enemy push grace and reduced elite/boss displacement prevent plate chains from becoming permanent route denial. The deployed field is capped at 16.
 
-Each arena has a distinct flat geometric route treatment and background motif while retaining the shared muted teal/slate tactical language.
+The Charge Forge produces stored Plates only while enemies are being fought. Its levels improve cadence and storage and later strengthen plate damage. This prevents downtime waiting from generating free inventory.
 
-## Active and emergency systems
+## Enemies and statuses
 
-- Pulse Plate: forgiving road-snapped two-charge defense. Each pulse deals 38 area damage in radius 52, briefly stuns and slows the group, pierces 2 armor, and pushes the triggering enemy up to 28 path units backward. Elites receive 60% of that push and bosses 25%; after an accepted push, an enemy has 0.75 seconds of knockback grace while still taking plate damage and status effects. The field supports at most 16 active plates. These limits preserve useful opening control without allowing a packed road to chain-lock enemies.
-- Charge Forge: one per map. Level 1 produces every 34 active-wave seconds to capacity 3; levels 2/3 improve cadence to 26/20 seconds, capacity to 4/5, and plate damage by 15%/30%. Production is frozen before and between waves and while storage is full. The fixed cadence is identical at every wave number; only purchasing an upgrade changes it.
-- Protocols give each tower a thematic active burst and timed stat package on a shared per-protocol cooldown; one selected tower can optionally auto-trigger against an engaged elite/boss or a role-specific condition. Direct towers measure range pressure, area Protocols measure their actual pulse field, Breaker requires armored/shielded threats, Mortar requires one splash cluster, and Signal Beacon requires either two supported combat towers to be engaged or six threats in one recipient's range.
+Five base enemy profiles cover light, fast, armored, shielding, and regenerating pressure, with Standard, Elite, and Boss ranks. Authored waves combine profiles and rank pressure per arena.
 
-Tactical controls live in the sidebar so they never cover usable battlefield space. Plates are responsive recovery tools; permanent towers remain the strategic foundation.
+Signal Gauntlet adds visible carrier roles:
 
-## Online co-op
+- **Accelerator:** increases nearby enemy speed.
+- **Restorer:** periodically repairs nearby enemies.
+- **Bulwark:** periodically grants nearby shields.
+- **Jammer:** weakens one tower's rate and damage for a short duration.
+- **Disruptor:** temporarily pauses a nearby tower group; reserved for later elite/boss pressure.
 
-- Two-player direct internet TCP on port `28741`; host shares a public IP/DNS endpoint and six-character code.
-- The host sequences authoritative commands; both peers execute the same 60 Hz fixed-tick deterministic stream locally and compare one checksum sample per second. Local-only sub-tick presentation supports high-refresh rendering without entering synchronized state.
-- Credits, lives, plate inventory, forge, waves, speed, and victory/defeat are shared.
-- Towers and forge retain visible P1/P2 placement attribution, but either player may upgrade, specialize, retarget, activate/automate a Protocol, or sell any shared defense.
-- Both players must ready a wave. Calling during intermission grants the normal shared early reward.
-- Middle-click pings are color-coded by player.
-- Either peer may pause/resume the shared simulation or command shared speed. Shared pause locks battlefield management and uses a compact sidebar; an active early-call deadline continues while combat remains frozen. `Tab` opens a local Tactical Library overlay at any time without pausing the peer simulation.
-- Restart at victory or defeat preserves the peer connection, resets both players to a fresh host-authoritative session on the same map, and allocates a new host save slot. Main Menu disconnects.
-- A temporary disconnect pauses both peers in a reconnect overlay. Player 2 can reconnect with the same endpoint/code and receives a complete host-authoritative active-match snapshot before both simulations resume.
+Carriers render above ordinary enemies, use the same in-body glyphs in combat and the Tactical Library, and show their support relationship through aura/recipient feedback.
 
-Direct TCP currently requires manual port forwarding or a peer-to-peer VPN and does not provide matchmaking, automatic NAT traversal, encryption, or a hosted relay service. The host is authoritative for command ordering and recovery snapshots. Periodic checksums detect drift, and reconnecting Player 2 receives the active wave, enemies, projectiles, defenses, economy, lives, timers, ready state, and pending commands before both peers resume.
+Core statuses are Slow, Stun, Expose, and Armor Break. Their glyphs are distinct and can coexist. Damage resolution applies armor, shields, pierce, rank modifiers, Expose, Armor Break, burn, splash caps, and source attribution deterministically.
 
-## Run analysis and replayability
+## Campaign, Mastery, and Endless
 
-Victory/defeat reports wave reached, lives, kills, leaks, tower damage leaders, credits earned/spent/recovered, plate usage/damage, forge production, dangerous leak type, and simulated defense time. After the authored wave-20 campaign victory, **Continue Endless** resumes the live battlefield during intermission. A paginated, dynamically expanding set of independent intermission saves preserves solo or host-authoritative co-op endless runs, while transient co-op reconnect snapshots preserve an active session. New runs take the lowest empty number without overwriting; occupied or unreadable saves require a two-click confirmed deletion. Each overwritten slot retains one recovery generation and transparently falls back to it if the primary file is absent or corrupt. A separate paginated Run History records terminal summaries; persistent run identity makes a later endless conclusion update its wave-20 entry across checkpoints and co-op resynchronization. Headless JSON additionally records role choices, Protocols, early-call credits, armor/shield outcomes, and per-wave/tower details.
+Waves 1–20 form the authored campaign. Waves 21–30 form an authored arena-specific Mastery sequence that smooths pressure toward a demanding wave-30 capstone. Generated Endless begins at wave 31 and rotates balanced, runner, armored, regenerator, and boss themes.
 
-Endless wave `s = wave - 20` uses the authored wave 20 as its deterministic anchor. Health multiplier grows by `1 + 0.085s + 0.0045s²`; base group counts grow by 1.25% per wave up to +60%; spawn intervals tighten by 0.75% per wave up to 20%; and speed adds 0.006 per wave up to a 1.30 multiplier. Five rotating roster themes add focused runner, armored, regenerator, or elite pressure, with a scaled Bastion Core every fifth endless wave. This keeps wave 21 recognizable, makes fixed max-level defenses eventually fail, and bounds enemy count for rendering and simulation stability.
+Endless health follows accelerating growth, while count, speed, cadence, and spawn delay use performance-minded caps/floors. The goal is escalating durability and composition pressure without allowing unit count alone to overwhelm rendering or networking.
 
-Clearing wave 30 unlocks a one-time Apex promotion on every completed tier-three tower. Apex costs and role-preserving multipliers are authored per tower, contribute to investment and resale value, and remain available in Fundamentals. Tower Intel previews the resulting values before purchase. Checkpoints, run-history layouts, co-op reconstruction, and deterministic checksums preserve the promotion.
+## Co-op design
 
-Current replayability comes from four authored arenas/campaigns, four difficulty profiles, four independently selected competitive challenge directives, strategic tower pools, two final roles for every tower, targeting, manual or automatic Protocol timing, persistent run history, and deterministic agent/seeds. Standard preserves the full game; Close Quarters removes Watchtower/Mortar, Core Six constrains the roster to six complementary systems, and Fundamentals keeps the full tower roster while disabling Plates, Forge, and Protocols in exchange for 25% more opening credits. A separate solo Sandbox Lab reuses real combat behavior with unlimited resources, fixed or immortal targets, rank/group controls, repeatable Protocols, and arbitrary authored-wave playback; it does not save or enter competitive analytics. Fixed start-credit compensation belongs to the selected directive and never changes tower effectiveness by wave or elapsed time. Daily seeded challenges remain a future candidate.
+Co-op is the same shared defense game, not a separate power mode. Credits, lives, towers, tactical systems, waves, speed, and results are shared. Both players may manage every defense; original placement ownership is informational only.
+
+The host sequences authoritative commands. Both peers run the deterministic simulation locally for responsive rendering and repair divergence from host snapshots. Both players must ready a wave. Disconnect pauses and preserves the host session, and a reconnect restores complete state. A co-op checkpoint can also be continued alone.
+
+## Persistence and metagame
+
+The game maintains one rolling autosave and expandable manual slots. Manual slots can be duplicated or deleted. Run History is independent from saves and stores a single evolving record when a campaign continues through Mastery or Endless.
+
+The Tactical Library is discovery-driven. Exact future systems are not exposed until encountered. Medals reward notable single-run constraints and outcomes; achievements combine progression, repeated accomplishments, profile clears, discovery, and long-term records so the player retains visible goals after learning the campaign.
+
+## Presentation
+
+The simulation uses a 1280×720 logical canvas rendered internally at 2560×1440 and fitted into a clipped 16:9 viewport. Palette constants are independent from scaling. The battlefield uses desaturated teal/navy foundations, slate routes or arena-specific channels, off-white panels, and controlled semantic accents.
+
+Shapes, motion, line treatment, and glyphs carry identity. Effects use bounded expanding rings, flashes, recoil, beams, and geometric shatters instead of particle-heavy spectacle. The most important range, status, placement, node, ownership, and co-op cues retain priority under dense load.
+
+## Balance intent
+
+- Campaign openings should reward route understanding and efficient coverage.
+- No tower or complete upgrade path should be mandatory across every arena.
+- Support and control should be measured alongside direct damage, not judged only by kills.
+- Long range pays for coverage but should not dominate well-positioned short-range towers.
+- Surge Nodes are an arena resource, not a free global multiplier; their small footprints should force tradeoffs.
+- Bastion is a premier challenge, while Easy and Medium provide room to learn systems.
+- Bot completion rates compare configurations and detect regressions; they are not direct forecasts of expert human success.
+
+Measured baselines and known interpretation limits are maintained in [AUTONOMOUS_BALANCE.md](AUTONOMOUS_BALANCE.md) and [BALANCE_REPORT.md](BALANCE_REPORT.md).

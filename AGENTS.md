@@ -1,98 +1,99 @@
-# Minimal Bastion Agent Runbook
+# Repository Guide
 
-## Project shape
+## Purpose
 
-- `src/MinimalBastion/`: MonoGame DesktopGL game targeting `net10.0`.
-- `src/MinimalBastion/ContentData/`: copied-at-runtime JSON for towers, enemies, maps, waves, and tactical systems.
-- `tests/MinimalBastion.Tests/`: deterministic executable test, benchmark, and self-play harness; it is not xUnit.
-- `.build/publish/`: self-contained Windows x64 handoff build.
-- `.build/balance/`: machine-readable simulation reports.
-- `GAME_DESIGN.md`, `AUTONOMOUS_BALANCE.md`, `OVERNIGHT_PROGRESS.md`, and `OVERNIGHT_CHANGELOG.md`: current design and project state.
+Minimal Bastion is a .NET 10 / MonoGame DesktopGL tower-defense game. Source code, authored JSON, deterministic tests, balance agents, and documentation are maintained together in this repository.
 
-The repository is tracked in Git and mirrored at `https://github.com/limax2012/tower-defense`. Preserve coherent checkpoints with tested commits on the active feature branch; do not merge or push `main` unless the user explicitly requests it.
+Documentation and code comments must describe the current implementation and surrounding context. Do not add task history, prompt-specific notes, removed behavior, or transient implementation narration.
 
-## Commands
+## Canonical references
 
-This machine uses the workspace-local .NET 10 SDK:
+- `README.md`: build, play, controls, current features, persistence, and verification.
+- `GAME_DESIGN.md`: current rules and player-facing design.
+- `TOWER_DEFENSE_DESIGN.md`: current architecture and invariants.
+- `AUTONOMOUS_BALANCE.md`: simulation CLI, metrics, and measured baselines.
+- `BALANCE_REPORT.md`: current balance interpretation and validation priorities.
+- `docs/co-op-architecture.md`: online synchronization and reconnect design.
+
+Implementation and JSON content are the source of truth when documentation disagrees.
+
+## Repository layout
+
+- `src/MinimalBastion`: game source.
+- `src/MinimalBastion/ContentData`: tower, enemy, map, wave, profile, directive, and tactical JSON.
+- `tests/MinimalBastion.Tests`: deterministic regression executable and simulation CLI.
+- `scripts/verify.ps1`: isolated build/test/hidden-render workflow.
+- `.build`, `.artifacts`, and `.verification`: generated local outputs; do not commit them.
+
+## Build and verify
+
+Prefer the workspace-local SDK when present and make it available on `PATH` for MonoGame Content Builder:
 
 ```powershell
-$env:Path = "$PWD\.dotnet;$env:Path"
-dotnet build MinimalBastion.sln -c Release --no-restore --disable-build-servers /nodeReuse:false /p:UseSharedCompilation=false
-dotnet run --project tests\MinimalBastion.Tests -c Release --no-build
-dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --balance
-dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate --strategy Adaptive --seed 1337
-dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --runs 5
-dotnet restore MinimalBastion.sln -r win-x64 --disable-build-servers
-dotnet publish src\MinimalBastion -c Release -r win-x64 --self-contained true --no-restore -o .build\publish --disable-build-servers /nodeReuse:false /p:UseSharedCompilation=false
+$dotnet = if (Test-Path .\.dotnet\dotnet.exe) { (Resolve-Path .\.dotnet\dotnet.exe).Path } else { (Get-Command dotnet -ErrorAction Stop).Source }
+$env:Path = "$(Split-Path $dotnet);$env:Path"
+& $dotnet restore MinimalBastion.sln
+& $dotnet build MinimalBastion.sln -c Release --disable-build-servers /nodeReuse:false /p:UseSharedCompilation=false
+& $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build
 ```
 
-If a build reports a locked executable, inspect `Get-Process MinimalBastion`, verify its exact path is inside this project, and stop only that process. Build servers can otherwise retain locks; keep the flags above.
+For routine validation, including a hidden UI render that does not take desktop focus:
 
-## Runtime architecture
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
+```
 
-- `Game1` owns window, input, state-screen, transport, fixed-network-runner, and render lifecycle.
-- One `GameSession` owns authoritative match state and updates systems in deterministic order.
-- `MapRuntime`/`PathRuntime` own placement and route geometry, including Surge Node buffs.
-- `WaveManager` schedules authored groups, intermissions, early calls, elites, and the final boss.
-- `TowerSystem`, narrow `ITowerBehavior` modules, `TargetSelector`, `ProjectileSystem`, `DamageResolver`, status/effect systems, and `EnemySystem` execute combat.
-- `TacticalDefenseSystem`, `PulsePlateInstance`, and `ChargeForgeInstance` own emergency defenses and wave-powered production.
-- `UIManager`, `GameRenderer`, and `PrimitiveRenderer` are presentation-only.
-- `GameCommand`, `AuthoritativeCommandHost`, `DeterministicSessionRunner`, and `SessionChecksum` form the multiplayer seam.
-- `LanCoOpHost` listens dual-stack on all adapters; `LanCoOpClient` accepts DNS, IPv4, or IPv6 endpoints. The transport class and file names are internal implementation details.
-- Definitions and runtime instances must remain separate.
+Use `-SkipVisuals` only when a change cannot affect layout, rendering, data-loaded text, or screen flow.
 
-Do not casually replace this with ECS, dependency injection, a physics engine, or a UI framework. Extract narrow services only when they improve deterministic simulation, testing, networking, or maintainability.
+## Development invariants
 
-## Determinism and networking invariants
+- Preserve the 1280×720 logical layout, 2560×1440 internal scene, clipped 16:9 viewport, and shared coordinate conversion.
+- Keep theme colors in `Rendering/ColorPalette.cs`; output resolution must not alter palette values.
+- Runtime behavior belongs in mutable instances/systems; authored values belong in validated JSON definitions.
+- Maintain `GameSession.Update` order unless the change includes deterministic regression and co-op review.
+- Do not use non-deterministic random/time sources inside synchronized gameplay. Use seeded/session-owned state.
+- Networked actions must flow through validated `GameCommand` values and host sequencing.
+- Any synchronized state addition must be represented in snapshots, validation, reconstruction, and checksums.
+- Presentation-only state such as interpolation, cursor ghosts, and pings must not affect simulation checksums.
+- Persistence writes must remain bounded, validated, atomic, and recoverable.
+- Input must remain inactive when the game window is not focused.
+- Keep content IDs stable where saves/history/discovery rely on them. UI display names may differ from internal IDs.
 
-- Simulation must never depend on rendering, wall-clock time, hash-set iteration order, or unseeded randomness.
-- Host-accepted commands receive a monotonic sequence and future fixed tick; both peers apply the same stream.
-- State affecting future outcomes belongs in `SessionChecksum`. This includes map identity, ownership, specializations, Overdrive state, Pulse Plate handled-enemy IDs, forge timers, and shared economy.
-- Co-op uses shared credits/lives/inventory and shared defense control. Either player may upgrade, specialize, retarget, automate, Overdrive, or sell any tower/Forge; original ownership remains attribution only.
-- Wave start requires both players ready. Speed and pause are shared, command-synchronized state.
-- Public internet play is direct TCP `28741` with a six-character join code and build/content fingerprint negotiation. There is no matchmaking, relay server, automatic port mapping, or encryption; hosts still need a reachable address/port forward where NAT requires it.
-- A disconnected Player 2 can reconnect to the existing host. The host pauses the simulation, rotates that player's request-replay session, sends a validated authoritative snapshot (including combat, economy, wave, readiness, and pending-command state), then resumes both peers.
-- Keep stable internal IDs such as `relay_divide`; the player-facing map/feature names are `Surge Divide` and `Surge Node`.
+## Gameplay baselines
 
-## Gameplay invariants
+- Campaign: waves 1–20.
+- Mastery: authored waves 21–30; Apex unlocks after entering Mastery.
+- Generated Endless: wave 31 onward.
+- Difficulties: Easy, Medium (`normal` internally), Hard, Bastion.
+- Competitive directives: Standard, Signal Gauntlet (`close_quarters`), Core Six, Entrenched (`no_reserves`).
+- Sandbox Lab is noncompetitive and solo-only.
+- Maps: Foundry Loop, Crosswind Basin, Prism Circuit, Surge Divide (`relay_divide`).
+- Co-op: direct TCP 28741, two players, shared defenses, host-command authority, deterministic 60 Hz simulation.
 
-- Never add an early-wave-only damage multiplier. Tower damage is mechanically consistent throughout a run.
-- Charge Forge production advances only while `Waves.IsActive`; waiting before or between waves must not generate plates.
-- A Pulse Plate may trigger once per handled enemy. A single enemy cannot consume both charges; an unhandled consecutive enemy may trigger immediately.
-- Continuous free placement inside authored regions is intentional. Do not introduce a placement grid.
-- Roads render as one seamless surface with a yellow dashed centerline and no tile, seam, corner-circle, or heavy-outline artifacts.
-- Tower marks encode level consistently: one top spoke at level 1, then fixed spokes at 120 and 240 degrees. Do not reintroduce separate battlefield badges or tower-specific starting mark counts.
-- Keep gameplay and input in the 1280x720 logical coordinate space, but render the scene at 2560x1440. Composite only into `ViewportTransform.DestinationRectangle`; never draw logical scene geometry directly to the backbuffer because it can bleed into letterbox bars.
-- Preserve double-density SpriteFont/primitive masks and linear scene downsampling unless the entire resolution strategy is deliberately replaced and visually revalidated.
-- `ColorPalette` is the centralized UI theme. Preserve the muted hierarchy: teal battlefield (`#152D36`), slate road (`#384E65`), navy HUD (`#152B46`), soft off-white panels, blue-gray cards/text, and controlled cyan/green/gold/coral/violet/blue accents.
-- Keep backbuffer MSAA disabled. The fixed 2x scene target already supersamples geometry; enabling backbuffer MSAA on DesktopGL gamma-shifts the final scene and washes out the authored palette.
+## Editing guidance
 
-## Design and visual principles
+- Use `rg`/`rg --files` for discovery.
+- Preserve unrelated user changes in a dirty worktree.
+- Make focused edits; avoid large mechanical rewrites unless the task requires them.
+- Update documentation when behavior, commands, profiles, persistence paths, networking requirements, or authored progression changes.
+- Do not hand-edit generated balance reports or verification artifacts.
 
-- Prefer multiple situationally strong strategies over universal towers.
-- Flat armor must preserve heavy-hit and armor-piercing identities.
-- Information required to spend money must be visible before purchase.
-- Emergency systems complement permanent towers and must not become default damage.
-- Deep navy/slate battlefield, quiet structural build fields, saturated functional accents, crisp geometry, consistent border weights, restrained rings, and unclipped labels.
-- Keep the entire 960-pixel battlefield usable; persistent tactical controls belong in the 320-pixel sidebar.
-- Effects communicate state and impact; they are not decoration.
+## Validation by change type
 
-## Balance procedure
+- Gameplay/content: regression suite plus focused headless simulations.
+- UI/rendering/text: full hidden visual verification and screenshot inspection.
+- Co-op: command, checksum, snapshot, reconnect, direction-validation, and deterministic runner tests.
+- Persistence: save/history/discovery/settings round-trip, bounds, validation, backup, and deletion tests.
+- Balance: matched seeds and controls first; broad matrix after focused results stabilize.
 
-1. Run all fast deterministic tests.
-2. Run isolated `--balance` scenarios after combat changes.
-3. Run focused strategy/map batches for changed systems.
-4. Run `--simulate-full --runs 5` before a major checkpoint.
-5. Compare win rate, wave reached, lives, spend, picks, upgrades, branches, Overdrives, plates, leaks, and tower contribution.
-6. Preserve interesting report paths and seeds in `AUTONOMOUS_BALANCE.md` and `OVERNIGHT_PROGRESS.md`.
-7. Publish and inspect the actual native window after UI changes.
+Balance-agent rates are comparative evidence, not direct human win predictions. Review per-map/per-policy data and layouts before changing universal values.
 
-## Current scope and constraints
+## Version-control handoff
 
-- Current content: 4 maps with dedicated 20-wave rosters, 10 three-level towers, two mutually exclusive Tier-2 doctrines and two final specializations for every tower, 5 enemy bases plus elite/boss ranks, Pulse Plates, a three-level Charge Forge, and tower-specific Protocols with optional automatic activation.
-- Four difficulty profiles (Easy, Normal, Hard, Bastion) and four challenge directives alter the run before it begins. Surge Divide is intentionally the most demanding high-pressure arena because its compact Surge Nodes reward precise placement.
-- Direct online two-player co-op is functional when the host is reachable on TCP `28741`.
-- Headless gameplay is fast and deterministic; MonoGame rendering still requires a graphical Windows session.
-- Unlimited numbered solo/co-op save slots, atomic backup recovery, autosaves, run history, display/effect/audio settings, procedural sound effects, difficulty/challenge selectors, and basic reconnect recovery are implemented.
-- Hosted relay, matchmaking, automatic NAT traversal, and cloud save synchronization are not implemented. Procedural music and effects are local presentation only and never participate in deterministic state.
-- Avoid changing map coordinates, costs, damage, wave totals, or tactical cadence without simulation evidence and updated tests/docs.
+Before committing:
+
+1. Check `git diff --check`.
+2. Run verification proportional to the change.
+3. Inspect `git status --short` and avoid generated artifacts.
+4. Commit a concise current-state change.
+5. Push the verified commit to the active branch when requested by the project workflow.

@@ -1,77 +1,102 @@
-# Tower-Defense Design Research
+# Tower-Defense Design Principles
 
-This note records transferable design principles for Minimal Bastion. It is not a feature checklist and does not authorize copying another game's content, terminology, visual identity, balance values, maps, or progression.
+This reference records the durable design reasoning used to evaluate Minimal Bastion. Exact values and implemented rules belong in the current JSON/content and canonical design documents.
 
-## Sources reviewed
+## Coverage is a resource
 
-- [Bloons TD 6 — publisher-authored Steam page](https://store.steampowered.com/app/960090/Bloons_TD_6/): combines a broad tower roster with heroes, long-term updates, challenge variety, and online co-op. The durable lesson is that replayability grows when the same core combat supports meaningfully different loadouts and constraints.
-- [Kingdom Rush — Ironhide](https://www.ironhidegames.com/Games/kingdom-rush): emphasizes tower specializations, enemies with distinct abilities, and limited active battlefield interventions such as reinforcements. The durable lesson is to make counterplay legible and give the player a few timely actions outside ordinary tower placement.
-- [Mindustry — official site](https://mindustrygame.github.io/): combines incoming waves with material processing and multiplayer. The durable lesson is that production can create strategic tension when it competes with immediate defense, but the logistics layer must remain proportionate to the game's scope.
-- [Mindustry — official source repository](https://github.com/Anuken/mindustry): exposes configurable rules, wave pacing, multiple game modes, and placement constraints. The durable lesson is to keep scenarios and balance data-driven so new challenges do not require rewriting combat code.
-- [Isle of Arrows — developer/publisher-authored Steam page](https://store.steampowered.com/app/1946970/Isle_of_Arrows/): fuses tower defense with constrained, variable tile draws. The durable lesson is that replay variation can come from forcing adaptation, not merely from increasing enemy health.
+Tower range is valuable only where it overlaps useful route length. Corners, switchbacks, and parallel lanes create higher-value placements than equal-area empty terrain. Map balance must therefore consider route geometry, build-region footprint, tower radius, and obstruction rules together.
 
-## Principles selected for Minimal Bastion
+Long range converts otherwise idle space into damage, but it should pay through cost, cadence, targeting constraints, or specialized output. Short-range towers need density scaling, area effects, multi-shot delivery, or stronger efficiency so nearby placements remain desirable.
 
-### 1. Every strategic purchase should answer a readable problem
+## Economy should create timing decisions
 
-Tower identities should be visible in their range, cadence, targeting, silhouette, and concise UI copy. Enemy waves should communicate why armor break, control, splash, long range, or focused damage matters. A generalist may be convenient, but it should not erase specialist value.
+Healthy tower-defense economies repeatedly ask whether to:
 
-Minimal Bastion application:
+- buy immediate coverage
+- complete an upgrade path
+- invest in support or production
+- retain emergency liquidity
+- replace an inefficient footprint
+- spend on a concentrated late-game promotion
 
-- Preserve the ten-tower roster and three levels rather than adding breadth prematurely. Two tier-two doctrines establish an early build direction, while either final role remains available so each tower has four completed combinations without a sprawling progression tree.
-- Strengthen combinations already supported by the combat model: burn reduces effective armor, Arc Relay rewards slowed targets in proportion to Slow strength, and exposed targets reward follow-up damage. Prefer visible bonuses and strongest-only diminishing returns over hard status incompatibilities that invalidate mixed defenses.
-- Use deterministic telemetry to verify that a tower's intended job appears in damage, kill, control, and support outcomes.
+Prices should not inflate merely because the wave number increased. Consistent mechanics make planning learnable. Wave pressure, opportunity cost, placement saturation, authored counters, and optional sinks are better tools than arbitrary time-based stat/price changes.
 
-### 2. Active intervention is strongest when scarce and anticipated
+## Branches need different success cases
 
-An emergency action is interesting when the player can read the incoming threat, reserve the resource, and choose a location. If it is cheap enough to spam, it becomes another tower; if it is too rare or opaque, it is forgotten.
+An upgrade branch is meaningful when the preferred choice changes with geometry or threats. Purely better/worse numerical branches are false choices. Useful contrasts include:
 
-Minimal Bastion application:
+- cadence versus impact
+- concentrated versus distributed coverage
+- armor/shield pressure versus light-group clearing
+- immediate damage versus control/support
+- local strength versus wider field reach
 
-- Pulse Plates remain a limited road-snapped emergency defense with explicit charges.
-- The Charge Forge turns present-day spending into future tactical capacity, creating an understandable defense-versus-economy choice.
-- Wave intel should expose enough composition information for a plate deployment to feel planned rather than lucky.
+Upgrade previews should expose the exact affected values. Strategic strengths/limits belong in the library, while live Tower Intel should prioritize current facts and concise deltas.
 
-### 3. Production must compete with survival
+## Support needs attributable value
 
-Production systems work because they create an opportunity cost. Their value should arrive late enough to be a gamble, but early enough to matter when purchased responsibly.
+Kills and raw damage underrate slow, stun, Expose, Armor Break, aura support, and target disruption. Analytics should record recipient time, damage-equivalent contribution, control seconds, affected targets, and source attribution. Support stacking rules must be explicit and bounded.
 
-Minimal Bastion application:
+Enemy support roles also need legible relationships. Their body glyph, aura, and affected-recipient feedback should agree with the Tactical Library so players can learn them during play.
 
-- Keep one generator per map, visible production progress, a storage cap, and upgradeable cadence.
-- Track generated versus directly purchased plates separately so balance work can detect when the generator is mandatory, irrelevant, or exploitative.
-- Do not add a full logistics network to version 1; it would overwhelm the clean continuous-placement defense game.
+## Manual tactics versus automation
 
-### 4. Replayability should change decisions, not only numbers
+Active abilities keep players involved but become repetitive in dense late play. Automation is valuable when:
 
-Interesting repeat runs arise from different constraints, information, or availability. Pure stat inflation tends to preserve the same solution while making it slower.
+- triggers are deterministic and readable
+- manual timing remains a useful option
+- automation does not secretly change the ability
+- the UI clearly identifies the armed tower
+- co-op produces one shared authoritative activation
 
-Minimal Bastion application:
+Temporary tactical systems should create decisions rather than act as mandatory maintenance chores.
 
-- Keep authored mixed waves as the campaign's learnable backbone.
-- Use deterministic seeds and strategy profiles for testing.
-- Implemented directives now provide a full sandbox, two restricted tower rosters, and a Fundamentals mode built around permanent towers without Plates, Forge, or Protocols. A daily seeded ruleset remains a candidate; it should reuse the same authoritative restriction and telemetry seams.
+## Difficulty should change pressure, not rules knowledge
 
-### 5. Multiplayer requires shared rules before networking
+Difficulty profiles should preserve tower mechanics. Health, speed, lives, and opening economy provide a readable ladder. Directives can instead change the ruleset in thematic, decision-changing ways: roster restriction, permanent commitment, or additional enemy behaviors.
 
-Co-op is not just networking. It requires ownership rules, shared economy decisions, placement conflict handling, pause/speed authority, result attribution, and readable teammate intent.
+A mode that removes one rarely used button may not create a distinct experience. A good directive changes openings, placement risk, target priority, or recovery options throughout the run.
 
-Minimal Bastion application:
+## Authored and generated progression serve different jobs
 
-- Keep authoritative simulation state separate from presentation and input.
-- Sequence all player intent through the same validated deterministic command seam used by solo play.
-- The implemented direct-internet MVP uses shared resources and unrestricted shared tower management, while retaining original placer attribution, joint wave ready, checksums, repair snapshots, reconnect, and pings; hosted relay/NAT traversal remains infrastructure work rather than gameplay logic.
+Authored waves teach counters, create deliberate tests, and support arena-specific pacing. Generated waves extend a solved campaign but require bounded unit density and clear scaling. A strong structure is:
 
-## Explicit non-goals
+- campaign: teach and test the complete baseline
+- Mastery: authored reinvestment test for an established defense
+- Endless: rotating generated pressure and long-term optimization
 
-- No copied tower concepts, names, maps, art, wave tables, progression trees, or numerical balance.
-- No sprawling metagame, hero roster, randomized tile board, or factory logistics layer in the current release.
-- No networking shortcut that bypasses authoritative validation or deterministic checks merely to claim broader connectivity.
+The final authored wave should be a capstone, but the preceding sequence should ramp smoothly enough that failure teaches something.
 
-## Near-term implementation order informed by this research
+## Readability is gameplay
 
-1. Preserve the reproducible four-map, twelve-strategy balance baseline while expanding build choices.
-2. Human-playtest doctrine/final-role combinations, active intervention, Surge Nodes, and end-run analysis.
-3. Human-playtest the implemented map/difficulty/directive combinations and preserve statistically persistent outliers.
-4. Use existing source-attributed support/status telemetry before changing low-damage utility towers.
-5. Field-test direct internet co-op and reconnect before considering hosted relay infrastructure.
+Dense tower defense needs a visual priority hierarchy:
+
+1. route and enemy movement
+2. placement legality and range
+3. target status/counter information
+4. tower identity, level, and active state
+5. co-op intent
+6. cosmetic effects
+
+Shape, line pattern, position, motion, and opacity should distinguish these systems before color alone. Similar cues must not compete: remote placement, remote selection, Auto, Slow, node effects, and range outlines each need separate visual grammar.
+
+## Persistence supports experimentation
+
+One rolling autosave protects ordinary progress. Independent manual slots let players preserve deep runs and test alternatives. Run history should remain separate from loadable state, update one continuing run identity, and retain final layouts/statistics for analysis.
+
+Discovery gating gives exploration value to the Tactical Library. It should conceal future details without hiding information the player currently needs to understand an active mechanic.
+
+## Balance-agent evidence
+
+Automated agents are best for matched comparisons, broad permutation coverage, deterministic reproduction, and regression detection. They are weakest at discovering novel strategies, inferring visual cues, and long-horizon reorganization.
+
+Trust increases when agents:
+
+- use real geometry and placement validation
+- value nodes and route coverage
+- respond to wave composition
+- complete upgrade paths
+- use relevant targeting/tactical systems
+- expose final layouts and per-policy results
+
+Human play remains necessary for fairness, clarity, fun, learning time, and whether a strong strategy is discoverable rather than merely possible.
