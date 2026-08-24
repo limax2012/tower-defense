@@ -886,6 +886,8 @@ internal static class Program
 
     private static void HighResolutionViewport()
     {
+        Check.True(!PlatformCapabilities.StagedDefenseLoading,
+            "desktop transitions directly into a prepared defense");
         Check.Equal(2560, GameConstants.RenderWidth, "supersampled render width");
         Check.Equal(1440, GameConstants.RenderHeight, "supersampled render height");
         Check.Equal(2, GameConstants.RenderScaleForOutput(1280, 720),

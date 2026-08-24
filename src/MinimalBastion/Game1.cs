@@ -395,6 +395,14 @@ public sealed class Game1 : Game
     private void BeginDefenseLoading(string mapId, string difficultyId, string challengeId)
     {
         PlatformServices.RuntimeStageSetter?.Invoke("defense loading");
+        if (!PlatformCapabilities.StagedDefenseLoading)
+        {
+            InitializeDefenseSession(mapId, difficultyId, challengeId);
+            _state = GameState.Playing;
+            PlatformServices.RuntimeStageSetter?.Invoke("gameplay");
+            return;
+        }
+
         _pendingDefenseMapId = mapId;
         _pendingDefenseDifficultyId = difficultyId;
         _pendingDefenseChallengeId = challengeId;
@@ -412,13 +420,10 @@ public sealed class Game1 : Game
                 _defenseLoadingPhase = 1;
                 return;
             case 1:
-                AssignSession(new GameSession(
-                    _content,
-                    _pendingDefenseMapId,
-                    _pendingDefenseDifficultyId,
-                    _pendingDefenseChallengeId));
-                _lastAutosaveAttemptedWave = -1;
-                _activeSaveSlot = null;
+                InitializeDefenseSession(
+                    _pendingDefenseMapId ?? throw new InvalidOperationException("Defense loading has no pending map."),
+                    _pendingDefenseDifficultyId ?? throw new InvalidOperationException("Defense loading has no pending difficulty."),
+                    _pendingDefenseChallengeId ?? throw new InvalidOperationException("Defense loading has no pending directive."));
                 _ui.SetDefenseLoading(0.78f, "RENDERING DEFENSE GRID");
                 _defenseLoadingPhase = 2;
                 return;
@@ -436,6 +441,13 @@ public sealed class Game1 : Game
                 PlatformServices.RuntimeStageSetter?.Invoke("gameplay");
                 return;
         }
+    }
+
+    private void InitializeDefenseSession(string mapId, string difficultyId, string challengeId)
+    {
+        AssignSession(new GameSession(_content, mapId, difficultyId, challengeId));
+        _lastAutosaveAttemptedWave = -1;
+        _activeSaveSlot = null;
     }
 
     private UiAction WithUiAudio(UiAction action)
