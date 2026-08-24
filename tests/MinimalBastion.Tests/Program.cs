@@ -895,7 +895,7 @@ internal static class Program
         Check.Nearly(GameConstants.LogicalWidth, transform.ScreenToLogical(new Point(2024, 1125)).X, "right canvas edge maps to logical width");
         Check.Equal(new Point(320, 180),
             WindowLayout.Recenter(new Rectangle(640, 360, 1280, 720), 1920, 1080, 2560, 1440),
-            "window resolution changes preserve the previous window center");
+            "window size changes preserve the previous window center");
         Check.Equal(new Point(960, 540),
             WindowLayout.Recenter(new Rectangle(1700, 800, 800, 450), 1600, 900, 2560, 1440),
             "window growth clamps to the desktop instead of expanding offscreen");
@@ -931,24 +931,17 @@ internal static class Program
         Check.True(AudioManager.CombatCueCooldown("signal_beacon") >= 0.4f,
             "support contribution chimes stay sparse in dense defenses");
 
-        settings.CycleWindowSize();
-        Check.Equal(960, settings.WindowWidth, "unknown window size enters first preset");
-        Check.Equal(540, settings.WindowHeight, "first window preset keeps the authored aspect ratio");
-        settings.CycleWindowSize();
-        Check.Equal(1280, settings.WindowWidth, "window-size preset cycles");
+        settings.CaptureWindowedClientSize(1280, 720);
         Check.Equal((1280, 720), settings.ResolveBackBufferSize(2560, 1440),
-            "windowed output uses the selected client size");
+            "windowed output uses the remembered client size");
         Check.True(settings.CaptureWindowedClientSize(1475, 830),
             "manual window resizing updates the persisted client size");
         Check.True(!settings.CaptureWindowedClientSize(1475, 830),
             "unchanged client bounds do not trigger redundant persistence");
-        settings.CycleWindowSize();
-        Check.Equal(960, settings.WindowWidth, "custom window sizes cycle back into fitting presets");
-        settings.CycleWindowSize();
-        Check.Equal(1280, settings.WindowWidth, "window preset cycle remains deterministic");
+        settings.CaptureWindowedClientSize(1280, 720);
 
         var ui = new UIManager(null!);
-        ui.ConfigureSettings(settings, 2560, 1440);
+        ui.ConfigureSettings(settings);
         Check.Equal(UiAction.Settings,
             ui.HandleMainMenu(WorldInput(new Vector2(640, 590)) with { LeftPressed = true }),
             "main menu settings button");
@@ -962,10 +955,6 @@ internal static class Program
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { NavigateLeftPressed = true }),
             "settings ignores keyboard adjustment so there is no hidden focus");
         Check.Equal(0, ui.SelectedSettingsIndex, "settings keyboard input does not move selection");
-        Check.Equal(UiAction.None,
-            ui.HandleSettingsInput(WorldInput(new Vector2(800, 245)) with { LeftPressed = true }),
-            "fullscreen ignores clicked window-size adjustments");
-        Check.Equal(1, ui.SelectedSettingsIndex, "clicked window size remains identifiable to graphics handling");
         Check.Equal(1280, settings.WindowWidth, "fullscreen preserves the selected windowed size");
         Check.Equal((2560, 1440), settings.ResolveBackBufferSize(2560, 1440),
             "fullscreen resolves to the desktop-sized backbuffer");
@@ -973,13 +962,6 @@ internal static class Program
             ui.HandleSettingsInput(WorldInput(new Vector2(500, 245)) with { LeftPressed = true }),
             "display mode returns to windowed operation");
         Check.True(!settings.Fullscreen, "windowed display mode is restored");
-        ui.HandleSettingsInput(WorldInput(new Vector2(800, 245)) with { LeftPressed = true });
-        Check.Equal(1600, settings.WindowWidth, "window-size control advances to the next fitting preset");
-        ui.HandleSettingsInput(WorldInput(new Vector2(800, 245)) with { LeftPressed = true });
-        Check.Equal(1920, settings.WindowWidth, "largest fitting QHD window preset remains available");
-        ui.HandleSettingsInput(WorldInput(new Vector2(800, 245)) with { LeftPressed = true });
-        Check.Equal(960, settings.WindowWidth,
-            "desktop-sized 2560 preset is omitted when its window decorations would not fit");
         Check.Equal(UiAction.None,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EnterPressed = true }),
             "settings ignores keyboard activation");
@@ -996,16 +978,16 @@ internal static class Program
         Check.Equal(10, settings.AutoStartDelaySeconds, "auto-start preserves the full planning-break option");
         ui.HandleSettingsInput(WorldInput(new Vector2(640, 357)) with { LeftPressed = true });
         Check.True(!settings.AutoStartWaves, "auto-start cadence cycle returns to off");
-        Check.Equal(6, ui.SelectedSettingsIndex, "clicked auto-start control remains identifiable");
+        Check.Equal(5, ui.SelectedSettingsIndex, "clicked auto-start control remains identifiable");
         Check.Equal(UiAction.ApplySettings,
             ui.HandleSettingsInput(WorldInput(new Vector2(795, 357)) with { LeftPressed = true }),
             "hotkey badge setting applies immediately");
         Check.True(!settings.ShowHotkeyBadges, "hotkey badges can be hidden without changing shortcuts");
-        Check.Equal(7, ui.SelectedSettingsIndex, "clicked hotkey badge control remains identifiable");
+        Check.Equal(6, ui.SelectedSettingsIndex, "clicked hotkey badge control remains identifiable");
         Check.Equal(UiAction.ApplySettings,
             ui.HandleSettingsInput(WorldInput(new Vector2(640, 485)) with { LeftPressed = true }),
             "clicked music control applies immediately");
-        Check.Equal(5, ui.SelectedSettingsIndex, "clicked music control remains identifiable");
+        Check.Equal(4, ui.SelectedSettingsIndex, "clicked music control remains identifiable");
         Check.Nearly(0, settings.MusicVolume, "full music volume wraps to mute");
         Check.Equal(UiAction.CloseSettings,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),

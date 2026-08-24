@@ -168,8 +168,6 @@ public sealed class UIManager
     internal IReadOnlyDictionary<TargetMode, Rectangle> TargetModeButtonBounds => _targetModeButtons;
     private UserSettings _settings = new();
     private string _settingsStatus = "Changes apply immediately and persist for the next launch.";
-    private int _settingsDesktopWidth = 2560;
-    private int _settingsDesktopHeight = 1440;
     private bool _setupForCoOp;
     private int _settingsSelection;
     private int _resultMenuSelection;
@@ -257,8 +255,7 @@ public sealed class UIManager
     private readonly Rectangle _resultMenuButton = new(740, 580, 206, 46);
     private readonly Rectangle _fieldResultsButton = new(630, 9, 176, 38);
     private readonly Rectangle _coOpPausedBanner = new(350, 68, 260, 26);
-    private readonly Rectangle _windowModeButton = new(350, 202, 280, 54);
-    private readonly Rectangle _resolutionButton = new(650, 202, 280, 54);
+    private readonly Rectangle _windowModeButton = new(350, 202, 580, 54);
     private readonly Rectangle _vsyncButton = new(350, 266, 280, 54);
     private readonly Rectangle _effectsButton = new(650, 266, 280, 54);
     private readonly Rectangle _autoStartButton = new(350, 330, 300, 54);
@@ -301,12 +298,7 @@ public sealed class UIManager
     public int SelectedSandboxWave => _sandboxWaveNumber;
     public bool IsGameplayOverlayOpen => _towerLibraryOpen;
 
-    public void ConfigureSettings(UserSettings settings, int desktopWidth = 2560, int desktopHeight = 1440)
-    {
-        _settings = settings;
-        _settingsDesktopWidth = Math.Max(1, desktopWidth);
-        _settingsDesktopHeight = Math.Max(1, desktopHeight);
-    }
+    public void ConfigureSettings(UserSettings settings) => _settings = settings;
     public void SetSettingsStatus(string status) => _settingsStatus = status;
 
     public void AdvanceVisualTime(float elapsedSeconds)
@@ -694,11 +686,11 @@ public sealed class UIManager
         if (input.EscapePressed || input.PausePressed) return UiAction.CloseSettings;
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
-        for (var index = 0; index < 9; index++)
+        for (var index = 0; index < 8; index++)
         {
             if (!SettingsOptionRectangle(index).Contains(point)) continue;
             _settingsSelection = index;
-            return index == 8 ? UiAction.CloseSettings : ApplySelectedSetting(1);
+            return index == 7 ? UiAction.CloseSettings : ApplySelectedSetting(1);
         }
         return UiAction.None;
     }
@@ -711,34 +703,21 @@ public sealed class UIManager
                 _settings.Fullscreen = !_settings.Fullscreen;
                 break;
             case 1:
-                if (_settings.Fullscreen)
-                {
-                    _settingsStatus = "Fullscreen always uses the desktop resolution. Switch to WINDOWED to choose a window size.";
-                    return UiAction.None;
-                }
-                var fittingPresets = UserSettings.WindowSizePresets
-                    .Where(size => WindowLayout.FitClientInsideDesktop(
-                        size.Width, size.Height, _settingsDesktopWidth, _settingsDesktopHeight) == size)
-                    .ToArray();
-                if (fittingPresets.Length > 0)
-                    _settings.CycleWindowSize(fittingPresets, direction);
-                break;
-            case 2:
                 _settings.VSync = !_settings.VSync;
                 break;
-            case 3:
+            case 2:
                 _settings.ReducedEffects = !_settings.ReducedEffects;
                 break;
-            case 4:
+            case 3:
                 _settings.SfxVolume = AdjustVolume(_settings.SfxVolume, direction);
                 break;
-            case 5:
+            case 4:
                 _settings.MusicVolume = AdjustVolume(_settings.MusicVolume, direction);
                 break;
-            case 6:
+            case 5:
                 _settings.CycleAutoStart();
                 break;
-            case 7:
+            case 6:
                 _settings.ShowHotkeyBadges = !_settings.ShowHotkeyBadges;
                 break;
             default:
@@ -762,14 +741,13 @@ public sealed class UIManager
     private Rectangle SettingsOptionRectangle(int index) => index switch
     {
         0 => _windowModeButton,
-        1 => _resolutionButton,
-        2 => _vsyncButton,
-        3 => _effectsButton,
-        4 => _volumeButton,
-        5 => _musicVolumeButton,
-        6 => _autoStartButton,
-        7 => _hotkeyBadgesButton,
-        8 => _settingsBackButton,
+        1 => _vsyncButton,
+        2 => _effectsButton,
+        3 => _volumeButton,
+        4 => _musicVolumeButton,
+        5 => _autoStartButton,
+        6 => _hotkeyBadgesButton,
+        7 => _settingsBackButton,
         _ => Rectangle.Empty
     };
 
@@ -3155,13 +3133,11 @@ public sealed class UIManager
     {
         DrawMenuFrame(batch, p);
         DrawText(batch, "SETTINGS", new Vector2(640, 112), ColorPalette.Ink, 1.9f, true);
-        DrawText(batch, "Fullscreen uses the desktop resolution. Windowed size can be selected or resized freely.",
+        DrawText(batch, "Fullscreen uses the desktop resolution. Windowed mode is freely resizable and remembers its size.",
             new Vector2(640, 162), ColorPalette.Muted, 0.58f, true);
 
         DrawButton(batch, p, _windowModeButton, _settings.Fullscreen ? "DISPLAY MODE  FULLSCREEN" : "DISPLAY MODE  WINDOWED",
             true, ColorPalette.Cobalt);
-        DrawButton(batch, p, _resolutionButton, WindowSizeButtonLabel(_settings),
-            !_settings.Fullscreen, ColorPalette.Violet);
         DrawButton(batch, p, _vsyncButton, _settings.VSync ? "VSYNC  ON" : "VSYNC  OFF",
             true, ColorPalette.Green);
         DrawButton(batch, p, _effectsButton, _settings.ReducedEffects ? "EFFECTS  REDUCED" : "EFFECTS  FULL",
@@ -3183,14 +3159,6 @@ public sealed class UIManager
         DrawText(batch, "Wave 1 is manual. Auto delays always earn +20; late manual calls do not. Click: OFF / 0 / 3 / 5 / 10s.",
             new Vector2(640, 612), ColorPalette.Muted, 0.49f, true);
         DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 650), ColorPalette.Cobalt, 0.50f, 900);
-    }
-
-    internal static string WindowSizeButtonLabel(UserSettings settings)
-    {
-        if (settings.Fullscreen) return "FULLSCREEN SIZE  DESKTOP NATIVE";
-        var isPreset = UserSettings.WindowSizePresets.Any(size =>
-            size.Width == settings.WindowWidth && size.Height == settings.WindowHeight);
-        return $"WINDOW SIZE  {settings.WindowWidth} x {settings.WindowHeight}" + (isPreset ? "" : "  |  CUSTOM");
     }
 
     private void DrawSaveSlots(SpriteBatch batch, PrimitiveRenderer p)

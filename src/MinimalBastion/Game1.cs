@@ -147,7 +147,7 @@ public sealed class Game1 : Game
             _ui.ConfigureMainMenuBattle(_content);
             _ui.ConfigureDiscovery(_discovery.Snapshot());
             var desktopMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
-            _ui.ConfigureSettings(_settings, desktopMode.Width, desktopMode.Height);
+            _ui.ConfigureSettings(_settings);
             _ui.SetSaveState(SaveSlotsExistSafely());
             RefreshRunHistoryCache();
             _debug = new DebugOverlay(font);
@@ -1437,7 +1437,7 @@ public sealed class Game1 : Game
     private void ApplyUserSettings()
     {
         _settings.Normalize();
-        if (_ui.SelectedSettingsIndex <= 2)
+        if (_ui.SelectedSettingsIndex <= 1)
         {
             try
             {
@@ -1522,7 +1522,7 @@ public sealed class Game1 : Game
     private void ApplyGraphicsSettings()
     {
         // Borderless fullscreen must use the desktop-sized backbuffer. Using a
-        // smaller windowed preset here leaves SDL's borderless window at desktop
+        // smaller remembered window size here leaves SDL's borderless window at desktop
         // size while shrinking only the render surface, which also separates
         // MouseState coordinates from the logical input transform.
         var desktopMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;

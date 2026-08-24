@@ -6,14 +6,6 @@ public sealed class UserSettings
 {
     public const int CurrentSchemaVersion = 1;
     public static readonly int[] AutoStartDelayPresets = [0, 3, 5, 10];
-    public static readonly (int Width, int Height)[] WindowSizePresets =
-    {
-        (960, 540),
-        (1280, 720),
-        (1600, 900),
-        (1920, 1080),
-        (2560, 1440)
-    };
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public int WindowWidth { get; set; } = 1280;
     public int WindowHeight { get; set; } = 720;
@@ -57,21 +49,6 @@ public sealed class UserSettings
             return;
         }
         AutoStartDelaySeconds = AutoStartDelayPresets[current + 1];
-    }
-
-    public void CycleWindowSize(int direction = 1) => CycleWindowSize(WindowSizePresets, direction);
-
-    public void CycleWindowSize(IReadOnlyList<(int Width, int Height)> presets, int direction = 1)
-    {
-        ArgumentNullException.ThrowIfNull(presets);
-        if (presets.Count == 0) return;
-        var current = presets.ToList().FindIndex(
-            preset => preset.Width == WindowWidth && preset.Height == WindowHeight);
-        var step = direction < 0 ? -1 : 1;
-        var next = current < 0
-            ? step < 0 ? presets.Count - 1 : 0
-            : (current + step + presets.Count) % presets.Count;
-        (WindowWidth, WindowHeight) = presets[next];
     }
 
     public bool CaptureWindowedClientSize(int width, int height)
