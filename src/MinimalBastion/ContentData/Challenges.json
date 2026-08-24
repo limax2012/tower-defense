@@ -50,7 +50,7 @@
     "id": "no_reserves",
     "displayName": "Entrenched",
     "menuLabel": "Entrenched",
-    "description": "Permanent towers only | no Plates, Forge, Protocols, or selling | +10% starting credits.",
+    "description": "Full roster | no Plates, Forge, Protocols, or selling | +10% starting credits.",
     "startingCreditsMultiplier": 1.10,
     "tacticalSystemsEnabled": false,
     "protocolsEnabled": false,

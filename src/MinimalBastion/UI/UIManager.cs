@@ -2848,7 +2848,7 @@ public sealed class UIManager
         else
         {
             DrawFittedText(batch, "PROTOCOLS OFFLINE  |  ENTRENCHED", new Vector2(980, protocolTop), ColorPalette.Muted, 0.40f, 280);
-            DrawFittedText(batch, "PERMANENT TOWER SYSTEMS ONLY", new Vector2(992, protocolTop + detailStep), ColorPalette.Muted, 0.39f, 268);
+            DrawFittedText(batch, "TOWERS + UPGRADES ONLY  |  NO SALES", new Vector2(992, protocolTop + detailStep), ColorPalette.Muted, 0.39f, 268);
         }
         if (hasPlacementModifier)
         {
@@ -4172,7 +4172,7 @@ public sealed class UIManager
             "standard" => "RULE: ALL SYSTEMS AVAILABLE",
             "close_quarters" => "RULE: SIGNAL CARRIERS SUPPORT FORMATIONS",
             "core_six" => "RULE: SIX-TOWER ROSTER LOCK",
-            "no_reserves" => "RULE: TOWERS + PERMANENT UPGRADES ONLY",
+            "no_reserves" => "RULE: TOWERS + UPGRADES ONLY; NO SALES",
             _ => $"RULE: {challenge.Description.ToUpperInvariant()}"
         });
         return lines;
