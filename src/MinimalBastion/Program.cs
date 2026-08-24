@@ -7,6 +7,23 @@ public static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0].Equals("--capture-marketing", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                if (args.Length != 2 || string.IsNullOrWhiteSpace(args[1]))
+                    throw new ArgumentException("Usage: MinimalBastion --capture-marketing <output-directory>");
+                using var capture = new MarketingCaptureGame(Path.GetFullPath(args[1]));
+                capture.Run();
+                return 0;
+            }
+            catch (Exception exception)
+            {
+                Console.Error.WriteLine($"Marketing capture failed: {exception}");
+                return 1;
+            }
+        }
+
         if (args.Length > 0 && args[0].Equals("--verify-ui", StringComparison.OrdinalIgnoreCase))
         {
             try
