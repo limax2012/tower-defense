@@ -160,7 +160,7 @@ Run the complete isolated verification workflow with:
 powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
 ```
 
-The script builds into `%TEMP%`, runs the deterministic regression executable, and invokes a hidden non-activating 2560x1440 renderer under `.artifacts\verification\ui`. It does not replace files used by a running game or send keyboard/mouse input. Use `-SkipVisuals` to omit rendering.
+The script builds into `%TEMP%`, runs the deterministic regression executable, and invokes a hidden non-activating renderer under `.artifacts\verification\ui`. Visual verification uses the canonical 2560x1440 scene size and includes a 3840x2160 display-density smoke scene. It does not replace files used by a running game or send keyboard/mouse input. Use `-SkipVisuals` to omit rendering.
 
 Representative headless commands:
 

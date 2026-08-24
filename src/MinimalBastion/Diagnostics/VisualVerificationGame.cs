@@ -716,6 +716,8 @@ public sealed class VisualVerificationGame : Game
         settings.WindowWidth = 1280;
         settings.WindowHeight = 720;
         scenes.Add(Capture("11-settings-auto-start.png", ui, GameState.Settings, null));
+        scenes.Add(CaptureAtRenderScale("11a-settings-4k.png", ui, GameState.Settings, null,
+            GameConstants.MaximumRenderScale));
         Require(ui.HandleSettingsInput(Pointer(640, 357, leftPressed: true)) == UiAction.ApplySettings &&
                 !settings.AutoStartWaves,
             "The Settings screen exposes a persistent mouse-only Auto-start control.", assertions);
@@ -1094,6 +1096,37 @@ public sealed class VisualVerificationGame : Game
         if (nonPaperPixels < 2_000)
             throw new InvalidOperationException($"Visual scene '{fileName}' rendered unexpectedly blank.");
         return new VisualVerificationScene(fileName, GameConstants.RenderWidth, GameConstants.RenderHeight, hash, nonPaperPixels);
+    }
+
+    private VisualVerificationScene CaptureAtRenderScale(string fileName, UIManager ui, GameState state,
+        GameSession? session, int renderScale)
+    {
+        HideAndDisableActivation();
+        renderScale = Math.Clamp(renderScale, GameConstants.RenderScale, GameConstants.MaximumRenderScale);
+        var width = GameConstants.LogicalWidth * renderScale;
+        var height = GameConstants.LogicalHeight * renderScale;
+        var path = Path.Combine(_outputDirectory, fileName);
+        using var primitives = new PrimitiveRenderer(GraphicsDevice, renderScale);
+        using var target = new RenderTarget2D(GraphicsDevice, width, height,
+            false, SurfaceFormat.Color, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
+        GraphicsDevice.SetRenderTarget(target);
+        GraphicsDevice.Clear(ColorPalette.Paper);
+        _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp,
+            null, null, null, Matrix.CreateScale(renderScale));
+        if (session is not null) _renderer.Draw(_batch, primitives, session,
+            foregroundTowerId: state == GameState.Playing ? ui.RemoteCoOpSelectedTowerId : 0);
+        ui.Draw(_batch, primitives, state, session);
+        _batch.End();
+        GraphicsDevice.SetRenderTarget(null);
+
+        var pixels = new Color[width * height];
+        target.GetData(pixels);
+        using (var stream = File.Create(path)) target.SaveAsPng(stream, width, height);
+        var hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+        var nonPaperPixels = pixels.Count(pixel => pixel != ColorPalette.Paper);
+        if (nonPaperPixels < 4_500)
+            throw new InvalidOperationException($"Visual scene '{fileName}' rendered unexpectedly blank.");
+        return new VisualVerificationScene(fileName, width, height, hash, nonPaperPixels);
     }
 
     private SimulationLayoutScene CaptureSimulationLayout(GameContent content, UIManager ui, string fileName,

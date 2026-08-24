@@ -27,6 +27,7 @@ public sealed class Game1 : Game
     private InputRouter _input = null!;
     private SpriteBatch _spriteBatch = null!;
     private RenderTarget2D _sceneTarget = null!;
+    private int _sceneRenderScale = GameConstants.RenderScale;
     private PrimitiveRenderer _primitives = null!;
     private GameRenderer _gameRenderer = null!;
     private UIManager _ui = null!;
@@ -121,16 +122,7 @@ public sealed class Game1 : Game
     protected override void LoadContent()
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
-        _sceneTarget = new RenderTarget2D(
-            GraphicsDevice,
-            GameConstants.RenderWidth,
-            GameConstants.RenderHeight,
-            false,
-            SurfaceFormat.Color,
-            DepthFormat.None,
-            0,
-            RenderTargetUsage.DiscardContents);
-        _primitives = new PrimitiveRenderer(GraphicsDevice);
+        EnsureSceneRenderResources();
         _gameRenderer = new GameRenderer();
         try
         {
@@ -1377,6 +1369,7 @@ public sealed class Game1 : Game
 
     protected override void Draw(GameTime gameTime)
     {
+        EnsureSceneRenderResources();
         GraphicsDevice.SetRenderTarget(_sceneTarget);
         GraphicsDevice.Clear(ColorPalette.Paper);
         _spriteBatch.Begin(
@@ -1386,7 +1379,7 @@ public sealed class Game1 : Game
             null,
             null,
             null,
-            Matrix.CreateScale(GameConstants.RenderScale));
+            Matrix.CreateScale(_sceneRenderScale));
 
         if (_loadError is not null)
         {
@@ -1426,6 +1419,32 @@ public sealed class Game1 : Game
         _spriteBatch.Draw(_sceneTarget, _viewportTransform.DestinationRectangle, Color.White);
         _spriteBatch.End();
         base.Draw(gameTime);
+    }
+
+    private void EnsureSceneRenderResources()
+    {
+        var presentation = GraphicsDevice.PresentationParameters;
+        var desiredScale = GameConstants.RenderScaleForOutput(
+            presentation.BackBufferWidth,
+            presentation.BackBufferHeight);
+        if (_sceneTarget is not null && !_sceneTarget.IsDisposed &&
+            _sceneRenderScale == desiredScale) return;
+
+        var replacementTarget = new RenderTarget2D(
+            GraphicsDevice,
+            GameConstants.LogicalWidth * desiredScale,
+            GameConstants.LogicalHeight * desiredScale,
+            false,
+            SurfaceFormat.Color,
+            DepthFormat.None,
+            0,
+            RenderTargetUsage.DiscardContents);
+        var replacementPrimitives = new PrimitiveRenderer(GraphicsDevice, desiredScale);
+        _sceneTarget?.Dispose();
+        _primitives?.Dispose();
+        _sceneTarget = replacementTarget;
+        _primitives = replacementPrimitives;
+        _sceneRenderScale = desiredScale;
     }
 
     private void HandleSettingsAction(UiAction action)

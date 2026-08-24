@@ -8,6 +8,7 @@ public static class GameConstants
     public const int LogicalWidth = 1280;
     public const int LogicalHeight = 720;
     public const int RenderScale = 2;
+    public const int MaximumRenderScale = 3;
     public const int RenderWidth = LogicalWidth * RenderScale;
     public const int RenderHeight = LogicalHeight * RenderScale;
     public const float FontDrawScale = 1f / RenderScale;
@@ -32,6 +33,14 @@ public static class GameConstants
     public const int PulsePlateDamageSourceOffset = 100_000;
     public const int MaximumPulsePlateId = int.MaxValue - PulsePlateDamageSourceOffset + 1;
     public const int ExhaustedPulsePlateNextId = MaximumPulsePlateId + 1;
+
+    public static int RenderScaleForOutput(int width, int height)
+    {
+        width = Math.Max(1, width);
+        height = Math.Max(1, height);
+        var visibleScale = MathF.Min(width / (float)LogicalWidth, height / (float)LogicalHeight);
+        return Math.Clamp((int)MathF.Ceiling(visibleScale), RenderScale, MaximumRenderScale);
+    }
 }
 
 public enum GameState

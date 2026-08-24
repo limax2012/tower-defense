@@ -888,6 +888,16 @@ internal static class Program
     {
         Check.Equal(2560, GameConstants.RenderWidth, "supersampled render width");
         Check.Equal(1440, GameConstants.RenderHeight, "supersampled render height");
+        Check.Equal(2, GameConstants.RenderScaleForOutput(1280, 720),
+            "small outputs retain the 2x supersampled scene");
+        Check.Equal(2, GameConstants.RenderScaleForOutput(2560, 1440),
+            "QHD output uses the canonical 2x scene");
+        Check.Equal(3, GameConstants.RenderScaleForOutput(3840, 2160),
+            "4K output uses a native 3x scene");
+        Check.Equal(2, GameConstants.RenderScaleForOutput(5120, 1440),
+            "ultrawide letterboxing does not allocate an unnecessary 4K scene");
+        Check.Equal(3, GameConstants.RenderScaleForOutput(7680, 4320),
+            "render density remains capped at 4K");
         var transform = new ViewportTransform();
         transform.Update(2048, 1125);
         Check.Equal(new Rectangle(24, 0, 2000, 1125), transform.DestinationRectangle, "centered fullscreen letterbox");

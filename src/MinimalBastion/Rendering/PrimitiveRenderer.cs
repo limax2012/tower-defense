@@ -7,16 +7,17 @@ namespace MinimalBastion.Rendering;
 
 public sealed class PrimitiveRenderer : IDisposable
 {
-    private const int RasterQuality = GameConstants.RenderScale;
+    private readonly int _rasterQuality;
     private readonly GraphicsDevice _graphicsDevice;
     private readonly Dictionary<(int Radius, int Thickness), Texture2D> _rings = new();
     private readonly Dictionary<int, Texture2D> _circles = new();
     private readonly Dictionary<(int Sides, int Radius, bool Star), Texture2D> _polygons = new();
     public Texture2D Pixel { get; }
 
-    public PrimitiveRenderer(GraphicsDevice graphicsDevice)
+    public PrimitiveRenderer(GraphicsDevice graphicsDevice, int rasterQuality = GameConstants.RenderScale)
     {
         _graphicsDevice = graphicsDevice;
+        _rasterQuality = Math.Clamp(rasterQuality, 1, GameConstants.MaximumRenderScale);
         Pixel = new Texture2D(graphicsDevice, 1, 1);
         Pixel.SetData(new[] { Color.White });
     }
@@ -43,7 +44,7 @@ public sealed class PrimitiveRenderer : IDisposable
     {
         var logicalRadius = Math.Max(1, (int)MathF.Ceiling(radius));
         var texture = GetCircle(logicalRadius);
-        var scale = radius / (logicalRadius * RasterQuality);
+        var scale = radius / (logicalRadius * _rasterQuality);
         batch.Draw(texture, center, null, color, 0, new Vector2(texture.Width / 2f, texture.Height / 2f), scale, SpriteEffects.None, 0);
     }
 
@@ -51,7 +52,7 @@ public sealed class PrimitiveRenderer : IDisposable
     {
         var logicalRadius = Math.Max(1, (int)MathF.Ceiling(radius));
         var texture = GetRing(logicalRadius, Math.Max(1, thickness));
-        var scale = radius / (logicalRadius * RasterQuality);
+        var scale = radius / (logicalRadius * _rasterQuality);
         batch.Draw(texture, center, null, color, 0, new Vector2(texture.Width / 2f, texture.Height / 2f), scale, SpriteEffects.None, 0);
     }
 
@@ -151,7 +152,7 @@ public sealed class PrimitiveRenderer : IDisposable
     {
         var textureRadius = Math.Max(4, (int)MathF.Ceiling(radius));
         var texture = GetPolygon(sides, textureRadius, star);
-        batch.Draw(texture, center, null, color, rotation, new Vector2(texture.Width / 2f, texture.Height / 2f), radius / (textureRadius * RasterQuality), SpriteEffects.None, 0);
+        batch.Draw(texture, center, null, color, rotation, new Vector2(texture.Width / 2f, texture.Height / 2f), radius / (textureRadius * _rasterQuality), SpriteEffects.None, 0);
     }
 
     private void DrawPolygonOutline(SpriteBatch batch, Vector2 center, float radius, int sides, bool star, Color color, float rotation, float thickness)
@@ -163,7 +164,7 @@ public sealed class PrimitiveRenderer : IDisposable
     private Texture2D GetCircle(int radius)
     {
         if (_circles.TryGetValue(radius, out var texture)) return texture;
-        var rasterRadius = radius * RasterQuality;
+        var rasterRadius = radius * _rasterQuality;
         var size = rasterRadius * 2 + 2;
         texture = new Texture2D(_graphicsDevice, size, size);
         var data = new Color[size * size];
@@ -183,8 +184,8 @@ public sealed class PrimitiveRenderer : IDisposable
     {
         var key = (radius, thickness);
         if (_rings.TryGetValue(key, out var texture)) return texture;
-        var rasterRadius = radius * RasterQuality;
-        var rasterThickness = thickness * RasterQuality;
+        var rasterRadius = radius * _rasterQuality;
+        var rasterThickness = thickness * _rasterQuality;
         var size = rasterRadius * 2 + 2;
         texture = new Texture2D(_graphicsDevice, size, size);
         var data = new Color[size * size];
@@ -205,7 +206,7 @@ public sealed class PrimitiveRenderer : IDisposable
         var key = (Math.Max(3, sides), Math.Max(4, radius), star);
         if (_polygons.TryGetValue(key, out var texture)) return texture;
 
-        var rasterRadius = key.Item2 * RasterQuality;
+        var rasterRadius = key.Item2 * _rasterQuality;
         var size = rasterRadius * 2 + 8;
         texture = new Texture2D(_graphicsDevice, size, size);
         var data = new Color[size * size];
