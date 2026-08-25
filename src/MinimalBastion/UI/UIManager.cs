@@ -3231,7 +3231,7 @@ public sealed class UIManager
             true, ColorPalette.Cyan);
         DrawButton(batch, p, _volumeButton, $"SOUND EFFECTS  {MathF.Round(_settings.SfxVolume * 100):0}%  |  CLICK TO CHANGE",
             true, ColorPalette.Gold, ColorPalette.Ink);
-        DrawButton(batch, p, _musicVolumeButton, $"TACTICAL MUSIC  {MathF.Round(_settings.MusicVolume * 100):0}%  |  CLICK TO CHANGE",
+        DrawButton(batch, p, _musicVolumeButton, $"BACKGROUND MUSIC  {MathF.Round(_settings.MusicVolume * 100):0}%  |  CLICK TO CHANGE",
             true, ColorPalette.Violet);
         DrawButton(batch, p, _settingsBackButton, "BACK", true, ColorPalette.Coral);
 
