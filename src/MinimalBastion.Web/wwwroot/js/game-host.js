@@ -12,6 +12,8 @@ window.minimalBastion = (() => {
     let lastError = "";
     let initialTickComplete = false;
     let runtimeStage = "browser startup";
+    let fullscreenPending = false;
+    let resizeObserver = null;
     const targetFrameTime = 1000 / 60;
     const maximumCanvasWidth = 2560;
     const maximumCanvasHeight = 1440;
@@ -48,10 +50,62 @@ window.minimalBastion = (() => {
             Math.sqrt(maximumCanvasPixels / (cssWidth * cssHeight)));
         const width = Math.max(1, Math.round(cssWidth * pixelRatio));
         const height = Math.max(1, Math.round(cssHeight * pixelRatio));
+        const changed = canvas.width !== width || canvas.height !== height;
         if (canvas.width !== width) canvas.width = width;
         if (canvas.height !== height) canvas.height = height;
-        canvas.style.width = `${cssWidth}px`;
-        canvas.style.height = `${cssHeight}px`;
+        if (changed) publishBrowserDisplayState();
+    }
+
+    function scheduleCanvasResize() {
+        resizeCanvas();
+        window.requestAnimationFrame(() => {
+            resizeCanvas();
+            window.requestAnimationFrame(resizeCanvas);
+        });
+        window.setTimeout(resizeCanvas, 100);
+        window.setTimeout(resizeCanvas, 300);
+    }
+
+    function isGameFullscreen() {
+        const holder = document.getElementById("canvasHolder");
+        return !!holder && document.fullscreenElement === holder;
+    }
+
+    function publishBrowserDisplayState() {
+        const canvas = document.getElementById("theCanvas");
+        instance?.invokeMethodAsync(
+            "SetBrowserDisplayState",
+            isGameFullscreen(),
+            fullscreenPending,
+            canvas?.width || 0,
+            canvas?.height || 0)
+            .catch(error => console.warn("Browser display state could not be synchronized.", error));
+    }
+
+    async function setFullscreen(enabled) {
+        const holder = document.getElementById("canvasHolder");
+        if (!holder) return;
+        const desired = !!enabled;
+        if (desired === isGameFullscreen()) {
+            fullscreenPending = false;
+            scheduleCanvasResize();
+            return;
+        }
+
+        fullscreenPending = true;
+        publishBrowserDisplayState();
+        try {
+            if (desired)
+                await holder.requestFullscreen();
+            else if (document.fullscreenElement)
+                await document.exitFullscreen();
+        } catch (error) {
+            console.warn("Fullscreen display change was not accepted.", error);
+        } finally {
+            fullscreenPending = false;
+            publishBrowserDisplayState();
+            scheduleCanvasResize();
+        }
     }
 
     function stopWithError(error, summary) {
@@ -138,7 +192,7 @@ window.minimalBastion = (() => {
     }
 
     function preventBrowserShortcuts(event) {
-        if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "Tab"].includes(event.key))
+        if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "Tab", "F11"].includes(event.key))
             event.preventDefault();
     }
 
@@ -188,12 +242,7 @@ window.minimalBastion = (() => {
                 return snapshot;
             }
         },
-        setFullscreen(enabled) {
-            if (enabled && !document.fullscreenElement)
-                document.getElementById("canvasHolder")?.requestFullscreen().catch(() => {});
-            else if (!enabled && document.fullscreenElement)
-                document.exitFullscreen().catch(() => {});
-        },
+        setFullscreen,
         setRuntimeStage(stage) {
             runtimeStage = stage || "gameplay";
         },
@@ -220,9 +269,26 @@ window.minimalBastion = (() => {
         },
         start(dotNetInstance) {
             instance = dotNetInstance;
-            resizeCanvas();
-            window.addEventListener("resize", resizeCanvas);
-            document.addEventListener("fullscreenchange", () => window.requestAnimationFrame(resizeCanvas));
+            publishBrowserDisplayState();
+            scheduleCanvasResize();
+            window.addEventListener("resize", scheduleCanvasResize);
+            window.visualViewport?.addEventListener("resize", scheduleCanvasResize);
+            document.addEventListener("fullscreenchange", () => {
+                fullscreenPending = false;
+                publishBrowserDisplayState();
+                scheduleCanvasResize();
+            });
+            document.addEventListener("fullscreenerror", () => {
+                fullscreenPending = false;
+                publishBrowserDisplayState();
+                scheduleCanvasResize();
+            });
+            const holder = document.getElementById("canvasHolder");
+            if (holder && window.ResizeObserver) {
+                resizeObserver?.disconnect();
+                resizeObserver = new ResizeObserver(scheduleCanvasResize);
+                resizeObserver.observe(holder);
+            }
             window.addEventListener("keydown", preventBrowserShortcuts, { passive: false });
             window.addEventListener("paste", event => {
                 clipboardText = event.clipboardData?.getData("text") || clipboardText;

@@ -11,6 +11,15 @@ public sealed class PlatformPointerState
     public bool Active { get; set; }
 }
 
+public sealed class PlatformBrowserDisplayState
+{
+    public bool Active { get; set; }
+    public bool Pending { get; set; }
+    public int BackBufferWidth { get; set; }
+    public int BackBufferHeight { get; set; }
+    public int Revision { get; set; }
+}
+
 public static class PlatformServices
 {
     private static Action<string, string>? _writePersistentFile;
@@ -25,6 +34,7 @@ public static class PlatformServices
     public static Action? LoadingTransitionCompleter { get; set; }
     public static Func<bool>? InputFocusReader { get; set; }
     public static Func<PlatformPointerState?>? PointerStateReader { get; set; }
+    public static Func<PlatformBrowserDisplayState?>? BrowserDisplayStateReader { get; set; }
 
     public static string PersistentRootDirectory => Path.GetFullPath(Path.Combine(
 #if BLAZORGL

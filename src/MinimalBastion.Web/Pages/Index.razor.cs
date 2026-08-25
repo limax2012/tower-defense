@@ -7,6 +7,7 @@ namespace MinimalBastion.Web.Pages;
 public partial class Index
 {
     private Game? _game;
+    private readonly PlatformBrowserDisplayState _browserDisplayState = new();
 
     protected override void OnAfterRender(bool firstRender)
     {
@@ -28,7 +29,18 @@ public partial class Index
         PlatformServices.LoadingTransitionCompleter = () => browser.InvokeVoid("minimalBastionLoading.complete");
         PlatformServices.InputFocusReader = () => browser.Invoke<bool>("minimalBastion.hasInputFocus");
         PlatformServices.PointerStateReader = () => browser.Invoke<PlatformPointerState>("minimalBastion.pointer.read");
+        PlatformServices.BrowserDisplayStateReader = () => _browserDisplayState;
         _ = JsRuntime.InvokeVoidAsync("minimalBastion.start", DotNetObjectReference.Create(this));
+    }
+
+    [JSInvokable]
+    public void SetBrowserDisplayState(bool active, bool pending, int backBufferWidth, int backBufferHeight)
+    {
+        _browserDisplayState.Active = active;
+        _browserDisplayState.Pending = pending;
+        _browserDisplayState.BackBufferWidth = backBufferWidth;
+        _browserDisplayState.BackBufferHeight = backBufferHeight;
+        _browserDisplayState.Revision++;
     }
 
     [JSInvokable]

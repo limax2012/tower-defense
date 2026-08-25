@@ -84,6 +84,11 @@ public sealed class Game1 : Game
     private int? _pendingDefenseSaveSlot;
     private bool _pendingMainMenuTransition;
     private int _loadingTransitionPhase;
+#if BLAZORGL
+    private int _browserDisplayRevision = -1;
+    private int _browserBackBufferWidth;
+    private int _browserBackBufferHeight;
+#endif
 
     public Game1()
     {
@@ -192,7 +197,10 @@ public sealed class Game1 : Game
 
     protected override void Update(GameTime gameTime)
     {
-        _viewportTransform.Update(GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
+#if BLAZORGL
+        SynchronizeBrowserDisplayState();
+#endif
+        UpdateViewportTransform();
         var input = _input.Update(PlatformServices.InputFocusReader?.Invoke() ?? IsActive);
         if (input.FullscreenPressed) ToggleFullscreenFromHotkey();
         var elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -1579,15 +1587,14 @@ public sealed class Game1 : Game
         EnsureSceneRenderResources();
 #if BLAZORGL
         GraphicsDevice.SetRenderTarget(null);
+        var (backBufferWidth, backBufferHeight) = BrowserBackBufferSize();
         GraphicsDevice.Clear(ColorPalette.Paper);
-        _viewportTransform.Update(
-            GraphicsDevice.PresentationParameters.BackBufferWidth,
-            GraphicsDevice.PresentationParameters.BackBufferHeight);
+        _viewportTransform.Update(backBufferWidth, backBufferHeight);
         var backBufferBounds = new Rectangle(
             0,
             0,
-            GraphicsDevice.PresentationParameters.BackBufferWidth,
-            GraphicsDevice.PresentationParameters.BackBufferHeight);
+            backBufferWidth,
+            backBufferHeight);
         GraphicsDevice.ScissorRectangle = Rectangle.Intersect(
             backBufferBounds,
             _viewportTransform.DestinationRectangle);
@@ -1756,6 +1763,10 @@ public sealed class Game1 : Game
 
     private void ToggleFullscreenFromHotkey()
     {
+#if BLAZORGL
+        var browserDisplay = PlatformServices.BrowserDisplayStateReader?.Invoke();
+        if (browserDisplay?.Pending == true) return;
+#endif
         var previousFullscreen = _settings.Fullscreen;
         _settings.Fullscreen = !previousFullscreen;
         try
@@ -1777,13 +1788,10 @@ public sealed class Game1 : Game
     private void ApplyGraphicsSettings()
     {
 #if BLAZORGL
-        // Browser presentation follows the canvas size and requestAnimationFrame.
-        // Reapplying the desktop backbuffer here can restore the browser's
-        // startup drawing-buffer size after entering fullscreen.
+        // Fullscreen requests require a user gesture. Browser-reported canvas
+        // dimensions are applied separately when the transition settles.
         PlatformServices.FullscreenSetter?.Invoke(_settings.Fullscreen);
-        _viewportTransform.Update(
-            GraphicsDevice.PresentationParameters.BackBufferWidth,
-            GraphicsDevice.PresentationParameters.BackBufferHeight);
+        UpdateViewportTransform();
         ApplyPresentationSettings();
 #else
         // Borderless fullscreen must use the desktop-sized backbuffer. Using a
@@ -1821,6 +1829,62 @@ public sealed class Game1 : Game
             GraphicsDevice.PresentationParameters.BackBufferWidth,
             GraphicsDevice.PresentationParameters.BackBufferHeight);
         ApplyPresentationSettings();
+#endif
+    }
+
+#if BLAZORGL
+    private void SynchronizeBrowserDisplayState()
+    {
+        var browserDisplay = PlatformServices.BrowserDisplayStateReader?.Invoke();
+        if (browserDisplay is null || browserDisplay.Revision == _browserDisplayRevision) return;
+        _browserDisplayRevision = browserDisplay.Revision;
+        if (browserDisplay.BackBufferWidth > 0 && browserDisplay.BackBufferHeight > 0)
+        {
+            _browserBackBufferWidth = browserDisplay.BackBufferWidth;
+            _browserBackBufferHeight = browserDisplay.BackBufferHeight;
+            if (_graphics.PreferredBackBufferWidth != _browserBackBufferWidth ||
+                _graphics.PreferredBackBufferHeight != _browserBackBufferHeight)
+            {
+                _graphics.PreferredBackBufferWidth = _browserBackBufferWidth;
+                _graphics.PreferredBackBufferHeight = _browserBackBufferHeight;
+                _graphics.ApplyChanges();
+            }
+        }
+        if (browserDisplay.Pending || _settings.Fullscreen == browserDisplay.Active) return;
+
+        _settings.Fullscreen = browserDisplay.Active;
+        try
+        {
+            UserSettingsStore.Save(_settings);
+            _windowSizeSavePending = false;
+        }
+        catch
+        {
+            // Browser presentation remains authoritative even if persistence is unavailable.
+        }
+    }
+
+    private (int Width, int Height) BrowserBackBufferSize()
+    {
+        return (
+            Math.Max(1, _browserBackBufferWidth > 0
+                ? _browserBackBufferWidth
+                : GraphicsDevice.PresentationParameters.BackBufferWidth),
+            Math.Max(1, _browserBackBufferHeight > 0
+                ? _browserBackBufferHeight
+                : GraphicsDevice.PresentationParameters.BackBufferHeight));
+    }
+#endif
+
+    private void UpdateViewportTransform()
+    {
+#if BLAZORGL
+        var (width, height) = BrowserBackBufferSize();
+        _viewportTransform.Update(width, height);
+#else
+        _viewportTransform.Update(
+            GraphicsDevice.PresentationParameters.BackBufferWidth,
+            GraphicsDevice.PresentationParameters.BackBufferHeight);
 #endif
     }
 
