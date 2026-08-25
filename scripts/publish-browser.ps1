@@ -36,7 +36,39 @@ if (-not (Test-Path -LiteralPath (Join-Path $publishedSite "index.html"))) {
 
 New-Item -ItemType Directory -Path $siteRoot -Force | Out-Null
 Copy-Item -Path (Join-Path $publishedSite "*") -Destination $siteRoot -Recurse -Force
-Compress-Archive -Path (Join-Path $siteRoot "*") -DestinationPath $archivePath -CompressionLevel Optimal
+
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$archive = [System.IO.Compression.ZipFile]::Open(
+    $archivePath,
+    [System.IO.Compression.ZipArchiveMode]::Create)
+try {
+    $siteRootPath = [System.IO.Path]::GetFullPath($siteRoot).TrimEnd('\', '/')
+    foreach ($file in Get-ChildItem -LiteralPath $siteRoot -File -Recurse) {
+        $relativePath = $file.FullName.Substring($siteRootPath.Length + 1).Replace('\', '/')
+        [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+            $archive,
+            $file.FullName,
+            $relativePath,
+            [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+    }
+}
+finally {
+    $archive.Dispose()
+}
+
+$archiveCheck = [System.IO.Compression.ZipFile]::OpenRead($archivePath)
+try {
+    if ($null -eq $archiveCheck.GetEntry("index.html")) {
+        throw "Browser archive does not contain index.html at its root."
+    }
+    if ($archiveCheck.Entries.FullName.Where({ $_.Contains('\') }, 'First').Count -ne 0) {
+        throw "Browser archive contains non-portable path separators."
+    }
+}
+finally {
+    $archiveCheck.Dispose()
+}
 Remove-Item -LiteralPath $publishRoot -Recurse -Force
 
 Write-Host "Browser site: $siteRoot"
