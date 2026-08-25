@@ -10,9 +10,11 @@ $releasesRoot = Join-Path $buildRoot "releases"
 $publishRoot = Join-Path $releasesRoot ".browser-publish"
 $siteRoot = Join-Path $releasesRoot "browser"
 $archivePath = Join-Path $releasesRoot "MinimalBastion-Browser.zip"
+$statePath = Join-Path $releasesRoot ".browser-build-state.json"
 $projectPath = Join-Path $repository "src\MinimalBastion.Web\MinimalBastion.Web.csproj"
 $localDotnet = Join-Path $repository ".dotnet\dotnet.exe"
 $dotnet = if (Test-Path -LiteralPath $localDotnet) { $localDotnet } else { (Get-Command dotnet).Source }
+. (Join-Path $PSScriptRoot "browser-build-state.ps1")
 
 New-Item -ItemType Directory -Path $releasesRoot -Force | Out-Null
 foreach ($target in @($publishRoot, $siteRoot)) {
@@ -70,6 +72,12 @@ finally {
     $archiveCheck.Dispose()
 }
 Remove-Item -LiteralPath $publishRoot -Recurse -Force
+
+@{
+    Configuration = $Configuration
+    Fingerprint = Get-BrowserBuildFingerprint -Repository $repository
+    CreatedUtc = [DateTime]::UtcNow.ToString("O")
+} | ConvertTo-Json | Set-Content -LiteralPath $statePath -Encoding UTF8
 
 Write-Host "Browser site: $siteRoot"
 Write-Host "Upload archive: $archivePath"

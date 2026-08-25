@@ -1,16 +1,23 @@
 param(
     [ValidateRange(1024, 65535)]
     [int]$Port = 5080,
-    [switch]$Publish
+    [switch]$Publish,
+    [switch]$Rebuild
 )
 
 $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
 $siteRoot = Join-Path $repository ".build\releases\browser"
+$statePath = Join-Path $repository ".build\releases\.browser-build-state.json"
 $projectPath = Join-Path $repository "src\MinimalBastion.Web\MinimalBastion.Web.csproj"
 $localDotnet = Join-Path $repository ".dotnet\dotnet.exe"
 $dotnet = if (Test-Path -LiteralPath $localDotnet) { $localDotnet } else { (Get-Command dotnet).Source }
 $address = "http://127.0.0.1:$Port/"
+. (Join-Path $PSScriptRoot "browser-build-state.ps1")
+
+if ($Rebuild -and -not $Publish) {
+    throw "-Rebuild requires -Publish."
+}
 
 if (-not $Publish) {
     $dotnetDirectory = Split-Path -Parent $dotnet
@@ -30,8 +37,19 @@ if (-not $Publish) {
     exit 0
 }
 
-& (Join-Path $PSScriptRoot "publish-browser.ps1") -Configuration Release
-if ($LASTEXITCODE -ne 0) { throw "Browser publish failed with exit code $LASTEXITCODE." }
+$releaseCurrent = Test-BrowserReleaseCurrent `
+    -Repository $repository `
+    -SiteRoot $siteRoot `
+    -StatePath $statePath `
+    -Configuration Release
+if ($Rebuild -or -not $releaseCurrent) {
+    Write-Host "Building the optimized browser release. WebAssembly AOT compilation can take several minutes."
+    & (Join-Path $PSScriptRoot "publish-browser.ps1") -Configuration Release
+    if ($LASTEXITCODE -ne 0) { throw "Browser publish failed with exit code $LASTEXITCODE." }
+}
+else {
+    Write-Host "The optimized browser release is current; reusing the existing build."
+}
 
 $python = Get-Command python -ErrorAction SilentlyContinue
 if ($null -eq $python) { $python = Get-Command py -ErrorAction SilentlyContinue }

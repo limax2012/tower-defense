@@ -62,13 +62,13 @@ powershell -ExecutionPolicy Bypass -File scripts\serve-browser.ps1
 
 Open `http://127.0.0.1:5080/`. This command uses a non-AOT Debug build for quick local iteration. The browser build must be served over HTTP or HTTPS; opening `index.html` directly from the filesystem is not supported by WebAssembly asset loading.
 
-To rebuild and test the optimized AOT release locally, run:
+To test the optimized AOT release locally, run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\serve-browser.ps1 -Publish
 ```
 
-Release publishing performs WebAssembly ahead-of-time compilation and can take several minutes. Use the command without `-Publish` during normal development.
+The command reuses the optimized release while its source files are unchanged and rebuilds it when necessary. Add `-Rebuild` to force a fresh package. Release publishing performs WebAssembly ahead-of-time compilation and can take several minutes. Use the command without `-Publish` during normal development.
 
 Create a static browser package with:
 
