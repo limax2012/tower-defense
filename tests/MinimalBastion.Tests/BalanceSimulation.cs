@@ -17,7 +17,8 @@ internal static class BalanceSimulation
     {
         Console.WriteLine("BALANCE BENCHMARK (deterministic, current data)");
         var totalEnemies = content.Waves.Waves.SelectMany(x => x.Groups).Sum(x => x.Count);
-        var totalKillRewards = content.Waves.Waves.SelectMany(x => x.Groups).Sum(x => x.Count * content.Enemies[x.EnemyId].Reward);
+        var totalKillRewards = content.Waves.Waves.Sum(wave => wave.Groups.Sum(group =>
+            group.Count * MinimalBastion.Economy.Economy.CalculateKillReward(content.Enemies[group.EnemyId].Reward, wave.Number)));
         var totalWaveRewards = content.Waves.Waves.Sum(x => 40 + 10 * x.Number);
         Console.WriteLine($"Wave economy: {totalEnemies} enemies, {totalKillRewards} kill credits, {totalWaveRewards} wave credits, up to {content.Waves.Waves.Count * GameConstants.EarlyStartBonus} early-start credits, {GameConstants.StartingCredits} starting credits.");
         Console.WriteLine("Tower                 Cost  Raw L1  Single L1  Dense L1  Raw L3  Upgrade DPS/currency");

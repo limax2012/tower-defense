@@ -2225,7 +2225,9 @@ public sealed class UIManager
                 DrawFittedText(batch,
                     $"{threatState} | {intel.ScalingSummary(session.Difficulty.EnemyHealthMultiplier, session.Difficulty.EnemySpeedMultiplier)}",
                     new Vector2(HudThreatBounds.X, 8), ColorPalette.Gold, 0.56f, HudThreatBounds.Width);
-                DrawFittedText(batch, $"{intel.ApproximateCount}  {intel.CompactThreats}",
+                var bountyMultiplier = MinimalBastion.Economy.Economy.CalculateKillRewardMultiplier(previewWave.Number);
+                var bountySuffix = bountyMultiplier < 0.995f ? $"  |  BOUNTY {bountyMultiplier:P0}" : "";
+                DrawFittedText(batch, $"{intel.ApproximateCount}  {intel.CompactThreats}{bountySuffix}",
                     new Vector2(HudThreatBounds.X, 27), ColorPalette.Paper, 0.68f, HudThreatBounds.Width);
             }
         }

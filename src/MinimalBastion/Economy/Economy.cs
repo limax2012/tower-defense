@@ -41,12 +41,29 @@ public sealed class Economy
     }
 
     public void AddCredits(int amount) => Credits = SaturatingAdd(Credits, amount);
-    public void AwardKill(int reward)
+    public void AwardKill(int reward) => AwardKill(reward, 1);
+
+    public void AwardKill(int reward, int waveNumber)
     {
         TotalKills = SaturatingAdd(TotalKills, 1);
-        var amount = Math.Max(0, reward);
+        var amount = CalculateKillReward(reward, waveNumber);
         KillCreditsEarned = SaturatingAdd(KillCreditsEarned, amount);
         AddCredits(amount);
+    }
+
+    public static float CalculateKillRewardMultiplier(int waveNumber)
+    {
+        var wavesPastOpening = Math.Max(0, waveNumber - GameConstants.FullKillRewardThroughWave);
+        return Math.Max(GameConstants.MinimumKillRewardMultiplier,
+            1f / (1f + GameConstants.KillRewardTaperPerWave * wavesPastOpening));
+    }
+
+    public static int CalculateKillReward(int reward, int waveNumber)
+    {
+        if (reward <= 0) return 0;
+        return Math.Max(1, (int)Math.Round(
+            reward * CalculateKillRewardMultiplier(waveNumber),
+            MidpointRounding.AwayFromZero));
     }
 
     public void AwardWave(int waveNumber)

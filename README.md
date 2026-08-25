@@ -76,7 +76,7 @@ Create a static browser package with:
 powershell -ExecutionPolicy Bypass -File scripts\publish-browser.ps1
 ```
 
-The script writes the static site to `.build\releases\browser` and creates `.build\releases\MinimalBastion-Browser.zip`. The archive has `index.html` at its root and can be uploaded as an HTML game to a static host such as itch.io. Browser saves, discoveries, records, and settings are retained by the site origin and are separate from the Windows files under `%LocalAppData%`.
+The script writes the static site to `.build\releases\browser` and creates `.build\releases\MinimalBastion-Browser.zip`. The archive has `index.html` at its root and can be uploaded as an HTML game to a static host such as itch.io. Browser saves, discoveries, records, and settings are retained in browser storage for the site origin and are separate from the Windows files under `%LocalAppData%`. They persist across ordinary browser sessions, but do not transfer between browsers, devices, or different host origins and are removed when that site's stored data is cleared.
 
 Build both release packages with:
 

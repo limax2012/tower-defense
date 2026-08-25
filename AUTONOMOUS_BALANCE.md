@@ -90,53 +90,53 @@ Support/control attribution is deliberately separate from direct damage. Signal 
 
 ## Current measured baselines
 
-The latest broad reports under `.build\balance` were generated on 2026-08-22 with current four-map authored campaign content.
+The latest broad reports under `.build\balance` were generated on 2026-08-25 with the current four-map authored campaign content, late-wave bounty curve, and independent Frost/Arc damage rules.
 
 ### Standard, all difficulties
 
-`full-matrix-final-2026-08-22.json` contains 4,160 runs: 13 policies × 4 arenas × 4 difficulties × 20 seeds.
+`post-bounty-standard-4160.json` contains 4,160 runs: 13 policies × 4 arenas × 4 difficulties × 20 seeds.
 
 | Difficulty | Wins | Runs | Completion | Average wave |
 | --- | ---: | ---: | ---: | ---: |
-| Easy | 738 | 1,040 | 71.0% | 18.6 |
-| Medium | 605 | 1,040 | 58.2% | 17.7 |
-| Hard | 411 | 1,040 | 39.5% | 16.2 |
-| Bastion | 173 | 1,040 | 16.6% | 13.6 |
+| Easy | 844 | 1,040 | 81.2% | 19.2 |
+| Medium | 729 | 1,040 | 70.1% | 18.7 |
+| Hard | 486 | 1,040 | 46.7% | 17.1 |
+| Bastion | 164 | 1,040 | 15.8% | 14.3 |
 
-Aggregate Standard completion by arena was 48.4% Foundry, 48.5% Crosswind, 48.4% Prism, and 40.1% Surge. The complete matrix was 1,927 wins from 4,160 runs (46.3%).
+Aggregate Standard completion by arena was 55.4% Foundry, 51.2% Crosswind, 59.1% Prism, and 48.1% Surge. The complete matrix was 2,223 wins from 4,160 runs (53.4%). Successful runs held an average 1,501-credit reserve and an 800-credit median reserve.
 
 ### Signal Gauntlet, all difficulties
 
-`gauntlet-matrix-final-2026-08-22.json` contains 1,040 runs.
+`post-bounty-gauntlet-all.json` contains 1,040 runs.
 
 | Difficulty | Completion |
 | --- | ---: |
-| Easy | 71.2% |
-| Medium | 50.8% |
-| Hard | 27.3% |
-| Bastion | 7.7% |
+| Easy | 75.4% |
+| Medium | 48.8% |
+| Hard | 24.2% |
+| Bastion | 3.1% |
 
-Aggregate Gauntlet completion by arena was 43.1% Foundry, 43.1% Crosswind, 39.6% Prism, and 31.2% Surge. Overall completion was 39.2% with average depth 16.0.
+Aggregate Gauntlet completion by arena was 38.1% Foundry, 37.7% Crosswind, 43.1% Prism, and 32.7% Surge. Overall completion was 37.9% with average depth 16.3.
 
 ### Focused 20-seed controls
 
-Focused current-content matrices produced:
+The current 1,040-run Hard directive sweep produced:
 
-| Profile | Completion | Average wave |
+| Directive | Completion | Average wave |
 | --- | ---: | ---: |
-| Standard Hard | 56.9% | 17.5 |
-| Signal Gauntlet Hard | 23.1% | 14.8 |
-| Standard Bastion | 27.3% | 14.9 |
-| Signal Gauntlet Bastion | 4.8% | 12.1 |
+| Standard | 46.2% | 17.3 |
+| Signal Gauntlet | 24.2% | 15.9 |
+| Core Six | 23.8% | 15.1 |
+| Entrenched | 30.8% | 15.2 |
 
 Differences from the broad matrix are expected because focused reports use a different seed/profile slice. Comparisons should use matched report settings, not mix percentages across files.
 
 ### Mastery pressure
 
-Current 20-seed-per-arena Synergy-policy controls show:
+Current five-seed, all-policy Standard controls show:
 
-- Bastion Standard: 2 of 80 runs reached wave 30 (2.5%), average depth 19.3.
-- Bastion Entrenched: 0 of 80 reached wave 30; deepest wave 29, average depth 14.3.
+- Hard: 121 of 260 runs cleared the campaign and 9 reached wave 30 (3.5% of all runs).
+- Bastion: 43 of 260 runs cleared the campaign and 1 reached wave 30 (0.4% of all runs).
 
 Mastery is intentionally much harder than securing the 20-wave campaign. These small strategy-specific samples do not establish a human clear target by themselves.
 

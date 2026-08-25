@@ -22,6 +22,9 @@ public static class GameConstants
     public const int StartingCredits = 400;
     public const float IntermissionSeconds = 10f;
     public const int EarlyStartBonus = 20;
+    public const int FullKillRewardThroughWave = 10;
+    public const float KillRewardTaperPerWave = 0.025f;
+    public const float MinimumKillRewardMultiplier = 0.40f;
     public const float OverdriveDurationSeconds = 5f;
     public const float OverdriveCooldownSeconds = 18f;
     public const float OverdriveAttackSpeedBonus = 0.75f;

@@ -327,7 +327,7 @@ public static class TowerInfo
         {
             var maximumDps = (level.Damage + level.ChainCount * level.ChainDamage) * level.AttacksPerSecond;
             lines.Add($"CHAINS  {level.ChainCount}    DAMAGE  {level.ChainDamage:0.#}    REACH  {level.ChainRange:0}");
-            lines.Add($"MAX CHAIN DPS  {maximumDps:0.#}    SLOW BONUS UP TO +{ChainBehavior.MaximumConductiveBonus:P0}");
+            lines.Add($"MAX CHAIN DPS  {maximumDps:0.#}");
         }
         if (level.ArmorPierce > 0) lines.Add($"ARMOR PIERCE  {level.ArmorPierce:0.#}");
         if (level.ArmorReduction > 0) lines.Add($"ARMOR BREAK  {level.ArmorReduction:0.#} FOR {level.ArmorReductionDuration:0.#}s");
@@ -369,7 +369,7 @@ public static class TowerInfo
                 : level.ArmorReduction > 0
                     ? $"Pierce {level.ArmorPierce:0}; break {level.ArmorReduction:0} for {level.ArmorReductionDuration:0.#}s"
                     : $"Armor pierce {level.ArmorPierce:0}",
-            "chain" => $"{level.ChainCount} arcs at {level.ChainDamage:0.#}; reach {level.ChainRange:0}; slow bonus up to +{ChainBehavior.MaximumConductiveBonus:P0}",
+            "chain" => $"{level.ChainCount} arcs at {level.ChainDamage:0.#}; reach {level.ChainRange:0}",
             "splash_projectile" => level.SplashTargetLimit > 0
                 ? $"Predictive impact; area {level.SplashRadius:0}; {level.SplashTargetLimit} targets max"
                 : $"Predictive impact; area {level.SplashRadius:0}",
@@ -397,7 +397,7 @@ public static class TowerInfo
         "slow_projectile" => "Strength: slows and chips clustered enemies",
         "burn_projectile" => "Strength: persistent damage and armor setup",
         "armor_projectile" => "Strength: armored enemies",
-        "chain" => "Strength: dense groups; Frost synergy",
+        "chain" => "Strength: dense groups and connected targets",
         "splash_projectile" => "Strength: tightly packed swarms",
         "beam" => "Strength: focused pressure on durable targets",
         "aura" => "Strength: multiplies clustered towers",

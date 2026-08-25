@@ -14,12 +14,12 @@ The latest 4,160-run Standard matrix reports:
 
 | Difficulty | Completion |
 | --- | ---: |
-| Easy | 71.0% |
-| Medium | 58.2% |
-| Hard | 39.5% |
-| Bastion | 16.6% |
+| Easy | 81.2% |
+| Medium | 70.1% |
+| Hard | 46.7% |
+| Bastion | 15.8% |
 
-The latest Signal Gauntlet matrix reports 71.2%, 50.8%, 27.3%, and 7.7% at the same four difficulty levels. See [AUTONOMOUS_BALANCE.md](AUTONOMOUS_BALANCE.md) for sample sizes, map splits, focused controls, and interpretation limits.
+The latest Signal Gauntlet matrix reports 75.4%, 48.8%, 24.2%, and 3.1% at the same four difficulty levels. See [AUTONOMOUS_BALANCE.md](AUTONOMOUS_BALANCE.md) for sample sizes, map splits, focused controls, and interpretation limits.
 
 ## Arena assessment
 
@@ -33,7 +33,7 @@ The latest Signal Gauntlet matrix reports 71.2%, 50.8%, 27.3%, and 7.7% at the s
 The roster currently supports several viable cores:
 
 - Needle/Shard/Ember provide economical local damage and early coverage.
-- Frost/Arc converts grouped lanes into control and chain efficiency.
+- Frost controls grouped lanes while Arc converts connected groups into chain damage and stuns. Their shared value comes from extra time on target; Arc has no hidden damage multiplier against slowed enemies.
 - Breaker/Prism addresses armor, shields, durable elites, and damage amplification.
 - Watchtower/Mortar converts distant or awkward build space into useful coverage.
 - Signal Beacon rewards dense, deliberately planned clusters.
@@ -44,7 +44,9 @@ Mortar damage is bounded by per-impact target caps and predictive delivery. This
 
 ## Economy and late progression
 
-Campaign openings remain the tightest economic phase. By wave 20, a strong defense can hold a large reserve; this is intentional preparation room for Mastery rather than a reason to inflate all prices by wave. Tower and upgrade prices remain mechanically consistent.
+Campaign openings remain the tightest economic phase. Kill bounties retain full value through wave 10, then taper smoothly to about 80% at wave 20, 67% at wave 30, and 50% at wave 50, with a 40% deep-Endless floor. Wave-clear and early-call rewards are unchanged. This restrains reserve snowball without changing opening builds or making tower and upgrade prices depend on time.
+
+In the current Standard matrix, successful runs finish with an average reserve of about 1,500 credits and a median of 800. That leaves meaningful Mastery preparation room without requiring repetitive tower placement simply to spend a large backlog.
 
 Mastery adds authored pressure and Apex spending. Endless health accelerates while count, cadence, speed, and delay are capped for performance/readability. Pulse Plate direct-buy escalation and a 16-plate field cap permit emergency delaying without creating a permanent infinite-control strategy.
 

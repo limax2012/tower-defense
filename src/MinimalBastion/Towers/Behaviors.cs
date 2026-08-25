@@ -141,14 +141,12 @@ public sealed class ArmorProjectileBehavior : ITowerBehavior
 
 public sealed class ChainBehavior : ITowerBehavior
 {
-    public const float MaximumConductiveBonus = 0.30f;
-
     public void Attack(TowerInstanceContext context)
     {
         var level = context.Tower.Level;
         var primaryStatus = BehaviorHelpers.Status(context, StatusType.Stun, level.StunDuration, 1f);
         context.Session.DamageResolver.Apply(context.Target, BehaviorHelpers.Payload(context, level,
-            level.Damage * ConductiveMultiplier(context.Target), primaryStatus));
+            level.Damage, primaryStatus));
         context.Session.Effects.AddBeam(context.Tower.Position, context.Target.Position, context.Tower.Definition.Visual.PrimaryColor, 0.14f);
 
         var excluded = new HashSet<int> { context.Target.Id };
@@ -157,18 +155,12 @@ public sealed class ChainBehavior : ITowerBehavior
         {
             excluded.Add(enemy.Id);
             context.Session.DamageResolver.Apply(enemy, BehaviorHelpers.Payload(context, level,
-                level.ChainDamage * ConductiveMultiplier(enemy)));
+                level.ChainDamage));
             context.Session.Effects.AddBeam(previous, enemy.Position, context.Tower.Definition.Visual.AccentColor, 0.12f);
             previous = enemy.Position;
         }
         context.Session.Effects.AddFlash(previous, context.Tower.Definition.Visual.PrimaryColor, 0.18f, 28);
     }
-
-    public static float ConductiveBonus(float slowFactor) =>
-        Math.Clamp(slowFactor, 0f, MaximumConductiveBonus);
-
-    private static float ConductiveMultiplier(EnemyInstance enemy) =>
-        1f + ConductiveBonus(enemy.StatusEffects.SlowFactor);
 }
 
 public sealed class SplashProjectileBehavior : ITowerBehavior

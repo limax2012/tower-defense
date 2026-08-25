@@ -1551,6 +1551,13 @@ internal static class Program
         economy.AwardKill(8);
         economy.AwardWave(1);
         Check.Equal(268, economy.Credits, "rewards");
+        Check.Nearly(1f, EconomyService.CalculateKillRewardMultiplier(10), "opening kill rewards stay at full value");
+        Check.Nearly(0.8f, EconomyService.CalculateKillRewardMultiplier(20), "campaign kill rewards taper smoothly");
+        Check.Nearly(2f / 3f, EconomyService.CalculateKillRewardMultiplier(30), "Mastery kill rewards taper smoothly");
+        Check.Nearly(0.4f, EconomyService.CalculateKillRewardMultiplier(100), "deep Endless kill reward floor");
+        Check.Equal(8, EconomyService.CalculateKillReward(8, 10), "opening crawler reward");
+        Check.Equal(6, EconomyService.CalculateKillReward(8, 20), "campaign crawler reward");
+        Check.Equal(1, EconomyService.CalculateKillReward(1, 100), "positive rewards retain a one-credit floor");
         economy.LoseLives(3);
         Check.Equal(17, economy.Lives, "lives");
         Check.Equal(1, economy.EscapedEnemies, "escape count");
@@ -3846,15 +3853,11 @@ internal static class Program
         var behavior = TowerBehaviorRegistry.Create("chain");
         behavior.Attack(new TowerInstanceContext { Tower = tower, Target = first, Session = session });
 
-        Check.Nearly(0, ChainBehavior.ConductiveBonus(0), "chain has no bonus without slow");
-        Check.Nearly(0.15f, ChainBehavior.ConductiveBonus(0.15f), "chain bonus scales with weak slow");
-        Check.Nearly(0.30f, ChainBehavior.ConductiveBonus(0.30f), "chain bonus reaches cap");
-        Check.Nearly(0.30f, ChainBehavior.ConductiveBonus(0.62f), "chain bonus is capped");
         Check.Nearly(80, first.Health, "chain primary damage");
         Check.Nearly(90, second.Health, "chain first hop");
-        Check.Nearly(87f, third.Health, "chain slowed-target synergy");
+        Check.Nearly(90f, third.Health, "chain damage is independent of slow status");
         Check.Nearly(100, outOfRange.Health, "chain range limit");
-        Check.Nearly(43f, 400 - first.Health - second.Health - third.Health - outOfRange.Health, "chain damage is bounded");
+        Check.Nearly(40f, 400 - first.Health - second.Health - third.Health - outOfRange.Health, "chain damage is bounded");
         Check.Equal(3, session.Effects.Effects.Count(x => x.Kind == EffectKind.Beam), "primary plus two chain beams");
     }
 
@@ -4535,8 +4538,8 @@ internal static class Program
         Check.True(TowerInfo.LibraryStatLines(content.Towers["arc_relay"], content.Towers["arc_relay"].Levels[1])
             .Any(line => line.Contains("MAX CHAIN DPS", StringComparison.Ordinal)), "library exposes maximum chain output");
         Check.True(TowerInfo.LibraryStatLines(content.Towers["arc_relay"], content.Towers["arc_relay"].Levels[1])
-            .Any(line => line.Contains("SLOW BONUS UP TO +30%", StringComparison.Ordinal)),
-            "library explains the bounded proportional Arc and Slow synergy");
+            .All(line => !line.Contains("SLOW BONUS", StringComparison.Ordinal)),
+            "library does not imply a hidden Arc and Slow damage multiplier");
         Check.True(TowerInfo.LibraryStatLines(content.Towers["signal_beacon"], content.Towers["signal_beacon"].Levels[0])
             .Any(line => line.Contains("ATTACK RATE", StringComparison.Ordinal)), "library exposes support aura strength");
     }

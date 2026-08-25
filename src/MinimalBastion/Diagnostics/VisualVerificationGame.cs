@@ -470,7 +470,7 @@ public sealed class VisualVerificationGame : Game
 
         var crosswindWinningSample = CaptureSimulationLayout(content, ui,
             "05f-crosswind-hard-standard-win.png", "crosswind_basin", "hard", "standard",
-            AutoPlayerStrategy.Conservative, 1337, true, assertions);
+            AutoPlayerStrategy.UpgradeFocused, 1337, true, assertions);
         var crosswindLosingSample = CaptureSimulationLayout(content, ui,
             "05g-crosswind-hard-standard-loss.png", "crosswind_basin", "hard", "standard",
             AutoPlayerStrategy.Economy, 1337, false, assertions);
@@ -479,7 +479,7 @@ public sealed class VisualVerificationGame : Game
 
         var surgeWinningSample = CaptureSimulationLayout(content, ui,
             "05h-surge-bastion-entrenched-win.png", "relay_divide", "bastion", "no_reserves",
-            AutoPlayerStrategy.Control, 9256, true, assertions);
+            AutoPlayerStrategy.Control, 40932, true, assertions);
         var surgeLosingSample = CaptureSimulationLayout(content, ui,
             "05i-surge-bastion-entrenched-loss.png", "relay_divide", "bastion", "no_reserves",
             AutoPlayerStrategy.Control, 1337, false, assertions);
