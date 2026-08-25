@@ -2048,10 +2048,9 @@ public sealed class UIManager
             DrawGameSetup(batch, p);
             return;
         }
-        if (state == GameState.LoadingDefense)
+        if (state == GameState.LoadingTransition)
         {
-            DrawGameSetup(batch, p);
-            DrawDefenseLoading(batch, p);
+            DrawLoadingTransition(batch, p);
             return;
         }
         if (state == GameState.TowerLibrary)
@@ -3136,32 +3135,40 @@ public sealed class UIManager
         DrawButton(batch, p, _setupBackButton, "BACK", true, ColorPalette.Violet);
     }
 
-    private float _defenseLoadingProgress;
-    private string _defenseLoadingStatus = "PREPARING SELECTED ARENA";
+    private string _loadingTransitionTitle = "LOADING DEFENSE SYSTEMS";
+    private string _loadingTransitionStatus = "PREPARING SELECTED ARENA";
+    public string LoadingTransitionTitle => _loadingTransitionTitle;
 
-    public void SetDefenseLoading(float progress, string status)
+    public void BeginLoadingTransition(string title, string status)
     {
-        _defenseLoadingProgress = MathHelper.Clamp(progress, 0, 1);
-        _defenseLoadingStatus = status;
+        _loadingTransitionTitle = title;
+        _loadingTransitionStatus = status;
     }
 
-    private void DrawDefenseLoading(SpriteBatch batch, PrimitiveRenderer p)
+    public void SetLoadingTransitionStatus(string status) => _loadingTransitionStatus = status;
+
+    private void DrawLoadingTransition(SpriteBatch batch, PrimitiveRenderer p)
     {
         p.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight),
-            ColorPalette.WithAlpha(ColorPalette.Navy, 214));
+            ColorPalette.Navy);
         var panel = new Rectangle(300, 252, 680, 218);
         p.FillRect(batch, panel, ColorPalette.Navy);
         p.DrawRect(batch, panel, ColorPalette.Cyan, 3);
-        DrawText(batch, "LOADING DEFENSE SYSTEMS", new Vector2(640, 304), ColorPalette.Paper, 1.35f, true);
-        DrawText(batch, _defenseLoadingStatus, new Vector2(640, 346), ColorPalette.Disabled, 0.58f, true);
+        DrawFittedCenteredText(batch, _loadingTransitionTitle, new Vector2(640, 304), ColorPalette.Paper, 1.35f, 620);
+        DrawText(batch, _loadingTransitionStatus, new Vector2(640, 346), ColorPalette.Disabled, 0.58f, true);
 
-        var track = new Rectangle(354, 382, 572, 18);
-        p.FillRect(batch, track, ColorPalette.MapBoundary);
-        p.FillRect(batch, new Rectangle(track.X, track.Y,
-            Math.Max(4, (int)MathF.Round(track.Width * _defenseLoadingProgress)), track.Height), ColorPalette.Green);
-        p.DrawRect(batch, track, ColorPalette.Paper, 2);
-        DrawText(batch, $"{MathF.Round(_defenseLoadingProgress * 100):0}%", new Vector2(640, 430),
-            ColorPalette.Gold, 0.72f, true);
+        const int indicatorSize = 14;
+        const int indicatorGap = 13;
+        var indicatorStartX = 640 - (indicatorSize * 3 + indicatorGap * 2) / 2;
+        for (var index = 0; index < 3; index++)
+        {
+            var wave = (MathF.Sin(_visualTimeSeconds * 5.4f - index * 1.35f) + 1f) * 0.5f;
+            var alpha = (byte)MathHelper.Lerp(70, 255, wave);
+            p.FillRect(batch,
+                new Rectangle(indicatorStartX + index * (indicatorSize + indicatorGap), 390, indicatorSize, indicatorSize),
+                ColorPalette.WithAlpha(ColorPalette.Green, alpha));
+        }
+        DrawText(batch, "LOADING", new Vector2(640, 433), ColorPalette.Gold, 0.68f, true);
     }
 
     private void DrawSetupRowLabel(SpriteBatch batch, PrimitiveRenderer p, string label, int y, Color color)

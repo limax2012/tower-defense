@@ -89,7 +89,7 @@ window.minimalBastion = (() => {
         try {
             if (!initialTickComplete) {
                 runtimeStage = "game initialization";
-                window.minimalBastionLoading?.update(0.82, "INITIALIZING GRAPHICS AND GAME DATA");
+                window.minimalBastionLoading?.update("INITIALIZING GRAPHICS AND GAME DATA");
             }
             instance.invokeMethod("Tick");
             if (!initialTickComplete) {
@@ -250,7 +250,7 @@ window.minimalBastion = (() => {
             running = true;
             initialTickComplete = false;
             runtimeStage = "first game frame";
-            window.minimalBastionLoading?.update(0.76, "STARTING GRAPHICS PIPELINE");
+            window.minimalBastionLoading?.update("STARTING GRAPHICS PIPELINE");
             sampleStartedAt = performance.now();
             previousFrameAt = 0;
             pendingFrameTime = 0;

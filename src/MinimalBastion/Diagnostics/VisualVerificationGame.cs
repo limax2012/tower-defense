@@ -121,8 +121,8 @@ public sealed class VisualVerificationGame : Game
         Require(ui.HandleGameSetup(Pointer(560, 609, leftPressed: true)) == UiAction.HostCoOp,
             "Host setup confirmation starts hosting.", assertions);
         scenes.Add(Capture("02-online-host-setup.png", ui, GameState.GameSetup, null));
-        ui.SetDefenseLoading(0.78f, "RENDERING DEFENSE GRID");
-        scenes.Add(Capture("02a-defense-loading.png", ui, GameState.LoadingDefense, null));
+        ui.BeginLoadingTransition("LOADING DEFENSE SYSTEMS", "RENDERING DEFENSE GRID");
+        scenes.Add(Capture("02a-defense-loading.png", ui, GameState.LoadingTransition, null));
 
         var defaultEndpoint = OnlineHostEndpoint.Parse("203.0.113.10", DefaultCoOpPort);
         var customEndpoint = OnlineHostEndpoint.Parse("friend.example:30123", DefaultCoOpPort);

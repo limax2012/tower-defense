@@ -81,7 +81,9 @@ public sealed class Game1 : Game
     private string? _pendingDefenseMapId;
     private string? _pendingDefenseDifficultyId;
     private string? _pendingDefenseChallengeId;
-    private int _defenseLoadingPhase;
+    private int? _pendingDefenseSaveSlot;
+    private bool _pendingMainMenuTransition;
+    private int _loadingTransitionPhase;
 
     public Game1()
     {
@@ -216,8 +218,8 @@ public sealed class Game1 : Game
             case GameState.GameSetup:
                 HandleMenuAction(WithUiAudio(_ui.HandleGameSetup(input)));
                 break;
-            case GameState.LoadingDefense:
-                AdvanceDefenseLoading();
+            case GameState.LoadingTransition:
+                AdvanceLoadingTransition();
                 break;
             case GameState.TowerLibrary:
                 HandleMenuAction(WithUiAudio(_ui.HandleTitleTowerLibrary(input)));
@@ -326,8 +328,7 @@ public sealed class Game1 : Game
         }
         if (_networkRunner is not null && action == UiAction.MainMenu)
         {
-            CleanupNetwork();
-            _state = GameState.MainMenu;
+            BeginMainMenuTransition();
             return;
         }
 
@@ -395,7 +396,7 @@ public sealed class Game1 : Game
     private void BeginDefenseLoading(string mapId, string difficultyId, string challengeId)
     {
         PlatformServices.RuntimeStageSetter?.Invoke("defense loading");
-        if (!PlatformCapabilities.StagedDefenseLoading)
+        if (!PlatformCapabilities.StagedRuntimeTransitions)
         {
             InitializeDefenseSession(mapId, difficultyId, challengeId);
             _state = GameState.Playing;
@@ -406,41 +407,154 @@ public sealed class Game1 : Game
         _pendingDefenseMapId = mapId;
         _pendingDefenseDifficultyId = difficultyId;
         _pendingDefenseChallengeId = challengeId;
-        _defenseLoadingPhase = 0;
-        _ui.SetDefenseLoading(0.12f, "PREPARING SELECTED ARENA");
-        _state = GameState.LoadingDefense;
+        _pendingDefenseSaveSlot = null;
+        _pendingMainMenuTransition = false;
+        _loadingTransitionPhase = 0;
+        BeginLoadingPresentation("LOADING DEFENSE SYSTEMS", "PREPARING SELECTED ARENA");
+        _state = GameState.LoadingTransition;
     }
 
-    private void AdvanceDefenseLoading()
+    private void AdvanceLoadingTransition()
     {
-        switch (_defenseLoadingPhase)
+        if (_pendingMainMenuTransition)
+        {
+            AdvanceMainMenuTransition();
+            return;
+        }
+        if (_pendingDefenseSaveSlot is int saveSlot)
+        {
+            AdvanceSaveSlotLoading(saveSlot);
+            return;
+        }
+
+        switch (_loadingTransitionPhase)
         {
             case 0:
-                _ui.SetDefenseLoading(0.34f, "INITIALIZING WAVE SYSTEMS");
-                _defenseLoadingPhase = 1;
+                SetLoadingPresentationStatus("INITIALIZING WAVE SYSTEMS");
+                _loadingTransitionPhase = 1;
                 return;
             case 1:
                 InitializeDefenseSession(
                     _pendingDefenseMapId ?? throw new InvalidOperationException("Defense loading has no pending map."),
                     _pendingDefenseDifficultyId ?? throw new InvalidOperationException("Defense loading has no pending difficulty."),
                     _pendingDefenseChallengeId ?? throw new InvalidOperationException("Defense loading has no pending directive."));
-                _ui.SetDefenseLoading(0.78f, "RENDERING DEFENSE GRID");
-                _defenseLoadingPhase = 2;
+                SetLoadingPresentationStatus("RENDERING DEFENSE GRID");
+                _loadingTransitionPhase = 2;
                 return;
             case 2:
-                // Keep one complete rendered frame behind the loading panel so
-                // browser graphics resources are ready before play is exposed.
-                _ui.SetDefenseLoading(0.96f, "FINALIZING TOWER WORKSHOP");
-                _defenseLoadingPhase = 3;
+                // Keep the transition visible for one complete frame after the
+                // session is initialized before exposing interactive play.
+                SetLoadingPresentationStatus("FINALIZING TOWER WORKSHOP");
+                _loadingTransitionPhase = 3;
                 return;
             default:
                 _pendingDefenseMapId = null;
                 _pendingDefenseDifficultyId = null;
                 _pendingDefenseChallengeId = null;
                 _state = GameState.Playing;
+                PlatformServices.LoadingTransitionCompleter?.Invoke();
                 PlatformServices.RuntimeStageSetter?.Invoke("gameplay");
                 return;
         }
+    }
+
+    private void BeginSaveSlotLoading(int slot)
+    {
+        PlatformServices.RuntimeStageSetter?.Invoke("save loading");
+        _pendingDefenseMapId = null;
+        _pendingDefenseDifficultyId = null;
+        _pendingDefenseChallengeId = null;
+        _pendingDefenseSaveSlot = slot;
+        _pendingMainMenuTransition = false;
+        _loadingTransitionPhase = 0;
+        BeginLoadingPresentation("LOADING SAVED DEFENSE", "PREPARING SAVE SLOT");
+        _state = GameState.LoadingTransition;
+    }
+
+    private void AdvanceSaveSlotLoading(int slot)
+    {
+        switch (_loadingTransitionPhase)
+        {
+            case 0:
+                SetLoadingPresentationStatus("READING SAVE SLOT");
+                _loadingTransitionPhase = 1;
+                return;
+            case 1:
+                if (!LoadSaveSlot(slot, hostCoOp: false, deferPlaying: true))
+                {
+                    _pendingDefenseSaveSlot = null;
+                    PlatformServices.LoadingTransitionCompleter?.Invoke();
+                    return;
+                }
+                SetLoadingPresentationStatus("RENDERING SAVED DEFENSE");
+                _loadingTransitionPhase = 2;
+                return;
+            case 2:
+                SetLoadingPresentationStatus("FINALIZING TOWER WORKSHOP");
+                _loadingTransitionPhase = 3;
+                return;
+            default:
+                _pendingDefenseSaveSlot = null;
+                _state = GameState.Playing;
+                PlatformServices.LoadingTransitionCompleter?.Invoke();
+                PlatformServices.RuntimeStageSetter?.Invoke("gameplay");
+                return;
+        }
+    }
+
+    private void BeginMainMenuTransition()
+    {
+        if (!PlatformCapabilities.StagedRuntimeTransitions)
+        {
+            CleanupNetwork();
+            _state = GameState.MainMenu;
+            PlatformServices.RuntimeStageSetter?.Invoke("main menu");
+            return;
+        }
+
+        PlatformServices.RuntimeStageSetter?.Invoke("menu loading");
+        _pendingDefenseMapId = null;
+        _pendingDefenseDifficultyId = null;
+        _pendingDefenseChallengeId = null;
+        _pendingDefenseSaveSlot = null;
+        _pendingMainMenuTransition = true;
+        _loadingTransitionPhase = 0;
+        BeginLoadingPresentation("RETURNING TO MAIN MENU", "CLOSING ACTIVE DEFENSE");
+        _state = GameState.LoadingTransition;
+    }
+
+    private void AdvanceMainMenuTransition()
+    {
+        switch (_loadingTransitionPhase)
+        {
+            case 0:
+                SetLoadingPresentationStatus("PREPARING COMMAND CENTER");
+                _loadingTransitionPhase = 1;
+                return;
+            case 1:
+                CleanupNetwork();
+                SetLoadingPresentationStatus("FINALIZING MAIN MENU");
+                _loadingTransitionPhase = 2;
+                return;
+            default:
+                _pendingMainMenuTransition = false;
+                _state = GameState.MainMenu;
+                PlatformServices.LoadingTransitionCompleter?.Invoke();
+                PlatformServices.RuntimeStageSetter?.Invoke("main menu");
+                return;
+        }
+    }
+
+    private void BeginLoadingPresentation(string title, string status)
+    {
+        _ui.BeginLoadingTransition(title, status);
+        PlatformServices.LoadingTransitionSetter?.Invoke(title, status);
+    }
+
+    private void SetLoadingPresentationStatus(string status)
+    {
+        _ui.SetLoadingTransitionStatus(status);
+        PlatformServices.LoadingTransitionSetter?.Invoke(_ui.LoadingTransitionTitle, status);
     }
 
     private void InitializeDefenseSession(string mapId, string difficultyId, string challengeId)
@@ -1098,7 +1212,7 @@ public sealed class Game1 : Game
                 _state = GameState.Settings;
                 break;
             case UiAction.Restart: Restart(); break;
-            case UiAction.MainMenu: CleanupNetwork(); _state = GameState.MainMenu; break;
+            case UiAction.MainMenu: BeginMainMenuTransition(); break;
         }
     }
 
@@ -1119,7 +1233,7 @@ public sealed class Game1 : Game
                 if (_session?.IsDefeat == true) _state = GameState.DefeatField;
                 break;
             case UiAction.Restart: Restart(); break;
-            case UiAction.MainMenu: CleanupNetwork(); _state = GameState.MainMenu; break;
+            case UiAction.MainMenu: BeginMainMenuTransition(); break;
         }
     }
 
@@ -1233,6 +1347,8 @@ public sealed class Game1 : Game
             SaveCheckpoint(false, slot);
             _state = _saveSlotReturnState;
         }
+        else if (PlatformCapabilities.StagedRuntimeTransitions)
+            BeginSaveSlotLoading(slot);
         else
             LoadSaveSlot(slot, hostCoOp: false);
     }
@@ -1413,7 +1529,7 @@ public sealed class Game1 : Game
         }
     }
 
-    private void LoadSaveSlot(int slot, bool hostCoOp)
+    private bool LoadSaveSlot(int slot, bool hostCoOp, bool deferPlaying = false)
     {
         try
         {
@@ -1422,7 +1538,7 @@ public sealed class Game1 : Game
             {
                 _ui.SetSaveState(true, $"Hosting {SaveSlotLabel(slot).ToLowerInvariant()}; waiting for player 2.");
                 BeginHostingCoOp(restored, slot);
-                return;
+                return true;
             }
 
             CleanupNetwork();
@@ -1434,12 +1550,18 @@ public sealed class Game1 : Game
             _ui.SetSaveState(true, resumedFromCoOp
                 ? $"Continued co-op {SaveSlotLabel(slot).ToLowerInvariant()} solo after wave {restored.CurrentWave}."
                 : $"Loaded solo {SaveSlotLabel(slot).ToLowerInvariant()} after wave {restored.CurrentWave}.");
-            _state = GameState.Playing;
+            if (!deferPlaying)
+            {
+                _state = GameState.Playing;
+                PlatformServices.RuntimeStageSetter?.Invoke("gameplay");
+            }
+            return true;
         }
         catch (Exception exception)
         {
             _ui.SetSaveState(SaveSlotsExistSafely(), $"Load failed: {exception.GetBaseException().Message}");
             OpenSaveSlots(_saveSlotWriteMode, _saveSlotReturnState);
+            return false;
         }
     }
 
@@ -1517,10 +1639,10 @@ public sealed class Game1 : Game
         }
 
         var presentedSession = _state == GameState.RunHistoryField ? _historyInspectionSession : _session;
-        if (presentedSession is not null && _state != GameState.MainMenu)
+        if (presentedSession is not null && _state is not (GameState.MainMenu or GameState.LoadingTransition))
         {
             _gameRenderer.Draw(_spriteBatch, _primitives, presentedSession,
-                showTransientCombat: _state is not (GameState.DefeatField or GameState.RunHistoryField or GameState.LoadingDefense),
+                showTransientCombat: _state is not (GameState.DefeatField or GameState.RunHistoryField),
                 presentationLeadSeconds: _state == GameState.Playing
                     ? _networkRunner?.PresentationLeadSeconds ?? 0
                     : 0,

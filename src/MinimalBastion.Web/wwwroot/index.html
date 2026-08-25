@@ -12,12 +12,11 @@
 <body>
     <div id="browser-loading" class="loading-screen" role="status" aria-live="polite">
         <div class="loading-mark" aria-hidden="true"></div>
-        <div class="loading-title">MINIMAL BASTION</div>
+        <div id="browser-loading-title" class="loading-title">MINIMAL BASTION</div>
         <div id="browser-loading-copy" class="loading-copy">STARTING BROWSER RUNTIME</div>
-        <div class="loading-track" aria-hidden="true">
-            <div id="browser-loading-fill" class="loading-fill"></div>
+        <div class="loading-activity" aria-hidden="true">
+            <span></span><span></span><span></span>
         </div>
-        <div id="browser-loading-percent" class="loading-percent">8%</div>
     </div>
     <div id="app"></div>
 
@@ -30,20 +29,18 @@
     <script>
         window.minimalBastionLoading = (() => {
             const overlay = document.getElementById("browser-loading");
+            const title = document.getElementById("browser-loading-title");
             const copy = document.getElementById("browser-loading-copy");
-            const fill = document.getElementById("browser-loading-fill");
-            const percent = document.getElementById("browser-loading-percent");
-            let currentProgress = 0;
             return {
-                update(progress, message) {
-                    const bounded = Math.max(currentProgress, Math.max(0, Math.min(1, progress || 0)));
-                    currentProgress = bounded;
+                begin(heading, message) {
+                    if (title) title.textContent = heading || "MINIMAL BASTION";
+                    if (copy) copy.textContent = message || "LOADING";
+                    overlay?.classList.remove("complete");
+                },
+                update(message) {
                     if (copy) copy.textContent = message || "LOADING DEFENSE SYSTEMS";
-                    if (fill) fill.style.width = `${Math.round(bounded * 100)}%`;
-                    if (percent) percent.textContent = `${Math.round(bounded * 100)}%`;
                 },
                 complete() {
-                    this.update(1, "DEFENSE SYSTEMS READY");
                     window.requestAnimationFrame(() => window.requestAnimationFrame(() => overlay?.classList.add("complete")));
                 },
                 fail() {
@@ -51,25 +48,12 @@
                 }
             };
         })();
-        minimalBastionLoading.update(0.08, "STARTING BROWSER RUNTIME");
-        let frameworkLoading = true;
-        function trackFrameworkLoading() {
-            if (!frameworkLoading) return;
-            const rawProgress = getComputedStyle(document.documentElement)
-                .getPropertyValue("--blazor-load-percentage");
-            const resourceProgress = Number.parseFloat(rawProgress);
-            if (Number.isFinite(resourceProgress))
-                minimalBastionLoading.update(0.08 + resourceProgress * 0.0062, "DOWNLOADING GAME DATA");
-            window.requestAnimationFrame(trackFrameworkLoading);
-        }
-        window.requestAnimationFrame(trackFrameworkLoading);
+        minimalBastionLoading.update("DOWNLOADING GAME DATA");
         Blazor.start()
             .then(() => {
-                frameworkLoading = false;
-                minimalBastionLoading.update(0.72, "PREPARING GAME ASSEMBLIES");
+                minimalBastionLoading.update("PREPARING GAME ASSEMBLIES");
             })
             .catch(error => {
-                frameworkLoading = false;
                 console.error("Browser startup failed", error);
                 minimalBastionLoading.fail();
             });

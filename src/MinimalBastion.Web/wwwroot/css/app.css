@@ -71,26 +71,25 @@ body {
     font-size: 13px;
 }
 
-.loading-track {
-    width: min(420px, 70vw);
-    height: 12px;
-    margin-top: 22px;
-    border: 2px solid #f4f5f8;
-    background: #152b46;
+.loading-activity {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
 }
 
-.loading-fill {
-    width: 8%;
-    height: 100%;
+.loading-activity span {
+    width: 10px;
+    height: 10px;
     background: #2ac275;
-    transition: width 180ms ease;
+    animation: loading-pulse 1.05s ease-in-out infinite;
 }
 
-.loading-percent {
-    margin-top: 9px;
-    color: #e8b637;
-    font-size: 14px;
-    letter-spacing: 0.08em;
+.loading-activity span:nth-child(2) {
+    animation-delay: 140ms;
+}
+
+.loading-activity span:nth-child(3) {
+    animation-delay: 280ms;
 }
 
 #blazor-error-ui {
@@ -117,4 +116,9 @@ body {
 
 @keyframes loading-spin {
     to { transform: rotate(405deg); }
+}
+
+@keyframes loading-pulse {
+    0%, 70%, 100% { opacity: 0.25; transform: scale(0.8); }
+    35% { opacity: 1; transform: scale(1); }
 }
