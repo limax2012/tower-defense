@@ -12,6 +12,8 @@ public sealed class AudioManager : IDisposable
     private readonly Dictionary<string, float> _towerImpactCooldowns = new(StringComparer.OrdinalIgnoreCase);
     private SoundEffect? _musicSound;
     private SoundEffectInstance? _musicInstance;
+    private readonly SoundEffect? _menuMusicSound;
+    private bool _ownsMusicSound;
     private float _killCooldown;
     private float _leakCooldown;
     private float _bossPhaseCooldown;
@@ -36,8 +38,9 @@ public sealed class AudioManager : IDisposable
         set => _musicVolume = Math.Clamp(float.IsFinite(value) ? value : 0.20f, 0, 1);
     }
 
-    public AudioManager()
+    public AudioManager(SoundEffect? menuMusicSound = null)
     {
+        _menuMusicSound = menuMusicSound;
         try
         {
             _sounds[Cue.Place] = CreateTone(280, 470, 0.10f, WaveShape.Triangle);
@@ -69,9 +72,9 @@ public sealed class AudioManager : IDisposable
         }
     }
 
-    public static AudioManager? TryCreate()
+    public static AudioManager? TryCreate(SoundEffect? menuMusicSound = null)
     {
-        try { return new AudioManager(); }
+        try { return new AudioManager(menuMusicSound); }
         catch { return null; }
     }
 
@@ -270,7 +273,16 @@ public sealed class AudioManager : IDisposable
         try
         {
             _musicThemeId = themeId;
-            _musicSound = CreateTacticalLoop(themeId);
+            if (themeId.Equals("menu", StringComparison.OrdinalIgnoreCase) && _menuMusicSound is not null)
+            {
+                _musicSound = _menuMusicSound;
+                _ownsMusicSound = false;
+            }
+            else
+            {
+                _musicSound = CreateTacticalLoop(themeId);
+                _ownsMusicSound = true;
+            }
             _musicInstance = _musicSound.CreateInstance();
             _musicInstance.IsLooped = true;
             _musicInstance.Volume = 0;
@@ -492,9 +504,10 @@ public sealed class AudioManager : IDisposable
     {
         try { _musicInstance?.Stop(); } catch { }
         _musicInstance?.Dispose();
-        _musicSound?.Dispose();
+        if (_ownsMusicSound) _musicSound?.Dispose();
         _musicInstance = null;
         _musicSound = null;
+        _ownsMusicSound = false;
     }
 
     private enum Cue

@@ -12,3 +12,9 @@
 /importer:FontDescriptionImporter
 /processor:FontDescriptionProcessor
 /build:Fonts/Interface.spritefont
+
+#begin Audio/MainMenuLoop.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/MainMenuLoop.wav

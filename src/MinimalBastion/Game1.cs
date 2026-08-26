@@ -7,6 +7,7 @@ using MinimalBastion.Persistence;
 using MinimalBastion.Rendering;
 using MinimalBastion.UI;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace MinimalBastion;
@@ -178,7 +179,10 @@ public sealed class Game1 : Game
             RefreshRunHistoryCache();
             _debug = new DebugOverlay(font);
             _gameRenderer.ReducedEffects = _settings.ReducedEffects;
-            _audio = AudioManager.TryCreate();
+            SoundEffect? menuMusic = null;
+            try { menuMusic = Content.Load<SoundEffect>("Audio/MainMenuLoop"); }
+            catch { }
+            _audio = AudioManager.TryCreate(menuMusic);
             if (_audio is not null)
             {
                 _audio.SfxVolume = _settings.SfxVolume;
