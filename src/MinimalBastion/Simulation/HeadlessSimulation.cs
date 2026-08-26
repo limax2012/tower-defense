@@ -3,6 +3,7 @@ using MinimalBastion.Enemies;
 using MinimalBastion.Core;
 using MinimalBastion.Persistence;
 using MinimalBastion.Towers;
+using Microsoft.Xna.Framework;
 
 namespace MinimalBastion.Simulation;
 
@@ -184,6 +185,17 @@ public static class HeadlessSimulation
                 EnemyKills = _enemyKills.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
                 EnemyLeaks = _enemyLeaks.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
                 Waves = _waves.ToArray(),
+                FinalTowers = session.Towers.OrderBy(tower => tower.Id).Select(tower => new SimulationTowerPlacement(
+                    tower.Id,
+                    tower.Definition.Id,
+                    tower.Position.X,
+                    tower.Position.Y,
+                    tower.LevelIndex + 1,
+                    tower.DoctrineId,
+                    tower.SpecializationId,
+                    tower.IsApex,
+                    session.Map.Definition.PowerNodes.FirstOrDefault(node =>
+                        Vector2.DistanceSquared(tower.Position, node.Position.ToVector2()) <= node.Radius * node.Radius)?.Id)).ToArray(),
                 EmergencyDeployments = _emergencyDeployments,
                 EmergencyDirectPurchases = _emergencyDirectPurchases,
                 EmergencyTriggers = _emergencyTriggers,

@@ -470,25 +470,28 @@ public sealed class VisualVerificationGame : Game
 
         var crosswindWinningSample = CaptureSimulationLayout(content, ui,
             "05f-crosswind-hard-standard-win.png", "crosswind_basin", "hard", "standard",
-            AutoPlayerStrategy.UpgradeFocused, 1337, true, assertions);
+            AutoPlayerStrategy.Experienced, 1337, true, assertions);
         var crosswindLosingSample = CaptureSimulationLayout(content, ui,
             "05g-crosswind-hard-standard-loss.png", "crosswind_basin", "hard", "standard",
-            AutoPlayerStrategy.Economy, 1337, false, assertions);
+            AutoPlayerStrategy.Experienced, 56770, false, assertions);
         scenes.Add(crosswindWinningSample.Scene);
         scenes.Add(crosswindLosingSample.Scene);
 
         var surgeWinningSample = CaptureSimulationLayout(content, ui,
-            "05h-surge-bastion-entrenched-win.png", "relay_divide", "bastion", "no_reserves",
-            AutoPlayerStrategy.Control, 40932, true, assertions);
+            "05h-surge-hard-standard-win.png", "relay_divide", "hard", "standard",
+            AutoPlayerStrategy.Experienced, 1337, true, assertions);
         var surgeLosingSample = CaptureSimulationLayout(content, ui,
-            "05i-surge-bastion-entrenched-loss.png", "relay_divide", "bastion", "no_reserves",
-            AutoPlayerStrategy.Control, 1337, false, assertions);
+            "05i-surge-hard-entrenched-loss.png", "relay_divide", "hard", "no_reserves",
+            AutoPlayerStrategy.Experienced, 1337, false, assertions);
         scenes.Add(surgeWinningSample.Scene);
         scenes.Add(surgeLosingSample.Scene);
         Require(surgeWinningSample.OpeningNodeTowers >= 6 && surgeLosingSample.OpeningNodeTowers >= 5,
             "Representative Surge bots prioritize authored Surge Nodes during their opening builds.", assertions);
         Require(surgeWinningSample.OccupiedNodes >= 8,
             "The representative winning Surge bot expands through nearly the full node network.", assertions);
+
+        Require(surgeWinningSample.OpeningNodeTowers >= 8 && surgeWinningSample.OccupiedNodes >= 8,
+            "The Experienced model densely packs useful Surge Nodes before expanding off-node.", assertions);
 
         scenes.Add(Capture("06-protocol-auto-library.png", ui, GameState.TowerLibrary, null));
         _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 7 });
@@ -681,8 +684,6 @@ public sealed class VisualVerificationGame : Game
         var apexSave = apexSeed.CaptureSaveGame();
         apexSave.Economy.Credits = 8_000;
         apexSave.Waves.CurrentWaveNumber = GameConstants.CampaignWaveCount;
-        apexSave.Waves.IsFinalWaveCleared = true;
-        apexSave.Waves.EndlessModeEnabled = true;
         var apexSession = GameSession.RestoreSaveGame(content, apexSave);
         Require(apexSession.TryPlaceTower("needle_turret", new Vector2(45, 200)) &&
                 apexSession.TryChooseTowerDoctrine(apexSession.SelectedTower!.Id, "needle_cycler") &&
@@ -701,7 +702,7 @@ public sealed class VisualVerificationGame : Game
             "Promoted Tower Intel identifies Apex in a reserved top-right header gutter.", assertions);
         scenes.Add(Capture("10g-apex-current-intel.png", ui, GameState.Playing, apexSession));
 
-        var masterySeed = new GameSession(content, "relay_divide", "bastion", "no_reserves");
+        var masterySeed = new GameSession(content, "relay_divide", "hard", "no_reserves");
         var masterySave = masterySeed.CaptureSaveGame();
         masterySave.Waves.CurrentWaveNumber = GameConstants.CampaignWaveCount;
         masterySave.Waves.IsFinalWaveCleared = true;

@@ -106,7 +106,8 @@ public sealed class GameSession
     public int NextTowerId => _nextTowerId;
     public int NextEmergencyDefenseId => _nextEmergencyDefenseId;
     public bool IsEndlessMode => Waves.EndlessModeEnabled;
-    public bool IsMasteryMode => IsEndlessMode && CurrentWave <= GameConstants.MasteryFinalWave;
+    public bool IsMasteryMode => CurrentWave >= GameConstants.ApexUnlockWave &&
+        CurrentWave <= GameConstants.MasteryFinalWave && (IsEndlessMode || TotalWaves > GameConstants.CampaignWaveCount);
     public bool CanStartWave => IsSandbox ? _sandboxActiveWave is null : Waves.CanStartNextWave;
     public float IntermissionRemaining => Waves.IntermissionRemaining;
     public int EnemiesRemaining => IsSandbox
@@ -147,7 +148,7 @@ public sealed class GameSession
             Difficulty.StartingLives,
             unlimitedCredits: IsSandbox,
             unlimitedLives: IsSandbox);
-        Waves = new WaveManager(waveSet.Waves);
+        Waves = new WaveManager(waveSet.Waves, Difficulty.CampaignWaveCount);
         DamageResolver = new DamageResolver(this);
         Statistics = new RunStatistics(this);
         _towerSystem = new TowerSystem(TargetSelector);
@@ -719,7 +720,8 @@ public sealed class GameSession
     public bool IsTowerAvailable(string towerId) =>
         !Challenge.ExcludedTowerIds.Contains(towerId, StringComparer.OrdinalIgnoreCase);
 
-    public bool ApexUpgradesUnlocked => IsSandbox || IsEndlessMode &&
+    public bool ApexUpgradesUnlocked => IsSandbox ||
+        (IsEndlessMode || TotalWaves > GameConstants.CampaignWaveCount) &&
         CurrentWave + (Waves.IsActive ? 0 : 1) >= GameConstants.ApexUnlockWave;
 
     public bool CanApexUpgrade(TowerInstance tower) => ApexUpgradesUnlocked && !tower.IsApex &&
@@ -1213,8 +1215,11 @@ public sealed class GameSession
     {
         if (!IsVictory || IsDefeat || !Waves.EnableEndlessMode()) return false;
         IsVictory = false;
-        AnnouncementTitle = "MASTERY // APEX ONLINE";
-        AnnouncementSubtitle = $"Waves {CurrentWave + 1}-{GameConstants.MasteryFinalWave} are authored. Promote final-tier towers or expand the defense.";
+        var enteringMastery = CurrentWave < GameConstants.MasteryFinalWave;
+        AnnouncementTitle = enteringMastery ? "MASTERY // APEX ONLINE" : "ENDLESS // APEX ONLINE";
+        AnnouncementSubtitle = enteringMastery
+            ? $"Waves {CurrentWave + 1}-{GameConstants.MasteryFinalWave} are authored. Promote final-tier towers or expand the defense."
+            : $"Generated Endless begins at wave {GameConstants.GeneratedEndlessStartWave}. Promote final-tier towers or expand the defense.";
         AnnouncementPositive = true;
         AnnouncementRemaining = 3.4f;
         return true;

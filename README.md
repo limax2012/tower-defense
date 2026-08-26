@@ -88,7 +88,7 @@ The browser build contains the complete solo campaign, Mastery, Endless, Sandbox
 
 ## Campaign structure
 
-Each arena contains an authored 20-wave campaign and a harder authored Mastery sequence from waves 21 through 30. Clearing wave 20 records a campaign result and offers **Enter Mastery**, which continues on the same battlefield. Mastery unlocks Apex tower promotions. Generated Endless waves begin at wave 31 using the arena's wave-30 roster as their anchor.
+Each arena contains 30 authored waves. Easy, Medium, and Hard use waves 1–20 as the campaign and offer **Enter Mastery** afterward. Bastion uses all 30 authored waves as one expert campaign. Wave 21 unlocks Apex tower promotions, and generated Endless begins at wave 31 using the arena's wave-30 roster as its anchor.
 
 | Arena | Base credits | Build areas | Surge Nodes | Campaign contacts | Mastery contacts |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -101,12 +101,12 @@ Surge Nodes grant focused attack-rate, range, damage, or armor-piercing bonuses.
 
 ### Difficulties
 
-| Difficulty | Enemy health | Enemy speed | Starting credits | Lives |
-| --- | ---: | ---: | ---: | ---: |
-| Easy | 80% | 95% | 125% | 30 |
-| Medium | 90% | 98% | 112.5% | 24 |
-| Hard | 100% | 100% | 100% | 20 |
-| Bastion | 112% | 102% | 100% | 18 |
+| Difficulty | Enemy health | Enemy speed | Starting credits | Lives | Campaign waves |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Easy | 90% | 98% | 112.5% | 24 | 20 |
+| Medium | 100% | 100% | 100% | 20 | 20 |
+| Hard | 112% | 102% | 100% | 18 | 20 |
+| Bastion | 112% | 102% | 100% | 16 | 30 |
 
 Tower statistics do not change with difficulty, wave number, map, or elapsed time.
 
@@ -114,7 +114,7 @@ Tower statistics do not change with difficulty, wave number, map, or elapsed tim
 
 - **Standard** enables the complete roster and every tactical system.
 - **Signal Gauntlet** adds 10% opening credits and introduces Accelerator, Restorer, Bulwark, Jammer, and Disruptor signal carriers from the early campaign onward. Carriers can support enemies or interfere with towers. The Support targeting mode prioritizes carriers and otherwise selects the strongest available target.
-- **Core Six** restricts the roster to Needle Turret, Frost Spire, Shard Fan, Ember Coil, Breaker Cannon, and Signal Beacon, with 30% more opening credits.
+- **Core Six** restricts the roster to Needle Turret, Frost Spire, Shard Fan, Ember Coil, Breaker Cannon, and Signal Beacon with the standard opening economy.
 - **Entrenched** disables Pulse Plates, Charge Forge, Protocols, and selling, with 10% more opening credits.
 - **Sandbox Lab** provides unlimited resources and lives for controlled tower, upgrade, Protocol, status, enemy-rank, and authored-wave experiments. Sandbox sessions do not create competitive saves or run-history records.
 
@@ -206,9 +206,10 @@ Representative headless commands:
 
 ```powershell
 dotnet run --project tests\MinimalBastion.Tests -c Release -- --balance
-dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate --strategy Adaptive --seed 1337
+dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate --strategy Experienced --seed 1337
 dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --difficulty all --runs 3
-dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --difficulty hard --challenge all --runs 3
+dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --strategy Experienced --difficulty hard --challenge all --max-wave 20 --runs 3
+dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --strategy Experienced --difficulty bastion --challenge all --max-wave 30 --runs 3
 dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --map relay_divide --max-wave 40 --runs 10
 ```
 
@@ -220,5 +221,6 @@ Reports are written under `.build\balance`. Filters include strategy, seed, run 
 - [TOWER_DEFENSE_DESIGN.md](TOWER_DEFENSE_DESIGN.md): current technical architecture and runtime invariants.
 - [AUTONOMOUS_BALANCE.md](AUTONOMOUS_BALANCE.md): simulation harness, commands, metrics, and measured baselines.
 - [BALANCE_REPORT.md](BALANCE_REPORT.md): current balance assessment and human-testing priorities.
+- [STRATEGY_GUIDE.md](STRATEGY_GUIDE.md): tower roles, upgrade use cases, targeting, map planning, and expert-agent assumptions.
 - [docs/co-op-architecture.md](docs/co-op-architecture.md): transport, authority, synchronization, reconnect, and co-op UI.
 - [docs/tower-defense-research.md](docs/tower-defense-research.md): durable design principles used by the project.

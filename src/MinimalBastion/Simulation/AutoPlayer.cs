@@ -75,6 +75,10 @@ public sealed class AutoPlayer
                 if (savingForPriority) return;
             }
 
+            if (_strategy == AutoPlayerStrategy.Experienced &&
+                TryExperiencedMilestoneUpgrade(session, threat, spendable))
+                continue;
+
             var purchase = _holdFootprint ? null : BestPurchase(session, threat, spendable);
             var upgrade = BestUpgrade(session, threat, spendable);
             var purchaseBias = combatTowerCount < DesiredTowerCount(session.CurrentWave + (duringWave ? 0 : 1))
@@ -113,6 +117,7 @@ public sealed class AutoPlayer
             AutoPlayerStrategy.LongRange => new[] { "needle_turret", "needle_turret", "watchtower" },
             AutoPlayerStrategy.Control => new[] { "needle_turret", "needle_turret", "needle_turret", "frost_spire" },
             AutoPlayerStrategy.Synergy => new[] { "needle_turret", "needle_turret", "needle_turret", "frost_spire" },
+            AutoPlayerStrategy.Experienced => new[] { "needle_turret", "needle_turret", "needle_turret" },
             AutoPlayerStrategy.Randomized => session.Content.Towers.Values.Where(x => session.IsTowerAvailable(x.Id) && !x.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) && x.PurchaseCost <= 250).OrderBy(_ => _random.Next()).Select(x => x.Id).ToArray(),
             _ => new[] { "needle_turret", "shard_fan" }
         };
@@ -134,6 +139,9 @@ public sealed class AutoPlayer
     {
         savingForPriority = false;
         var wave = Math.Max(1, session.Waves.ActiveWave?.Number ?? session.Waves.NextWave?.Number ?? session.CurrentWave + 1);
+        if (_strategy == AutoPlayerStrategy.Experienced)
+            return TryBuyExperiencedPriority(session, threat, spendable, wave, out savingForPriority);
+
         string[]? ids = null;
         var desired = 0;
 
@@ -242,6 +250,68 @@ public sealed class AutoPlayer
         return false;
     }
 
+    private bool TryBuyExperiencedPriority(GameSession session, ThreatProfile threat, int spendable, int wave,
+        out bool savingForPriority)
+    {
+        savingForPriority = false;
+        var priorities = new List<(string Id, bool Urgent)>();
+
+        void Require(string id, bool condition, bool urgent = false)
+        {
+            if (condition && session.IsTowerAvailable(id) && session.Towers.All(tower => tower.Definition.Id != id))
+                priorities.Add((id, urgent));
+        }
+
+        Require("frost_spire", wave >= 2 || threat.Fast >= 0.12f, threat.Fast >= 0.22f);
+        Require("shard_fan", wave >= 3, threat.Swarm >= 0.55f);
+        Require("breaker_cannon", wave >= 5, threat.Armored >= 0.15f || threat.HasBoss);
+        Require("arc_relay", wave >= 6, threat.Swarm >= 0.55f);
+        Require("prism_beam", wave >= 8, wave >= 9 || threat.Shielded >= 0.10f || threat.HasBoss);
+        Require("ember_coil", wave >= 8 && (threat.Durable > 0 || threat.HasElite || threat.HasBoss),
+            threat.Durable >= 0.15f);
+        Require("siege_mortar", wave >= 9 && threat.Swarm >= 0.38f, threat.Swarm >= 0.62f);
+        Require("watchtower", wave >= 10 && (threat.HasElite || threat.HasBoss || threat.Durable >= 0.12f),
+            threat.HasBoss);
+
+        foreach (var priority in priorities)
+        {
+            if (!session.Content.Towers.TryGetValue(priority.Id, out var definition)) continue;
+            if (definition.PurchaseCost <= spendable)
+            {
+                var position = FindBestPosition(session, definition, threat);
+                if (position is not null && session.TryPlaceTower(definition.Id, position.Value))
+                {
+                    ConfigureTargeting(session, session.Towers[^1], threat);
+                    return true;
+                }
+            }
+
+            // Preserve a counter reserve only when the incoming wave makes that
+            // missing role immediately important. Otherwise improve the existing grid.
+            if (priority.Urgent && session.Economy.Credits < definition.PurchaseCost)
+            {
+                savingForPriority = true;
+                return false;
+            }
+        }
+
+        var combatTowers = session.Towers.Count(tower => !tower.IsSupport);
+        var desiredBeacons = combatTowers >= 15 ? 2 : combatTowers >= 7 ? 1 : 0;
+        var beaconCount = session.Towers.Count(tower => tower.Definition.Id == "signal_beacon");
+        if (beaconCount < desiredBeacons && session.IsTowerAvailable("signal_beacon") &&
+            session.Content.Towers.TryGetValue("signal_beacon", out var beacon))
+        {
+            var position = FindBestPosition(session, beacon, threat);
+            if (position is not null && ExperiencedSupportPositionScore(session, beacon, position.Value) >= 12f)
+            {
+                if (beacon.PurchaseCost <= spendable && session.TryPlaceTower(beacon.Id, position.Value)) return true;
+                if (session.Economy.Credits < beacon.PurchaseCost) savingForPriority = true;
+            }
+        }
+
+        return false;
+    }
+
     private static bool MustSaveForPool(GameSession session, IReadOnlyList<string> ids)
     {
         var costs = ids.Where(id => session.IsTowerAvailable(id) && session.Content.Towers.ContainsKey(id)).Select(id => session.Content.Towers[id].PurchaseCost).ToArray();
@@ -284,15 +354,24 @@ public sealed class AutoPlayer
                 "signal_beacon" => 3,
                 _ => 10
             };
+            if (_strategy == AutoPlayerStrategy.Experienced)
+                copyLimit = ExperiencedCopyLimit(definition.Id,
+                    Math.Max(1, session.Waves.ActiveWave?.Number ?? session.Waves.NextWave?.Number ?? session.CurrentWave + 1));
             if (existingCopies >= copyLimit) continue;
             var position = FindBestPosition(session, definition, threat);
             if (position is null) continue;
-            var positionScore = PositionScore(session, definition, position.Value);
+            var positionScore = PlacementScore(session, definition, position.Value);
+            if (_strategy == AutoPlayerStrategy.Experienced && definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) &&
+                positionScore < 12f)
+                continue;
             var score = TowerValue(definition, 0, threat) * StrategyWeight(definition.Id, threat) / definition.PurchaseCost;
             score *= 0.65f + MathF.Min(1.4f, positionScore / 14f);
-            var repetitionPenalty = _strategy == AutoPlayerStrategy.Spam ? 0.08f : 0.35f;
+            var repetitionPenalty = _strategy == AutoPlayerStrategy.Spam ? 0.08f :
+                _strategy == AutoPlayerStrategy.Experienced ? ExperiencedRepetitionPenalty(definition.Id) : 0.35f;
             score /= 1f + existingCopies * repetitionPenalty;
-            score *= 0.96f + (float)_random.NextDouble() * 0.08f;
+            score *= _strategy == AutoPlayerStrategy.Experienced
+                ? 0.9975f + (float)_random.NextDouble() * 0.005f
+                : 0.96f + (float)_random.NextDouble() * 0.08f;
             if (_strategy == AutoPlayerStrategy.Randomized) score *= 0.55f + (float)_random.NextDouble();
             if (best is null || score > best.Value.Score) best = new PurchaseOption(definition, position.Value, score);
         }
@@ -325,6 +404,7 @@ public sealed class AutoPlayer
             AutoPlayerStrategy.Control => towerId is "needle_turret" or "frost_spire" or "ember_coil" or "arc_relay" or "breaker_cannon" or "signal_beacon",
             AutoPlayerStrategy.Synergy => towerId is "needle_turret" or "frost_spire" or "arc_relay" or "breaker_cannon" or "prism_beam" or "ember_coil" or "siege_mortar" or "watchtower" or "signal_beacon",
             AutoPlayerStrategy.Tactical => towerId is "needle_turret" or "frost_spire" or "watchtower" or "breaker_cannon" or "signal_beacon",
+            AutoPlayerStrategy.Experienced => true,
             _ => true
         };
     }
@@ -409,11 +489,112 @@ public sealed class AutoPlayer
 
         void Consider(UpgradeOption option)
         {
-            var score = option.Score * (0.98f + (float)_random.NextDouble() * 0.04f);
+            var score = option.Score * (_strategy == AutoPlayerStrategy.Experienced
+                ? 0.998f + (float)_random.NextDouble() * 0.004f
+                : 0.98f + (float)_random.NextDouble() * 0.04f);
+            if (_strategy == AutoPlayerStrategy.Experienced)
+                score *= ExperiencedUpgradeBreadth(session, option.Tower);
             if (_strategy == AutoPlayerStrategy.Randomized) score *= 0.6f + (float)_random.NextDouble();
             option = option with { Score = score };
             if (best is null || score > best.Value.Score) best = option;
         }
+    }
+
+    private bool TryExperiencedMilestoneUpgrade(GameSession session, ThreatProfile threat, int spendable)
+    {
+        var wave = Math.Max(1,
+            session.Waves.ActiveWave?.Number ?? session.Waves.NextWave?.Number ?? session.CurrentWave + 1);
+        var milestones = new (int Wave, string TowerId, int Level)[]
+        {
+            (3, "frost_spire", 1),
+            (4, "shard_fan", 1),
+            (6, "breaker_cannon", 1),
+            (7, "arc_relay", 1),
+            (8, "prism_beam", 1),
+            (9, "breaker_cannon", 2),
+            (10, "prism_beam", 2),
+            (11, "frost_spire", 2),
+            (12, "arc_relay", 2)
+        };
+
+        foreach (var milestone in milestones)
+        {
+            if (wave < milestone.Wave) continue;
+            var tower = session.Towers
+                .Where(candidate => candidate.Definition.Id == milestone.TowerId && candidate.LevelIndex < milestone.Level)
+                .OrderByDescending(candidate => PlacementScore(session, candidate.Definition, candidate.Position))
+                .ThenBy(candidate => candidate.Id)
+                .FirstOrDefault();
+            if (tower is null) continue;
+            return TryUpgradeByFit(session, tower, threat, spendable);
+        }
+
+        return false;
+    }
+
+    private bool TryUpgradeByFit(GameSession session, TowerInstance tower, ThreatProfile threat, int spendable)
+    {
+        if (tower.RequiresDoctrine)
+        {
+            var doctrine = tower.Definition.Tier2Doctrines
+                .Where(candidate => candidate.UpgradeCost <= spendable)
+                .Select(candidate => new
+                {
+                    Definition = candidate,
+                    Score = UpgradeValue(session, tower, tower.Definition.Levels[1].WithDoctrine(candidate), threat) *
+                            DoctrineWeight(candidate, threat) / Math.Max(1, candidate.UpgradeCost)
+                })
+                .OrderByDescending(candidate => candidate.Score)
+                .ThenBy(candidate => candidate.Definition.Id)
+                .FirstOrDefault();
+            return doctrine is not null && session.TryChooseTowerDoctrine(tower.Id, doctrine.Definition.Id);
+        }
+
+        if (tower.RequiresSpecialization)
+        {
+            var specialization = tower.Definition.Specializations
+                .Where(candidate => candidate.UpgradeCost <= spendable)
+                .Select(candidate => new
+                {
+                    Definition = candidate,
+                    Score = UpgradeValue(session, tower, candidate.Level.WithDoctrine(tower.Doctrine), threat) *
+                            SpecializationWeight(tower.Definition.Id, candidate.Id, threat) /
+                            Math.Max(1, candidate.UpgradeCost)
+                })
+                .OrderByDescending(candidate => candidate.Score)
+                .ThenBy(candidate => candidate.Definition.Id)
+                .FirstOrDefault();
+            return specialization is not null && session.TrySpecializeTower(tower.Id, specialization.Definition.Id);
+        }
+
+        if (tower.CanUpgrade && tower.UpgradeCost <= spendable)
+            return session.TryUpgradeTower(tower.Id);
+        return false;
+    }
+
+    private static float ExperiencedUpgradeBreadth(GameSession session, TowerInstance tower)
+    {
+        var wave = Math.Max(1,
+            session.Waves.ActiveWave?.Number ?? session.Waves.NextWave?.Number ?? session.CurrentWave + 1);
+        var peersAhead = session.Towers.Count(candidate =>
+            candidate.Definition.Id == tower.Definition.Id && candidate.LevelIndex > tower.LevelIndex);
+        var roleMaturity = session.Towers.Count(candidate =>
+            candidate.Definition.Id == tower.Definition.Id && candidate.LevelIndex >= tower.LevelIndex);
+
+        var breadth = 1f / (1f + peersAhead * 0.34f + MathF.Max(0, roleMaturity - 3) * 0.08f);
+        if (tower.Definition.Id == "needle_turret")
+        {
+            var upgradedNeedles = session.Towers.Count(candidate =>
+                candidate.Definition.Id == tower.Definition.Id && candidate.LevelIndex >= tower.LevelIndex + 1);
+            var matureCounterRoles = new[] { "frost_spire", "breaker_cannon", "arc_relay", "prism_beam" }
+                .Count(id => session.Towers.Any(candidate => candidate.Definition.Id == id && candidate.LevelIndex >= 1));
+
+            if (tower.LevelIndex == 0 && upgradedNeedles >= (wave < 10 ? 3 : 5)) breadth *= 0.18f;
+            if (tower.LevelIndex == 1 && upgradedNeedles >= (wave < 15 ? 2 : 4)) breadth *= 0.12f;
+            if (matureCounterRoles < 3 && upgradedNeedles >= 3) breadth *= 0.45f;
+        }
+        if (tower.Definition.Id is "breaker_cannon" or "prism_beam" && tower.LevelIndex < 2) breadth *= 1.18f;
+        return breadth;
     }
 
     private bool IsForcedTower(TowerInstance tower) => _forcedTowerId is not null &&
@@ -447,7 +628,7 @@ public sealed class AutoPlayer
         foreach (var position in _placementCandidates)
         {
             if (session.ValidatePlacement(definition.Id, position) != PlacementFailure.None) continue;
-            var score = PositionScore(session, definition, position);
+            var score = PlacementScore(session, definition, position);
             if (_strategy == AutoPlayerStrategy.Conservative) score *= 1f + PathProgressNear(session, position) * 0.18f;
             if (_strategy == AutoPlayerStrategy.Synergy)
             {
@@ -459,9 +640,109 @@ public sealed class AutoPlayer
             eligible.Add((position, score));
         }
         if (eligible.Count == 0) return null;
+        if (_strategy == AutoPlayerStrategy.Experienced)
+        {
+            var nearBest = eligible
+                .OrderByDescending(candidate => candidate.Score)
+                .ThenBy(candidate => candidate.Position.Y)
+                .ThenBy(candidate => candidate.Position.X)
+                .Take(3)
+                .ToArray();
+            return nearBest[_random.Next(nearBest.Length)].Position;
+        }
         var ordered = eligible.OrderByDescending(x => x.Score).Take(_strategy == AutoPlayerStrategy.Randomized ? 8 : 3).ToArray();
         return ordered[_random.Next(ordered.Length)].Position;
     }
+
+    private float PlacementScore(GameSession session, TowerDefinition definition, Vector2 position) =>
+        _strategy == AutoPlayerStrategy.Experienced
+            ? ExperiencedPositionScore(session, definition, position)
+            : PositionScore(session, definition, position);
+
+    private float ExperiencedPositionScore(GameSession session, TowerDefinition definition, Vector2 position)
+    {
+        if (definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase))
+            return ExperiencedSupportPositionScore(session, definition, position);
+
+        var score = PositionScore(session, definition, position);
+        var power = session.Map.GetPowerBuff(position);
+        if (power.IsPowered)
+        {
+            var level = definition.Levels[0];
+            var attackFit = power.AttackSpeedBonus * (level.AttacksPerSecond >= 1f ? 1.25f : 1f);
+            var rangeFit = power.RangeBonus * (level.Range <= 190 ? 1.20f : 0.75f);
+            var damageFit = power.DamageBonus * (level.Damage >= 20 ? 1.25f : 1f);
+            var pierceFit = power.ArmorPierceBonus * (level.ArmorPierce < 6 ? 0.045f : 0.025f);
+            score *= 1f + (attackFit + rangeFit + damageFit + pierceFit) * 3.15f;
+        }
+
+        var progress = PathProgressNear(session, position);
+        score *= 1f + (1f - MathF.Abs(progress - 0.58f) * 2f) * 0.035f;
+        return score;
+    }
+
+    private static float ExperiencedSupportPositionScore(GameSession session, TowerDefinition definition, Vector2 position)
+    {
+        var level = definition.Levels[0];
+        var auraSquared = level.AuraRange * level.AuraRange;
+        var value = 0f;
+        var uniqueRecipients = 0;
+
+        foreach (var recipient in session.Towers.Where(tower => !tower.IsSupport &&
+                     Vector2.DistanceSquared(position, tower.Position) <= auraSquared))
+        {
+            var currentAttackBonus = 0f;
+            var currentRangeBonus = 0f;
+            foreach (var support in session.Towers.Where(tower => tower.IsSupport))
+            {
+                if (Vector2.DistanceSquared(support.Position, recipient.Position) >
+                    support.EffectiveAuraRange * support.EffectiveAuraRange) continue;
+
+                currentAttackBonus = MathF.Max(currentAttackBonus, support.EffectiveAuraAttackSpeedBonus);
+                currentRangeBonus = MathF.Max(currentRangeBonus, support.EffectiveAuraTowerRangeBonus);
+            }
+
+            var attackGain = MathF.Max(0, level.AuraAttackSpeedBonus - currentAttackBonus);
+            var rangeGain = MathF.Max(0, level.AuraRangeBonus - currentRangeBonus);
+            if (attackGain <= 0 && rangeGain <= 0) continue;
+
+            uniqueRecipients++;
+            var recipientLevel = recipient.Level;
+            var throughput = recipientLevel.Damage * MathF.Max(0.25f, recipientLevel.AttacksPerSecond);
+            throughput *= 1f + MathF.Max(0, recipientLevel.PelletCount - 1) * 0.28f;
+            throughput += recipientLevel.ChainDamage * recipientLevel.ChainCount * recipientLevel.AttacksPerSecond * 0.32f;
+            throughput += recipientLevel.BurnDamagePerSecond * 0.45f;
+            value += 2.5f + recipient.InvestedCredits / 125f + throughput * (attackGain + rangeGain * 0.45f);
+        }
+
+        if (uniqueRecipients < 3) value *= 0.25f;
+        else if (uniqueRecipients == 3) value *= 0.72f;
+        if (session.Map.GetPowerBuff(position).IsPowered) value *= 0.82f;
+        return value;
+    }
+
+    private static int ExperiencedCopyLimit(string towerId, int wave) => towerId switch
+    {
+        "needle_turret" => wave < 8 ? 4 : wave < 15 ? 6 : 9,
+        "frost_spire" => 4,
+        "shard_fan" => 5,
+        "watchtower" => 5,
+        "ember_coil" => 5,
+        "breaker_cannon" => 6,
+        "arc_relay" => 6,
+        "siege_mortar" => 5,
+        "prism_beam" => 5,
+        "signal_beacon" => 3,
+        _ => 6
+    };
+
+    private static float ExperiencedRepetitionPenalty(string towerId) => towerId switch
+    {
+        "needle_turret" => 0.14f,
+        "frost_spire" => 0.30f,
+        "signal_beacon" => 0.55f,
+        _ => 0.22f
+    };
 
     private static float PositionScore(GameSession session, TowerDefinition definition, Vector2 position)
     {
@@ -548,10 +829,33 @@ public sealed class AutoPlayer
             AutoPlayerStrategy.Control => towerId switch { "frost_spire" => 1.55f, "ember_coil" => 1.35f, "arc_relay" => 1.35f, "signal_beacon" => 1.08f, _ => 0.68f },
             AutoPlayerStrategy.Synergy => towerId switch { "needle_turret" => 1.28f, "frost_spire" => 1.48f, "arc_relay" => 1.52f, "breaker_cannon" => 1.38f, "prism_beam" => 1.28f, "ember_coil" => 1.04f, "siege_mortar" => 1.12f, "watchtower" => 0.98f, "signal_beacon" => 1.15f, _ => 0.58f },
             AutoPlayerStrategy.Tactical => towerId switch { "needle_turret" => 1.30f, "frost_spire" => 1.22f, "watchtower" => 1.16f, "breaker_cannon" => 1.08f, _ => 0.82f },
+            AutoPlayerStrategy.Experienced => ExperiencedWeight(towerId, threat),
             AutoPlayerStrategy.Adaptive => AdaptiveWeight(towerId, threat),
             AutoPlayerStrategy.Randomized => 0.75f + (float)_random.NextDouble() * 0.5f,
             _ => 1f
         };
+        return weight;
+    }
+
+    private static float ExperiencedWeight(string towerId, ThreatProfile threat)
+    {
+        var weight = towerId switch
+        {
+            "needle_turret" => 1.18f,
+            "frost_spire" => 1.08f + threat.Fast * 0.75f,
+            "shard_fan" => 0.88f + threat.Swarm * 0.78f,
+            "watchtower" => 0.84f + threat.Durable * 0.55f,
+            "ember_coil" => 0.84f + threat.Durable * 0.85f,
+            "breaker_cannon" => 0.86f + threat.Armored * 1.25f,
+            "arc_relay" => 0.90f + threat.Swarm * 0.82f,
+            "siege_mortar" => 0.78f + threat.Swarm * 0.85f,
+            "prism_beam" => 0.82f + threat.Shielded * 1.40f + threat.Durable * 0.40f,
+            "signal_beacon" => 1.08f,
+            _ => 0.82f
+        };
+        if (threat.HasElite && towerId is "watchtower" or "breaker_cannon" or "prism_beam" or "ember_coil") weight += 0.18f;
+        if (threat.HasBoss && towerId is "watchtower" or "breaker_cannon" or "prism_beam" or "ember_coil") weight += 0.38f;
+        if (threat.Armored > 0.30f && towerId is "shard_fan" or "needle_turret") weight *= 0.84f;
         return weight;
     }
 
@@ -601,6 +905,26 @@ public sealed class AutoPlayer
             ("ember_coil", "wildfire_matrix", AutoPlayerStrategy.Synergy) => 1.35f,
             ("siege_mortar", "quake_shell", AutoPlayerStrategy.Synergy) => 1.35f,
             ("watchtower", "deadeye_post", AutoPlayerStrategy.Synergy) => 1.25f,
+            ("needle_turret", "rapid_array", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.40f => 1.45f,
+            ("needle_turret", "rail_pin", AutoPlayerStrategy.Experienced) when threat.Armored > 0.18f || threat.HasElite || threat.HasBoss => 1.50f,
+            ("shard_fan", "razor_bloom", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.42f => 1.45f,
+            ("shard_fan", "lance_fan", AutoPlayerStrategy.Experienced) when threat.Armored >= 0.22f => 1.35f,
+            ("watchtower", "deadeye_post", AutoPlayerStrategy.Experienced) when threat.HasBoss || threat.Durable >= 0.18f => 1.40f,
+            ("watchtower", "sentinel_array", AutoPlayerStrategy.Experienced) => 1.18f,
+            ("frost_spire", "permafrost", AutoPlayerStrategy.Experienced) => 1.42f,
+            ("frost_spire", "hail_lancer", AutoPlayerStrategy.Experienced) when threat.Fast < 0.18f => 1.15f,
+            ("ember_coil", "wildfire_matrix", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.35f => 1.35f,
+            ("ember_coil", "searing_brand", AutoPlayerStrategy.Experienced) when threat.Durable > 0.12f || threat.Armored > 0.25f => 1.42f,
+            ("breaker_cannon", "breach_round", AutoPlayerStrategy.Experienced) when threat.HasBoss || threat.Armored >= 0.30f => 1.48f,
+            ("breaker_cannon", "shatter_shell", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.34f => 1.38f,
+            ("arc_relay", "storm_lattice", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.38f => 1.48f,
+            ("arc_relay", "lockdown_coil", AutoPlayerStrategy.Experienced) when threat.Fast >= 0.22f || threat.HasBoss => 1.36f,
+            ("siege_mortar", "salvo_rack", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.48f => 1.36f,
+            ("siege_mortar", "quake_shell", AutoPlayerStrategy.Experienced) when threat.Fast >= 0.20f || threat.HasBoss => 1.32f,
+            ("prism_beam", "core_lance", AutoPlayerStrategy.Experienced) when threat.Shielded > 0 || threat.HasBoss => 1.48f,
+            ("prism_beam", "spectrum_split", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.38f => 1.35f,
+            ("signal_beacon", "tempo_beacon", AutoPlayerStrategy.Experienced) => 1.32f,
+            ("signal_beacon", "horizon_beacon", AutoPlayerStrategy.Experienced) when threat.Fast > 0.25f || threat.HasBoss => 1.28f,
             (_, "rail_pin" or "breach_round", AutoPlayerStrategy.Adaptive) when threat.HasBoss || threat.HasElite || threat.Armored > 0.35f => 1.55f,
             (_, "rapid_array" or "shatter_shell", AutoPlayerStrategy.Adaptive) when threat.Swarm > 0.45f => 1.45f,
             (_, "permafrost", AutoPlayerStrategy.Adaptive) when threat.Fast > 0.25f => 1.35f,
@@ -650,6 +974,25 @@ public sealed class AutoPlayer
             ("ember_kindling", AutoPlayerStrategy.Synergy) => 1.25f,
             ("mortar_survey", AutoPlayerStrategy.Synergy) => 1.25f,
             ("watch_heavy_optics", AutoPlayerStrategy.Synergy) => 1.20f,
+            ("needle_cycler", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.35f => 1.30f,
+            ("needle_calibrator", AutoPlayerStrategy.Experienced) when threat.Armored > 0.15f || threat.HasElite || threat.HasBoss => 1.34f,
+            ("shard_scatter", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.40f => 1.42f,
+            ("shard_temper", AutoPlayerStrategy.Experienced) when threat.Armored >= 0.20f => 1.34f,
+            ("watch_spotter", AutoPlayerStrategy.Experienced) when threat.Fast >= 0.20f || threat.Swarm >= 0.42f => 1.30f,
+            ("watch_heavy_optics", AutoPlayerStrategy.Experienced) when threat.Durable > 0.12f || threat.HasBoss => 1.34f,
+            ("frost_deep_chill", AutoPlayerStrategy.Experienced) => 1.42f,
+            ("ember_kindling", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.35f => 1.32f,
+            ("ember_hot_core", AutoPlayerStrategy.Experienced) when threat.Durable > 0.12f || threat.Armored >= 0.22f => 1.36f,
+            ("breaker_repeater", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.34f => 1.34f,
+            ("breaker_bored", AutoPlayerStrategy.Experienced) when threat.Armored > 0.12f || threat.HasBoss => 1.40f,
+            ("arc_fork", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.32f => 1.42f,
+            ("arc_capacitor", AutoPlayerStrategy.Experienced) when threat.Fast >= 0.22f || threat.HasBoss => 1.32f,
+            ("mortar_loader", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.45f => 1.36f,
+            ("mortar_survey", AutoPlayerStrategy.Experienced) when threat.Durable > 0.12f || threat.HasBoss => 1.30f,
+            ("prism_frequency", AutoPlayerStrategy.Experienced) when threat.Swarm >= 0.40f => 1.34f,
+            ("prism_aperture", AutoPlayerStrategy.Experienced) when threat.Shielded > 0 || threat.HasBoss => 1.42f,
+            ("beacon_amplifier", AutoPlayerStrategy.Experienced) => 1.35f,
+            ("beacon_repeater", AutoPlayerStrategy.Experienced) when threat.Fast >= 0.28f || threat.HasBoss => 1.22f,
             _ => 1f
         };
         if (_strategy is AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.Spam or AutoPlayerStrategy.AntiSwarm)
@@ -677,6 +1020,21 @@ public sealed class AutoPlayer
 
     private void ConfigureTargeting(GameSession session, TowerInstance tower, ThreatProfile threat)
     {
+        if (_strategy == AutoPlayerStrategy.Experienced)
+        {
+            var experiencedMode = tower.Definition.Id switch
+            {
+                "frost_spire" => TargetMode.Fastest,
+                "breaker_cannon" => session.Challenge.CounterPressureEnabled ? TargetMode.Support : TargetMode.Armored,
+                "watchtower" or "prism_beam" => session.Challenge.CounterPressureEnabled ? TargetMode.Support : TargetMode.Strongest,
+                "siege_mortar" => session.Challenge.CounterPressureEnabled ? TargetMode.Support : TargetMode.First,
+                "ember_coil" => TargetMode.Strongest,
+                _ => TargetMode.First
+            };
+            session.TrySetTargetMode(tower.Id, experiencedMode);
+            return;
+        }
+
         var mode = tower.Definition.Id switch
         {
             "watchtower" or "breaker_cannon" or "prism_beam" => TargetMode.Strongest,
@@ -711,6 +1069,7 @@ public sealed class AutoPlayer
                 ? session.Content.Tactics.Generator.PurchaseCost
                 : 70,
             AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.Spam => 0,
+            AutoPlayerStrategy.Experienced => 35,
             _ => 25
         };
         if (duringWave && session.Economy.Lives < session.Economy.StartingLives * 0.6f) return 0;
@@ -720,6 +1079,7 @@ public sealed class AutoPlayer
     private int FoundationSize() => _strategy switch
     {
         AutoPlayerStrategy.Conservative or AutoPlayerStrategy.Spam or AutoPlayerStrategy.Control or AutoPlayerStrategy.Synergy => 4,
+        AutoPlayerStrategy.Experienced => 3,
         _ => 3
     };
 
@@ -729,6 +1089,7 @@ public sealed class AutoPlayer
         AutoPlayerStrategy.UpgradeFocused => 3 + wave / 4,
         AutoPlayerStrategy.Economy => 3 + wave / 3,
         AutoPlayerStrategy.Synergy => 4 + wave * 3 / 4,
+        AutoPlayerStrategy.Experienced => 4 + wave,
         _ => 3 + wave / 2
     };
 
@@ -742,9 +1103,15 @@ public sealed class AutoPlayer
             {
                 AutoPlayerStrategy.Tactical => nextWave >= 5,
                 AutoPlayerStrategy.Economy => nextWave >= 7,
+                AutoPlayerStrategy.Experienced => nextWave >= 15,
                 _ => false
             };
-            var requiredCombatTowers = _strategy == AutoPlayerStrategy.Tactical ? 4 : 6;
+            var requiredCombatTowers = _strategy switch
+            {
+                AutoPlayerStrategy.Tactical => 4,
+                AutoPlayerStrategy.Experienced => 18,
+                _ => 6
+            };
             var definition = session.Content.Tactics.Generator;
             if (!wantsGenerator || session.Towers.Count(x => !x.IsSupport) < requiredCombatTowers ||
                 session.Economy.Credits < definition.PurchaseCost + 70) return;
@@ -758,7 +1125,9 @@ public sealed class AutoPlayer
         }
 
         var generator = session.Generator;
-        var upgradeWave = generator.LevelIndex == 0 ? 11 : 16;
+        var upgradeWave = _strategy == AutoPlayerStrategy.Experienced
+            ? generator.LevelIndex == 0 ? 18 : 24
+            : generator.LevelIndex == 0 ? 11 : 16;
         if (nextWave >= upgradeWave && generator.CanUpgrade && session.Economy.Credits >= generator.UpgradeCost + ReserveCredits(session, false))
             session.TryUpgradeGenerator();
     }
@@ -827,6 +1196,7 @@ public sealed class AutoPlayer
         AutoPlayerStrategy.Spam => 0.55f,
         AutoPlayerStrategy.Economy => 0.9f,
         AutoPlayerStrategy.Synergy => 1.35f,
+        AutoPlayerStrategy.Experienced => 1.48f,
         _ => 1.12f
     };
 
@@ -848,6 +1218,25 @@ public sealed class AutoPlayer
                 points.Add((right, top));
                 points.Add((left, bottom));
                 points.Add((right, bottom));
+            }
+        }
+        foreach (var node in session.Map.Definition.PowerNodes)
+        {
+            var center = node.Position.ToVector2();
+            points.Add(((int)MathF.Round(center.X), (int)MathF.Round(center.Y)));
+            if (node.Radius >= 34f)
+            {
+                foreach (var x in new[] { -24f, 24f })
+                foreach (var y in new[] { -24f, 24f })
+                    points.Add(((int)MathF.Round(center.X + x), (int)MathF.Round(center.Y + y)));
+            }
+
+            var ringRadius = MathF.Min(32f, MathF.Max(18f, node.Radius - 1f));
+            for (var angleIndex = 0; angleIndex < 8; angleIndex++)
+            {
+                var angle = MathHelper.TwoPi * angleIndex / 8f;
+                points.Add(((int)MathF.Round(center.X + MathF.Cos(angle) * ringRadius),
+                    (int)MathF.Round(center.Y + MathF.Sin(angle) * ringRadius)));
             }
         }
         return points.Select(x => new Vector2(x.X, x.Y)).OrderBy(x => x.Y).ThenBy(x => x.X).ToList();

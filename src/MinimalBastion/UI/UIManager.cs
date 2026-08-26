@@ -104,7 +104,7 @@ public sealed class UIManager
     private string? _hoveredUpgradePreviewLabel;
     private PowerNodeData? _hoveredPowerNode;
     private readonly List<(string Id, string Name, int PowerNodes, int Challenge, int StartingCredits, string Description, string PathStyle,
-        CampaignIntelInfo Campaign, IReadOnlyList<Vector2> Path, Color PathBase, Color PathAccent)> _maps = new();
+        CampaignIntelInfo Campaign, CampaignIntelInfo MasteryCampaign, IReadOnlyList<Vector2> Path, Color PathBase, Color PathAccent)> _maps = new();
     private readonly List<DifficultyDefinition> _difficulties = new();
     private readonly List<ChallengeDefinition> _challenges = new();
     private int _selectedMapIndex;
@@ -186,7 +186,7 @@ public sealed class UIManager
     private IReadOnlyList<EnemyDefinition> _allLibraryEnemies = Array.Empty<EnemyDefinition>();
     private IReadOnlyList<ThreatLibraryEntry> _libraryThreats = Array.Empty<ThreatLibraryEntry>();
     private IReadOnlyList<(string Id, string Name, int PowerNodes, int Challenge, int StartingCredits, string Description, string PathStyle,
-        CampaignIntelInfo Campaign, IReadOnlyList<Vector2> Path, Color PathBase, Color PathAccent)> _libraryMaps = [];
+        CampaignIntelInfo Campaign, CampaignIntelInfo MasteryCampaign, IReadOnlyList<Vector2> Path, Color PathBase, Color PathAccent)> _libraryMaps = [];
     private IReadOnlyList<DifficultyDefinition> _libraryDifficulties = Array.Empty<DifficultyDefinition>();
     private IReadOnlyList<ChallengeDefinition> _libraryChallenges = Array.Empty<ChallengeDefinition>();
     private DiscoverySnapshot _discovery = DiscoverySnapshot.Everything;
@@ -506,11 +506,15 @@ public sealed class UIManager
             .ThenBy(x => x.DisplayName)
             .Select(x =>
             {
-                var campaign = waveSets is not null && enemies is not null && waveSets.TryGetValue(x.WaveSet, out var waveSet)
-                    ? WaveIntel.AnalyzeCampaign(waveSet, enemies)
-                    : new CampaignIntelInfo(0, 0, "STANDARD", 1, 0);
+                var campaign = new CampaignIntelInfo(0, 0, 0, "STANDARD", 1, 0);
+                var masteryCampaign = campaign;
+                if (waveSets is not null && enemies is not null && waveSets.TryGetValue(x.WaveSet, out var waveSet))
+                {
+                    campaign = WaveIntel.AnalyzeCampaign(waveSet, enemies);
+                    masteryCampaign = WaveIntel.AnalyzeCampaign(waveSet, enemies, GameConstants.MasteryFinalWave);
+                }
                 return (x.Id, x.DisplayName, x.PowerNodes.Count, x.ChallengeRating, x.StartingCredits, x.Description, x.PathVisual.Style,
-                    campaign, (IReadOnlyList<Vector2>)x.Path.Select(point => point.ToVector2()).ToArray(),
+                    campaign, masteryCampaign, (IReadOnlyList<Vector2>)x.Path.Select(point => point.ToVector2()).ToArray(),
                     x.PathVisual.BaseColor, x.PathVisual.AccentColor);
             }));
         _selectedMapIndex = Math.Clamp(_selectedMapIndex, 0, Math.Max(0, _maps.Count - 1));
@@ -3128,7 +3132,7 @@ public sealed class UIManager
             challenge?.Id ?? ChallengeCatalog.DefaultId);
         var setupFooter = challenge?.IsSandbox == true
             ? "UNLIMITED CREDITS + LIVES  |  FIXED TARGETS  |  30 AUTHORED WAVES"
-            : $"START {credits} CREDITS  |  {difficulty?.StartingLives ?? 24} LIVES  |  {map.Campaign?.CompactSummary ?? "20-WAVE CAMPAIGN"}{(string.IsNullOrEmpty(best) ? "" : $"  |  {best}")}";
+            : $"START {credits} CREDITS  |  {difficulty?.StartingLives ?? 24} LIVES  |  {(difficulty?.CampaignWaveCount > GameConstants.CampaignWaveCount ? map.MasteryCampaign : map.Campaign)?.CompactSummary ?? "20-WAVE CAMPAIGN"}{(string.IsNullOrEmpty(best) ? "" : $"  |  {best}")}";
         DrawFittedCenteredText(batch, setupFooter, new Vector2(640, 546), ColorPalette.Navy, 0.46f, 1100);
 
         DrawButton(batch, p, _setupConfirmButton,
@@ -4197,10 +4201,10 @@ public sealed class UIManager
         $"STARTING LIVES {difficulty.StartingLives}",
         difficulty.Id.ToLowerInvariant() switch
         {
-            "easy" => "INTENT: EXPERIMENT + RECOVERY",
-            "normal" => "INTENT: BALANCED BREATHING ROOM",
-            "hard" => "INTENT: FULL THREAT + STANDARD ECONOMY",
-            "bastion" => "INTENT: SEVERE LOW-MARGIN TEST",
+            "easy" => "INTENT: LEARNING MARGIN + RECOVERY",
+            "normal" => "INTENT: AUTHORED COMBAT BASELINE",
+            "hard" => "INTENT: EXPERT 20-WAVE PRESSURE",
+            "bastion" => "INTENT: COMPLETE 30-WAVE EXPERT CAMPAIGN",
             _ => $"INTENT: {difficulty.Description.ToUpperInvariant()}"
         }
     ];

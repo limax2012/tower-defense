@@ -200,7 +200,8 @@ public static class DataValidator
             !difficulties.Any(x => x.Id.Equals(DifficultyCatalog.LegacyId, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidDataException("Difficulty profiles must include normal and hard.");
         if (difficulties.Any(x => string.IsNullOrWhiteSpace(x.DisplayName) || x.EnemyHealthMultiplier <= 0 ||
-            x.EnemySpeedMultiplier <= 0 || x.StartingCreditsMultiplier < 0 || x.StartingLives <= 0))
+            x.EnemySpeedMultiplier <= 0 || x.StartingCreditsMultiplier < 0 || x.StartingLives <= 0 ||
+            x.CampaignWaveCount is < 1 or > GameConstants.MasteryFinalWave))
             throw new InvalidDataException("Invalid difficulty profile.");
     }
 

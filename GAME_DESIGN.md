@@ -14,7 +14,7 @@ The core campaign is intended to be learnable without being solved by one univer
 4. Start or ready the next authored wave. Manual early calls and configured automatic starts can award 20 credits.
 5. Defeat enemies before they traverse the complete route. Escapes remove lives according to enemy rank/type.
 6. Between waves, add, upgrade, specialize, retarget, sell, save, or inspect the Tactical Library as the selected directive permits.
-7. Clear wave 20 to secure the campaign. Continue into authored Mastery waves 21–30 or end the run.
+7. Easy, Medium, and Hard secure the campaign at wave 20 and may continue into authored Mastery waves 21–30. Bastion requires all 30 authored waves.
 8. After Mastery, continue into generated Endless waves beginning at 31.
 
 Defeat occurs when lives reach zero. Victory/results preserve a read-only final layout and detailed contribution/economy/tactical statistics.
@@ -30,13 +30,13 @@ Every arena owns its campaign and Mastery wave data. Route length, build geometr
 
 ## Difficulty and directives
 
-Difficulty changes enemy health/speed, starting credits, and lives. Hard is the authored 100% baseline; Bastion adds health and speed pressure while retaining baseline credits.
+Difficulty changes enemy health/speed, starting credits, lives, and the required campaign length. Medium is the authored 100% combat baseline. Hard raises enemy health and speed with a smaller life margin. Bastion preserves Hard's combat multipliers, reduces lives to 16, and makes all 30 authored waves one complete expert campaign.
 
 Directives change available decisions:
 
 - **Standard** is the complete ruleset.
 - **Signal Gauntlet** adds enemy support and disruption roles while preserving the full defensive toolset.
-- **Core Six** removes the four most specialized late-game towers and compensates with opening credits.
+- **Core Six** restricts the roster to Needle, Frost, Shard, Ember, Breaker, and Beacon with the standard opening economy.
 - **Entrenched** preserves all permanent towers but removes Plates, Forge, Protocols, and selling.
 - **Sandbox Lab** exposes real combat and authored waves in a noncompetitive test environment.
 
@@ -110,7 +110,7 @@ Core statuses are Slow, Stun, Expose, and Armor Break. Their glyphs are distinct
 
 ## Campaign, Mastery, and Endless
 
-Waves 1–20 form the authored campaign. Waves 21–30 form an authored arena-specific Mastery sequence that smooths pressure toward a demanding wave-30 capstone. Generated Endless begins at wave 31 and rotates balanced, runner, armored, regenerator, and boss themes.
+Waves 1–20 form the Easy, Medium, and Hard campaign. Waves 21–30 are an optional arena-specific Mastery sequence for those profiles and the required final third of Bastion. The sequence smooths pressure toward a demanding wave-30 capstone. Generated Endless begins at wave 31 and rotates balanced, runner, armored, regenerator, and boss themes.
 
 Endless health follows accelerating growth, while count, speed, cadence, and spawn delay use performance-minded caps/floors. The goal is escalating durability and composition pressure without allowing unit count alone to overwhelm rendering or networking.
 

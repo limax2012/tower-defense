@@ -19,6 +19,7 @@ public sealed record WaveIntelInfo(
 }
 
 public sealed record CampaignIntelInfo(
+    int WaveCount,
     int TotalContacts,
     int PeakContacts,
     string OpeningThreats,
@@ -26,15 +27,16 @@ public sealed record CampaignIntelInfo(
     int BossWave)
 {
     public string CompactSummary =>
-        $"CAMPAIGN  OPEN {OpeningThreats}  |  {TotalContacts:N0} CONTACTS  |  PEAK {PeakContacts}  |  FINAL HEALTH x{FinalHealthMultiplier:0.00}  |  BOSS W{BossWave}";
+        $"{WaveCount}-WAVE CAMPAIGN  OPEN {OpeningThreats}  |  {TotalContacts:N0} CONTACTS  |  PEAK {PeakContacts}  |  FINAL HEALTH x{FinalHealthMultiplier:0.00}  |  BOSS W{BossWave}";
 }
 
 public static class WaveIntel
 {
-    public static CampaignIntelInfo AnalyzeCampaign(WaveSetDefinition campaign, IReadOnlyDictionary<string, EnemyDefinition> enemies)
+    public static CampaignIntelInfo AnalyzeCampaign(WaveSetDefinition campaign,
+        IReadOnlyDictionary<string, EnemyDefinition> enemies, int waveCount = GameConstants.CampaignWaveCount)
     {
-        var waves = campaign.Waves.Take(GameConstants.CampaignWaveCount).ToArray();
-        if (waves.Length == 0) return new CampaignIntelInfo(0, 0, "STANDARD", 1f, 0);
+        var waves = campaign.Waves.Take(Math.Max(1, waveCount)).ToArray();
+        if (waves.Length == 0) return new CampaignIntelInfo(0, 0, 0, "STANDARD", 1f, 0);
         var total = waves.Sum(wave => wave.Groups.Sum(group => group.Count));
         var peak = waves.Max(wave => wave.Groups.Sum(group => group.Count));
         var opening = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -50,9 +52,9 @@ public static class WaveIntel
         }
         var openingThreats = string.Join("/", opening.OrderByDescending(pair => pair.Value).ThenBy(pair => pair.Key).Take(3).Select(pair => pair.Key));
         if (string.IsNullOrEmpty(openingThreats)) openingThreats = "STANDARD";
-        var bossWave = waves.FirstOrDefault(wave => wave.Groups.Any(group => group.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)))?.Number
+        var bossWave = waves.LastOrDefault(wave => wave.Groups.Any(group => group.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)))?.Number
             ?? waves[^1].Number;
-        return new CampaignIntelInfo(total, peak, openingThreats, waves[^1].HealthMultiplier, bossWave);
+        return new CampaignIntelInfo(waves.Length, total, peak, openingThreats, waves[^1].HealthMultiplier, bossWave);
     }
 
     public static WaveIntelInfo Analyze(WaveDefinition wave, IReadOnlyDictionary<string, EnemyDefinition> enemies)

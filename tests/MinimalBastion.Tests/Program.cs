@@ -467,30 +467,37 @@ internal static class Program
         var normal = new GameSession(content, "foundry_loop", "normal");
         var easy = new GameSession(content, "foundry_loop", "easy");
         var bastion = new GameSession(content, "foundry_loop", "bastion");
-        Check.Equal(400, hard.Economy.Credits, "hard preserves original starting credits");
-        Check.Equal(20, hard.Economy.StartingLives, "hard preserves original starting lives");
-        Check.Equal(450, normal.Economy.Credits, "normal starting credit allowance");
-        Check.Equal(24, normal.Economy.StartingLives, "normal starting lives");
-        Check.Equal(500, easy.Economy.Credits, "easy starting credit allowance");
-        Check.Equal(30, easy.Economy.StartingLives, "easy starting lives");
+        Check.Equal(400, hard.Economy.Credits, "hard starting credits");
+        Check.Equal(18, hard.Economy.StartingLives, "hard starting lives");
+        Check.Equal(400, normal.Economy.Credits, "medium starting credits");
+        Check.Equal(20, normal.Economy.StartingLives, "medium starting lives");
+        Check.Equal(450, easy.Economy.Credits, "easy starting credit allowance");
+        Check.Equal(24, easy.Economy.StartingLives, "easy starting lives");
         Check.Equal(400, bastion.Economy.Credits, "bastion preserves the uncompromised starting economy");
-        Check.Equal(18, bastion.Economy.StartingLives, "bastion retains a reduced but recoverable life margin");
+        Check.Equal(16, bastion.Economy.StartingLives, "bastion has the narrowest life margin");
+        Check.Equal(GameConstants.MasteryFinalWave, bastion.TotalWaves, "bastion includes the complete authored campaign");
+        var bastionCampaign = WaveIntel.AnalyzeCampaign(content.WaveSets[bastion.Map.Definition.WaveSet],
+            content.Enemies, bastion.TotalWaves);
+        Check.Equal(GameConstants.MasteryFinalWave, bastionCampaign.WaveCount,
+            "bastion setup intel includes all authored expert waves");
+        Check.True(bastionCampaign.TotalContacts > 1090 && bastionCampaign.BossWave == GameConstants.MasteryFinalWave,
+            "bastion setup intel includes the post-wave-20 pressure and final boss");
         Check.Nearly(1.12f, bastion.Difficulty.EnemyHealthMultiplier, "bastion health pressure");
         Check.Nearly(1.02f, bastion.Difficulty.EnemySpeedMultiplier, "bastion speed pressure");
         Check.True(bastion.Difficulty.ModifierSummary.Contains("ENEMY HP 112%") &&
             bastion.Difficulty.ModifierSummary.Contains("SPEED 102%") &&
-            bastion.Difficulty.ModifierSummary.EndsWith("18 LIVES"),
+            bastion.Difficulty.ModifierSummary.EndsWith("16 LIVES | 30 WAVES"),
             "bastion selector exposes the tuned expert profile exactly");
-        Check.True(content.Difficulties["normal"].ModifierSummary.Contains("ENEMY HP 90%") &&
-            content.Difficulties["normal"].ModifierSummary.Contains("START CREDITS 112.5%") &&
-            content.Difficulties["normal"].ModifierSummary.EndsWith("24 LIVES"),
+        Check.True(content.Difficulties["normal"].ModifierSummary.Contains("ENEMY HP 100%") &&
+            content.Difficulties["normal"].ModifierSummary.Contains("START CREDITS 100%") &&
+            content.Difficulties["normal"].ModifierSummary.EndsWith("20 LIVES | 20 WAVES"),
             "difficulty selector exposes exact mechanical modifiers");
 
         hard.SpawnEnemy("t1_crawler", 1, 1);
         normal.SpawnEnemy("t1_crawler", 1, 1);
-        Check.Nearly(70, hard.Enemies[0].MaxHealth, "hard keeps authored enemy health");
-        Check.Nearly(63, normal.Enemies[0].MaxHealth, "normal applies its enemy health profile");
-        Check.Nearly(68.6f, normal.Enemies[0].CurrentSpeed, "normal applies its enemy speed profile");
+        Check.Nearly(78.4f, hard.Enemies[0].MaxHealth, "hard applies its enemy health profile");
+        Check.Nearly(70, normal.Enemies[0].MaxHealth, "medium keeps authored enemy health");
+        Check.Nearly(70, normal.Enemies[0].CurrentSpeed, "medium keeps authored enemy speed");
 
         var normalPersist = new GameSession(content, "foundry_loop", "normal");
         var normalSave = normalPersist.CaptureSaveGame();
@@ -499,18 +506,24 @@ internal static class Program
         var snapshot = normalPersist.CaptureCoOpState(4, 0, false);
         Check.Equal("normal", GameSession.RestoreCoOpState(content, snapshot, 2).DifficultyId, "co-op snapshot restores difficulty");
 
+        var bastionAtMastery = bastion.CaptureSaveGame();
+        bastionAtMastery.Waves.CurrentWaveNumber = GameConstants.CampaignWaveCount;
+        var restoredBastionAtMastery = GameSession.RestoreSaveGame(content, bastionAtMastery);
+        Check.True(restoredBastionAtMastery.ApexUpgradesUnlocked,
+            "bastion unlocks Apex progression for its authored waves 21 through 30 without entering endless mode");
+
         normalSave.DifficultyId = "";
         Check.Equal("hard", GameSession.RestoreSaveGame(content, normalSave).DifficultyId, "legacy saves retain original hard rules");
         Check.True(SessionChecksum.Compute(hard, 0) != SessionChecksum.Compute(easy, 0), "difficulty identity contributes to checksum");
         var nextIntel = WaveIntel.Analyze(normal.Waves.NextWave!, content.Enemies);
-        Check.Equal("HP x0.90 | SPD x0.98",
+        Check.Equal("HP x1.00 | SPD x1.00",
             nextIntel.ScalingSummary(normal.Difficulty.EnemyHealthMultiplier, normal.Difficulty.EnemySpeedMultiplier),
             "live threat intel exposes effective wave and difficulty scaling");
 
         var ui = new UIManager(null!);
         ui.ConfigureDifficulties(content.Difficulties.Values);
         Check.Equal("normal", ui.SelectedDifficultyId, "new game UI defaults to normal");
-        Check.Equal("Medium", ui.SelectedDifficultyName, "the 90% profile is clearly named Medium");
+        Check.Equal("Medium", ui.SelectedDifficultyName, "the baseline profile is clearly named Medium");
         Check.Equal(UiAction.None, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { EnterPressed = true }),
             "title ignores keyboard activation so it has no hidden focus state");
         Check.Equal(UiAction.None, ui.HandleMainMenu(WorldInput(Vector2.Zero) with { NavigateDownPressed = true }),
@@ -549,7 +562,7 @@ internal static class Program
             "Signal Gauntlet preserves the full roster and enables enemy disruption pressure");
         Check.True(core.IsTowerAvailable("ember_coil") && !core.IsTowerAvailable("prism_beam"),
             "core-six roster retains its authored compact arsenal");
-        Check.Equal(520, core.Economy.Credits, "advanced core-six roster receives its fixed opening cushion");
+        Check.Equal(400, core.Economy.Credits, "core-six uses the standard opening economy");
         Check.Equal("Entrenched", fundamentals.Challenge.DisplayName, "stable directive id exposes its player-facing name");
         Check.True(!fundamentals.TacticalSystemsEnabled && fundamentals.EmergencyInventory == 0,
             "fundamentals disables tactical inventory");
@@ -1316,7 +1329,7 @@ internal static class Program
     private static void OpeningWaveBalance()
     {
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
-        var session = new GameSession(new ContentLoader(root).Load());
+        var session = new GameSession(new ContentLoader(root).Load(), difficultyId: "normal");
         var positions = new[]
         {
             new Vector2(50, 200),
@@ -1334,7 +1347,7 @@ internal static class Program
 
         Check.Equal(0, session.Economy.EscapedEnemies, "opening wave leaks");
 
-        var relay = new GameSession(new ContentLoader(root).Load(), "relay_divide");
+        var relay = new GameSession(new ContentLoader(root).Load(), "relay_divide", "normal");
         foreach (var position in new[] { new Vector2(50, 270), new Vector2(100, 350), new Vector2(285, 330), new Vector2(285, 410) })
             Check.True(relay.TryPlaceTower("needle_turret", position), $"relay opening placement at {position}");
         Check.Equal(0, relay.Economy.Credits, "relay opening budget uses four needles");
@@ -4447,7 +4460,7 @@ internal static class Program
         tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateLeftPressed = true });
         Check.True(tabUi.LibraryShowsSystems, "Tactical Library Left moves backward from towers to systems");
         var normalReference = UIManager.DifficultyReferenceLines(content.Difficulties["normal"]);
-        Check.True(normalReference.Contains("ENEMY HEALTH x0.90") && normalReference.Contains("STARTING LIVES 24"),
+        Check.True(normalReference.Contains("ENEMY HEALTH x1.00") && normalReference.Contains("STARTING LIVES 20"),
             "profile reference exposes exact difficulty combat and economy values");
         var closeReference = UIManager.ChallengeReferenceLines(content.Challenges["close_quarters"], content.Towers.Count);
         Check.True(closeReference.Contains("FULL ROSTER + ALL SYSTEMS") &&

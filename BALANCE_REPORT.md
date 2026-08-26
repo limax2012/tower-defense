@@ -2,70 +2,110 @@
 
 ## Status
 
-The current campaign balance has a coherent difficulty ladder and meaningful arena spread in deterministic testing. Easy and Medium provide learning room, Hard is demanding without being a niche-only profile, and Bastion requires substantially better openings and reinvestment. Surge Divide is consistently the hardest arena but is not an aggregate outlier large enough to justify global tower changes on bot data alone.
+The difficulty ladder separates onboarding, the authored baseline, demanding campaign play, and the complete expert campaign:
 
-Signal Gauntlet is a strong challenge modifier. Its current Bastion completion is extremely low for heuristic agents, partly because those agents do not explicitly use the Support targeting mode and cannot react to carrier behavior as well as a human. Its rate should be treated as a lower-bound comparative signal, not proof that the mode is nearly impossible.
+| Difficulty | Enemy health | Enemy speed | Opening credits | Lives | Required authored waves |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Easy | 90% | 98% | 112.5% | 24 | 20 |
+| Medium | 100% | 100% | 100% | 20 | 20 |
+| Hard | 112% | 102% | 100% | 18 | 20 |
+| Bastion | 112% | 102% | 100% | 16 | 30 |
 
-Mastery succeeds at making wave 20 a campaign milestone rather than a solved final defense. Reaching wave 30 on Bastion is rare in current agent samples. Apex provides a concentrated reinvestment option; authored waves 21–30 avoid an abrupt jump directly from campaign to generated scaling.
+Bastion is no longer Hard with two fewer lives. It incorporates the ten authored Mastery waves into the required campaign and unlocks Apex at wave 21. The additional waves test reinvestment, branch completion, coverage saturation, and the wave-30 boss after the opening has been solved.
 
-## Measured campaign ladder
+Core Six uses the standard opening economy. Its six-tower roster remains unusually effective for the deterministic agent, so a large credit bonus made its intended constraint easier rather than clearer.
 
-The latest 4,160-run Standard matrix reports:
+## Experienced-agent assessment
 
-| Difficulty | Completion |
-| --- | ---: |
-| Easy | 81.2% |
-| Medium | 70.1% |
-| Hard | 46.7% |
-| Bastion | 15.8% |
+The Experienced policy is a deterministic heuristic created to model known strong human practices. It is not machine learning and its completion rate is not a forecast of human win probability. It improves on the general policies by:
 
-The latest Signal Gauntlet matrix reports 75.4%, 48.8%, 24.2%, and 3.1% at the same four difficulty levels. See [AUTONOMOUS_BALANCE.md](AUTONOMOUS_BALANCE.md) for sample sizes, map splits, focused controls, and interpretation limits.
+- opening with compact inexpensive coverage;
+- reserving for Frost, armor, shield, chain, and durable-target counters on scheduled threat windows;
+- using tower-specific target modes;
+- fitting compact tower groups into valuable Surge Nodes;
+- scoring Signal Beacons by incremental non-overlapping recipients;
+- completing important tier-two and tier-three roles before excessive duplication;
+- reinvesting in Apex during waves 21–30;
+- recording exact final coordinates, branches, Apex state, and node occupancy for layout review.
 
-## Arena assessment
+The current validated sweep used eight seeds for every arena/directive combination, or 128 runs per difficulty:
 
-- **Foundry Loop:** baseline geometry and economy. It supports broad mixtures and is the best reference for tower-level comparisons.
-- **Crosswind Basin:** early coverage is deliberately exacting because lanes sit near the edge of cheap tower range. Current geometry is beatable at an acceptable agent rate and should remain a human route-reading test rather than being widened merely to simplify the first placement.
-- **Prism Circuit:** small placement count and three nodes reward concentrated support and role completion.
-- **Surge Divide:** low opening credits and stronger pressure are compensated by nine nodes. Winning strategies should use those nodes early; ignoring them is a strategic error rather than an alternate equivalent opening.
+| Difficulty | Wins | Runs | Completion | Average wave | Average lives |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Easy | 128 | 128 | 100.0% | 20.0 | 23.0 |
+| Medium | 124 | 128 | 96.9% | 19.8 | 17.7 |
+| Hard | 95 | 128 | 74.2% | 17.8 | 10.2 |
+| Bastion | 16 | 128 | 12.5% | 23.1 | 1.4 |
+
+These bands mean the ladder is ordered correctly for an informed automated player. Easy and Medium are forgiving after strategy is understood, Hard still allows many successful plans, and Bastion rejects most imperfect 30-wave executions. The Bastion percentage must not be described as a literal human 12.5% win rate: a person can adapt across attempts, interpret spatial patterns, and deliberately reproduce a successful layout in ways the agent cannot.
+
+## Arena findings
+
+The same sweep exposes a major limitation in the Experienced policy at Bastion:
+
+| Arena | Hard clears | Bastion clears |
+| --- | ---: | ---: |
+| Foundry Loop | 29/32 | 1/32 |
+| Crosswind Basin | 21/32 | 0/32 |
+| Prism Circuit | 22/32 | 15/32 |
+| Surge Divide | 23/32 | 0/32 |
+
+Prism is overrepresented and Surge is underrepresented in bot clears. Human evidence is materially better on Surge: informed players discovered the intended plan—early node use, Fastest Frost control, Arc group damage, and timely armor/shield counters—and cleared it after limited iteration. That does not prove Surge is easy; it proves the bot's zero is a lower-bound artifact rather than evidence of impossibility.
+
+- **Foundry Loop:** baseline route and economy. It supports the widest range of mixtures.
+- **Crosswind Basin:** precise early coverage remains part of the arena identity. Cheap towers need deliberately chosen corners and adjacent-lane reach.
+- **Prism Circuit:** concentrated geometry is unusually compatible with deterministic placement scoring and compact support.
+- **Surge Divide:** low opening credits are balanced around node use. The agent now prioritizes nodes and can fit four standard towers into large unobstructed nodes, but it still lacks human multi-wave cluster planning.
+
+No map geometry change is justified by these aggregate percentages alone.
+
+## Directive findings
+
+Hard results from the same sample were Standard 27/32, Signal Gauntlet 22/32, Core Six 27/32, and Entrenched 19/32. Bastion produced 4/32 clears in each directive. These results use Core Six's current standard opening economy.
+
+- **Standard** is the complete strategic baseline.
+- **Signal Gauntlet** changes priority and defensive reliability through carriers and disruption. The Experienced agent uses Support targeting on appropriate towers, unlike older simulation policies.
+- **Core Six** is a thematic roster puzzle, not an assertion that every restricted roster must be numerically harder than Standard. Its available towers form a strong economical progression, so it no longer receives bonus opening credits.
+- **Entrenched** removes correction and temporary rescue. Its lower Hard completion is consistent with permanent placement mistakes and no Protocol/Plate fallback.
 
 ## Tower ecosystem
 
-The roster currently supports several viable cores:
+Several strategic cores remain viable:
 
-- Needle/Shard/Ember provide economical local damage and early coverage.
-- Frost controls grouped lanes while Arc converts connected groups into chain damage and stuns. Their shared value comes from extra time on target; Arc has no hidden damage multiplier against slowed enemies.
-- Breaker/Prism addresses armor, shields, durable elites, and damage amplification.
-- Watchtower/Mortar converts distant or awkward build space into useful coverage.
-- Signal Beacon rewards dense, deliberately planned clusters.
+- Needle, Shard, and Ember provide economical local damage.
+- Frost creates firing time for the whole defense.
+- Arc supplies connected-group damage and stun. It has no hidden bonus damage against slowed enemies.
+- Breaker and Prism answer armor, shields, elites, and boss durability.
+- Watchtower and Mortar convert distant footprints into useful coverage.
+- Signal Beacon rewards compact developed clusters without stacking overlapping auras.
 
-Needle Turrets remain useful late when upgraded into efficient ricochet/pierce coverage, but replacing low-impact positions with Breaker or Prism can be correct when armor/shields dominate. Long-range towers solve remote geometry; their higher cost and specialized output should not make nearby short-range positions obsolete.
+Needle remains efficient late in good positions, especially with Ricochet or Piercing Rail. Replacing isolated Needles with completed Breaker or Prism roles is sensible when armor and shields dominate. Mortar output remains bounded by impact target caps. Beacon value depends on distinct recipients, not Beacon count.
 
-Mortar damage is bounded by per-impact target caps and predictive delivery. This prevents packed Endless waves from turning radius into unlimited damage. Breaker final roles split focused heavy pressure from broader Armor Break. Ember and Frost area effects allow short range to scale with density. Beacon auras use strongest-value rules so overlapping support does not multiply without limit.
+The detailed use case for every tower and branch is documented in [STRATEGY_GUIDE.md](STRATEGY_GUIDE.md).
 
-## Economy and late progression
+## Economy and progression
 
-Campaign openings remain the tightest economic phase. Kill bounties retain full value through wave 10, then taper smoothly to about 80% at wave 20, 67% at wave 30, and 50% at wave 50, with a 40% deep-Endless floor. Wave-clear and early-call rewards are unchanged. This restrains reserve snowball without changing opening builds or making tower and upgrade prices depend on time.
+Kill bounties retain full value through wave 10, then taper smoothly to about 80% at wave 20, 67% at wave 30, and 50% at wave 50, with a 40% deep-Endless floor. Wave-clear and early-call rewards are unchanged. Tower prices and combat statistics do not inflate with wave number.
 
-In the current Standard matrix, successful runs finish with an average reserve of about 1,500 credits and a median of 800. That leaves meaningful Mastery preparation room without requiring repetitive tower placement simply to spend a large backlog.
+The bounty curve restrains reserve snowball without changing the opening. Bastion's required waves 21–30 create a natural use for mature reserves through Apex and completed coverage. Generated Endless begins after wave 30.
 
-Mastery adds authored pressure and Apex spending. Endless health accelerates while count, cadence, speed, and delay are capped for performance/readability. Pulse Plate direct-buy escalation and a 16-plate field cap permit emergency delaying without creating a permanent infinite-control strategy.
+## Interpretation limits
 
-## Directives
+1. The agent chooses among strong local placements; it does not solve the whole map globally.
+2. It follows authored counter milestones but does not learn from prior failed seeds.
+3. It cannot value a complex sell-and-rebuild sequence as reliably as a human.
+4. Automatic Protocol and Plate timing are approximations rather than frame-perfect play.
+5. A fixed seed changes placement tie-breaking, not the policy's strategic model.
+6. Aggregate completion can conceal a bad layout assumption on one map.
 
-- **Standard:** complete strategic baseline.
-- **Signal Gauntlet:** changes target priority and defensive reliability through visible carriers and tower disruption.
-- **Core Six:** a thematic roster puzzle that removes specialized long-range/chain/beam options while compensating the opening.
-- **Entrenched:** a commitment mode. No selling means geometry mistakes persist, while no Plates/Forge/Protocols removes temporary rescue tools.
+Balance decisions should use matched simulations, recorded layouts, and human runs together. The current data supports the new difficulty ordering and 30-wave Bastion structure. Further universal tower or map changes should target a demonstrated mechanism rather than trying to force every arena to the same bot percentage.
 
-Core Six's 30% opening-credit modifier is deliberately larger because four expensive/specialized coverage options are unavailable. It should be reviewed from full-run completion and late composition, not opening ease alone.
+## Human validation priorities
 
-## Remaining validation priorities
-
-1. Human Bastion clears by arena/directive, including failed openings and successful layouts.
-2. Signal Gauntlet with deliberate Support targeting versus ordinary priority modes.
-3. Mastery wave-by-wave reserve spend, Apex purchase order, and wave-30 margin.
-4. Entrenched and Core Six across multiple human tower mixes.
-5. Co-op runs with normal internet latency to confirm usability without affecting deterministic outcomes.
-6. Endless wave 40+ credit sinks, footprint saturation, and emergency Plate use.
-
-No broad rebalance is justified solely by the current aggregate matrix. Future changes should be mechanism-specific, supported by matched simulation controls, and checked against human layouts before modifying universal tower values.
+1. Bastion wave-21 entry reserves and first Apex purchase order.
+2. Wave-by-wave failure distribution from 21 through 30 on each arena.
+3. Surge clears with and without deliberate four-tower node clusters.
+4. Signal Gauntlet with Support targeting versus ordinary targeting.
+5. Core Six branch diversity now that its opening bonus is removed.
+6. Entrenched recovery after one imperfect early placement.
+7. Experienced players repeating a solved plan across multiple seeds and arenas.

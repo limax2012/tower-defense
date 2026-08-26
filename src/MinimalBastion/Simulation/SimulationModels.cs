@@ -18,6 +18,7 @@ public enum AutoPlayerStrategy
     Synergy,
     Tactical,
     Adaptive,
+    Experienced,
     Randomized
 }
 
@@ -73,6 +74,7 @@ public sealed class SimulationRunResult
     public required IReadOnlyDictionary<string, int> EnemyKills { get; init; }
     public required IReadOnlyDictionary<string, int> EnemyLeaks { get; init; }
     public required IReadOnlyList<WaveRunMetrics> Waves { get; init; }
+    public IReadOnlyList<SimulationTowerPlacement> FinalTowers { get; init; } = Array.Empty<SimulationTowerPlacement>();
     public int EmergencyDeployments { get; init; }
     public int EmergencyDirectPurchases { get; init; }
     public int EmergencyTriggers { get; init; }
@@ -88,6 +90,17 @@ public sealed class SimulationRunResult
     public int EndlessDepth => CampaignCleared ? Math.Max(0, WaveReached - CampaignWaveCount) : 0;
     public bool Won => Result is "Victory" or "WaveLimit";
 }
+
+public sealed record SimulationTowerPlacement(
+    int Id,
+    string TowerId,
+    float X,
+    float Y,
+    int Level,
+    string? DoctrineId,
+    string? SpecializationId,
+    bool IsApex,
+    string? PowerNodeId);
 
 public sealed class TowerRunMetrics
 {

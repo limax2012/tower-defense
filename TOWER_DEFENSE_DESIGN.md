@@ -123,8 +123,8 @@ Surge Nodes are authored fields with focused bonuses. Effective tower modifiers 
 
 `WaveManager` owns intermission time, group index, group delay, spawn cadence, queued contacts, wave completion, campaign/Mastery result flags, early-call state, and generated-wave mode.
 
-- Waves 1–20 are authored campaign content.
-- Waves 21–30 are authored Mastery content.
+- Waves 1–20 are authored campaign content for Easy, Medium, and Hard.
+- Waves 21–30 are optional authored Mastery content for those profiles and required campaign content for Bastion.
 - Waves 31+ are created by `EndlessWaveGenerator` from the selected arena's wave-30 anchor.
 
 Generated Endless rotates five archetypes. Its step-relative health multiplier is `min(10000, 1 + 0.085s + 0.0045s²)`. Count growth caps at 1.60×, speed at 1.30× of the anchor progression, spawn cadence has a 0.80 floor, and group delay has a 0.75 floor. Elite inserts increase to at most two per insertion point; the recurring boss archetype preserves the anchor boss group.
