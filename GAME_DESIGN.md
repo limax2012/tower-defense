@@ -30,7 +30,7 @@ Every arena owns its complete authored campaign wave data. Route length, build g
 
 ## Difficulty and directives
 
-Difficulty changes enemy health/speed, starting credits, and lives. Every profile uses the same 30-wave campaign. Medium is the authored 100% combat baseline. Hard raises enemy health and speed with a smaller life margin. Bastion preserves Hard's combat multipliers and reduces lives to 16.
+Difficulty changes enemy health/speed, starting credits, and lives. Every profile uses the same 30-wave campaign. Medium is the authored 100% combat baseline with 12 lives. Hard raises enemy health and speed with a six-life margin. Bastion preserves Hard's combat multipliers but allows no breach: it begins with one life.
 
 Directives change available decisions:
 
@@ -40,7 +40,7 @@ Directives change available decisions:
 - **Entrenched** preserves all permanent towers but removes Plates, Forge, Protocols, and selling.
 - **Sandbox Lab** exposes real combat and authored waves in a noncompetitive test environment.
 
-Directive compensation is applied once when the run is created. It never changes tower damage or utility over time.
+Competitive directives use the selected difficulty's opening economy without compensating credits. They never change tower damage or utility over time.
 
 ## Economy
 
@@ -99,9 +99,9 @@ Five base enemy profiles cover light, fast, armored, shielding, and regenerating
 Signal Gauntlet adds visible carrier roles:
 
 - **Accelerator:** increases nearby enemy speed.
-- **Restorer:** periodically repairs nearby enemies.
-- **Bulwark:** periodically grants nearby shields.
-- **Jammer:** weakens one tower's rate and damage for a short duration.
+- **Restorer:** periodically repairs nearby enemies for 9% of maximum health.
+- **Bulwark:** periodically grants nearby shields equal to 8% of maximum health, up to a 20% shield reserve.
+- **Jammer:** weakens the rate and damage of up to three nearby combat towers for a short duration.
 - **Disruptor:** temporarily pauses a nearby tower group; reserved for later elite/boss pressure.
 
 Carriers render above ordinary enemies, use the same in-body glyphs in combat and the Tactical Library, and show their support relationship through aura/recipient feedback.

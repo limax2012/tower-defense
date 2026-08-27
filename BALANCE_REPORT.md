@@ -6,12 +6,12 @@ The difficulty ladder applies progressively tighter numerical pressure to the sa
 
 | Difficulty | Enemy health | Enemy speed | Opening credits | Lives | Required authored waves |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Easy | 90% | 98% | 112.5% | 24 | 30 |
-| Medium | 100% | 100% | 100% | 20 | 30 |
-| Hard | 112% | 102% | 100% | 18 | 30 |
-| Bastion | 112% | 102% | 100% | 16 | 30 |
+| Easy | 90% | 98% | 112.5% | 20 | 30 |
+| Medium | 100% | 100% | 100% | 12 | 30 |
+| Hard | 112% | 102% | 100% | 6 | 30 |
+| Bastion | 112% | 102% | 100% | 1 | 30 |
 
-All profiles require the final ten authored waves. Wave 21 unlocks Apex, and waves 21–30 test reinvestment, branch completion, coverage saturation, and the wave-30 boss after the opening has been solved. Bastion differs from Hard through its narrower 16-life margin.
+All profiles require the final ten authored waves. Wave 21 unlocks Apex, and waves 21–30 test reinvestment, branch completion, coverage saturation, and the wave-30 boss after the opening has been solved. The life ladder changes the cost of imperfect execution: Easy permits recovery, Medium allows a few ordinary leaks, Hard can be ended by one major breach, and Bastion ends on any breach.
 
 Core Six uses the standard opening economy. Its six-tower roster remains unusually effective for the deterministic agent, so a large credit bonus made its intended constraint easier rather than clearer.
 
@@ -28,16 +28,16 @@ The Experienced policy is a deterministic heuristic created to model known stron
 - reinvesting in Apex during waves 21–30;
 - recording exact final coordinates, branches, Apex state, and node occupancy for layout review.
 
-The current validated sweep used eight seeds for every arena/directive combination, or 128 runs per difficulty:
+The current full validation sweep used two seeds for every arena/directive combination, or 32 runs per difficulty:
 
 | Difficulty | Wins | Runs | Completion | Average wave | Average lives |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Easy | 76 | 128 | 59.4% | 29.5 | 13.1 |
-| Medium | 53 | 128 | 41.4% | 28.3 | 7.2 |
-| Hard | 19 | 128 | 14.8% | 23.9 | 1.7 |
-| Bastion | 16 | 128 | 12.5% | 23.1 | 1.4 |
+| Easy | 16 | 32 | 50.0% | 28.7 | 9.7 |
+| Medium | 8 | 32 | 25.0% | 24.1 | 2.4 |
+| Hard | 2 | 32 | 6.3% | 19.1 | 0.3 |
+| Bastion | 0 | 32 | 0.0% | 14.2 | 0.0 |
 
-These bands mean the ladder remains ordered for an informed automated player across the complete 30-wave campaign. Easy commonly reaches the finale and retains the widest recovery margin. Medium demands a developed defense in the final act. Hard and Bastion reject most imperfect executions; Bastion's two fewer lives matter primarily on runs that already survive the combat curve. These percentages are not forecasts of literal human win rates: a person can adapt across attempts, interpret spatial patterns, and deliberately reproduce a successful layout in ways the agent cannot.
+These bands keep the ladder strictly ordered for the deterministic agent across the complete 30-wave campaign. Easy commonly reaches the finale and retains the widest recovery margin. Medium demands a developed defense in the final act. Hard rejects most imperfect executions. Bastion is deliberately aspirational: one leak ends the run, and no run in this small fixed-seed sweep was flawless. These percentages are not forecasts of literal human win rates: a person can adapt across attempts, interpret spatial patterns, and deliberately reproduce a successful layout in ways the agent cannot.
 
 ## Arena findings
 
@@ -45,12 +45,12 @@ The same sweep exposes a major limitation in the Experienced policy at Bastion:
 
 | Arena | Hard clears | Bastion clears |
 | --- | ---: | ---: |
-| Foundry Loop | 1/32 | 1/32 |
-| Crosswind Basin | 3/32 | 0/32 |
-| Prism Circuit | 15/32 | 15/32 |
-| Surge Divide | 0/32 | 0/32 |
+| Foundry Loop | 0/8 | 0/8 |
+| Crosswind Basin | 0/8 | 0/8 |
+| Prism Circuit | 2/8 | 0/8 |
+| Surge Divide | 0/8 | 0/8 |
 
-Prism is overrepresented and Surge is underrepresented in bot clears. Human evidence is materially better on Surge: informed players discovered the intended plan—early node use, Fastest Frost control, Arc group damage, and timely armor/shield counters—and cleared it after limited iteration. That does not prove Surge is easy; it proves the bot's zero is a lower-bound artifact rather than evidence of impossibility.
+Prism remains overrepresented and Surge underrepresented in bot clears. Human evidence is materially better on Surge: informed players discovered the intended plan—early node use, Fastest Frost control, Arc group damage, and timely armor/shield counters—and cleared it after limited iteration. That does not prove Surge is easy; it means a bot zero remains a lower-bound warning rather than evidence of impossibility.
 
 - **Foundry Loop:** baseline route and economy. It supports the widest range of mixtures.
 - **Crosswind Basin:** precise early coverage remains part of the arena identity. Cheap towers need deliberately chosen corners and adjacent-lane reach.
@@ -61,10 +61,10 @@ No map geometry change is justified by these aggregate percentages alone.
 
 ## Directive findings
 
-Hard results from the same sample were Standard 6/32, Signal Gauntlet 4/32, Core Six 5/32, and Entrenched 4/32. Bastion produced 4/32 clears in each directive. These results use Core Six's current standard opening economy.
+Across all difficulties in the current 128-run matrix, Standard cleared 11/32, Signal Gauntlet 6/32, Core Six 6/32, and Entrenched 3/32. No restricted directive receives compensating opening credits.
 
 - **Standard** is the complete strategic baseline.
-- **Signal Gauntlet** changes priority and defensive reliability through carriers and disruption. The Experienced agent uses Support targeting on appropriate towers, unlike older simulation policies.
+- **Signal Gauntlet** changes priority and defensive reliability through carriers and disruption. Accelerator grants 14% speed, Restorer repairs 9% maximum health, Bulwark grants an 8% shield up to a 20% reserve, and Jammer suppresses up to three combat towers. A matched 48-run Gauntlet sample cleared 8/12 Easy, 2/12 Medium, 0/12 Hard, and 0/12 Bastion profiles. The Experienced agent uses Support targeting on appropriate towers.
 - **Core Six** is a thematic roster puzzle, not an assertion that every restricted roster must be numerically harder than Standard. Its available towers form a strong economical progression, so it no longer receives bonus opening credits.
 - **Entrenched** removes correction and temporary rescue. Its lower Hard completion is consistent with permanent placement mistakes and no Protocol/Plate fallback.
 
@@ -102,7 +102,7 @@ Balance decisions should use matched simulations, recorded layouts, and human ru
 
 ## Human validation priorities
 
-1. Bastion wave-21 entry reserves and first Apex purchase order.
+1. Human Bastion completion attempts under the one-breach rule.
 2. Wave-by-wave failure distribution from 21 through 30 on each arena.
 3. Surge clears with and without deliberate four-tower node clusters.
 4. Signal Gauntlet with Support targeting versus ordinary targeting.

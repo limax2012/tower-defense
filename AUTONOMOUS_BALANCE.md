@@ -29,7 +29,7 @@ Reports are written to `.build\balance` unless `--output` selects another path.
 - `--map <id>` selects one arena.
 - `--difficulty <id|all>` selects a profile or all four.
 - `--challenge <id|all>` selects a directive or all competitive directives.
-- `--max-wave <n>` sets the success target. Bastion's authored campaign ends at 30; other profiles end at 20 unless a later target is requested.
+- `--max-wave <n>` sets the success target. Every authored campaign ends at wave 30 unless a later Endless target is requested.
 - `--force-build <tower:doctrine>specialization>` constrains one complete path.
 - `--force-build <tower:all>` compares a tower's four paths; `all` audits every completed path.
 - `--no-protocols` and `--no-apex` create matched system controls.
@@ -44,7 +44,7 @@ Examples:
 
 ```powershell
 & $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate --strategy Experienced --seed 1337
-& $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --strategy Experienced --difficulty hard --challenge all --max-wave 20 --runs 10
+& $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --strategy Experienced --difficulty hard --challenge all --max-wave 30 --runs 10
 & $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --strategy Experienced --difficulty bastion --challenge all --max-wave 30 --runs 10
 & $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --difficulty hard --force-build siege_mortar:all --runs 10
 & $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --save-file C:\path\checkpoint.json --max-wave 50 --hold-footprint
@@ -98,16 +98,16 @@ Support/control attribution is deliberately separate from direct damage. Signal 
 
 ## Current Experienced baseline
 
-The latest 128-run-per-difficulty sweep used eight seeds for all four arenas and all four competitive directives:
+The latest complete validation sweep used two seeds for all four arenas and all four competitive directives, or 32 runs per difficulty:
 
 | Difficulty | Completion | Average wave | Average lives |
 | --- | ---: | ---: | ---: |
-| Easy | 100.0% | 20.0 | 23.0 |
-| Medium | 96.9% | 19.8 | 17.7 |
-| Hard | 74.2% | 17.8 | 10.2 |
-| Bastion | 12.5% | 23.1 | 1.4 |
+| Easy | 50.0% | 28.7 | 9.7 |
+| Medium | 25.0% | 24.1 | 2.4 |
+| Hard | 6.3% | 19.1 | 0.3 |
+| Bastion | 0.0% | 14.2 | 0.0 |
 
-Easy, Medium, and Hard use wave 20 as the success target. Bastion uses wave 30 and enables Apex at wave 21. See [BALANCE_REPORT.md](BALANCE_REPORT.md) for map/directive splits and interpretation.
+Every profile uses wave 30 as the campaign success target and enables Apex at wave 21. Bastion is the no-breach profile; its zero in this limited deterministic sample identifies an aspirational ceiling, not proof that human completion is impossible. See [BALANCE_REPORT.md](BALANCE_REPORT.md) for map/directive splits and interpretation.
 
 ## Interpretation rules
 

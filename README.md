@@ -103,19 +103,19 @@ Surge Nodes grant focused attack-rate, range, damage, or armor-piercing bonuses.
 
 | Difficulty | Enemy health | Enemy speed | Starting credits | Lives | Campaign waves |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Easy | 90% | 98% | 112.5% | 24 | 30 |
-| Medium | 100% | 100% | 100% | 20 | 30 |
-| Hard | 112% | 102% | 100% | 18 | 30 |
-| Bastion | 112% | 102% | 100% | 16 | 30 |
+| Easy | 90% | 98% | 112.5% | 20 | 30 |
+| Medium | 100% | 100% | 100% | 12 | 30 |
+| Hard | 112% | 102% | 100% | 6 | 30 |
+| Bastion | 112% | 102% | 100% | 1 | 30 |
 
 Tower statistics do not change with difficulty, wave number, map, or elapsed time.
 
 ### Directives
 
 - **Standard** enables the complete roster and every tactical system.
-- **Signal Gauntlet** adds 10% opening credits and introduces Accelerator, Restorer, Bulwark, Jammer, and Disruptor signal carriers from the early campaign onward. Carriers can support enemies or interfere with towers. The Support targeting mode prioritizes carriers and otherwise selects the strongest available target.
+- **Signal Gauntlet** introduces Accelerator, Restorer, Bulwark, Jammer, and Disruptor signal carriers from the early campaign onward without bonus opening credits. Carriers provide substantial area support or interference: Jammers suppress compact tower groups while later Disruptors pause a wider group. The Support targeting mode prioritizes carriers and otherwise selects the strongest available target.
 - **Core Six** restricts the roster to Needle Turret, Frost Spire, Shard Fan, Ember Coil, Breaker Cannon, and Signal Beacon with the standard opening economy.
-- **Entrenched** disables Pulse Plates, Charge Forge, Protocols, and selling, with 10% more opening credits.
+- **Entrenched** disables Pulse Plates, Charge Forge, Protocols, and selling without compensating credits.
 - **Sandbox Lab** provides unlimited resources and lives for controlled tower, upgrade, Protocol, status, enemy-rank, and authored-wave experiments. Sandbox sessions do not create competitive saves or run-history records.
 
 ## Towers and tactical systems

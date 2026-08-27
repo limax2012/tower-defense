@@ -420,13 +420,13 @@ internal static class Program
         var easy = new GameSession(content, "foundry_loop", "easy");
         var bastion = new GameSession(content, "foundry_loop", "bastion");
         Check.Equal(400, hard.Economy.Credits, "hard starting credits");
-        Check.Equal(18, hard.Economy.StartingLives, "hard starting lives");
+        Check.Equal(6, hard.Economy.StartingLives, "hard starting lives");
         Check.Equal(400, normal.Economy.Credits, "medium starting credits");
-        Check.Equal(20, normal.Economy.StartingLives, "medium starting lives");
+        Check.Equal(12, normal.Economy.StartingLives, "medium starting lives");
         Check.Equal(450, easy.Economy.Credits, "easy starting credit allowance");
-        Check.Equal(24, easy.Economy.StartingLives, "easy starting lives");
+        Check.Equal(20, easy.Economy.StartingLives, "easy starting lives");
         Check.Equal(400, bastion.Economy.Credits, "bastion preserves the uncompromised starting economy");
-        Check.Equal(16, bastion.Economy.StartingLives, "bastion has the narrowest life margin");
+        Check.Equal(1, bastion.Economy.StartingLives, "bastion ends on the first breach");
         Check.True(new[] { easy, normal, hard, bastion }.All(session => session.TotalWaves == GameConstants.CampaignWaveCount),
             "every difficulty includes the complete authored campaign");
         var bastionCampaign = WaveIntel.AnalyzeCampaign(content.WaveSets[bastion.Map.Definition.WaveSet],
@@ -439,11 +439,11 @@ internal static class Program
         Check.Nearly(1.02f, bastion.Difficulty.EnemySpeedMultiplier, "bastion speed pressure");
         Check.True(bastion.Difficulty.ModifierSummary.Contains("ENEMY HP 112%") &&
             bastion.Difficulty.ModifierSummary.Contains("SPEED 102%") &&
-            bastion.Difficulty.ModifierSummary.EndsWith("16 LIVES | 30 WAVES"),
+            bastion.Difficulty.ModifierSummary.EndsWith("1 LIFE | 30 WAVES"),
             "bastion selector exposes the tuned expert profile exactly");
         Check.True(content.Difficulties["normal"].ModifierSummary.Contains("ENEMY HP 100%") &&
             content.Difficulties["normal"].ModifierSummary.Contains("START CREDITS 100%") &&
-            content.Difficulties["normal"].ModifierSummary.EndsWith("20 LIVES | 30 WAVES"),
+            content.Difficulties["normal"].ModifierSummary.EndsWith("12 LIVES | 30 WAVES"),
             "difficulty selector exposes exact mechanical modifiers");
 
         hard.SpawnEnemy("t1_crawler", 1, 1);
@@ -464,6 +464,11 @@ internal static class Program
         var restoredBastionAtFinalAct = GameSession.RestoreSaveGame(content, bastionAtFinalAct);
         Check.True(restoredBastionAtFinalAct.ApexUpgradesUnlocked,
             "Apex unlocks before authored wave 21 without entering endless mode");
+
+        var preRetuneBastionSave = bastion.CaptureSaveGame();
+        preRetuneBastionSave.Economy.Lives = 16;
+        Check.Equal(1, GameSession.RestoreSaveGame(content, preRetuneBastionSave).Economy.Lives,
+            "older checkpoints clamp safely to a reduced difficulty life limit");
 
         normalSave.DifficultyId = "";
         Check.Equal("hard", GameSession.RestoreSaveGame(content, normalSave).DifficultyId, "legacy saves retain original hard rules");
@@ -515,7 +520,7 @@ internal static class Program
         var fundamentals = new GameSession(content, "foundry_loop", "hard", "no_reserves");
 
         Check.Equal(400, standard.Economy.Credits, "standard directive preserves starting economy");
-        Check.Equal(440, close.Economy.Credits, "Signal Gauntlet compensation is fixed at session start");
+        Check.Equal(400, close.Economy.Credits, "Signal Gauntlet uses the uncompensated starting economy");
         Check.True(close.CounterPressureEnabled && content.Towers.Keys.All(close.IsTowerAvailable),
             "Signal Gauntlet preserves the full roster and enables enemy disruption pressure");
         Check.True(!standard.AvailableTargetModes.Contains(TargetMode.Support) &&
@@ -540,7 +545,7 @@ internal static class Program
         Check.True(!fundamentals.TacticalSystemsEnabled && fundamentals.EmergencyInventory == 0,
             "fundamentals disables tactical inventory");
         Check.True(!fundamentals.ProtocolsEnabled, "fundamentals disables manual and automatic Protocols");
-        Check.Equal(440, fundamentals.Economy.Credits, "Entrenched receives its restrained tower-only opening cushion");
+        Check.Equal(400, fundamentals.Economy.Credits, "Entrenched uses the uncompensated starting economy");
         Check.Equal(PlacementFailure.TacticalSystemsDisabled,
             fundamentals.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, new Vector2(200, 30)),
             "fundamentals rejects pulse placement explicitly");
@@ -614,7 +619,7 @@ internal static class Program
             "Gauntlet introduces a shield carrier on wave four");
         Check.Equal(EnemySignalRole.Jammer,
             session.ResolveEnemySignalRole(wave5, 3, (wave5.Groups[3].Count - 1) / 2, wave5.Groups[3]),
-            "Gauntlet introduces a single-tower jammer on wave five");
+            "Gauntlet introduces an area jammer on wave five");
         Check.Equal(EnemySignalRole.None,
             session.ResolveEnemySignalRole(wave5, 3, 0, wave5.Groups[3]),
             "ordinary formation members do not inherit the carrier signal");
@@ -632,8 +637,9 @@ internal static class Program
             "accelerator does not multiply its own movement");
         Check.Nearly(1f + session.Challenge.CounterHasteBonus, session.Enemies[1].FormationSpeedMultiplier,
             "accelerator increases movement for nearby formation members");
-        Check.True(session.Challenge.CounterHasteBonus >= 0.14f && session.Challenge.CounterRepairFraction >= 0.04f &&
-                   session.Challenge.CounterShieldFraction >= 0.05f,
+        Check.True(session.Challenge.CounterHasteBonus >= 0.14f && session.Challenge.CounterRepairFraction >= 0.09f &&
+                   session.Challenge.CounterShieldFraction >= 0.08f &&
+                   session.Challenge.CounterSuppressionTargetLimit >= 3,
             "Gauntlet support modifiers create a noticeable formation threat");
 
         var repairSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
@@ -644,7 +650,8 @@ internal static class Program
         var damagedHealth = repairTarget.Health;
         repairSession.Enemies[1].ArmSignalAbility(0);
         repairSession.TryActivateEnemySignal(repairSession.Enemies[1]);
-        Check.True(repairTarget.Health > damagedHealth, "restorer repairs a bounded amount of nearby health");
+        Check.Nearly(repairTarget.MaxHealth * repairSession.Challenge.CounterRepairFraction,
+            repairTarget.Health - damagedHealth, "restorer repairs its authored share of nearby health");
         Check.True(repairSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Beam),
             "restorer visibly links its repair pulse to affected formation members");
 
@@ -653,22 +660,26 @@ internal static class Program
         shieldSession.SpawnEnemy("t1_crawler", 1, 1, signalRole: EnemySignalRole.Bulwark);
         shieldSession.Enemies[1].ArmSignalAbility(0);
         shieldSession.TryActivateEnemySignal(shieldSession.Enemies[1]);
-        Check.True(shieldSession.Enemies[0].Shield > 0, "bulwark grants a bounded shield to nearby threats");
+        Check.Nearly(shieldSession.Enemies[0].MaxHealth * shieldSession.Challenge.CounterShieldFraction,
+            shieldSession.Enemies[0].Shield, "bulwark grants its authored shield share to nearby threats");
         Check.True(shieldSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Beam),
             "bulwark visibly links its shield pulse to affected formation members");
 
         var jammerSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
-        Check.True(jammerSession.TryPlaceTower("needle_turret", new Vector2(45, 200)),
-            "Gauntlet jammer test places a tower beside the opening route");
-        var jammerTower = jammerSession.Towers.Single();
+        Check.True(jammerSession.TryPlaceTower("needle_turret", new Vector2(190, 335)) &&
+                   jammerSession.TryPlaceTower("needle_turret", new Vector2(230, 335)) &&
+                   jammerSession.TryPlaceTower("needle_turret", new Vector2(270, 335)),
+            "Gauntlet jammer test places a compact tower cluster beside the route");
+        var jammerTower = jammerSession.Towers[0];
         var unsuppressedRate = jammerSession.GetEffectiveAttacksPerSecond(jammerTower);
         var unsuppressedDamage = jammerSession.GetEffectiveDamage(jammerTower, jammerTower.Level.Damage);
         jammerSession.SpawnEnemy("t1_crawler", 1, 1, signalRole: EnemySignalRole.Jammer);
         var jammer = jammerSession.Enemies.Single();
-        jammer.UpdateMovement(1f, jammerSession.Map.Path);
+        jammer.UpdateMovement(5.7f, jammerSession.Map.Path);
         jammer.ArmSignalAbility(0);
         jammerSession.TryActivateEnemySignal(jammer);
-        Check.True(jammerTower.IsSuppressed, "jammer weakens one nearby attacking tower");
+        Check.Equal(3, jammerSession.Towers.Count(tower => tower.IsSuppressed),
+            "jammer weakens a bounded nearby tower cluster");
         Check.True(jammerSession.GetEffectiveAttacksPerSecond(jammerTower) < unsuppressedRate &&
                    jammerSession.GetEffectiveDamage(jammerTower, jammerTower.Level.Damage) < unsuppressedDamage,
             "jammer suppression reduces both attack rate and damage without pausing the tower");
@@ -700,7 +711,7 @@ internal static class Program
         Check.Equal(SessionChecksum.Compute(jammerSession, 12), SessionChecksum.Compute(restored, 12),
             "Gauntlet signal state participates in the authoritative checksum");
 
-        var archivedTower = RunHistoryLayoutSnapshot.FromSession(jammerSession).Towers.Single();
+        var archivedTower = RunHistoryLayoutSnapshot.FromSession(jammerSession).Towers[0];
         Check.Nearly(0, archivedTower.DisruptionRemaining,
             "the final-layout diagram omits terminal-frame disruption animation state");
         Check.Nearly(0, archivedTower.DisruptionLockoutRemaining,
@@ -4447,7 +4458,7 @@ internal static class Program
         tabUi.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { NavigateLeftPressed = true });
         Check.True(tabUi.LibraryShowsSystems, "Tactical Library Left moves backward from towers to systems");
         var normalReference = UIManager.DifficultyReferenceLines(content.Difficulties["normal"]);
-        Check.True(normalReference.Contains("ENEMY HEALTH x1.00") && normalReference.Contains("STARTING LIVES 20"),
+        Check.True(normalReference.Contains("ENEMY HEALTH x1.00") && normalReference.Contains("STARTING LIVES 12"),
             "profile reference exposes exact difficulty combat and economy values");
         var closeReference = UIManager.ChallengeReferenceLines(content.Challenges["close_quarters"], content.Towers.Count);
         Check.True(closeReference.Contains("FULL ROSTER + ALL SYSTEMS") &&

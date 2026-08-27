@@ -1370,7 +1370,7 @@ public sealed class GameSession
             2 => "SIGNAL: ACCELERATOR // Nearby threats move faster.",
             3 => "SIGNAL: RESTORER // Nearby threats recover health.",
             4 => "SIGNAL: BULWARK // Nearby threats gain shields.",
-            5 => "SIGNAL: JAMMER // One nearby tower is weakened.",
+            5 => $"SIGNAL: JAMMER // Up to {Challenge.CounterSuppressionTargetLimit} nearby towers are weakened.",
             _ => wave.Briefing
         } : wave.Briefing;
         AnnouncementSubtitle = earlyCallBonus > 0 ? $"EARLY CALL +{earlyCallBonus} // {briefing}" : briefing;
@@ -1469,16 +1469,22 @@ public sealed class GameSession
         }
 
         var suppressionRadiusSquared = Challenge.CounterSuppressionRadius * Challenge.CounterSuppressionRadius;
-        var targetTower = Towers.Where(tower => !tower.IsSupport && !tower.IsSandboxDisabled &&
+        var affected = Towers.Where(tower => !tower.IsSupport && !tower.IsSandboxDisabled &&
                 Vector2.DistanceSquared(tower.Position, enemy.Position) <= suppressionRadiusSquared)
             .OrderBy(tower => Vector2.DistanceSquared(tower.Position, enemy.Position))
             .ThenBy(tower => tower.Id)
-            .FirstOrDefault(tower => tower.ApplySuppression(Challenge.CounterSuppressionDuration, 2.4f));
-        if (targetTower is null) return;
-        Effects.AddFlash(enemy.Position, ColorPalette.Orange, 0.32f, enemy.Radius + 8);
-        Effects.AddBeam(enemy.Position, targetTower.Position, ColorPalette.Orange, 0.40f);
-        Effects.AddFlash(targetTower.Position, ColorPalette.Orange, 0.34f,
-            targetTower.Definition.Visual.Radius + 7);
+            .Where(tower => tower.ApplySuppression(Challenge.CounterSuppressionDuration, 2.4f))
+            .Take(Challenge.CounterSuppressionTargetLimit)
+            .ToArray();
+        if (affected.Length == 0) return;
+        Effects.AddSplash(enemy.Position, ColorPalette.Orange, Challenge.CounterSuppressionRadius);
+        Effects.AddFlash(enemy.Position, ColorPalette.Orange, 0.38f, enemy.Radius + 8);
+        foreach (var tower in affected)
+        {
+            Effects.AddBeam(enemy.Position, tower.Position, ColorPalette.Orange, 0.40f);
+            Effects.AddFlash(tower.Position, ColorPalette.Orange, 0.34f,
+                tower.Definition.Visual.Radius + 7);
+        }
     }
 
     private void TryEmitDisruption(EnemyInstance enemy)
@@ -1677,7 +1683,8 @@ public sealed class GameSession
         if (!knownMap) throw new InvalidDataException($"Saved map '{data.MapId}' is not available.");
 
         var session = new GameSession(content, data.MapId, data.DifficultyId, data.ChallengeId);
-        ValidateRestoredHeaderState(session, data.Speed, data.Economy, string.IsNullOrWhiteSpace(data.DifficultyId));
+        // Difficulty life limits are balance data. Clamp older checkpoints when those limits change.
+        ValidateRestoredHeaderState(session, data.Speed, data.Economy, true);
         session.RunId = NormalizeRunId(data.RunId, session.RunId);
         if (data.IsCoOp) session.ConfigureCoOp(1);
         session.Economy.RestoreSaveData(data.Economy);

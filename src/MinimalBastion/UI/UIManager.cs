@@ -3115,9 +3115,11 @@ public sealed class UIManager
         var credits = StartingCreditsForSetup(map.StartingCredits, difficulty, challenge);
         var best = BestRunLabel(_runHistory, map.Id ?? "foundry_loop", difficulty?.Id ?? DifficultyCatalog.DefaultId,
             challenge?.Id ?? ChallengeCatalog.DefaultId);
+        var startingLives = difficulty?.StartingLives ?? 20;
+        var startingLivesLabel = startingLives == 1 ? "1 LIFE" : $"{startingLives} LIVES";
         var setupFooter = challenge?.IsSandbox == true
             ? "UNLIMITED CREDITS + LIVES  |  FIXED TARGETS  |  30 AUTHORED WAVES"
-            : $"START {credits} CREDITS  |  {difficulty?.StartingLives ?? 24} LIVES  |  {map.Campaign?.CompactSummary ?? $"{GameConstants.CampaignWaveCount}-WAVE CAMPAIGN"}{(string.IsNullOrEmpty(best) ? "" : $"  |  {best}")}";
+            : $"START {credits} CREDITS  |  {startingLivesLabel}  |  {map.Campaign?.CompactSummary ?? $"{GameConstants.CampaignWaveCount}-WAVE CAMPAIGN"}{(string.IsNullOrEmpty(best) ? "" : $"  |  {best}")}";
         DrawFittedCenteredText(batch, setupFooter, new Vector2(640, 546), ColorPalette.Navy, 0.46f, 1100);
 
         DrawButton(batch, p, _setupConfirmButton,
@@ -4180,7 +4182,7 @@ public sealed class UIManager
         }
 
         DrawFittedCenteredText(batch,
-            $"Difficulty scales every arena and endless wave; directives change available systems and opening funds.  TAB changes page; ESC or BACK returns to {returnDestination}.",
+            $"Difficulty scales every arena and endless wave; directives change available systems and enemy rules.  TAB changes page; ESC or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
     }
 
@@ -4189,7 +4191,7 @@ public sealed class UIManager
         $"ENEMY HEALTH x{difficulty.EnemyHealthMultiplier:0.00}",
         $"ENEMY SPEED x{difficulty.EnemySpeedMultiplier:0.00}",
         $"START CREDITS x{difficulty.StartingCreditsMultiplier:0.000}",
-        $"STARTING LIVES {difficulty.StartingLives}",
+        difficulty.StartingLives == 1 ? "STARTING LIFE 1" : $"STARTING LIVES {difficulty.StartingLives}",
         difficulty.Id.ToLowerInvariant() switch
         {
             "easy" => "INTENT: LEARNING MARGIN + RECOVERY",
@@ -4220,7 +4222,7 @@ public sealed class UIManager
             [
                 $"START CREDITS x{challenge.StartingCreditsMultiplier:0.00}",
                 "W2 ACCELERATE / W3 REPAIR / W4 SHIELD",
-                "W5 JAMMER WEAKENS ONE TOWER",
+                $"W5 JAMMER WEAKENS UP TO {challenge.CounterSuppressionTargetLimit} TOWERS",
                 "ELITE + BOSS GROUP DISRUPTION",
                 "FULL ROSTER + ALL SYSTEMS",
                 "RULE: SIGNAL CARRIERS SUPPORT FORMATIONS"
@@ -4594,7 +4596,7 @@ public sealed class UIManager
         EnemySignalRole.Accelerator => "A passive formation carrier that increases the movement speed of nearby threats.",
         EnemySignalRole.Restorer => "A support carrier that periodically repairs nearby damaged threats.",
         EnemySignalRole.Bulwark => "A support carrier that periodically grants temporary shielding to nearby threats.",
-        EnemySignalRole.Jammer => "An attacker that periodically suppresses one nearby combat tower.",
+        EnemySignalRole.Jammer => "An attacker that periodically weakens a nearby cluster of combat towers.",
         EnemySignalRole.Disruptor => "An elite or boss attacker that periodically pauses groups of nearby towers.",
         _ => "No additional signal behavior."
     };
@@ -4624,8 +4626,8 @@ public sealed class UIManager
             ],
             EnemySignalRole.Jammer =>
             [
-                [$"ATTACK RATE -{rules.CounterSuppressionRatePenalty:P0}", $"DAMAGE -{rules.CounterSuppressionDamagePenalty:P0}", "SUPPRESSES ONE NEAREST COMBAT TOWER"],
-                [$"PULSE EVERY {normalInterval:0.#}s", $"TARGET RANGE {rules.CounterSuppressionRadius:0}", $"SUPPRESSION LASTS {rules.CounterSuppressionDuration:0.#}s"],
+                [$"ATTACK RATE -{rules.CounterSuppressionRatePenalty:P0}", $"DAMAGE -{rules.CounterSuppressionDamagePenalty:P0}", $"SUPPRESSES UP TO {rules.CounterSuppressionTargetLimit} COMBAT TOWERS"],
+                [$"AREA PULSE EVERY {normalInterval:0.#}s", $"PULSE RADIUS {rules.CounterSuppressionRadius:0}", $"SUPPRESSION LASTS {rules.CounterSuppressionDuration:0.#}s"],
                 ["FOCUS THE CARRIER", "SPREAD CRITICAL DAMAGE SOURCES", "PLACE RANGE OUTSIDE ITS REACH"]
             ],
             EnemySignalRole.Disruptor =>

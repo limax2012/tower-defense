@@ -6,7 +6,7 @@
     "enemyHealthMultiplier": 0.90,
     "enemySpeedMultiplier": 0.98,
     "startingCreditsMultiplier": 1.125,
-    "startingLives": 24,
+    "startingLives": 20,
     "accent": "#2AC275"
   },
   {
@@ -16,7 +16,7 @@
     "enemyHealthMultiplier": 1.0,
     "enemySpeedMultiplier": 1.0,
     "startingCreditsMultiplier": 1.0,
-    "startingLives": 20,
+    "startingLives": 12,
     "accent": "#2C7AE7"
   },
   {
@@ -26,17 +26,17 @@
     "enemyHealthMultiplier": 1.12,
     "enemySpeedMultiplier": 1.02,
     "startingCreditsMultiplier": 1.0,
-    "startingLives": 18,
+    "startingLives": 6,
     "accent": "#EC5062"
   },
   {
     "id": "bastion",
     "displayName": "Bastion",
-    "description": "Enemy health 112% | speed 102% | only 16 lives.",
+    "description": "Enemy health 112% | speed 102% | one life; any breach ends the run.",
     "enemyHealthMultiplier": 1.12,
     "enemySpeedMultiplier": 1.02,
     "startingCreditsMultiplier": 1.0,
-    "startingLives": 16,
+    "startingLives": 1,
     "accent": "#7C53DA"
   }
 ]

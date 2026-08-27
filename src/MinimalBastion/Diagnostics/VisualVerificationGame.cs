@@ -488,7 +488,7 @@ public sealed class VisualVerificationGame : Game
 
         var crosswindWinningSample = CaptureSimulationLayout(content, ui,
             "05f-crosswind-hard-standard-win.png", "crosswind_basin", "hard", "standard",
-            AutoPlayerStrategy.Experienced, 25094, true, assertions);
+            AutoPlayerStrategy.Experienced, 88446, true, assertions);
         var crosswindLosingSample = CaptureSimulationLayout(content, ui,
             "05g-crosswind-hard-standard-loss.png", "crosswind_basin", "hard", "standard",
             AutoPlayerStrategy.Experienced, 56770, false, assertions);

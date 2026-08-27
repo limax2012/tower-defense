@@ -30,7 +30,7 @@ public sealed class DifficultyDefinition
     public Color AccentColor => TowerVisualData.ParseColor(Accent);
     public string ModifierSummary =>
         $"ENEMY HP {EnemyHealthMultiplier * 100:0.#}% | SPEED {EnemySpeedMultiplier * 100:0.#}% | " +
-        $"START CREDITS {StartingCreditsMultiplier * 100:0.#}% | {StartingLives} LIVES | {GameConstants.CampaignWaveCount} WAVES";
+        $"START CREDITS {StartingCreditsMultiplier * 100:0.#}% | {StartingLives} {(StartingLives == 1 ? "LIFE" : "LIVES")} | {GameConstants.CampaignWaveCount} WAVES";
 }
 
 public static class DifficultyCatalog
@@ -76,6 +76,7 @@ public sealed class ChallengeDefinition
     public float CounterShieldCapacityFraction { get; set; } = 0.10f;
     public float CounterSuppressionRadius { get; set; } = 148f;
     public float CounterSuppressionDuration { get; set; } = 2.6f;
+    public int CounterSuppressionTargetLimit { get; set; } = 1;
     public float CounterSuppressionRatePenalty { get; set; } = 0.28f;
     public float CounterSuppressionDamagePenalty { get; set; } = 0.14f;
     public bool IsSandbox { get; set; }
