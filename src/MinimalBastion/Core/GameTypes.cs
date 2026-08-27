@@ -29,8 +29,7 @@ public static class GameConstants
     public const float OverdriveCooldownSeconds = 18f;
     public const float OverdriveAttackSpeedBonus = 0.75f;
     public const float SellRatio = 0.60f;
-    public const int CampaignWaveCount = 20;
-    public const int MasteryFinalWave = 30;
+    public const int CampaignWaveCount = 30;
     public const int ApexUnlockWave = 21;
     public const int GeneratedEndlessStartWave = 31;
     public const int PulsePlateDamageSourceOffset = 100_000;

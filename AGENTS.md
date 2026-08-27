@@ -61,8 +61,8 @@ Use `-SkipVisuals` only when a change cannot affect layout, rendering, data-load
 
 ## Gameplay baselines
 
-- Campaign: waves 1–20.
-- Mastery: authored waves 21–30; Apex unlocks after entering Mastery.
+- Campaign: authored waves 1–30 on every difficulty.
+- Final escalation: authored waves 21–30; Apex unlocks before wave 21.
 - Generated Endless: wave 31 onward.
 - Difficulties: Easy, Medium (`normal` internally), Hard, Bastion.
 - Competitive directives: Standard, Signal Gauntlet (`close_quarters`), Core Six, Entrenched (`no_reserves`).

@@ -56,7 +56,7 @@ Systems receive the session when they need cross-domain operations. Runtime inst
 - `Difficulties.json`
 - `Challenges.json`
 - each map JSON
-- each map's authored campaign/Mastery wave JSON
+- each map's complete authored campaign wave JSON
 
 Important definitions include `TowerDefinition`, tower level/doctrine/specialization/Apex definitions, `EnemyDefinition`, `MapDefinition`, `PowerNodeDefinition`, `DifficultyDefinition`, `ChallengeDefinition`, `TacticalDefinition`, and `WaveDefinition`.
 
@@ -81,7 +81,7 @@ The active update order is:
 11. Update visual effects.
 12. Remove dead/escaped enemies.
 13. Complete the wave if spawning and active enemies are exhausted.
-14. Evaluate defeat or campaign/Mastery result state.
+14. Evaluate defeat or campaign result state.
 
 This order is a gameplay invariant. Changes require deterministic regression coverage and co-op checksum review.
 
@@ -105,7 +105,7 @@ Every tower has:
 - two tier-two doctrines
 - two tier-three roles compatible with either doctrine
 - one unique Protocol and auto-trigger rule
-- one Apex promotion available after entering Mastery
+- one Apex promotion available beginning with authored wave 21
 
 Upgrade previews derive the next runtime values using the same stat-building path as combat. Signal Beacon and Surge Node modifiers can be included in both current and preview values. Saves, history layouts, co-op snapshots, and checksums preserve all progression fields.
 
@@ -121,15 +121,15 @@ Surge Nodes are authored fields with focused bonuses. Effective tower modifiers 
 
 ## Waves and progression
 
-`WaveManager` owns intermission time, group index, group delay, spawn cadence, queued contacts, wave completion, campaign/Mastery result flags, early-call state, and generated-wave mode.
+`WaveManager` owns intermission time, group index, group delay, spawn cadence, queued contacts, wave completion, campaign result flags, early-call state, and generated-wave mode.
 
-- Waves 1–20 are authored campaign content for Easy, Medium, and Hard.
-- Waves 21–30 are optional authored Mastery content for those profiles and required campaign content for Bastion.
+- Waves 1–30 are authored campaign content on every difficulty.
+- Waves 21–30 form the final escalation and unlock Apex tower promotions.
 - Waves 31+ are created by `EndlessWaveGenerator` from the selected arena's wave-30 anchor.
 
 Generated Endless rotates five archetypes. Its step-relative health multiplier is `min(10000, 1 + 0.085s + 0.0045s²)`. Count growth caps at 1.60×, speed at 1.30× of the anchor progression, spawn cadence has a 0.80 floor, and group delay has a 0.75 floor. Elite inserts increase to at most two per insertion point; the recurring boss archetype preserves the anchor boss group.
 
-Result/history identity survives campaign continuation so wave 20 and a later Mastery/Endless terminal state update one run record.
+Result/history identity survives campaign continuation so a wave-30 victory and a later Endless terminal state update one run record.
 
 ## Economy and tactical systems
 

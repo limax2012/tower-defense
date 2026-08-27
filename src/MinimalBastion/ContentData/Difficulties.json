@@ -32,12 +32,11 @@
   {
     "id": "bastion",
     "displayName": "Bastion",
-    "description": "Thirty authored waves form the complete expert campaign.",
+    "description": "Enemy health 112% | speed 102% | only 16 lives.",
     "enemyHealthMultiplier": 1.12,
     "enemySpeedMultiplier": 1.02,
     "startingCreditsMultiplier": 1.0,
     "startingLives": 16,
-    "campaignWaveCount": 30,
     "accent": "#7C53DA"
   }
 ]

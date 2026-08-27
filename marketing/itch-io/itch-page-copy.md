@@ -14,13 +14,13 @@ Every arena asks a different strategic question. Fold short-range towers around 
 
 - Command 10 distinct towers with clear battlefield roles.
 - Choose between two Tier 2 doctrines, then develop each tower into one of four Tier 3 combinations.
-- Promote proven towers into powerful Apex forms during Mastery and Endless play.
+- Promote proven towers into powerful Apex forms during the final campaign waves and Endless play.
 - Set targeting priorities for fast, armored, support, strong, or route-critical enemies.
 - Use Pulse Plates, the Charge Forge, automatic Protocols, and map-specific Surge Nodes to reinforce your core strategy.
 
 ### Four authored campaigns
 
-Each arena has its own route geometry, build spaces, economy, visual identity, and enemy schedule. Survive the 20-wave campaign, enter a harder 10-wave Mastery sequence, then continue into generated Endless waves on the same battlefield.
+Each arena has its own route geometry, build spaces, economy, visual identity, and enemy schedule. Survive a 30-wave campaign whose final ten waves unlock Apex reinvestment, then continue into generated Endless waves on the same battlefield.
 
 Choose from four difficulty levels and several directives:
 
@@ -38,6 +38,6 @@ Online co-op uses a direct TCP connection on port `28741`. Internet hosts may ne
 
 ### Learn, refine, and push farther
 
-The Tactical Library provides a complete reference for towers, upgrades, enemies, status effects, maps, waves, and systems before a run. Run History preserves detailed results and final defense layouts, while medals, achievements, and career records provide new goals across difficulties, directives, Mastery, and Endless play.
+The Tactical Library provides a complete reference for towers, upgrades, enemies, status effects, maps, waves, and systems before a run. Run History preserves detailed results and final defense layouts, while medals, achievements, and career records provide new goals across difficulties, directives, Apex development, and Endless play.
 
 This release is a free public playtest. Feedback on balance, clarity, co-op reliability, and the strategies that emerge is welcome.

@@ -44,7 +44,7 @@ public sealed class AutoPlayer
             TryRebalance(session, threat);
             ManageGenerator(session);
         }
-        Spend(session, threat, duringWave: false, session.IsMasteryMode ? 48 : 24);
+        Spend(session, threat, duringWave: false, session.IsFinalCampaignAct ? 48 : 24);
     }
 
     public void ReactDuringWave(GameSession session)
@@ -68,7 +68,7 @@ public sealed class AutoPlayer
             var combatTowerCount = session.Towers.Count(x => !x.IsSupport);
             if (!_holdFootprint && session.CurrentWave == 0 && combatTowerCount < foundation && TryBuyFoundation(session, threat, spendable))
                 continue;
-            if (!_holdFootprint && !session.IsMasteryMode)
+            if (!_holdFootprint && !session.IsFinalCampaignAct)
             {
                 if (TryBuyStrategicPriority(session, threat, spendable, out var savingForPriority))
                     continue;
@@ -83,7 +83,7 @@ public sealed class AutoPlayer
             var upgrade = BestUpgrade(session, threat, spendable);
             var purchaseBias = combatTowerCount < DesiredTowerCount(session.CurrentWave + (duringWave ? 0 : 1))
                 ? 1.45f
-                : session.IsMasteryMode ? 0.16f : 0.38f;
+                : session.IsFinalCampaignAct ? 0.16f : 0.38f;
             var buyScore = purchase?.Score * purchaseBias ?? float.MinValue;
             var upgradeScore = upgrade?.Score * UpgradeBias() ?? float.MinValue;
 

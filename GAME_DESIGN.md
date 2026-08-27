@@ -4,7 +4,7 @@
 
 Minimal Bastion is a tactical tower-defense game about readable positioning, permanent build decisions, complementary tower roles, and adapting to authored threat compositions. Its presentation uses flat geometric forms and a restrained tactical palette so target priority, tower identity, range, routes, statuses, and multiplayer intent remain legible in dense late waves.
 
-The core campaign is intended to be learnable without being solved by one universal build. Maps, profiles, and directives change which openings, coverage patterns, and support combinations are efficient. Mastery and Endless convert a successful campaign defense into a reinvestment and scaling problem rather than a separate match.
+The core campaign is intended to be learnable without being solved by one universal build. Maps, profiles, and directives change which openings, coverage patterns, and support combinations are efficient. The final ten authored waves and Endless convert an established defense into a reinvestment and scaling problem rather than a separate match.
 
 ## Match flow
 
@@ -14,8 +14,8 @@ The core campaign is intended to be learnable without being solved by one univer
 4. Start or ready the next authored wave. Manual early calls and configured automatic starts can award 20 credits.
 5. Defeat enemies before they traverse the complete route. Escapes remove lives according to enemy rank/type.
 6. Between waves, add, upgrade, specialize, retarget, sell, save, or inspect the Tactical Library as the selected directive permits.
-7. Easy, Medium, and Hard secure the campaign at wave 20 and may continue into authored Mastery waves 21–30. Bastion requires all 30 authored waves.
-8. After Mastery, continue into generated Endless waves beginning at 31.
+7. Secure the campaign by completing all 30 authored waves. Wave 21 begins the final escalation and unlocks Apex promotions.
+8. Continue into generated Endless waves beginning at 31.
 
 Defeat occurs when lives reach zero. Victory/results preserve a read-only final layout and detailed contribution/economy/tactical statistics.
 
@@ -26,11 +26,11 @@ Defeat occurs when lives reach zero. Victory/results preserve a read-only final 
 - **Prism Circuit** compresses placement into six areas around three Surge Nodes and starts at 380 credits.
 - **Surge Divide** is the most demanding authored arena. Its low 360-credit opening and stronger late pressure are offset by nine small specialized Surge Nodes that reward deliberate placement.
 
-Every arena owns its campaign and Mastery wave data. Route length, build geometry, node access, economy, roster order, density, and scaling are balanced together rather than applying one universal wave list.
+Every arena owns its complete authored campaign wave data. Route length, build geometry, node access, economy, roster order, density, and scaling are balanced together rather than applying one universal wave list.
 
 ## Difficulty and directives
 
-Difficulty changes enemy health/speed, starting credits, lives, and the required campaign length. Medium is the authored 100% combat baseline. Hard raises enemy health and speed with a smaller life margin. Bastion preserves Hard's combat multipliers, reduces lives to 16, and makes all 30 authored waves one complete expert campaign.
+Difficulty changes enemy health/speed, starting credits, and lives. Every profile uses the same 30-wave campaign. Medium is the authored 100% combat baseline. Hard raises enemy health and speed with a smaller life margin. Bastion preserves Hard's combat multipliers and reduces lives to 16.
 
 Directives change available decisions:
 
@@ -49,9 +49,9 @@ Directive compensation is applied once when the run is created. It never changes
 - Selling normally returns 60% of invested tower/Forge cost. Entrenched disables selling.
 - Direct Pulse Plate purchases start at 60 credits and rise by 15 for each additional purchase in the same active wave. The price resets next wave.
 - A Charge Forge exchanges a large permanent investment and remote build freedom for recurring stored Plates during active waves.
-- Apex promotions provide a compact late-game credit sink once Mastery begins.
+- Apex promotions provide a compact late-game credit sink beginning with the final campaign act.
 
-The economy is intentionally tight during campaign openings and increasingly flexible later. Mastery waves absorb campaign reserves through Apex and coverage investment; Endless health growth eventually outpaces a static defense.
+The economy is intentionally tight during campaign openings and increasingly flexible later. Waves 21–30 absorb accumulated reserves through Apex and coverage investment; Endless health growth eventually outpaces a static defense.
 
 ## Tower progression
 
@@ -63,7 +63,7 @@ Each tower has three permanent levels:
 
 This produces four complete builds per tower. Doctrines emphasize a statistical or delivery approach; final roles provide the larger mechanical identity. Upgrade previews show exact current-to-next values, including utility fields such as slow strength/duration, projectile speed, arcs, splash, Expose, Armor Break, or Beacon aura changes.
 
-Mastery unlocks one authored Apex promotion for completed level-three towers. Apex preserves the selected build's identity while raising its late-game ceiling. It is a permanent upgrade, remains available in Entrenched, and is recorded in saves, co-op snapshots, history layouts, and contribution data.
+Wave 21 unlocks one authored Apex promotion for completed level-three towers. Apex preserves the selected build's identity while raising its late-game ceiling. It is a permanent upgrade, remains available in Entrenched, and is recorded in saves, co-op snapshots, history layouts, and contribution data.
 
 ## Tower roles
 
@@ -108,9 +108,9 @@ Carriers render above ordinary enemies, use the same in-body glyphs in combat an
 
 Core statuses are Slow, Stun, Expose, and Armor Break. Their glyphs are distinct and can coexist. Damage resolution applies armor, shields, pierce, rank modifiers, Expose, Armor Break, burn, splash caps, and source attribution deterministically.
 
-## Campaign, Mastery, and Endless
+## Campaign and Endless
 
-Waves 1–20 form the Easy, Medium, and Hard campaign. Waves 21–30 are an optional arena-specific Mastery sequence for those profiles and the required final third of Bastion. The sequence smooths pressure toward a demanding wave-30 capstone. Generated Endless begins at wave 31 and rotates balanced, runner, armored, regenerator, and boss themes.
+Waves 1–30 form the campaign on every difficulty. Waves 21–30 are the final arena-specific escalation, unlock Apex investment, and build toward a demanding wave-30 capstone. Generated Endless begins at wave 31 and rotates balanced, runner, armored, regenerator, and boss themes.
 
 Endless health follows accelerating growth, while count, speed, cadence, and spawn delay use performance-minded caps/floors. The goal is escalating durability and composition pressure without allowing unit count alone to overwhelm rendering or networking.
 
@@ -122,7 +122,7 @@ The host sequences authoritative commands. Both peers run the deterministic simu
 
 ## Persistence and metagame
 
-The game maintains one rolling autosave and expandable manual slots. Manual slots can be duplicated or deleted. Run History is independent from saves and stores a single evolving record when a campaign continues through Mastery or Endless.
+The game maintains one rolling autosave and expandable manual slots. Manual slots can be duplicated or deleted. Run History is independent from saves and stores a single evolving record when a completed campaign continues into Endless.
 
 The Tactical Library is a complete planning reference. Exact towers, branches, enemies, waves, profiles, directives, and system rules are available before a run so difficulty comes from execution and strategic commitment rather than concealed counters. Medals reward notable single-run constraints and outcomes; achievements combine progression, repeated accomplishments, profile clears, and long-term records so the player retains visible goals after learning the campaign.
 

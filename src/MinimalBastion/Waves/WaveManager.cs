@@ -13,7 +13,6 @@ public sealed class WaveManager
     private int _spawnedInGroup;
     private float _groupTimer;
     private float _delayRemaining;
-    private readonly int _campaignWaveCount;
 
     public int CurrentWaveNumber { get; private set; }
     public bool IsActive => _activeDefinition is not null;
@@ -22,7 +21,7 @@ public sealed class WaveManager
     public float IntermissionRemaining { get; private set; }
     public bool IsFinalWaveCleared { get; private set; }
     public bool EndlessModeEnabled { get; private set; }
-    public int TotalWaves => Math.Min(_campaignWaveCount, _waves.Count);
+    public int TotalWaves => _waves.Count;
     public int AuthoredWaveCount => _waves.Count;
     public int QueuedEnemies { get; private set; }
     public WaveDefinition? ActiveWave => _activeDefinition;
@@ -32,10 +31,9 @@ public sealed class WaveManager
     public WaveDefinition? GetAuthoredWave(int waveNumber) =>
         waveNumber >= 1 && waveNumber <= _waves.Count ? _waves[waveNumber - 1] : null;
 
-    public WaveManager(IReadOnlyList<WaveDefinition> waves, int campaignWaveCount = GameConstants.CampaignWaveCount)
+    public WaveManager(IReadOnlyList<WaveDefinition> waves)
     {
         _waves = waves;
-        _campaignWaveCount = waves.Count == 0 ? 0 : Math.Clamp(campaignWaveCount, 1, waves.Count);
         CurrentWaveNumber = 0;
     }
 

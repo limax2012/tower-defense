@@ -200,8 +200,7 @@ public static class DataValidator
             !difficulties.Any(x => x.Id.Equals(DifficultyCatalog.LegacyId, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidDataException("Difficulty profiles must include normal and hard.");
         if (difficulties.Any(x => string.IsNullOrWhiteSpace(x.DisplayName) || x.EnemyHealthMultiplier <= 0 ||
-            x.EnemySpeedMultiplier <= 0 || x.StartingCreditsMultiplier < 0 || x.StartingLives <= 0 ||
-            x.CampaignWaveCount is < 1 or > GameConstants.MasteryFinalWave))
+            x.EnemySpeedMultiplier <= 0 || x.StartingCreditsMultiplier < 0 || x.StartingLives <= 0))
             throw new InvalidDataException("Invalid difficulty profile.");
     }
 
@@ -252,8 +251,8 @@ public static class DataValidator
         if (map.PowerNodes.Any(node => !MapPositionIsBuildable(node.Position, map)))
             throw new InvalidDataException($"Power node center is not a valid tower position in map: {map.Id}");
         RequireUnique(map.PowerNodes.Select(x => x.Id), "power node");
-        if (waves.Waves.Count != GameConstants.MasteryFinalWave)
-            throw new InvalidDataException($"Each arena requires exactly {GameConstants.MasteryFinalWave} authored waves.");
+        if (waves.Waves.Count != GameConstants.CampaignWaveCount)
+            throw new InvalidDataException($"Each arena requires exactly {GameConstants.CampaignWaveCount} authored waves.");
         if (tactics.EmergencyDefense.PurchaseCost <= 0 || tactics.EmergencyDefense.DirectPurchaseCostIncrease < 0 ||
             tactics.EmergencyDefense.MaximumActive <= 0 || tactics.EmergencyDefense.Charges <= 0 ||
             tactics.EmergencyDefense.Damage <= 0 || tactics.EmergencyDefense.BlastRadius <= tactics.EmergencyDefense.TriggerRadius ||

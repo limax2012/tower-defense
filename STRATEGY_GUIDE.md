@@ -10,7 +10,7 @@ Minimal Bastion rewards route coverage, counter timing, and completed upgrade ro
 4. **Use control to multiply the whole defense.** Slow and stun create more firing time for every tower that covers the affected route. Arc Relay no longer receives a hidden damage bonus against slowed enemies; Frost and Arc still combine naturally through extra time on target.
 5. **Do not stack Signal Beacons.** Overlapping auras use the strongest applicable value rather than adding together. Place a Beacon only when it supports a meaningful cluster, then put later Beacons on separate clusters.
 6. **Treat targeting as part of the build.** Frost should usually stay on Fastest, anti-armor fire should use Armored, and priority damage should use Strongest or Support when signal carriers matter.
-7. **Spend before the reserve becomes dead weight.** Complete doctrines and final roles, improve weak coverage, then use remote Watchtower/Mortar positions. Bastion waves 21–30 unlock Apex promotions and are balanced around reinvesting in the established defense.
+7. **Spend before the reserve becomes dead weight.** Complete doctrines and final roles, improve weak coverage, then use remote Watchtower/Mortar positions. Waves 21–30 unlock Apex promotions and are balanced around reinvesting in the established defense.
 
 ## Tower guide
 
@@ -125,10 +125,10 @@ The lower starting economy assumes early node use. Large nodes can geometrically
 
 ## Difficulty and directive expectations
 
-- **Easy:** 90% enemy health, 98% speed, 112.5% starting credits, 24 lives, 20-wave campaign.
-- **Medium:** authored health, speed, and economy with 20 lives and a 20-wave campaign.
-- **Hard:** 112% health, 102% speed, 18 lives, and a 20-wave campaign.
-- **Bastion:** Hard combat scaling, 16 lives, and all 30 authored waves as one expert campaign. Apex becomes available for waves 21–30.
+- **Easy:** 90% enemy health, 98% speed, 112.5% starting credits, 24 lives, and a 30-wave campaign.
+- **Medium:** authored health, speed, and economy with 20 lives and a 30-wave campaign.
+- **Hard:** 112% health, 102% speed, 18 lives, and a 30-wave campaign.
+- **Bastion:** Hard combat scaling, 16 lives, and the same complete 30-wave campaign.
 
 Standard tests the complete toolset. Signal Gauntlet adds support carriers and tower disruption. Core Six is a roster puzzle rather than a universal numerical handicap. Entrenched tests permanent planning by removing tactical reserves, Protocols, selling, and the Forge.
 

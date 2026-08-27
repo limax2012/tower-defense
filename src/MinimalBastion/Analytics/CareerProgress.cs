@@ -82,14 +82,14 @@ public static class CareerProgression
         new("allied_hold", "Allied Hold", "Secure a campaign in online co-op."),
         new("rapid_response", "Rapid Response", "Secure a campaign within 20 defense minutes."),
         new("apex_line", "Apex Line", "Finish with at least six Apex towers."),
-        new("mastery", "Mastery", $"Reach authored wave {GameConstants.MasteryFinalWave}."),
+        new("mastery", "Apex Command", "Secure the campaign with at least one Apex tower."),
         new("deep_endless", "Deep Endless", "Reach endless wave 50."),
         new("iron_bastion", "Iron Bastion", "Secure Bastion without a leak."),
         new("gauntlet_bastion", "Signal Bastion", "Secure Signal Gauntlet on Bastion."),
         new("core_bastion", "Core Bastion", "Secure Core Six on Bastion."),
         new("entrenched_bastion", "Entrenched Bastion", "Secure Entrenched on Bastion."),
         new("tactical_triad", "Tactical Triad", "Secure with 10 Protocols, 10 Plate kills, and 5 forged charges."),
-        new("bastion_mastery", "Bastion Mastery", $"Reach authored wave {GameConstants.MasteryFinalWave} on Bastion."),
+        new("bastion_mastery", "Bastion Apex", "Secure Bastion with at least one Apex tower."),
         new("endless_75", "Endless 75", "Reach endless wave 75."),
         new("century_hold", "Century Hold", "Reach endless wave 100.")
     ];
@@ -116,15 +116,15 @@ public static class CareerProgression
         var mapDirectivePairs = DistinctPairs(secured, entry => entry.MapId, entry => entry.ChallengeId,
             RequiredMaps, RequiredDirectives);
         var deepestWave = runs.Select(entry => entry.CurrentWave).DefaultIfEmpty(0).Max();
-        var masteryRuns = runs.Where(entry => entry.CurrentWave >= GameConstants.MasteryFinalWave).ToArray();
-        var masteryMaps = DistinctRequiredMaps(masteryRuns);
-        var masteryDirectives = RequiredDirectives.Count(directive =>
-            masteryRuns.Any(entry => entry.ChallengeId.Equals(directive, StringComparison.OrdinalIgnoreCase)));
-        var masteryMapDirectivePairs = DistinctPairs(masteryRuns, entry => entry.MapId, entry => entry.ChallengeId,
+        var apexRuns = secured.Where(entry => entry.FinalLayout?.Towers.Any(tower => tower.IsApex) == true).ToArray();
+        var apexMaps = DistinctRequiredMaps(apexRuns);
+        var apexDirectives = RequiredDirectives.Count(directive =>
+            apexRuns.Any(entry => entry.ChallengeId.Equals(directive, StringComparison.OrdinalIgnoreCase)));
+        var apexMapDirectivePairs = DistinctPairs(apexRuns, entry => entry.MapId, entry => entry.ChallengeId,
             RequiredMaps, RequiredDirectives);
-        var bastionMasteryRuns = masteryRuns.Where(IsBastion).ToArray();
-        var bastionMasteryMaps = DistinctRequiredMaps(bastionMasteryRuns);
-        var bastionMasteryMapDirectivePairs = DistinctPairs(bastionMasteryRuns, entry => entry.MapId,
+        var bastionApexRuns = apexRuns.Where(IsBastion).ToArray();
+        var bastionApexMaps = DistinctRequiredMaps(bastionApexRuns);
+        var bastionApexMapDirectivePairs = DistinctPairs(bastionApexRuns, entry => entry.MapId,
             entry => entry.ChallengeId, RequiredMaps, RequiredDirectives);
         var wave50Runs = runs.Where(entry => entry.CurrentWave >= 50).ToArray();
         var wave50Maps = DistinctRequiredMaps(wave50Runs);
@@ -180,7 +180,7 @@ public static class CareerProgression
         var totalCommandRequirements =
             (medalTypesUnlocked >= MedalCatalog.Length ? 1 : 0) +
             (mapDifficultyPairs >= 16 ? 1 : 0) +
-            (bastionMasteryMapDirectivePairs >= 16 ? 1 : 0) +
+            (bastionApexMapDirectivePairs >= 16 ? 1 : 0) +
             (designsSeen >= 40 ? 1 : 0) +
             (wave100Maps >= 4 ? 1 : 0) +
             (secured.Length >= 50 ? 1 : 0);
@@ -205,14 +205,14 @@ public static class CareerProgression
             Tracked("Directives", "bastion_circuit", "Bastion Circuit", "Secure all four arenas on Bastion.", bastionMapsSecured, 4),
             Tracked("Directives", "bastion_doctrine", "Bastion Doctrine", "Secure all four directives on Bastion.", RequiredDirectives.Count(directive => bastionSecured.Any(entry => entry.ChallengeId.Equals(directive, StringComparison.OrdinalIgnoreCase))), 4),
 
-            Tracked("Mastery", "mastery_veteran", "Mastery Veteran", "Complete five authored Mastery campaigns.", masteryRuns.Length, 5),
-            Tracked("Mastery", "mastery_explorer", "Mastery Explorer", "Reach wave 30 on two arenas.", masteryMaps, 2),
-            Tracked("Mastery", "mastery_circuit", "Mastery Circuit", "Reach wave 30 on all four arenas.", masteryMaps, 4),
-            Tracked("Mastery", "mastery_directives", "Mastery Directives", "Reach wave 30 with every directive.", masteryDirectives, 4),
-            Tracked("Mastery", "mastery_grid", "Mastery Grid", "Reach wave 30 for every arena and directive pairing.", masteryMapDirectivePairs, 16),
-            Tracked("Mastery", "bastion_mastery_veteran", "Bastion Master", "Complete five Mastery campaigns on Bastion.", bastionMasteryRuns.Length, 5),
-            Tracked("Mastery", "bastion_mastery_circuit", "Bastion Mastery Circuit", "Reach wave 30 on every arena on Bastion.", bastionMasteryMaps, 4),
-            Tracked("Mastery", "bastion_mastery_matrix", "Bastion Mastery Matrix", "Reach wave 30 for every arena and directive pairing on Bastion.", bastionMasteryMapDirectivePairs, 16),
+            Tracked("Apex", "mastery_veteran", "Apex Veteran", "Secure five campaigns with an Apex tower.", apexRuns.Length, 5),
+            Tracked("Apex", "mastery_explorer", "Apex Explorer", "Secure two arenas with an Apex tower.", apexMaps, 2),
+            Tracked("Apex", "mastery_circuit", "Apex Circuit", "Secure all four arenas with an Apex tower.", apexMaps, 4),
+            Tracked("Apex", "mastery_directives", "Apex Directives", "Secure every directive with an Apex tower.", apexDirectives, 4),
+            Tracked("Apex", "mastery_grid", "Apex Grid", "Secure every arena and directive pairing with an Apex tower.", apexMapDirectivePairs, 16),
+            Tracked("Apex", "bastion_mastery_veteran", "Bastion Apex Veteran", "Secure five Bastion campaigns with an Apex tower.", bastionApexRuns.Length, 5),
+            Tracked("Apex", "bastion_mastery_circuit", "Bastion Apex Circuit", "Secure every arena on Bastion with an Apex tower.", bastionApexMaps, 4),
+            Tracked("Apex", "bastion_mastery_matrix", "Bastion Apex Matrix", "Secure every arena and directive pairing on Bastion with an Apex tower.", bastionApexMapDirectivePairs, 16),
 
             Tracked("Endurance", "deep_explorer", "Deep Explorer", "Reach wave 50 on two arenas.", wave50Maps, 2),
             Tracked("Endurance", "deep_circuit", "Deep Circuit", "Reach wave 50 on all four arenas.", wave50Maps, 4),
@@ -247,8 +247,8 @@ public static class CareerProgression
             Tracked("Honors", "precision_honors", "Precision Honors", "Discover Flawless, Lean Grid, Minimal Grid, and Specialist.", precisionHonors, 4),
             Tracked("Honors", "tactical_honors", "Tactical Honors", "Discover Early Command, Protocol Chain, Plate Ace, and Forge Fed.", tacticalHonors, 4),
             Tracked("Honors", "bastion_honors", "Bastion Honors", "Discover all six Bastion run medals.", bastionHonors, 6),
-            Tracked("Honors", "endurance_honors", "Endurance Honors", "Discover Mastery, Deep Endless, Endless 75, and Century Hold.", enduranceHonors, 4),
-            Tracked("Honors", "total_command", "Total Command", "Complete the medal, campaign, Mastery, design, endurance, and service records.", totalCommandRequirements, 6)
+            Tracked("Honors", "endurance_honors", "Endurance Honors", "Discover Apex Command, Deep Endless, Endless 75, and Century Hold.", enduranceHonors, 4),
+            Tracked("Honors", "total_command", "Total Command", "Complete the medal, campaign, Apex, design, endurance, and service records.", totalCommandRequirements, 6)
         };
 
         return new CareerProgress
@@ -303,14 +303,14 @@ public static class CareerProgression
             "allied_hold" => secured && entry.IsCoOp,
             "rapid_response" => secured && entry.DefenseSeconds is > 0 and <= 1_200,
             "apex_line" => apexTowers >= 6,
-            "mastery" => entry.CurrentWave >= GameConstants.MasteryFinalWave,
+            "mastery" => secured && apexTowers >= 1,
             "deep_endless" => entry.CurrentWave >= 50,
             "iron_bastion" => secured && IsBastion(entry) && entry.Leaks == 0,
             "gauntlet_bastion" => secured && IsBastion(entry) && IsDirective(entry, "close_quarters"),
             "core_bastion" => secured && IsBastion(entry) && IsDirective(entry, "core_six"),
             "entrenched_bastion" => secured && IsBastion(entry) && IsDirective(entry, "no_reserves"),
             "tactical_triad" => secured && entry.ProtocolActivations >= 10 && entry.PlateKills >= 10 && entry.ForgedCharges >= 5,
-            "bastion_mastery" => IsBastion(entry) && entry.CurrentWave >= GameConstants.MasteryFinalWave,
+            "bastion_mastery" => secured && IsBastion(entry) && apexTowers >= 1,
             "endless_75" => entry.CurrentWave >= 75,
             "century_hold" => entry.CurrentWave >= 100,
             _ => false

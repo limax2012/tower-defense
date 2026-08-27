@@ -470,7 +470,7 @@ public sealed class VisualVerificationGame : Game
 
         var crosswindWinningSample = CaptureSimulationLayout(content, ui,
             "05f-crosswind-hard-standard-win.png", "crosswind_basin", "hard", "standard",
-            AutoPlayerStrategy.Experienced, 1337, true, assertions);
+            AutoPlayerStrategy.Experienced, 25094, true, assertions);
         var crosswindLosingSample = CaptureSimulationLayout(content, ui,
             "05g-crosswind-hard-standard-loss.png", "crosswind_basin", "hard", "standard",
             AutoPlayerStrategy.Experienced, 56770, false, assertions);
@@ -478,8 +478,8 @@ public sealed class VisualVerificationGame : Game
         scenes.Add(crosswindLosingSample.Scene);
 
         var surgeWinningSample = CaptureSimulationLayout(content, ui,
-            "05h-surge-hard-standard-win.png", "relay_divide", "hard", "standard",
-            AutoPlayerStrategy.Experienced, 1337, true, assertions);
+            "05h-surge-medium-standard-win.png", "relay_divide", "normal", "standard",
+            AutoPlayerStrategy.Experienced, 9256, true, assertions);
         var surgeLosingSample = CaptureSimulationLayout(content, ui,
             "05i-surge-hard-entrenched-loss.png", "relay_divide", "hard", "no_reserves",
             AutoPlayerStrategy.Experienced, 1337, false, assertions);
@@ -675,13 +675,13 @@ public sealed class VisualVerificationGame : Game
         var apexSeed = new GameSession(content, "foundry_loop", "bastion", "no_reserves");
         var apexSave = apexSeed.CaptureSaveGame();
         apexSave.Economy.Credits = 8_000;
-        apexSave.Waves.CurrentWaveNumber = GameConstants.CampaignWaveCount;
+        apexSave.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 1;
         var apexSession = GameSession.RestoreSaveGame(content, apexSave);
         Require(apexSession.TryPlaceTower("needle_turret", new Vector2(45, 200)) &&
                 apexSession.TryChooseTowerDoctrine(apexSession.SelectedTower!.Id, "needle_cycler") &&
                 apexSession.TrySpecializeTower(apexSession.SelectedTower!.Id, "rapid_array") &&
                 apexSession.CanApexUpgrade(apexSession.SelectedTower),
-            "Mastery Entrenched scene exposes Apex on a completed tower.", assertions);
+            "Final-act Entrenched scene exposes Apex on a completed tower.", assertions);
         _ = RenderPixels(ui, GameState.Playing, apexSession);
         _ = ui.HandleGameplayInput(Pointer(1120, 693), apexSession);
         scenes.Add(Capture("10f-apex-upgrade-preview.png", ui, GameState.Playing, apexSession));
@@ -694,16 +694,14 @@ public sealed class VisualVerificationGame : Game
             "Promoted Tower Intel identifies Apex in a reserved top-right header gutter.", assertions);
         scenes.Add(Capture("10g-apex-current-intel.png", ui, GameState.Playing, apexSession));
 
-        var masterySeed = new GameSession(content, "relay_divide", "hard", "no_reserves");
-        var masterySave = masterySeed.CaptureSaveGame();
-        masterySave.Waves.CurrentWaveNumber = GameConstants.CampaignWaveCount;
-        masterySave.Waves.IsFinalWaveCleared = true;
-        masterySave.Waves.EndlessModeEnabled = true;
-        var masterySession = GameSession.RestoreSaveGame(content, masterySave);
-        Require(masterySession.StartNextWave(true) &&
-                masterySession.AnnouncementTitle == "WAVE 21 // RESIDUAL CURRENT",
-            "Mastery announcement scene starts the first authored post-campaign wave.", assertions);
-        scenes.Add(Capture("10h-long-mastery-announcement.png", ui, GameState.Playing, masterySession));
+        var finalActSeed = new GameSession(content, "relay_divide", "hard", "no_reserves");
+        var finalActSave = finalActSeed.CaptureSaveGame();
+        finalActSave.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 1;
+        var finalActSession = GameSession.RestoreSaveGame(content, finalActSave);
+        Require(finalActSession.StartNextWave(true) &&
+                finalActSession.AnnouncementTitle == "WAVE 21 // RESIDUAL CURRENT",
+            "Final-act announcement scene starts authored wave 21.", assertions);
+        scenes.Add(Capture("10h-long-final-act-announcement.png", ui, GameState.Playing, finalActSession));
 
         var settings = new UserSettings { AutoStartWaves = true, AutoStartDelaySeconds = 10 };
         ui.ConfigureSettings(settings);

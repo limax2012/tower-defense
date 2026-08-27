@@ -62,7 +62,7 @@ A mode that removes one rarely used button may not create a distinct experience.
 Authored waves teach counters, create deliberate tests, and support arena-specific pacing. Generated waves extend a solved campaign but require bounded unit density and clear scaling. A strong structure is:
 
 - campaign: teach and test the complete baseline
-- Mastery: authored reinvestment test for an established defense
+- final campaign act: authored reinvestment test for an established defense
 - Endless: rotating generated pressure and long-term optimization
 
 The final authored wave should be a capstone, but the preceding sequence should ramp smoothly enough that failure teaches something.

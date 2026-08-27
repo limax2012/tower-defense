@@ -129,7 +129,7 @@
       { "enemyId": "t2_runner", "count": 14, "spawnInterval": 0.11, "delayBefore": 0.13 }, { "enemyId": "t3_brute", "count": 10, "spawnInterval": 0.26, "delayBefore": 0.08 }, { "enemyId": "t4_aegis", "count": 6, "spawnInterval": 0.42, "delayBefore": 0.13 }, { "enemyId": "t5_regenerator", "count": 3, "spawnInterval": 0.64, "delayBefore": 0.18 },
       { "enemyId": "t5_regenerator", "rank": "Boss", "count": 1, "spawnInterval": 1.0, "delayBefore": 0.82 }
     ] },
-    { "number": 21, "archetype": "Second Front", "briefing": "A fast but orderly front reforms beyond the campaign storm.", "healthMultiplier": 4.550, "speedMultiplier": 1.120, "groups": [
+    { "number": 21, "archetype": "Rising Front", "briefing": "A fast but orderly front opens the campaign's final storm.", "healthMultiplier": 4.550, "speedMultiplier": 1.120, "groups": [
       { "enemyId": "t2_runner", "count": 28, "spawnInterval": 0.11, "delayBefore": 0 }, { "enemyId": "t1_crawler", "count": 20, "spawnInterval": 0.21, "delayBefore": 0.16 }, { "enemyId": "t3_brute", "count": 18, "spawnInterval": 0.25, "delayBefore": 0.16 }, { "enemyId": "t4_aegis", "count": 10, "spawnInterval": 0.39, "delayBefore": 0.18 }, { "enemyId": "t5_regenerator", "count": 7, "spawnInterval": 0.58, "delayBefore": 0.24 }
     ] },
     { "number": 22, "archetype": "Tailwind Spear", "briefing": "Separated runner spears test late-route coverage and reaction speed.", "healthMultiplier": 5.500, "speedMultiplier": 1.135, "groups": [
@@ -153,10 +153,10 @@
     { "number": 28, "archetype": "Storm Wall", "briefing": "A broad armored wall conceals a late runner breakout.", "healthMultiplier": 5.500, "speedMultiplier": 1.165, "groups": [
       { "enemyId": "t3_brute", "count": 30, "spawnInterval": 0.21, "delayBefore": 0 }, { "enemyId": "t4_aegis", "count": 20, "spawnInterval": 0.33, "delayBefore": 0.12 }, { "enemyId": "t5_regenerator", "count": 16, "spawnInterval": 0.49, "delayBefore": 0.14 }, { "enemyId": "t1_crawler", "count": 28, "spawnInterval": 0.17, "delayBefore": 0.16 }, { "enemyId": "t2_runner", "count": 36, "spawnInterval": 0.08, "delayBefore": 0.28 }, { "enemyId": "t2_runner", "rank": "Elite", "count": 2, "spawnInterval": 0.36, "delayBefore": 0.10 }
     ] },
-    { "number": 29, "archetype": "Mastery Squall", "briefing": "Uneven elite gusts repeatedly shift the most urgent target.", "healthMultiplier": 7.800, "speedMultiplier": 1.170, "groups": [
+    { "number": 29, "archetype": "Final Squall", "briefing": "Uneven elite gusts repeatedly shift the most urgent target.", "healthMultiplier": 7.800, "speedMultiplier": 1.170, "groups": [
       { "enemyId": "t2_runner", "count": 28, "spawnInterval": 0.08, "delayBefore": 0 }, { "enemyId": "t4_aegis", "rank": "Elite", "count": 1, "spawnInterval": 0.42, "delayBefore": 0.16 }, { "enemyId": "t3_brute", "count": 28, "spawnInterval": 0.20, "delayBefore": 0.14 }, { "enemyId": "t2_runner", "rank": "Elite", "count": 2, "spawnInterval": 0.35, "delayBefore": 0.22 }, { "enemyId": "t5_regenerator", "count": 18, "spawnInterval": 0.48, "delayBefore": 0.14 }, { "enemyId": "t1_crawler", "count": 30, "spawnInterval": 0.17, "delayBefore": 0.16 }, { "enemyId": "t2_runner", "count": 32, "spawnInterval": 0.08, "delayBefore": 0.14 }
     ] },
-    { "number": 30, "archetype": "Crosswind Mastery", "briefing": "The final authored supercell drives a reinforced Bastion Core down the basin.", "healthMultiplier": 6.000, "speedMultiplier": 1.180, "groups": [
+    { "number": 30, "archetype": "Last Supercell", "briefing": "The final supercell drives a reinforced Bastion Core down the basin.", "healthMultiplier": 6.000, "speedMultiplier": 1.180, "groups": [
       { "enemyId": "t2_runner", "count": 34, "spawnInterval": 0.08, "delayBefore": 0 }, { "enemyId": "t1_crawler", "count": 28, "spawnInterval": 0.17, "delayBefore": 0.09 }, { "enemyId": "t4_aegis", "count": 22, "spawnInterval": 0.32, "delayBefore": 0.10 }, { "enemyId": "t3_brute", "count": 30, "spawnInterval": 0.20, "delayBefore": 0.10 }, { "enemyId": "t5_regenerator", "count": 18, "spawnInterval": 0.47, "delayBefore": 0.12 }, { "enemyId": "t2_runner", "rank": "Elite", "count": 3, "spawnInterval": 0.34, "delayBefore": 0.14 }, { "enemyId": "t5_regenerator", "rank": "Boss", "count": 1, "spawnInterval": 1.00, "delayBefore": 0.70 }
     ] }
   ]

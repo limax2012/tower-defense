@@ -70,7 +70,7 @@ internal static class Program
             ("endless wave continuation", EndlessWaveContinuation),
             ("early wave call reward", EarlyWaveCallReward),
             ("mixed wave composition", MixedWaveComposition),
-            ("Mastery pressure curve", MasteryPressureCurve),
+            ("final campaign act pressure curve", FinalCampaignActPressureCurve),
             ("arc relay chain", ArcRelayChain),
             ("frost area control", FrostAreaControl),
             ("needle rapid ricochet", NeedleRapidRicochet),
@@ -144,7 +144,7 @@ internal static class Program
     private static void SimulationCampaignDefault()
     {
         Check.Equal(20, SimulationCli.ResolveMaximumWave(["--simulate-full"], 20), "default simulation wave cap");
-        Check.Equal(30, SimulationCli.ResolveMaximumWave(["--simulate-full", "--max-wave", "30"], 20), "explicit Mastery wave cap");
+        Check.Equal(30, SimulationCli.ResolveMaximumWave(["--simulate-full", "--max-wave", "30"], 20), "explicit full-campaign wave cap");
         Check.Equal(1, SimulationCli.ResolveMaximumWave(["--simulate", "--max-wave=0"], 20), "minimum explicit wave cap");
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
@@ -323,10 +323,9 @@ internal static class Program
             content.Challenges.Where(pair => !pair.Key.Equals("no_reserves", StringComparison.OrdinalIgnoreCase))
                 .All(pair => pair.Value.ProtocolsEnabled),
             "Entrenched is the only Protocol-free directive");
-        Check.Equal(1090, content.Waves.Waves.Take(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Sum(x => x.Count), "enemy count in campaign waves");
+        Check.Equal(2185, content.Waves.Waves.Take(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Sum(x => x.Count), "enemy count in the complete campaign");
         Check.True(content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase)) >= 5, "elite encounter groups");
-        Check.Equal(1, content.Waves.Waves.Take(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)), "campaign boss group");
-        Check.Equal(1, content.Waves.Waves.Skip(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)), "mastery boss group");
+        Check.Equal(2, content.Waves.Waves.Take(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)), "campaign boss groups");
         Check.True(content.Towers.Values.Select(x => x.Visual.Primary).Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 8, "tower palette");
         Check.True(content.Enemies.Values.Select(x => x.Visual.Primary).Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 5, "enemy palette");
         Check.True(!content.Map.Background.Base.Equals("#FFFFFF", StringComparison.OrdinalIgnoreCase), "map palette");
@@ -428,13 +427,14 @@ internal static class Program
         Check.Equal(24, easy.Economy.StartingLives, "easy starting lives");
         Check.Equal(400, bastion.Economy.Credits, "bastion preserves the uncompromised starting economy");
         Check.Equal(16, bastion.Economy.StartingLives, "bastion has the narrowest life margin");
-        Check.Equal(GameConstants.MasteryFinalWave, bastion.TotalWaves, "bastion includes the complete authored campaign");
+        Check.True(new[] { easy, normal, hard, bastion }.All(session => session.TotalWaves == GameConstants.CampaignWaveCount),
+            "every difficulty includes the complete authored campaign");
         var bastionCampaign = WaveIntel.AnalyzeCampaign(content.WaveSets[bastion.Map.Definition.WaveSet],
             content.Enemies, bastion.TotalWaves);
-        Check.Equal(GameConstants.MasteryFinalWave, bastionCampaign.WaveCount,
-            "bastion setup intel includes all authored expert waves");
-        Check.True(bastionCampaign.TotalContacts > 1090 && bastionCampaign.BossWave == GameConstants.MasteryFinalWave,
-            "bastion setup intel includes the post-wave-20 pressure and final boss");
+        Check.Equal(GameConstants.CampaignWaveCount, bastionCampaign.WaveCount,
+            "setup intel includes every authored campaign wave");
+        Check.True(bastionCampaign.TotalContacts > 1090 && bastionCampaign.BossWave == GameConstants.CampaignWaveCount,
+            "setup intel includes the final campaign act and capstone boss");
         Check.Nearly(1.12f, bastion.Difficulty.EnemyHealthMultiplier, "bastion health pressure");
         Check.Nearly(1.02f, bastion.Difficulty.EnemySpeedMultiplier, "bastion speed pressure");
         Check.True(bastion.Difficulty.ModifierSummary.Contains("ENEMY HP 112%") &&
@@ -443,7 +443,7 @@ internal static class Program
             "bastion selector exposes the tuned expert profile exactly");
         Check.True(content.Difficulties["normal"].ModifierSummary.Contains("ENEMY HP 100%") &&
             content.Difficulties["normal"].ModifierSummary.Contains("START CREDITS 100%") &&
-            content.Difficulties["normal"].ModifierSummary.EndsWith("20 LIVES | 20 WAVES"),
+            content.Difficulties["normal"].ModifierSummary.EndsWith("20 LIVES | 30 WAVES"),
             "difficulty selector exposes exact mechanical modifiers");
 
         hard.SpawnEnemy("t1_crawler", 1, 1);
@@ -459,11 +459,11 @@ internal static class Program
         var snapshot = normalPersist.CaptureCoOpState(4, 0, false);
         Check.Equal("normal", GameSession.RestoreCoOpState(content, snapshot, 2).DifficultyId, "co-op snapshot restores difficulty");
 
-        var bastionAtMastery = bastion.CaptureSaveGame();
-        bastionAtMastery.Waves.CurrentWaveNumber = GameConstants.CampaignWaveCount;
-        var restoredBastionAtMastery = GameSession.RestoreSaveGame(content, bastionAtMastery);
-        Check.True(restoredBastionAtMastery.ApexUpgradesUnlocked,
-            "bastion unlocks Apex progression for its authored waves 21 through 30 without entering endless mode");
+        var bastionAtFinalAct = bastion.CaptureSaveGame();
+        bastionAtFinalAct.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 1;
+        var restoredBastionAtFinalAct = GameSession.RestoreSaveGame(content, bastionAtFinalAct);
+        Check.True(restoredBastionAtFinalAct.ApexUpgradesUnlocked,
+            "Apex unlocks before authored wave 21 without entering endless mode");
 
         normalSave.DifficultyId = "";
         Check.Equal("hard", GameSession.RestoreSaveGame(content, normalSave).DifficultyId, "legacy saves retain original hard rules");
@@ -472,6 +472,11 @@ internal static class Program
         Check.Equal("HP x1.00 | SPD x1.00",
             nextIntel.ScalingSummary(normal.Difficulty.EnemyHealthMultiplier, normal.Difficulty.EnemySpeedMultiplier),
             "live threat intel exposes effective wave and difficulty scaling");
+        normal.OnWaveCompleted(GameConstants.ApexUnlockWave - 1);
+        Check.True(normal.AnnouncementTitle == "FINAL ESCALATION",
+            "wave 20 announces the final campaign act on every difficulty");
+        Check.True(normal.AnnouncementSubtitle?.Contains("10 WAVES REMAIN", StringComparison.Ordinal) == true,
+            "the final-act announcement states the remaining campaign length");
 
         var ui = new UIManager(null!);
         ui.ConfigureDifficulties(content.Difficulties.Values);
@@ -1126,9 +1131,9 @@ internal static class Program
         Check.True(Vector2.Distance(crosswindCrossfirePoint, new Vector2(130, 320)) > crosswindShardRange,
             "Crosswind's base Shard Fan commits to one lane until its reach improves");
         var crosswindIntel = WaveIntel.AnalyzeCampaign(content.WaveSets[crosswind.WaveSet], content.Enemies);
-        Check.Equal(1066, crosswindIntel.TotalContacts, "Crosswind campaign intel counts the authored roster");
-        Check.Equal(118, crosswindIntel.PeakContacts, "Crosswind campaign intel identifies peak density");
-        Check.True(crosswindIntel.OpeningThreats.Contains("FAST", StringComparison.Ordinal) && crosswindIntel.BossWave == 20,
+        Check.Equal(2192, crosswindIntel.TotalContacts, "Crosswind campaign intel counts the authored roster");
+        Check.Equal(139, crosswindIntel.PeakContacts, "Crosswind campaign intel identifies peak density");
+        Check.True(crosswindIntel.OpeningThreats.Contains("FAST", StringComparison.Ordinal) && crosswindIntel.BossWave == 30,
             "Crosswind campaign intel exposes its opening identity and boss timing");
         var mapUi = new UIManager(null!);
         mapUi.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
@@ -1519,7 +1524,7 @@ internal static class Program
         Check.Equal(268, economy.Credits, "rewards");
         Check.Nearly(1f, EconomyService.CalculateKillRewardMultiplier(10), "opening kill rewards stay at full value");
         Check.Nearly(0.8f, EconomyService.CalculateKillRewardMultiplier(20), "campaign kill rewards taper smoothly");
-        Check.Nearly(2f / 3f, EconomyService.CalculateKillRewardMultiplier(30), "Mastery kill rewards taper smoothly");
+        Check.Nearly(2f / 3f, EconomyService.CalculateKillRewardMultiplier(30), "late-campaign kill rewards taper smoothly");
         Check.Nearly(0.4f, EconomyService.CalculateKillRewardMultiplier(100), "deep Endless kill reward floor");
         Check.Equal(8, EconomyService.CalculateKillReward(8, 10), "opening crawler reward");
         Check.Equal(6, EconomyService.CalculateKillReward(8, 20), "campaign crawler reward");
@@ -3539,12 +3544,19 @@ internal static class Program
         var authoredManager = new WaveManager(content.Waves.Waves);
         authoredManager.RestoreSaveData(new WaveSaveData
         {
+            CurrentWaveNumber = GameConstants.ApexUnlockWave - 1
+        });
+        Check.True(authoredManager.CanStartNextWave, "the final campaign act follows wave 20 directly");
+        Check.Equal(21, authoredManager.NextWave!.Number, "the final campaign act begins with authored wave 21");
+        Check.Equal(30, authoredManager.GetAuthoredWave(30)!.Number, "the campaign finale remains authored");
+        authoredManager.RestoreSaveData(new WaveSaveData
+        {
             CurrentWaveNumber = GameConstants.CampaignWaveCount,
             IsFinalWaveCleared = true
         });
-        Check.True(authoredManager.EnableEndlessMode(), "campaign continuation enters Mastery progression");
-        Check.Equal(21, authoredManager.NextWave!.Number, "Mastery begins with authored wave 21");
-        Check.Equal(30, authoredManager.GetAuthoredWave(30)!.Number, "Mastery finale remains authored");
+        Check.True(authoredManager.EnableEndlessMode(), "completed campaign can enter generated Endless");
+        Check.Equal(GameConstants.GeneratedEndlessStartWave, authoredManager.NextWave!.Number,
+            "generated Endless begins after all authored waves");
 
         var anchor = content.Waves.Waves[^1];
         var wave31 = EndlessWaveGenerator.Create(31, 30, anchor);
@@ -3719,16 +3731,16 @@ internal static class Program
             ["t4_aegis"] = 4,
             ["t5_regenerator"] = 5
         };
-        foreach (var wave in content.Waves.Waves.Take(GameConstants.CampaignWaveCount).Skip(2))
+        foreach (var wave in content.Waves.Waves.Take(GameConstants.ApexUnlockWave - 1).Skip(2))
         {
             var order = wave.Groups.Select(x => tier[x.EnemyId]).ToArray();
             Check.True(order.Zip(order.Skip(1)).Any(pair => pair.First > pair.Second), $"wave {wave.Number} returns to a lower tier");
             Check.True(!string.IsNullOrWhiteSpace(wave.Archetype), $"wave {wave.Number} archetype");
             Check.True(!string.IsNullOrWhiteSpace(wave.Briefing), $"wave {wave.Number} briefing");
         }
-        Check.True(content.Waves.Waves.Skip(GameConstants.CampaignWaveCount).All(wave =>
+        Check.True(content.Waves.Waves.Skip(GameConstants.ApexUnlockWave - 1).All(wave =>
                 !string.IsNullOrWhiteSpace(wave.Archetype) && !string.IsNullOrWhiteSpace(wave.Briefing)),
-            "Mastery waves retain authored identities and briefings");
+            "final campaign waves retain authored identities and briefings");
         Check.True(content.Waves.Waves.Select(x => x.Archetype).Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 15, "authored wave identities");
         var intel = MinimalBastion.Waves.WaveIntel.Analyze(content.Waves.Waves[13], content.Enemies);
         Check.True(intel.Threats.Contains("REGEN"), "regenerator warning");
@@ -3738,16 +3750,16 @@ internal static class Program
         Check.Equal("BOSS", bossIntel.Threats[0], "boss warning has priority");
     }
 
-    private static void MasteryPressureCurve()
+    private static void FinalCampaignActPressureCurve()
     {
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
         foreach (var map in content.Maps.Values)
         {
             var waves = content.WaveSets[map.WaveSet].Waves;
-            var campaignFinal = WaveDurability(waves[GameConstants.CampaignWaveCount - 1], content.Enemies);
-            var previous = campaignFinal;
-            foreach (var wave in waves.Skip(GameConstants.CampaignWaveCount))
+            var firstActFinal = WaveDurability(waves[GameConstants.ApexUnlockWave - 2], content.Enemies);
+            var previous = firstActFinal;
+            foreach (var wave in waves.Skip(GameConstants.ApexUnlockWave - 1))
             {
                 var durability = WaveDurability(wave, content.Enemies);
                 Check.True(durability >= previous * 0.90f,
@@ -3757,8 +3769,8 @@ internal static class Program
                 previous = durability;
             }
 
-            Check.True(WaveDurability(waves[GameConstants.MasteryFinalWave - 1], content.Enemies) >= campaignFinal * 2.30f,
-                $"{map.Id} Mastery capstone substantially exceeds its campaign capstone");
+            Check.True(WaveDurability(waves[GameConstants.CampaignWaveCount - 1], content.Enemies) >= firstActFinal * 2.30f,
+                $"{map.Id} final capstone substantially exceeds the wave-20 boss");
         }
     }
 
@@ -4446,7 +4458,7 @@ internal static class Program
         Check.Equal("t1_crawler", ui.SelectedLibraryEnemyId!, "threat library supports health-ordered arrow selection");
         ui.HandleTitleTowerLibrary(WorldInput(new Vector2(871, 57)) with { LeftPressed = true });
         Check.True(ui.LibraryShowsCampaign, "tactical library switches to campaign reference");
-        Check.Equal(30, ui.SelectedLibraryCampaignWaveCount, "campaign reference exposes campaign and Mastery waves");
+        Check.Equal(30, ui.SelectedLibraryCampaignWaveCount, "campaign reference exposes all authored waves");
         ui.HandleTitleTowerLibrary(WorldInput(Vector2.Zero) with { TowerHotkey = 2 });
         Check.Equal(30, ui.SelectedLibraryCampaignWaveCount, "campaign hotkey selects another complete arena roster");
         var secondMap = ui.SelectedLibraryCampaignMapId;
@@ -5358,7 +5370,7 @@ internal static class Program
 
     private static void EndlessApexUpgrades()
     {
-        var seed = SessionWithWaves(20);
+        var seed = SessionWithWaves(GameConstants.CampaignWaveCount);
         seed.Content.Towers["tower"].Apex = new TowerApexDefinition
         {
             UpgradeCost = 800,
@@ -5379,16 +5391,14 @@ internal static class Program
         var fundamentals = new GameSession(seed.Content, challengeId: "no_reserves");
         var save = fundamentals.CaptureSaveGame();
         save.Economy.Credits = 10_000;
-        save.Waves.CurrentWaveNumber = GameConstants.CampaignWaveCount;
-        save.Waves.IsFinalWaveCleared = true;
-        save.Waves.EndlessModeEnabled = true;
+        save.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 1;
         var session = GameSession.RestoreSaveGame(seed.Content, save);
 
-        Check.True(session.ApexUpgradesUnlocked, "Apex unlocks when Mastery becomes available after the campaign");
+        Check.True(session.ApexUpgradesUnlocked, "Apex unlocks before the final campaign act");
         var activeWave = GameSession.RestoreSaveGame(seed.Content, save);
-        Check.True(activeWave.StartNextWave(), "start the first Mastery wave");
+        Check.True(activeWave.StartNextWave(), "start the first final-act wave");
         Check.Equal(GameConstants.ApexUnlockWave, activeWave.CurrentWave, "wave 21 is active");
-        Check.True(activeWave.ApexUpgradesUnlocked, "Apex remains available during Mastery combat");
+        Check.True(activeWave.ApexUpgradesUnlocked, "Apex remains available during final-act combat");
         Check.True(!session.ProtocolsEnabled && !session.TacticalSystemsEnabled,
             "Entrenched restrictions remain active alongside permanent Apex progression");
         Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "place Apex test tower");

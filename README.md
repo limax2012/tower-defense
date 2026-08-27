@@ -1,6 +1,6 @@
 # Minimal Bastion
 
-Minimal Bastion is a colorful geometric tower-defense game built with C# and .NET 10. The Windows build uses MonoGame DesktopGL, and the solo browser build uses WebAssembly and WebGL. Both versions combine authored campaigns, a ten-wave Mastery extension, generated Endless play, branching tower upgrades, tactical devices, persistent progression, and deterministic balance tools. The Windows build also supports direct two-player online co-op.
+Minimal Bastion is a colorful geometric tower-defense game built with C# and .NET 10. The Windows build uses MonoGame DesktopGL, and the solo browser build uses WebAssembly and WebGL. Both versions combine 30-wave authored campaigns, generated Endless play, branching tower upgrades, tactical devices, persistent progression, and deterministic balance tools. The Windows build also supports direct two-player online co-op.
 
 ## Current feature set
 
@@ -84,18 +84,18 @@ Build both release packages with:
 powershell -ExecutionPolicy Bypass -File scripts\publish-releases.ps1
 ```
 
-The browser build contains the complete solo campaign, Mastery, Endless, Sandbox, persistence, library, records, audio, settings, and fullscreen flow. Online co-op remains a Windows feature.
+The browser build contains the complete solo campaign, Endless, Sandbox, persistence, library, records, audio, settings, and fullscreen flow. Online co-op remains a Windows feature.
 
 ## Campaign structure
 
-Each arena contains 30 authored waves. Easy, Medium, and Hard use waves 1–20 as the campaign and offer **Enter Mastery** afterward. Bastion uses all 30 authored waves as one expert campaign. Wave 21 unlocks Apex tower promotions, and generated Endless begins at wave 31 using the arena's wave-30 roster as its anchor.
+Each arena contains one 30-wave authored campaign on every difficulty. Waves 21–30 form the final escalation and unlock Apex tower promotions. Victory is awarded after wave 30, and generated Endless begins at wave 31 using the arena's wave-30 roster as its anchor.
 
-| Arena | Base credits | Build areas | Surge Nodes | Campaign contacts | Mastery contacts |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Foundry Loop | 400 | 8 | 0 | 1,090 | 1,095 |
-| Crosswind Basin | 390 | 9 | 0 | 1,066 | 1,126 |
-| Prism Circuit | 380 | 6 | 3 | 1,192 | 1,170 |
-| Surge Divide | 360 | 6 | 9 | 1,063 | 1,395 |
+| Arena | Base credits | Build areas | Surge Nodes | Authored contacts |
+| --- | ---: | ---: | ---: | ---: |
+| Foundry Loop | 400 | 8 | 0 | 2,185 |
+| Crosswind Basin | 390 | 9 | 0 | 2,192 |
+| Prism Circuit | 380 | 6 | 3 | 2,362 |
+| Surge Divide | 360 | 6 | 9 | 2,458 |
 
 Surge Nodes grant focused attack-rate, range, damage, or armor-piercing bonuses. The active node is shown during placement and in Tower Intel; effective node and Signal Beacon modifiers are included in displayed stats.
 
@@ -103,9 +103,9 @@ Surge Nodes grant focused attack-rate, range, damage, or armor-piercing bonuses.
 
 | Difficulty | Enemy health | Enemy speed | Starting credits | Lives | Campaign waves |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Easy | 90% | 98% | 112.5% | 24 | 20 |
-| Medium | 100% | 100% | 100% | 20 | 20 |
-| Hard | 112% | 102% | 100% | 18 | 20 |
+| Easy | 90% | 98% | 112.5% | 24 | 30 |
+| Medium | 100% | 100% | 100% | 20 | 30 |
+| Hard | 112% | 102% | 100% | 18 | 30 |
 | Bastion | 112% | 102% | 100% | 16 | 30 |
 
 Tower statistics do not change with difficulty, wave number, map, or elapsed time.
@@ -175,7 +175,7 @@ Save and settings writes are atomic and retain one bounded `.bak` recovery gener
 
 The Tactical Library is a complete planning reference from the first launch. It exposes every tower and upgrade path, exact Protocol and Apex effects, enemy and signal rules, authored wave roster, profile, directive, status, and system so difficult runs can be planned with complete information.
 
-Run History records campaign, Mastery, Endless, victory, and defeat outcomes under one persistent run identity. Continuing beyond wave 20 updates that run instead of creating a second campaign record. Records include tower contributions, economy, tactical-system use, leak threats, medals, achievements, and a path-cleared final layout whose towers can be inspected. The current career contains 28 run medals and 56 broader achievements, plus best-result records by profile.
+Run History records campaign, Endless, victory, and defeat outcomes under one persistent run identity. Continuing beyond wave 30 updates that run instead of creating a second campaign record. Records include tower contributions, economy, tactical-system use, leak threats, medals, achievements, and a path-cleared final layout whose towers can be inspected. The current career contains 28 run medals and 56 broader achievements, plus best-result records by profile.
 
 ## Online co-op
 
@@ -207,7 +207,7 @@ Representative headless commands:
 dotnet run --project tests\MinimalBastion.Tests -c Release -- --balance
 dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate --strategy Experienced --seed 1337
 dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --difficulty all --runs 3
-dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --strategy Experienced --difficulty hard --challenge all --max-wave 20 --runs 3
+dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --strategy Experienced --difficulty hard --challenge all --max-wave 30 --runs 3
 dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --strategy Experienced --difficulty bastion --challenge all --max-wave 30 --runs 3
 dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --map relay_divide --max-wave 40 --runs 10
 ```

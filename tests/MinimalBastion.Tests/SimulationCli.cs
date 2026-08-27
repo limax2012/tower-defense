@@ -206,8 +206,8 @@ internal static class SimulationCli
         var materialized = runs.ToArray();
         var total = SummarizeEndlessProgress(materialized);
         Console.WriteLine();
-        Console.WriteLine(maximumWave <= GameConstants.MasteryFinalWave
-            ? "MASTERY PROGRESSION"
+        Console.WriteLine(maximumWave <= GameConstants.CampaignWaveCount
+            ? "CAMPAIGN PROGRESSION"
             : "APEX ENDLESS PROGRESSION");
         Console.WriteLine($"Campaign clears {total.CampaignClears}/{total.Runs}; target reaches {total.TargetReaches}; deepest wave {total.DeepestWave}; average depth after a clear {total.AverageEndlessDepth:0.0}.");
         Console.WriteLine("BY ARENA (campaign clears / deepest wave / average clear depth)");

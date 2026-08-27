@@ -59,7 +59,7 @@ public sealed class SimulationRunResult
         : $"{ForcedTowerId}:{ForcedDoctrineId}>{ForcedSpecializationId}";
     public required string Result { get; init; }
     public required int WaveReached { get; init; }
-    public int CampaignWaveCount { get; init; } = 20;
+    public int CampaignWaveCount { get; init; } = GameConstants.CampaignWaveCount;
     public bool CampaignCleared { get; init; }
     public required int LivesRemaining { get; init; }
     public required int Kills { get; init; }

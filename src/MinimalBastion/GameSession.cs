@@ -106,8 +106,9 @@ public sealed class GameSession
     public int NextTowerId => _nextTowerId;
     public int NextEmergencyDefenseId => _nextEmergencyDefenseId;
     public bool IsEndlessMode => Waves.EndlessModeEnabled;
-    public bool IsMasteryMode => CurrentWave >= GameConstants.ApexUnlockWave &&
-        CurrentWave <= GameConstants.MasteryFinalWave && (IsEndlessMode || TotalWaves > GameConstants.CampaignWaveCount);
+    public bool IsFinalCampaignAct => !IsEndlessMode &&
+        CurrentWave + (Waves.IsActive ? 0 : 1) >= GameConstants.ApexUnlockWave &&
+        CurrentWave <= TotalWaves;
     public bool CanStartWave => IsSandbox ? _sandboxActiveWave is null : Waves.CanStartNextWave;
     public float IntermissionRemaining => Waves.IntermissionRemaining;
     public int EnemiesRemaining => IsSandbox
@@ -148,7 +149,7 @@ public sealed class GameSession
             Difficulty.StartingLives,
             unlimitedCredits: IsSandbox,
             unlimitedLives: IsSandbox);
-        Waves = new WaveManager(waveSet.Waves, Difficulty.CampaignWaveCount);
+        Waves = new WaveManager(waveSet.Waves);
         DamageResolver = new DamageResolver(this);
         Statistics = new RunStatistics(this);
         _towerSystem = new TowerSystem(TargetSelector);
@@ -721,7 +722,6 @@ public sealed class GameSession
         !Challenge.ExcludedTowerIds.Contains(towerId, StringComparer.OrdinalIgnoreCase);
 
     public bool ApexUpgradesUnlocked => IsSandbox ||
-        (IsEndlessMode || TotalWaves > GameConstants.CampaignWaveCount) &&
         CurrentWave + (Waves.IsActive ? 0 : 1) >= GameConstants.ApexUnlockWave;
 
     public bool CanApexUpgrade(TowerInstance tower) => ApexUpgradesUnlocked && !tower.IsApex &&
@@ -1215,11 +1215,8 @@ public sealed class GameSession
     {
         if (!IsVictory || IsDefeat || !Waves.EnableEndlessMode()) return false;
         IsVictory = false;
-        var enteringMastery = CurrentWave < GameConstants.MasteryFinalWave;
-        AnnouncementTitle = enteringMastery ? "MASTERY // APEX ONLINE" : "ENDLESS // APEX ONLINE";
-        AnnouncementSubtitle = enteringMastery
-            ? $"Waves {CurrentWave + 1}-{GameConstants.MasteryFinalWave} are authored. Promote final-tier towers or expand the defense."
-            : $"Generated Endless begins at wave {GameConstants.GeneratedEndlessStartWave}. Promote final-tier towers or expand the defense.";
+        AnnouncementTitle = "ENDLESS // APEX ONLINE";
+        AnnouncementSubtitle = $"Generated Endless begins at wave {GameConstants.GeneratedEndlessStartWave}. Promote final-tier towers or expand the defense.";
         AnnouncementPositive = true;
         AnnouncementRemaining = 3.4f;
         return true;
@@ -1368,13 +1365,19 @@ public sealed class GameSession
     public void OnWaveCompleted(int waveNumber)
     {
         foreach (var tower in Towers) tower.ClearSignalInterference();
-        var masteryCleared = IsEndlessMode && waveNumber == GameConstants.MasteryFinalWave;
-        AnnouncementTitle = masteryCleared ? "MASTERY SECURED" : $"WAVE {waveNumber} CLEARED";
-        AnnouncementSubtitle = masteryCleared
+        var campaignCleared = !IsEndlessMode && waveNumber == TotalWaves;
+        var finalEscalationUnlocked = !IsEndlessMode && waveNumber == GameConstants.ApexUnlockWave - 1 &&
+            TotalWaves >= GameConstants.CampaignWaveCount;
+        AnnouncementTitle = campaignCleared
+            ? "CAMPAIGN SECURED"
+            : finalEscalationUnlocked ? "FINAL ESCALATION" : $"WAVE {waveNumber} CLEARED";
+        AnnouncementSubtitle = campaignCleared
             ? $"Generated Endless begins at wave {GameConstants.GeneratedEndlessStartWave}."
-            : $"+{EconomyService.CalculateWaveReward(waveNumber)} completion credits";
+            : finalEscalationUnlocked
+                ? "APEX PROMOTIONS UNLOCKED // 10 WAVES REMAIN"
+                : $"+{EconomyService.CalculateWaveReward(waveNumber)} completion credits";
         AnnouncementPositive = true;
-        AnnouncementRemaining = masteryCleared ? 3.2f : 2.2f;
+        AnnouncementRemaining = campaignCleared || finalEscalationUnlocked ? 3.2f : 2.2f;
         WaveCompleted?.Invoke(waveNumber);
     }
 
@@ -1660,7 +1663,7 @@ public sealed class GameSession
         session.RunId = NormalizeRunId(data.RunId, session.RunId);
         if (data.IsCoOp) session.ConfigureCoOp(1);
         session.Economy.RestoreSaveData(data.Economy);
-        session.Waves.RestoreSaveData(data.Waves);
+        session.Waves.RestoreSaveData(NormalizeCampaignWaveState(data.Waves, session.TotalWaves));
         session.Speed = data.Speed >= 1.5f ? 2f : 1f;
         session.OverdriveCooldownRemaining = session.ProtocolsEnabled ? MathF.Max(0, data.OverdriveCooldownRemaining) : 0;
         session.AutoOverdriveTowerId = session.ProtocolsEnabled && data.Towers.Any(tower => tower.Id == data.AutoOverdriveTowerId)
@@ -1705,6 +1708,19 @@ public sealed class GameSession
         session.AnnouncementRemaining = 2.8f;
         session.AnnouncementPositive = true;
         return session;
+    }
+
+    private static WaveSaveData NormalizeCampaignWaveState(WaveSaveData data, int authoredWaveCount)
+    {
+        if (data.CurrentWaveNumber >= authoredWaveCount) return data;
+
+        return new WaveSaveData
+        {
+            CurrentWaveNumber = data.CurrentWaveNumber,
+            IntermissionRemaining = data.IntermissionRemaining,
+            IsFinalWaveCleared = false,
+            EndlessModeEnabled = false
+        };
     }
 
     private static void ValidateRestoredHeaderState(
