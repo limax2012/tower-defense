@@ -518,6 +518,21 @@ internal static class Program
         Check.Equal(440, close.Economy.Credits, "Signal Gauntlet compensation is fixed at session start");
         Check.True(close.CounterPressureEnabled && content.Towers.Keys.All(close.IsTowerAvailable),
             "Signal Gauntlet preserves the full roster and enables enemy disruption pressure");
+        Check.True(!standard.AvailableTargetModes.Contains(TargetMode.Support) &&
+                   close.AvailableTargetModes.Contains(TargetMode.Support),
+            "Support targeting is exclusive to Signal Gauntlet");
+        Check.True(standard.TryPlaceTower("needle_turret", new Vector2(45, 200)),
+            "standard targeting test places a tower");
+        Check.True(!standard.TrySetTargetMode(standard.Towers.Single().Id, TargetMode.Support),
+            "standard rejects Support targeting authoritatively");
+        Check.True(close.TryPlaceTower("needle_turret", new Vector2(45, 200)),
+            "Signal Gauntlet targeting test places a tower");
+        Check.True(close.TrySetTargetMode(close.Towers.Single().Id, TargetMode.Support),
+            "Signal Gauntlet accepts Support targeting");
+        var legacySupportSave = standard.CaptureSaveGame();
+        legacySupportSave.Towers[0].TargetMode = TargetMode.Support;
+        Check.Equal(TargetMode.First, GameSession.RestoreSaveGame(content, legacySupportSave).Towers.Single().TargetMode,
+            "legacy Support targeting outside Signal Gauntlet restores the authored default");
         Check.True(core.IsTowerAvailable("ember_coil") && !core.IsTowerAvailable("prism_beam"),
             "core-six roster retains its authored compact arsenal");
         Check.Equal(400, core.Economy.Credits, "core-six uses the standard opening economy");

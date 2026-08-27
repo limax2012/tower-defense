@@ -304,17 +304,35 @@ public sealed class VisualVerificationGame : Game
         Require(ui.IsTargetPickerOpen && comparisonSession.SelectedTower.TargetMode == initialTargetMode,
             "Opening the target picker does not cycle or temporarily alter targeting.", assertions);
         scenes.Add(Capture("04a2-target-picker-drop-up.png", ui, GameState.Playing, comparisonSession));
-        Require(ui.TargetModeButtonBounds.Count == Enum.GetValues<TargetMode>().Length &&
+        Require(ui.TargetModeButtonBounds.Count == comparisonSession.AvailableTargetModes.Count &&
+                !ui.TargetModeButtonBounds.ContainsKey(TargetMode.Support) &&
                 ui.TargetPickerBounds.Left >= GameConstants.MapWidth &&
                 ui.TargetPickerBounds.Right <= GameConstants.LogicalWidth &&
                 ui.TargetPickerBounds.Bottom <= ui.TargetButtonBounds.Top &&
                 !ui.TargetPickerBounds.Intersects(ui.UpgradeButtonBounds) &&
                 !ui.TargetPickerBounds.Intersects(ui.SellButtonBounds),
-            "The complete target picker drops upward inside the sidebar without covering management buttons.", assertions);
+            "The standard target picker omits Support and drops upward without covering management buttons.", assertions);
         var armoredTargetCenter = ui.TargetModeButtonBounds[TargetMode.Armored].Center;
         _ = ui.HandleGameplayInput(Pointer(armoredTargetCenter.X, armoredTargetCenter.Y, true), comparisonSession);
         Require(!ui.IsTargetPickerOpen && comparisonSession.SelectedTower.TargetMode == TargetMode.Armored,
             "Choosing an explicit target mode applies it once and closes the picker.", assertions);
+
+        var gauntletTargetSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId,
+            ChallengeCatalog.SignalGauntletId);
+        Require(gauntletTargetSession.TryPlaceTower("needle_turret", new Vector2(45, 200)),
+            "Signal Gauntlet target-picker scene places a selected tower.", assertions);
+        _ = RenderPixels(ui, GameState.Playing, gauntletTargetSession);
+        targetButtonCenter = ui.TargetButtonBounds.Center;
+        _ = ui.HandleGameplayInput(Pointer(targetButtonCenter.X, targetButtonCenter.Y, true), gauntletTargetSession);
+        _ = RenderPixels(ui, GameState.Playing, gauntletTargetSession);
+        Require(ui.TargetModeButtonBounds.ContainsKey(TargetMode.Support) &&
+                ui.TargetModeButtonBounds.Count == gauntletTargetSession.AvailableTargetModes.Count,
+            "Signal Gauntlet adds Support to the target picker.", assertions);
+        var supportTargetCenter = ui.TargetModeButtonBounds[TargetMode.Support].Center;
+        _ = ui.HandleGameplayInput(Pointer(supportTargetCenter.X, supportTargetCenter.Y, true),
+            gauntletTargetSession);
+        Require(!ui.IsTargetPickerOpen && gauntletTargetSession.SelectedTower!.TargetMode == TargetMode.Support,
+            "Signal Gauntlet applies Support as an explicit target choice.", assertions);
 
         var coOpTargetSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
         coOpTargetSession.ConfigureCoOp(2);

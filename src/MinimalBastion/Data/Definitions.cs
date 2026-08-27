@@ -87,6 +87,7 @@ public sealed class ChallengeDefinition
 public static class ChallengeCatalog
 {
     public const string DefaultId = "standard";
+    public const string SignalGauntletId = "close_quarters";
     private static readonly ChallengeDefinition Standard = new();
 
     public static ChallengeDefinition Resolve(GameContent content, string? challengeId)

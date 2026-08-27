@@ -21,6 +21,10 @@ public sealed class GameSession
 {
     private const float BuildPlacementAssistRadius = 64f;
     private const float BuildPlacementAssistStep = 2f;
+    private static readonly TargetMode[] StandardTargetModes = Enum.GetValues<TargetMode>()
+        .Where(mode => mode != TargetMode.Support)
+        .ToArray();
+    private static readonly TargetMode[] SignalGauntletTargetModes = Enum.GetValues<TargetMode>();
     private readonly GameContent _content;
     private readonly EnemySystem _enemySystem = new();
     private readonly TowerSystem _towerSystem;
@@ -49,6 +53,11 @@ public sealed class GameSession
     public bool ProtocolsEnabled => Challenge.ProtocolsEnabled;
     public bool SellingEnabled => Challenge.SellingEnabled || IsSandbox;
     public bool CounterPressureEnabled => Challenge.CounterPressureEnabled;
+    public bool SupportTargetingEnabled => ChallengeId.Equals(ChallengeCatalog.SignalGauntletId,
+        StringComparison.OrdinalIgnoreCase);
+    public IReadOnlyList<TargetMode> AvailableTargetModes => SupportTargetingEnabled
+        ? SignalGauntletTargetModes
+        : StandardTargetModes;
     internal bool CounterSupportEnabled => CounterPressureEnabled && _counterSupportSimulationEnabled;
     internal bool CounterAttackersEnabled => CounterPressureEnabled && _counterAttackersSimulationEnabled;
     public bool IsSandbox => Challenge.IsSandbox;
@@ -786,10 +795,14 @@ public sealed class GameSession
     public bool TrySetTargetMode(int towerId, TargetMode mode, int requestingPlayerId = 1)
     {
         var tower = Towers.FirstOrDefault(x => x.Id == towerId);
-        if (requestingPlayerId is < 1 or > 2 || tower is null || tower.IsSupport) return false;
+        if (requestingPlayerId is < 1 or > 2 || tower is null || tower.IsSupport || !IsTargetModeAvailable(mode))
+            return false;
         tower.TargetMode = mode;
         return true;
     }
+
+    public bool IsTargetModeAvailable(TargetMode mode) =>
+        Enum.IsDefined(mode) && (mode != TargetMode.Support || SupportTargetingEnabled);
 
     public bool TryOverdriveTower(int towerId, int requestingPlayerId = 1)
     {
@@ -966,7 +979,11 @@ public sealed class GameSession
 
     public void CycleSelectedTarget()
     {
-        SelectedTower?.CycleTargetMode();
+        if (SelectedTower is not { IsSupport: false } tower) return;
+        var currentIndex = Array.IndexOf(SupportTargetingEnabled ? SignalGauntletTargetModes : StandardTargetModes,
+            tower.TargetMode);
+        var modes = AvailableTargetModes;
+        tower.TargetMode = modes[(currentIndex + 1 + modes.Count) % modes.Count];
     }
 
     public bool TryUpgradeGenerator(int requestingPlayerId = 1)
@@ -1607,6 +1624,7 @@ public sealed class GameSession
             if (savedTower.InvestedCredits < definition.PurchaseCost)
                 throw new InvalidDataException($"Network tower '{savedTower.DefinitionId}' has impossible investment state.");
             var tower = TowerInstance.RestoreCoOpState(savedTower, definition);
+            session.NormalizeTargetMode(tower);
             if (!session.ProtocolsEnabled) tower.ClearOverdrive();
             session.Towers.Add(tower);
         }
@@ -1679,6 +1697,7 @@ public sealed class GameSession
             if (savedTower.InvestedCredits < definition.PurchaseCost)
                 throw new InvalidDataException($"Saved tower '{savedTower.DefinitionId}' has impossible investment state.");
             var tower = TowerInstance.RestoreSaveData(savedTower, definition);
+            session.NormalizeTargetMode(tower);
             if (!session.ProtocolsEnabled) tower.ClearOverdrive();
             session.Towers.Add(tower);
         }
@@ -1708,6 +1727,15 @@ public sealed class GameSession
         session.AnnouncementRemaining = 2.8f;
         session.AnnouncementPositive = true;
         return session;
+    }
+
+    private void NormalizeTargetMode(TowerInstance tower)
+    {
+        if (IsTargetModeAvailable(tower.TargetMode)) return;
+        tower.TargetMode = Enum.TryParse<TargetMode>(tower.Definition.DefaultTargetMode, true, out var authoredMode) &&
+                           IsTargetModeAvailable(authoredMode)
+            ? authoredMode
+            : TargetMode.First;
     }
 
     private static WaveSaveData NormalizeCampaignWaveState(WaveSaveData data, int authoredWaveCount)

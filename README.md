@@ -8,7 +8,7 @@ Minimal Bastion is a colorful geometric tower-defense game built with C# and .NE
 - Easy, Medium, Hard, and Bastion difficulty profiles.
 - Standard, Signal Gauntlet, Core Six, and Entrenched directives, plus a solo Sandbox Lab.
 - Ten towers. Every tower has two tier-two doctrines, two compatible tier-three roles, a unique Protocol, and an Apex promotion.
-- Eight targeting modes: First, Last, Strongest, Weakest, Nearest, Fastest, Armored, and Support.
+- Seven general targeting modes: First, Last, Strongest, Weakest, Nearest, Fastest, and Armored. Signal Gauntlet adds Support targeting for its signal carriers.
 - Pulse Plates, a three-level Charge Forge, Surge Nodes, automatic Protocol activation, and configurable wave auto-start.
 - One rolling autosave, expandable manual save slots, save duplication/deletion, recovery generations, run history, final-layout inspection, medals, achievements, and career records.
 - A complete Tactical Library for researching towers, upgrades, enemies, signal roles, maps, waves, profiles, directives, statuses, and game systems before committing resources.

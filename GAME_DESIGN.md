@@ -78,7 +78,7 @@ Wave 21 unlocks one authored Apex promotion for completed level-three towers. Ap
 - **Siege Mortar:** predictive long-range area fire. It uses current target movement at launch and authored impact caps to prevent unbounded packed-wave damage.
 - **Prism Beam:** sustained durable-target pressure and Expose support.
 
-Targeting remains a player-controlled tactical layer. Support prioritizes Signal Gauntlet carriers; other modes weight route progress, health, distance, speed, or armor. A targeting choice opens a menu and does not change until the replacement is confirmed.
+Targeting remains a player-controlled tactical layer. Signal Gauntlet uniquely adds Support, which prioritizes its signal carriers; the general modes weight route progress, health, distance, speed, or armor. A targeting choice opens a menu and does not change until the replacement is confirmed.
 
 ## Protocols and automatic activation
 

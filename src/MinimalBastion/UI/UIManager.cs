@@ -1590,7 +1590,8 @@ public sealed class UIManager
     private static void RequestTargetMode(MinimalBastion.GameSession session, TargetMode mode,
         Action<GameCommand>? sink, int playerId)
     {
-        if (session.SelectedTower is not { IsSupport: false } tower || tower.TargetMode == mode) return;
+        if (session.SelectedTower is not { IsSupport: false } tower || tower.TargetMode == mode ||
+            !session.IsTargetModeAvailable(mode)) return;
         if (sink is null)
         {
             session.TrySetTargetMode(tower.Id, mode, playerId);
@@ -2689,7 +2690,7 @@ public sealed class UIManager
             else
                 DrawButton(batch, p, _sellButton, session.SellingEnabled ? $"SELL {tower.SellValue}" : "FIXED",
                     canManage && session.SellingEnabled, ColorPalette.Orange, hotkey: session.SellingEnabled ? "DEL" : null);
-            DrawTargetPicker(batch, p, tower, canManage);
+            DrawTargetPicker(batch, p, session, tower, canManage);
             return;
         }
         if (!tower.IsSupport)
@@ -2714,22 +2715,23 @@ public sealed class UIManager
         else
             DrawButton(batch, p, _sellButton, session.SellingEnabled ? $"SELL {tower.SellValue}" : "FIXED",
                 canManage && session.SellingEnabled, ColorPalette.Orange, hotkey: session.SellingEnabled ? "DEL" : null);
-        if (!tower.IsSupport) DrawTargetPicker(batch, p, tower, canManage);
+        if (!tower.IsSupport) DrawTargetPicker(batch, p, session, tower, canManage);
     }
 
     private string TargetButtonLabel(TowerInstance tower) =>
         tower.TargetMode.ToString().ToUpperInvariant();
 
-    private void DrawTargetPicker(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, bool enabled)
+    private void DrawTargetPicker(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session,
+        TowerInstance tower, bool enabled)
     {
         if (!_targetPickerOpen || _targetPickerTowerId != tower.Id || tower.IsSupport || _targetButton.IsEmpty) return;
 
-        var modes = Enum.GetValues<TargetMode>();
+        var modes = session.AvailableTargetModes;
         const int columns = 4;
         const int buttonWidth = 68;
         const int buttonHeight = 25;
         const int gap = 3;
-        var rows = (modes.Length + columns - 1) / columns;
+        var rows = (modes.Count + columns - 1) / columns;
         var contentWidth = columns * buttonWidth + (columns - 1) * gap;
         var contentHeight = rows * buttonHeight + (rows - 1) * gap;
         var contentX = 980;
@@ -2738,12 +2740,12 @@ public sealed class UIManager
         p.FillRect(batch, _targetPickerBounds, ColorPalette.Panel);
         p.DrawRect(batch, _targetPickerBounds, ColorPalette.Cyan, 2);
 
-        for (var index = 0; index < modes.Length; index++)
+        for (var index = 0; index < modes.Count; index++)
         {
             var mode = modes[index];
             var row = index / columns;
             var column = index % columns;
-            var itemsInRow = Math.Min(columns, modes.Length - row * columns);
+            var itemsInRow = Math.Min(columns, modes.Count - row * columns);
             var rowWidth = itemsInRow * buttonWidth + (itemsInRow - 1) * gap;
             var rowOffset = (contentWidth - rowWidth) / 2;
             var bounds = new Rectangle(contentX + rowOffset + column * (buttonWidth + gap),
@@ -4289,7 +4291,7 @@ public sealed class UIManager
             "NEAREST: SHORTEST DISTANCE TO TOWER",
             "FASTEST: HIGHEST CURRENT MOVE SPEED",
             "ARMORED: HIGHEST CURRENT ARMOR",
-            "SUPPORT: SIGNAL CARRIERS, THEN STRONGEST"
+            "SUPPORT (GAUNTLET): SIGNAL CARRIERS, THEN STRONGEST"
         ]));
         cards.Add(("STATUS RULES", ColorPalette.Coral, "hexagon", StatusReferenceLines()));
         cards.Add(("TOWER PROTOCOLS", ColorPalette.Auto, "square",

@@ -9,7 +9,7 @@ Minimal Bastion rewards route coverage, counter timing, and completed upgrade ro
 3. **Complete counter roles on schedule.** Armor and shields punish a defense made only of many small hits. A tier-three Breaker or Prism is often more valuable than several additional tier-one generalists.
 4. **Use control to multiply the whole defense.** Slow and stun create more firing time for every tower that covers the affected route. Arc Relay no longer receives a hidden damage bonus against slowed enemies; Frost and Arc still combine naturally through extra time on target.
 5. **Do not stack Signal Beacons.** Overlapping auras use the strongest applicable value rather than adding together. Place a Beacon only when it supports a meaningful cluster, then put later Beacons on separate clusters.
-6. **Treat targeting as part of the build.** Frost should usually stay on Fastest, anti-armor fire should use Armored, and priority damage should use Strongest or Support when signal carriers matter.
+6. **Treat targeting as part of the build.** Frost should usually stay on Fastest, anti-armor fire should use Armored, and priority damage should use Strongest. Signal Gauntlet also provides Support for focusing signal carriers.
 7. **Spend before the reserve becomes dead weight.** Complete doctrines and final roles, improve weak coverage, then use remote Watchtower/Mortar positions. Waves 21–30 unlock Apex promotions and are balanced around reinvesting in the established defense.
 
 ## Tower guide

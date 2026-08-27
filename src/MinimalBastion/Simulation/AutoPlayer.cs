@@ -1025,9 +1025,9 @@ public sealed class AutoPlayer
             var experiencedMode = tower.Definition.Id switch
             {
                 "frost_spire" => TargetMode.Fastest,
-                "breaker_cannon" => session.Challenge.CounterPressureEnabled ? TargetMode.Support : TargetMode.Armored,
-                "watchtower" or "prism_beam" => session.Challenge.CounterPressureEnabled ? TargetMode.Support : TargetMode.Strongest,
-                "siege_mortar" => session.Challenge.CounterPressureEnabled ? TargetMode.Support : TargetMode.First,
+                "breaker_cannon" => session.SupportTargetingEnabled ? TargetMode.Support : TargetMode.Armored,
+                "watchtower" or "prism_beam" => session.SupportTargetingEnabled ? TargetMode.Support : TargetMode.Strongest,
+                "siege_mortar" => session.SupportTargetingEnabled ? TargetMode.Support : TargetMode.First,
                 "ember_coil" => TargetMode.Strongest,
                 _ => TargetMode.First
             };
