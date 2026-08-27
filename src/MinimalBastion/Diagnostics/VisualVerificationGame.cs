@@ -512,33 +512,25 @@ public sealed class VisualVerificationGame : Game
         scenes.Add(Capture("06b-threat-library-contrast.png", ui, GameState.TowerLibrary, null));
         _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 6 });
         Require(ui.SelectedLibraryEnemyId == "signal:accelerator",
-            "Tactical Library includes encountered signal-carrier roles beside base enemies.", assertions);
+            "Tactical Library includes signal-carrier roles beside base enemies.", assertions);
         scenes.Add(Capture("06b1-signal-role-library.png", ui, GameState.TowerLibrary, null));
-        ui.ConfigureDiscovery(new DiscoveryProgress().Snapshot());
-        Require(ui.SelectedLibraryEnemyId is null && ui.SelectedLibraryTowerId is null &&
-                ui.SelectedLibraryCampaignMapId is null,
-            "A fresh Tactical Library exposes no undiscovered threats, towers, or campaigns.", assertions);
+        Require(ui.LibraryTowerCount == content.Towers.Count &&
+                ui.LibraryThreatCount == content.Enemies.Count + Enum.GetValues<EnemySignalRole>().Count(role => role != EnemySignalRole.None) &&
+                ui.LibraryCampaignCount == content.Maps.Count,
+            "The Tactical Library exposes the complete planning reference.", assertions);
         _ = ui.HandleTitleTowerLibrary(Pointer(666, 57, leftPressed: true));
-        var undiscoveredTowerPixels = RenderPixels(ui, GameState.TowerLibrary, null);
-        Require(CountColorPixels(undiscoveredTowerPixels, new Rectangle(321, 118, 12, 24), ColorPalette.Muted) == 0,
-            "The empty discovered count remains inside the selector panel.", assertions);
-        scenes.Add(Capture("06b2-undiscovered-library.png", ui, GameState.TowerLibrary, null));
+        Require(ui.SelectedLibraryTowerId is not null,
+            "Complete tower information is immediately available for research.", assertions);
+        scenes.Add(Capture("06b2-complete-library.png", ui, GameState.TowerLibrary, null));
 
-        ui.ConfigureDiscovery(new DiscoveryProgress(new DiscoveryProgressData
-        {
-            Difficulties = [DifficultyCatalog.DefaultId],
-            Challenges = ["no_reserves"]
-        }).Snapshot());
         _ = ui.HandleTitleTowerLibrary(Pointer(980, 57, leftPressed: true));
         Require(ui.LibraryShowsProfiles,
-            "Sparse discovery verification opens the Profiles page.", assertions);
-        var sparseProfilePixels = RenderPixels(ui, GameState.TowerLibrary, null);
-        var directiveAccent = content.Challenges["no_reserves"].AccentColor;
-        Require(CountColorPixels(sparseProfilePixels, new Rectangle(350, 380, 874, 6), directiveAccent) == 0,
-            "A single discovered directive retains the standard card width instead of spanning the library.", assertions);
-        scenes.Add(Capture("06b3-sparse-profiles-library.png", ui, GameState.TowerLibrary, null));
+            "Complete-reference verification opens the Profiles page.", assertions);
+        Require(ui.LibraryDifficultyCount == content.Difficulties.Count &&
+                ui.LibraryDirectiveCount == content.Challenges.Count,
+            "All difficulty and directive profiles are available for planning.", assertions);
+        scenes.Add(Capture("06b3-complete-profiles-library.png", ui, GameState.TowerLibrary, null));
 
-        ui.ConfigureDiscovery(DiscoverySnapshot.Everything);
         _ = ui.HandleTitleTowerLibrary(Pointer(850, 57, leftPressed: true));
         Require(ui.LibraryShowsCampaign, "Tactical Library contrast scene opens campaign wave scaling.", assertions);
         scenes.Add(Capture("06c-campaign-library-contrast.png", ui, GameState.TowerLibrary, null));

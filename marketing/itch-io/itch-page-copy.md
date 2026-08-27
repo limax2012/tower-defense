@@ -38,6 +38,6 @@ Online co-op uses a direct TCP connection on port `28741`. Internet hosts may ne
 
 ### Learn, refine, and push farther
 
-The discovery-driven Tactical Library reveals towers, upgrades, enemies, status effects, maps, and systems as you encounter them. Run History preserves detailed results and final defense layouts, while medals, achievements, and career records provide new goals across difficulties, directives, Mastery, and Endless play.
+The Tactical Library provides a complete reference for towers, upgrades, enemies, status effects, maps, waves, and systems before a run. Run History preserves detailed results and final defense layouts, while medals, achievements, and career records provide new goals across difficulties, directives, Mastery, and Endless play.
 
 This release is a free public playtest. Feedback on balance, clarity, co-op reliability, and the strategies that emerge is welcome.

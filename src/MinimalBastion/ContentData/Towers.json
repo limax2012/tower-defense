@@ -100,7 +100,7 @@
     ]
   },
   {
-    "id": "ember_coil", "displayName": "Ember Coil", "role": "Damage over time", "behavior": "burn_projectile", "purchaseCost": 220, "defaultTargetMode": "First",
+    "id": "ember_coil", "displayName": "Ember Coil", "role": "Damage over time", "behavior": "burn_projectile", "purchaseCost": 220, "defaultTargetMode": "Strongest",
     "visual": { "shape": "hexagon", "primary": "#EC5062", "accent": "#6B2631", "radius": 19, "marks": 1, "ring": true },
     "protocol": { "displayName": "Flashpoint", "summary": "Ignites nearby enemies and boosts burn output", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.45, "damageBonus": 0.3, "autoTriggerMode": "protocol_area", "autoTriggerCount": 4, "burstRadius": 175, "burstDamage": 12, "burstStatus": "Burn", "burstStatusMagnitude": 10, "burstStatusDuration": 4 },
     "apex": { "upgradeCost": 1450, "damageMultiplier": 1.25, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.12, "utilityMultiplier": 1.15 },
@@ -125,7 +125,7 @@
     ]
   },
   {
-    "id": "breaker_cannon", "displayName": "Breaker Cannon", "role": "Armor counter", "behavior": "armor_projectile", "purchaseCost": 250, "defaultTargetMode": "Strongest",
+    "id": "breaker_cannon", "displayName": "Breaker Cannon", "role": "Armor counter", "behavior": "armor_projectile", "purchaseCost": 250, "defaultTargetMode": "Armored",
     "visual": { "shape": "square", "primary": "#E8B637", "accent": "#70561A", "radius": 21, "marks": 1, "ring": true },
     "protocol": { "displayName": "Breach Order", "summary": "Amplifies shells and fractures nearby armor", "durationSeconds": 5.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.25, "damageBonus": 0.55, "armorPierceBonus": 4, "autoTriggerMode": "priority_targets", "autoTriggerCount": 2, "burstRadius": 185, "burstDamage": 20, "burstStatus": "ArmorBreak", "burstStatusMagnitude": 4, "burstStatusDuration": 5 },
     "apex": { "upgradeCost": 1700, "damageMultiplier": 1.30, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.15 },

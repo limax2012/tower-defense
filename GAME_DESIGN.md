@@ -124,7 +124,7 @@ The host sequences authoritative commands. Both peers run the deterministic simu
 
 The game maintains one rolling autosave and expandable manual slots. Manual slots can be duplicated or deleted. Run History is independent from saves and stores a single evolving record when a campaign continues through Mastery or Endless.
 
-The Tactical Library is discovery-driven. Exact future systems are not exposed until encountered. Medals reward notable single-run constraints and outcomes; achievements combine progression, repeated accomplishments, profile clears, discovery, and long-term records so the player retains visible goals after learning the campaign.
+The Tactical Library is a complete planning reference. Exact towers, branches, enemies, waves, profiles, directives, and system rules are available before a run so difficulty comes from execution and strategic commitment rather than concealed counters. Medals reward notable single-run constraints and outcomes; achievements combine progression, repeated accomplishments, profile clears, and long-term records so the player retains visible goals after learning the campaign.
 
 ## Presentation
 

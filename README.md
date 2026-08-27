@@ -11,7 +11,7 @@ Minimal Bastion is a colorful geometric tower-defense game built with C# and .NE
 - Eight targeting modes: First, Last, Strongest, Weakest, Nearest, Fastest, Armored, and Support.
 - Pulse Plates, a three-level Charge Forge, Surge Nodes, automatic Protocol activation, and configurable wave auto-start.
 - One rolling autosave, expandable manual save slots, save duplication/deletion, recovery generations, run history, final-layout inspection, medals, achievements, and career records.
-- A discovery-driven Tactical Library for towers, enemies, signal roles, maps, waves, profiles, directives, statuses, and game systems.
+- A complete Tactical Library for researching towers, upgrades, enemies, signal roles, maps, waves, profiles, directives, statuses, and game systems before committing resources.
 - Direct two-player Windows co-op with host-authoritative commands, deterministic local simulation, reconnect repair, shared defenses, and visible remote cursor/placement state.
 - Runtime-generated vector-like visuals, procedural music, and synthesized sound effects; no external art or audio files are required.
 - Headless deterministic agents, isolated regression tests, and a hidden UI renderer for verification without taking desktop focus.
@@ -76,7 +76,7 @@ Create a static browser package with:
 powershell -ExecutionPolicy Bypass -File scripts\publish-browser.ps1
 ```
 
-The script writes the static site to `.build\releases\browser` and creates `.build\releases\MinimalBastion-Browser.zip`. The archive has `index.html` at its root and can be uploaded as an HTML game to a static host such as itch.io. Browser saves, discoveries, records, and settings are retained in browser storage for the site origin and are separate from the Windows files under `%LocalAppData%`. They persist across ordinary browser sessions, but do not transfer between browsers, devices, or different host origins and are removed when that site's stored data is cleared.
+The script writes the static site to `.build\releases\browser` and creates `.build\releases\MinimalBastion-Browser.zip`. The archive has `index.html` at its root and can be uploaded as an HTML game to a static host such as itch.io. Browser saves, records, and settings are retained in browser storage for the site origin and are separate from the Windows files under `%LocalAppData%`. They persist across ordinary browser sessions, but do not transfer between browsers, devices, or different host origins and are removed when that site's stored data is cleared.
 
 Build both release packages with:
 
@@ -126,8 +126,8 @@ Tower statistics do not change with difficulty, wave number, map, or elapsed tim
 | Frost Spire | 140 | Fastest | Area damage and slowing |
 | Shard Fan | 150 | First | Multi-shot short-range coverage |
 | Watchtower | 190 | Strongest | Long-range priority damage |
-| Ember Coil | 220 | First | Burn pressure and splash |
-| Breaker Cannon | 250 | Strongest | Armor and shield counterplay |
+| Ember Coil | 220 | Strongest | Burn pressure and splash |
+| Breaker Cannon | 250 | Armored | Armor and shield counterplay |
 | Signal Beacon | 300 | None | Attack-rate and range support |
 | Arc Relay | 320 | First | Chained damage and control |
 | Siege Mortar | 360 | First | Predictive capped splash damage |
@@ -161,20 +161,19 @@ Settings can hide hotkey badges without disabling any keyboard shortcuts. Sandbo
 
 Placement remains continuous rather than grid-based. Tower, Forge, and Plate previews snap to the nearest legal point inside a small assistance radius, display the resolved position and range, and do not alter co-op state until placement is confirmed.
 
-## Saves, discovery, and records
+## Saves, library, and records
 
 Persistent data lives under `%LocalAppData%\MinimalBastion`:
 
 - `Saves\autosave.json` is the single rolling autosave.
 - `Saves\slot-n.json` files are expandable manual slots.
 - `History` stores run summaries and read-only final defense layouts.
-- `discoveries.json` stores Tactical Library unlocks.
 - `settings.json` stores display, audio, effects, hotkey-badge, and auto-start preferences.
 - `Logs\latest-crash.log` stores the latest unexpected top-level failure.
 
 Save and settings writes are atomic and retain one bounded `.bak` recovery generation. Saves can be duplicated into a manual slot, including the autosave, and deleted with confirmation. A co-op checkpoint can be reopened as a host or continued alone; the original tower placer remains recorded but does not restrict control.
 
-The Tactical Library reveals authored details as the player encounters towers, upgrades, Protocols, Apex promotions, enemies, signal roles, ranks, statuses, maps, waves, profiles, directives, and mechanics. Undiscovered entries remain concealed rather than exposing future counters and progression.
+The Tactical Library is a complete planning reference from the first launch. It exposes every tower and upgrade path, exact Protocol and Apex effects, enemy and signal rules, authored wave roster, profile, directive, status, and system so difficult runs can be planned with complete information.
 
 Run History records campaign, Mastery, Endless, victory, and defeat outcomes under one persistent run identity. Continuing beyond wave 20 updates that run instead of creating a second campaign record. Records include tower contributions, economy, tactical-system use, leak threats, medals, achievements, and a path-cleared final layout whose towers can be inspected. The current career contains 28 run medals and 56 broader achievements, plus best-result records by profile.
 

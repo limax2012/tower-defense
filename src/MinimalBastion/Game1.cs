@@ -75,8 +75,6 @@ public sealed class Game1 : Game
     private bool _saveSlotWriteMode;
     private GameState _settingsReturnState = GameState.MainMenu;
     private string _lastRecordedResultKey = "";
-    private DiscoveryProgress _discovery = null!;
-    private bool _discoveryDirty;
     private bool _windowSizeSavePending;
     private float _windowSizeSaveRemaining;
     private string? _pendingDefenseMapId;
@@ -164,7 +162,6 @@ public sealed class Game1 : Game
 #else
             _contentFingerprint = BuildFingerprint.Compute(contentDirectory);
 #endif
-            _discovery = DiscoveryProgressStore.Load();
             var font = Content.Load<SpriteFont>("Fonts/Interface");
             _ui = new UIManager(font);
             _ui.ConfigureMaps(_content.Maps.Values, _content.WaveSets, _content.Enemies);
@@ -172,7 +169,6 @@ public sealed class Game1 : Game
             _ui.ConfigureChallenges(_content.Challenges.Values);
             _ui.ConfigureTowerLibrary(_content.Towers.Values, _content.Enemies.Values, _content.Tactics);
             _ui.ConfigureMainMenuBattle(_content);
-            _ui.ConfigureDiscovery(_discovery.Snapshot());
             var desktopMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
             _ui.ConfigureSettings(_settings);
             _ui.SetSaveState(SaveSlotsExistSafely());
@@ -284,7 +280,6 @@ public sealed class Game1 : Game
                 break;
         }
 
-        UpdateDiscoveryProgress();
 
         var connectionTimedOut = _coOpConnection is not null && _coOpHeartbeat.Advance(elapsedSeconds);
         _ui?.SetCoOpLinkSilence(_coOpHeartbeat.SilenceSeconds);
@@ -1458,11 +1453,6 @@ public sealed class Game1 : Game
         {
             var entries = RunHistoryStore.GetEntries();
             _ui.ConfigureRunHistory(entries);
-            if (_discovery is not null && _discovery.Import(entries))
-            {
-                _ui.ConfigureDiscovery(_discovery.Snapshot());
-                SaveDiscoveryProgress();
-            }
         }
         catch
         {
@@ -1948,40 +1938,13 @@ public sealed class Game1 : Game
 
     private void AssignSession(GameSession? session)
     {
-        if (_session is not null) _session.EnemySpawned -= OnEnemySpawnedForDiscovery;
         _session = session;
         _lastRecordedResultKey = "";
         if (session is not null)
         {
-            session.EnemySpawned += OnEnemySpawnedForDiscovery;
             _audio?.Attach(session);
-            if (_discovery is not null && _discovery.Observe(session)) _discoveryDirty = true;
         }
         else _audio?.Detach();
-    }
-
-    private void OnEnemySpawnedForDiscovery(MinimalBastion.Enemies.EnemyInstance enemy)
-    {
-        if (_discovery is not null && _discovery.Discover(enemy)) _discoveryDirty = true;
-    }
-
-    private void UpdateDiscoveryProgress()
-    {
-        if (_discovery is null || _ui is null) return;
-        if (_session is not null && _discovery.Observe(_session)) _discoveryDirty = true;
-        if (!_discoveryDirty) return;
-        _discoveryDirty = false;
-        _ui.ConfigureDiscovery(_discovery.Snapshot());
-        SaveDiscoveryProgress();
-    }
-
-    private void SaveDiscoveryProgress()
-    {
-        try { DiscoveryProgressStore.Save(_discovery); }
-        catch
-        {
-            // Discovery persistence is optional profile data and must not interrupt a defense.
-        }
     }
 
     protected override void Dispose(bool disposing)

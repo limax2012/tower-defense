@@ -189,7 +189,6 @@ public sealed class UIManager
         CampaignIntelInfo Campaign, CampaignIntelInfo MasteryCampaign, IReadOnlyList<Vector2> Path, Color PathBase, Color PathAccent)> _libraryMaps = [];
     private IReadOnlyList<DifficultyDefinition> _libraryDifficulties = Array.Empty<DifficultyDefinition>();
     private IReadOnlyList<ChallengeDefinition> _libraryChallenges = Array.Empty<ChallengeDefinition>();
-    private DiscoverySnapshot _discovery = DiscoverySnapshot.Everything;
     private TacticsDefinition _libraryTactics = new();
     private readonly Dictionary<string, IReadOnlyList<CampaignWaveReference>> _libraryCampaignWaves = new(StringComparer.OrdinalIgnoreCase);
     private readonly Rectangle _playButton = new(490, PlatformCapabilities.OnlineCoOp ? 370 : PlatformCapabilities.ExitCommand ? 395 : 420, 300, 42);
@@ -292,6 +291,11 @@ public sealed class UIManager
     public bool LibraryShowsCampaign => _libraryShowsCampaign;
     public bool LibraryShowsProfiles => _libraryShowsProfiles;
     public bool LibraryShowsSystems => _libraryShowsSystems;
+    public int LibraryTowerCount => _libraryTowers.Count;
+    public int LibraryThreatCount => _libraryThreats.Count;
+    public int LibraryCampaignCount => _libraryMaps.Count;
+    public int LibraryDifficultyCount => _libraryDifficulties.Count;
+    public int LibraryDirectiveCount => _libraryChallenges.Count;
     public string? SelectedLibraryTowerId => _libraryTowers.Count == 0 ? null : _libraryTowers[_towerLibraryIndex].Id;
     public string? SelectedLibraryEnemyId => _libraryThreats.Count == 0 ? null : _libraryThreats[_enemyLibraryIndex].Id;
     public string? SelectedLibraryCampaignMapId => _libraryMaps.Count == 0 ? null : _libraryMaps[_campaignLibraryMapIndex].Id;
@@ -530,7 +534,7 @@ public sealed class UIManager
                     .ToArray();
             }
         }
-        ApplyLibraryDiscovery();
+        ApplyLibraryCatalog();
     }
 
     public void ConfigureDifficulties(IEnumerable<DifficultyDefinition> difficulties)
@@ -539,7 +543,7 @@ public sealed class UIManager
         _difficulties.AddRange(difficulties.OrderBy(x => DifficultyOrder(x.Id)).ThenBy(x => x.DisplayName));
         var defaultIndex = _difficulties.FindIndex(x => x.Id.Equals(DifficultyCatalog.DefaultId, StringComparison.OrdinalIgnoreCase));
         _selectedDifficultyIndex = defaultIndex >= 0 ? defaultIndex : 0;
-        ApplyLibraryDiscovery();
+        ApplyLibraryCatalog();
     }
 
     public void ConfigureChallenges(IEnumerable<ChallengeDefinition> challenges)
@@ -549,7 +553,7 @@ public sealed class UIManager
             .ThenBy(challenge => challenge.DisplayName));
         var defaultIndex = _challenges.FindIndex(challenge => challenge.Id.Equals(ChallengeCatalog.DefaultId, StringComparison.OrdinalIgnoreCase));
         _selectedChallengeIndex = defaultIndex >= 0 ? defaultIndex : 0;
-        ApplyLibraryDiscovery();
+        ApplyLibraryCatalog();
     }
 
     public void ConfigureTowerLibrary(IEnumerable<TowerDefinition> towers, IEnumerable<EnemyDefinition>? enemies = null,
@@ -558,35 +562,20 @@ public sealed class UIManager
         _allLibraryTowers = towers.OrderBy(x => x.PurchaseCost).ThenBy(x => x.Id).ToArray();
         _allLibraryEnemies = enemies?.OrderBy(x => x.MaxHealth).ThenBy(x => x.Id).ToArray() ?? Array.Empty<EnemyDefinition>();
         if (tactics is not null) _libraryTactics = tactics;
-        ApplyLibraryDiscovery();
+        ApplyLibraryCatalog();
     }
 
-    public void ConfigureDiscovery(DiscoverySnapshot discovery)
+    private void ApplyLibraryCatalog()
     {
-        _discovery = discovery ?? DiscoverySnapshot.Everything;
-        ApplyLibraryDiscovery();
-    }
-
-    private void ApplyLibraryDiscovery()
-    {
-        _libraryTowers = _allLibraryTowers
-            .Where(tower => _discovery.Has(_discovery.Towers, tower.Id))
-            .ToArray();
+        _libraryTowers = _allLibraryTowers;
         var threats = new List<ThreatLibraryEntry>();
-        threats.AddRange(_allLibraryEnemies
-            .Where(enemy => _discovery.Has(_discovery.Enemies, enemy.Id))
-            .Select(ThreatLibraryEntry.FromEnemy));
+        threats.AddRange(_allLibraryEnemies.Select(ThreatLibraryEntry.FromEnemy));
         foreach (var role in Enum.GetValues<EnemySignalRole>().Where(role => role != EnemySignalRole.None))
-        {
-            if (_discovery.Has(_discovery.EnemySignalRoles, role.ToString()))
-                threats.Add(ThreatLibraryEntry.FromSignalRole(role));
-        }
+            threats.Add(ThreatLibraryEntry.FromSignalRole(role));
         _libraryThreats = threats.ToArray();
-        _libraryMaps = _maps.Where(map => _discovery.Has(_discovery.Maps, map.Id)).ToArray();
-        _libraryDifficulties = _difficulties.Where(difficulty =>
-            _discovery.Has(_discovery.Difficulties, difficulty.Id)).ToArray();
-        _libraryChallenges = _challenges.Where(challenge =>
-            _discovery.Has(_discovery.Challenges, challenge.Id)).ToArray();
+        _libraryMaps = _maps.ToArray();
+        _libraryDifficulties = _difficulties.ToArray();
+        _libraryChallenges = _challenges.ToArray();
         _towerLibraryIndex = Math.Clamp(_towerLibraryIndex, 0, Math.Max(0, _libraryTowers.Count - 1));
         _enemyLibraryIndex = Math.Clamp(_enemyLibraryIndex, 0, Math.Max(0, _libraryThreats.Count - 1));
         _campaignLibraryMapIndex = Math.Clamp(_campaignLibraryMapIndex, 0, Math.Max(0, _libraryMaps.Count - 1));
@@ -1879,15 +1868,13 @@ public sealed class UIManager
         }
         if (_towerLibraryDoctrineAButton.Contains(point))
         {
-            if (_libraryTowers.ElementAtOrDefault(_towerLibraryIndex) is { } tower &&
-                tower.Tier2Doctrines.ElementAtOrDefault(0) is { } doctrine && IsDoctrineDiscovered(tower, doctrine))
+            if (_libraryTowers.ElementAtOrDefault(_towerLibraryIndex)?.Tier2Doctrines.Count >= 1)
                 _towerLibraryDoctrineIndex = 0;
             return false;
         }
         if (_towerLibraryDoctrineBButton.Contains(point))
         {
-            if (_libraryTowers.ElementAtOrDefault(_towerLibraryIndex) is { } tower &&
-                tower.Tier2Doctrines.ElementAtOrDefault(1) is { } doctrine && IsDoctrineDiscovered(tower, doctrine))
+            if (_libraryTowers.ElementAtOrDefault(_towerLibraryIndex)?.Tier2Doctrines.Count >= 2)
                 _towerLibraryDoctrineIndex = 1;
             return false;
         }
@@ -3992,7 +3979,7 @@ public sealed class UIManager
         DrawText(batch, _libraryShowsCampaign ? "SELECT ARENA" : _libraryShowsThreats ? "SELECT THREAT" : "SELECT TOWER",
             new Vector2(68, 122), ColorPalette.Navy, 0.63f);
         var listCount = _libraryShowsCampaign ? _libraryMaps.Count : _libraryShowsThreats ? _libraryThreats.Count : _libraryTowers.Count;
-        DrawTextRight(batch, listCount > 0 ? $"1-{listCount}" : "0 DISCOVERED",
+        DrawTextRight(batch, listCount > 0 ? $"1-{listCount}" : "0",
             new Vector2(listPanel.Right - 10, 122), ColorPalette.Muted, 0.48f);
 
         if (_libraryShowsCampaign)
@@ -4010,7 +3997,7 @@ public sealed class UIManager
         var towers = _libraryTowers;
         if (towers.Count == 0)
         {
-            DrawDiscoveryEmptyState(batch, "NO TOWERS DISCOVERED", "Place a tower in a defense to archive its base profile.", detailPanel);
+            DrawDiscoveryEmptyState(batch, "NO TOWERS CONFIGURED", "No tower definitions are available.", detailPanel);
             return;
         }
 
@@ -4049,7 +4036,7 @@ public sealed class UIManager
         _towerLibraryDoctrineBButton = Rectangle.Empty;
         if (_libraryMaps.Count == 0)
         {
-            DrawDiscoveryEmptyState(batch, "NO CAMPAIGNS DISCOVERED", "Begin a defense to archive its arena and encountered waves.", detailPanel);
+            DrawDiscoveryEmptyState(batch, "NO CAMPAIGNS CONFIGURED", "No arena definitions are available.", detailPanel);
             return;
         }
 
@@ -4071,8 +4058,10 @@ public sealed class UIManager
             DrawFittedText(batch, MapPathLabel(map.PathStyle),
                 new Vector2(row.X + 58, row.Y + 57), LibraryAccentText(accent,
                     selected ? ColorPalette.Tint(accent, 0.80f) : ColorPalette.PanelAlt), 0.40f, row.Width - 72);
-            var archivedWave = _discovery.HighestMapWave(map.Id);
-            DrawFittedText(batch, archivedWave > 0 ? $"INTEL ARCHIVED THROUGH WAVE {archivedWave}" : "ROUTE DISCOVERED; NO WAVE INTEL YET",
+            var authoredWaveCount = _libraryCampaignWaves.TryGetValue(map.Id, out var mapWaves)
+                ? Math.Min(GameConstants.MasteryFinalWave, mapWaves.Count)
+                : 0;
+            DrawFittedText(batch, authoredWaveCount > 0 ? $"AUTHORED WAVES 1-{authoredWaveCount}" : "NO AUTHORED WAVE DATA",
                 new Vector2(row.X + 14, row.Y + 78), LibraryAccentText(accent, selected ? ColorPalette.Tint(accent, 0.80f) : ColorPalette.PanelAlt),
                 0.40f, row.Width - 28);
             if (_settings.ShowHotkeyBadges)
@@ -4094,15 +4083,14 @@ public sealed class UIManager
         DrawTextRight(batch, $"THREAT {selectedMap.Challenge}/5  |  {selectedMap.PowerNodes} SURGE NODES  |  BASE {selectedMap.StartingCredits}",
             new Vector2(detailPanel.Right - 18, detailPanel.Y + 21), LibraryAccentText(mapAccent, ColorPalette.Panel), 0.50f);
         DrawFittedText(batch, selectedMap.Description, new Vector2(detailPanel.X + 18, detailPanel.Y + 48), ColorPalette.Muted, 0.48f, detailPanel.Width - 238);
-        var highestWave = _discovery.HighestMapWave(selectedMap.Id);
-        DrawFittedText(batch, highestWave > 0 ? $"DISCOVERED WAVE INTEL  W1-W{highestWave}" : "START A WAVE TO DECLASSIFY ITS THREAT ORDER",
+        var visibleWaveCount = Math.Min(GameConstants.MasteryFinalWave, waves.Count);
+        DrawFittedText(batch, $"COMPLETE WAVE REFERENCE  W1-W{visibleWaveCount}",
             new Vector2(detailPanel.X + 18, detailPanel.Y + 72),
             LibraryAccentText(mapAccent, ColorPalette.Panel), 0.43f, detailPanel.Width - 238);
         DrawRoutePreview(batch, p, new Rectangle(detailPanel.Right - 202, detailPanel.Y + 39, 184, 54),
             selectedMap.Path, selectedMap.PathBase, selectedMap.PathAccent);
         p.FillRect(batch, new Rectangle(detailPanel.X + 18, detailPanel.Y + 98, detailPanel.Width - 36, 2), mapAccent);
 
-        var visibleWaveCount = Math.Min(Math.Min(GameConstants.MasteryFinalWave, waves.Count), highestWave);
         var waveColumns = visibleWaveCount > GameConstants.CampaignWaveCount ? 3 : 2;
         var waveGap = 10;
         var waveColumnWidth = (detailPanel.Width - 36 - waveGap * (waveColumns - 1)) / waveColumns;
@@ -4116,9 +4104,7 @@ public sealed class UIManager
         }
 
         DrawFittedCenteredText(batch,
-            visibleWaveCount > 0
-                ? $"Future waves remain classified.  Clear or encounter them to archive their roster.  TAB changes page; ESC or BACK returns to {returnDestination}."
-                : $"No wave roster has been encountered here.  TAB changes page; ESC or BACK returns to {returnDestination}.",
+            $"Complete authored rosters are available for planning.  TAB changes page; ESC or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
     }
 
@@ -4157,7 +4143,7 @@ public sealed class UIManager
         _towerLibraryDoctrineBButton = Rectangle.Empty;
         if (_libraryDifficulties.Count == 0 && _libraryChallenges.Count == 0)
         {
-            DrawDiscoveryEmptyState(batch, "NO PROFILES DISCOVERED", "Start a run to archive its difficulty and directive.", panel);
+            DrawDiscoveryEmptyState(batch, "NO PROFILES CONFIGURED", "No difficulty or directive definitions are available.", panel);
             return;
         }
 
@@ -4185,7 +4171,7 @@ public sealed class UIManager
             var challenge = _libraryChallenges[index];
             DrawSystemCard(batch, p, new Rectangle(firstX + index * (challengeCardWidth + gap), secondY, challengeCardWidth, cardHeight),
                 $"{challenge.DisplayName.ToUpperInvariant()} DIRECTIVE", challenge.AccentColor, "square",
-                DiscoveredChallengeReferenceLines(challenge, _allLibraryTowers.Count));
+                ChallengeReferenceLinesWithSignals(challenge, _allLibraryTowers.Count));
         }
 
         DrawFittedCenteredText(batch,
@@ -4291,39 +4277,31 @@ public sealed class UIManager
                 "SANDBOX F/R/C/D: SPAWN/RESET/CLEAR/TOGGLE"
             ])
         };
-        if (_discovery.Has(_discovery.Mechanics, DiscoveryProgress.TargetingMechanic))
-            cards.Add(("TARGETING MODES", ColorPalette.Cyan, "diamond",
-            [
-                "FIRST: FARTHEST ALONG THE ROUTE",
-                "LAST: LEAST ROUTE PROGRESS",
-                "STRONGEST: MOST HEALTH + SHIELD",
-                "WEAKEST: LOWEST HEALTH PERCENTAGE",
-                "NEAREST: SHORTEST DISTANCE TO TOWER",
-                "FASTEST: HIGHEST CURRENT MOVE SPEED",
-                "ARMORED: HIGHEST CURRENT ARMOR",
-                "SUPPORT: SIGNAL CARRIERS, THEN STRONGEST"
-            ]));
-        var statusLines = DiscoveredStatusReferenceLines();
-        if (statusLines.Count > 0)
-            cards.Add(("STATUS RULES", ColorPalette.Coral, "hexagon", statusLines));
-        if (_discovery.Has(_discovery.Mechanics, DiscoveryProgress.ProtocolMechanic))
-            cards.Add(("TOWER PROTOCOLS", ColorPalette.Auto, "square",
-            [
-                "E: ACTIVATE THE SELECTED TOWER MANUALLY",
-                "A OR AUTO: ARM ONE TOWER FOR PRESSURE-AWARE USE",
-                "AUTO RULES MATCH EACH ROLE: RANGE, AREA, GROUP, OR ALLIES",
-                "ANY ENGAGED ELITE / BOSS TRIGGERS AUTO IMMEDIATELY",
-                "ANY ACTIVATION STARTS THE ONE SHARED COOLDOWN",
-                "EACH TOWER HAS UNIQUE STATS, BURST, OR STATUS",
-                "THE SIDEBAR SHOWS ACTIVE TIME AND COOLDOWN",
-                "DISCOVERED TOWER PAGES SHOW EXACT EFFECTS"
-            ]));
-        if (_discovery.Has(_discovery.Mechanics, DiscoveryProgress.BeaconMechanic) ||
-            _discovery.Has(_discovery.Mechanics, DiscoveryProgress.SurgeNodeMechanic))
-            cards.Add(("BEACONS + SURGE NODES", ColorPalette.Gold, "circle", DiscoveredSupportReferenceLines()));
-        if (_discovery.Has(_discovery.Mechanics, DiscoveryProgress.PlateMechanic) ||
-            _discovery.Has(_discovery.Mechanics, DiscoveryProgress.ForgeMechanic))
-            cards.Add(("PULSE PLATES + FORGE", ColorPalette.Green, "star", DiscoveredReserveReferenceLines()));
+        cards.Add(("TARGETING MODES", ColorPalette.Cyan, "diamond",
+        [
+            "FIRST: FARTHEST ALONG THE ROUTE",
+            "LAST: LEAST ROUTE PROGRESS",
+            "STRONGEST: MOST HEALTH + SHIELD",
+            "WEAKEST: LOWEST HEALTH PERCENTAGE",
+            "NEAREST: SHORTEST DISTANCE TO TOWER",
+            "FASTEST: HIGHEST CURRENT MOVE SPEED",
+            "ARMORED: HIGHEST CURRENT ARMOR",
+            "SUPPORT: SIGNAL CARRIERS, THEN STRONGEST"
+        ]));
+        cards.Add(("STATUS RULES", ColorPalette.Coral, "hexagon", StatusReferenceLines()));
+        cards.Add(("TOWER PROTOCOLS", ColorPalette.Auto, "square",
+        [
+            "E: ACTIVATE THE SELECTED TOWER MANUALLY",
+            "A OR AUTO: ARM ONE TOWER FOR PRESSURE-AWARE USE",
+            "AUTO RULES MATCH EACH ROLE: RANGE, AREA, GROUP, OR ALLIES",
+            "ANY ENGAGED ELITE / BOSS TRIGGERS AUTO IMMEDIATELY",
+            "ANY ACTIVATION STARTS THE ONE SHARED COOLDOWN",
+            "EACH TOWER HAS UNIQUE STATS, BURST, OR STATUS",
+            "THE SIDEBAR SHOWS ACTIVE TIME AND COOLDOWN",
+            "TOWER PAGES SHOW EACH EXACT EFFECT"
+        ]));
+        cards.Add(("BEACONS + SURGE NODES", ColorPalette.Gold, "circle", SupportReferenceLines()));
+        cards.Add(("PULSE PLATES + FORGE", ColorPalette.Green, "star", ReserveReferenceLines()));
 
         for (var index = 0; index < cards.Count; index++)
         {
@@ -4340,27 +4318,21 @@ public sealed class UIManager
             new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
     }
 
-    private IReadOnlyList<string> DiscoveredStatusReferenceLines()
-    {
-        var lines = new List<string>();
-        if (_discovery.Has(_discovery.Statuses, StatusType.Slow.ToString()))
-        {
-            lines.Add("SLOW: STRONGEST ONLY; MOVEMENT REDUCTION CAPS AT 60%");
-            lines.Add("ARC: BONUS MATCHES SLOW STRENGTH, CAPPED AT +30%");
-        }
-        if (_discovery.Has(_discovery.Statuses, StatusType.Stun.ToString())) lines.Add("STUN: STOPS MOVEMENT WHILE ACTIVE");
-        if (_discovery.Has(_discovery.Statuses, StatusType.Burn.ToString())) lines.Add("BURN: UP TO 2 SOURCES; ALSO REDUCES ARMOR BY 2");
-        if (_discovery.Has(_discovery.Statuses, StatusType.Exposed.ToString())) lines.Add("EXPOSE: STRONGEST BONUS RAISES ALL INCOMING DAMAGE");
-        if (_discovery.Has(_discovery.Statuses, StatusType.ArmorBreak.ToString())) lines.Add("ARMOR BREAK: STRONGEST REDUCTION LOWERS ARMOR");
-        if (lines.Count > 0) lines.Add("ELITE / BOSS CONTROL DURATION: -30% / -60%");
-        return lines;
-    }
+    private static IReadOnlyList<string> StatusReferenceLines() =>
+    [
+        "SLOW: STRONGEST ONLY; MOVEMENT REDUCTION CAPS AT 60%",
+        "STUN: STOPS MOVEMENT WHILE ACTIVE",
+        "BURN: UP TO 2 SOURCES; ALSO REDUCES ARMOR BY 2",
+        "EXPOSE: STRONGEST BONUS RAISES ALL INCOMING DAMAGE",
+        "ARMOR BREAK: STRONGEST REDUCTION LOWERS ARMOR",
+        "ELITE / BOSS CONTROL DURATION: -30% / -60%"
+    ];
 
-    private IReadOnlyList<string> DiscoveredChallengeReferenceLines(ChallengeDefinition challenge, int totalTowerCount)
+    private static IReadOnlyList<string> ChallengeReferenceLinesWithSignals(ChallengeDefinition challenge, int totalTowerCount)
     {
         if (!challenge.CounterPressureEnabled) return ChallengeReferenceLines(challenge, totalTowerCount);
         var roles = Enum.GetValues<EnemySignalRole>()
-            .Where(role => role != EnemySignalRole.None && _discovery.Has(_discovery.EnemySignalRoles, role.ToString()))
+            .Where(role => role != EnemySignalRole.None)
             .Select(role => role.ToString().ToUpperInvariant())
             .ToArray();
         var lines = new List<string>
@@ -4369,54 +4341,36 @@ public sealed class UIManager
             "FULL ROSTER + ALL SYSTEMS",
             "RULE: SIGNAL CARRIERS SUPPORT FORMATIONS"
         };
-        if (roles.Length == 0) lines.Add("SIGNAL ROLES NOT YET ENCOUNTERED");
-        else
-        {
-            lines.Add($"DISCOVERED: {string.Join(" / ", roles.Take(3))}");
-            if (roles.Length > 3) lines.Add(string.Join(" / ", roles.Skip(3)));
-        }
-        lines.Add("THREAT DETAILS UNLOCK ON FIRST CONTACT");
+        lines.Add($"SIGNALS: {string.Join(" / ", roles.Take(3))}");
+        if (roles.Length > 3) lines.Add(string.Join(" / ", roles.Skip(3)));
+        lines.Add("SEE THREATS FOR EXACT SIGNAL RULES");
         return lines;
     }
 
-    private IReadOnlyList<string> DiscoveredSupportReferenceLines()
-    {
-        var lines = new List<string>();
-        if (_discovery.Has(_discovery.Mechanics, DiscoveryProgress.BeaconMechanic))
-        {
-            lines.Add("SIGNAL BEACON BUFFS COMBAT TOWERS INSIDE ITS AURA");
-            lines.Add("RATE AND RANGE EACH USE THE STRONGEST BEACON");
-            lines.Add("MULTIPLE BEACONS NEVER ADD THE SAME STAT");
-            lines.Add("GOLD PIP IDENTIFIES A BEACON-AFFECTED TOWER");
-        }
-        if (_discovery.Has(_discovery.Mechanics, DiscoveryProgress.SurgeNodeMechanic))
-        {
-            lines.Add("SURGE NODES USE THE STRONGEST LOCAL STAT");
-            lines.Add("DASHED GOLD RING IDENTIFIES A NODE BOOST");
-        }
-        if (lines.Count > 4) lines.Add("BEACON, NODE, AND ACTIVE PROTOCOL MAY COMBINE");
-        lines.Add("TOWER INTEL SHOWS EACH EXACT ACTIVE CHANGE");
-        return lines;
-    }
+    private static IReadOnlyList<string> SupportReferenceLines() =>
+    [
+        "SIGNAL BEACON BUFFS COMBAT TOWERS INSIDE ITS AURA",
+        "RATE AND RANGE EACH USE THE STRONGEST BEACON",
+        "MULTIPLE BEACONS NEVER ADD THE SAME STAT",
+        "GOLD PIP IDENTIFIES A BEACON-AFFECTED TOWER",
+        "SURGE NODES USE THE STRONGEST LOCAL STAT",
+        "DASHED GOLD RING IDENTIFIES A NODE BOOST",
+        "BEACON, NODE, AND ACTIVE PROTOCOL MAY COMBINE",
+        "TOWER INTEL SHOWS EACH EXACT ACTIVE CHANGE"
+    ];
 
-    private IReadOnlyList<string> DiscoveredReserveReferenceLines()
+    private IReadOnlyList<string> ReserveReferenceLines()
     {
         var lines = new List<string>();
-        if (_discovery.Has(_discovery.Mechanics, DiscoveryProgress.PlateMechanic))
-        {
-            var plate = _libraryTactics.EmergencyDefense;
-            lines.Add($"PLATE: {plate.Charges} PULSES | {plate.Damage:0.#} DAMAGE | AREA {plate.BlastRadius:0}");
-            lines.Add($"START STORED {plate.StartingInventory} | FIELD CAP {plate.MaximumActive}");
-            lines.Add($"DIRECT BUY {plate.PurchaseCost} + {plate.DirectPurchaseCostIncrease} PER PURCHASE");
-        }
-        if (_discovery.Has(_discovery.Mechanics, DiscoveryProgress.ForgeMechanic))
-        {
-            var forge = _libraryTactics.Generator;
-            lines.Add($"FORGE BUILD {forge.PurchaseCost}; PRODUCTION IS WAVE-POWERED");
-            lines.Add($"FORGE CADENCE: {string.Join(" / ", forge.Levels.Take(3).Select(level => $"{level.ProductionSeconds:0}s"))}");
-            lines.Add($"STORED CAP: {string.Join(" / ", forge.Levels.Take(3).Select(level => level.Capacity))}");
-            lines.Add($"PLATE DAMAGE: {string.Join(" / ", forge.Levels.Take(3).Select(level => $"+{level.DefenseDamageBonus:P0}"))}");
-        }
+        var plate = _libraryTactics.EmergencyDefense;
+        lines.Add($"PLATE: {plate.Charges} PULSES | {plate.Damage:0.#} DAMAGE | AREA {plate.BlastRadius:0}");
+        lines.Add($"START STORED {plate.StartingInventory} | FIELD CAP {plate.MaximumActive}");
+        lines.Add($"DIRECT BUY {plate.PurchaseCost} + {plate.DirectPurchaseCostIncrease} PER PURCHASE");
+        var forge = _libraryTactics.Generator;
+        lines.Add($"FORGE BUILD {forge.PurchaseCost}; PRODUCTION IS WAVE-POWERED");
+        lines.Add($"FORGE CADENCE: {string.Join(" / ", forge.Levels.Take(3).Select(level => $"{level.ProductionSeconds:0}s"))}");
+        lines.Add($"STORED CAP: {string.Join(" / ", forge.Levels.Take(3).Select(level => level.Capacity))}");
+        lines.Add($"PLATE DAMAGE: {string.Join(" / ", forge.Levels.Take(3).Select(level => $"+{level.DefenseDamageBonus:P0}"))}");
         return lines;
     }
 
@@ -4497,7 +4451,7 @@ public sealed class UIManager
         _towerLibraryDoctrineBButton = Rectangle.Empty;
         if (_libraryThreats.Count == 0)
         {
-            DrawDiscoveryEmptyState(batch, "NO THREATS DISCOVERED", "Encounter an enemy to archive its profile and battlefield mechanics.", detailPanel);
+            DrawDiscoveryEmptyState(batch, "NO THREATS CONFIGURED", "No enemy definitions are available.", detailPanel);
             return;
         }
 
@@ -4523,7 +4477,7 @@ public sealed class UIManager
         var selectedThreat = _libraryThreats[_enemyLibraryIndex];
         if (selectedThreat.Definition is { } definition) DrawEnemyLibraryDetails(batch, p, definition, detailPanel);
         else DrawSignalRoleLibraryDetails(batch, p, selectedThreat.SignalRole, detailPanel);
-        DrawText(batch, $"Only encountered threats are archived.  Values precede scaling.  TAB changes page; ESC, right-click, or BACK returns to {returnDestination}.",
+        DrawText(batch, $"Complete threat and signal references; values precede scaling.  TAB changes page; ESC, right-click, or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.45f, true);
     }
 
@@ -4569,19 +4523,19 @@ public sealed class UIManager
 
         DrawText(batch, "RANK MODIFIERS", new Vector2(panel.X + 18, panel.Y + 270), ColorPalette.Navy, 0.62f);
         var rankY = panel.Y + 294;
-        DrawDiscoveredRankCard(batch, p, new Rectangle(panel.X + 18, rankY, 270, 112), EnemyRank.Standard, accent,
+        DrawRankCard(batch, p, new Rectangle(panel.X + 18, rankY, 270, 112), EnemyRank.Standard, accent,
         [
             "HEALTH x1.00  |  SPEED x1.00",
             "ARMOR +0  |  CONTROL RESIST 0%",
             "REWARD x1  |  BASE BREACH"
         ]);
-        DrawDiscoveredRankCard(batch, p, new Rectangle(panel.X + 306, rankY, 270, 112), EnemyRank.Elite, ColorPalette.Gold,
+        DrawRankCard(batch, p, new Rectangle(panel.X + 306, rankY, 270, 112), EnemyRank.Elite, ColorPalette.Gold,
         [
             "HEALTH x1.85  |  SPEED x1.07",
             "ARMOR +2  |  CONTROL RESIST 30%",
             "REWARD x2  |  BREACH +1 LIFE"
         ]);
-        DrawDiscoveredRankCard(batch, p, new Rectangle(panel.X + 594, rankY, 278, 112), EnemyRank.Boss, ColorPalette.Coral,
+        DrawRankCard(batch, p, new Rectangle(panel.X + 594, rankY, 278, 112), EnemyRank.Boss, ColorPalette.Coral,
         [
             "HEALTH x4.50  |  SPEED x0.92",
             "ARMOR +4  |  CONTROL RESIST 60%",
@@ -4591,15 +4545,15 @@ public sealed class UIManager
 
         DrawText(batch, "BATTLEFIELD STATUS LANGUAGE", new Vector2(panel.X + 18, panel.Y + 420), ColorPalette.Navy, 0.62f);
         var statusY = panel.Y + 449;
-        DrawDiscoveredStatus(batch, p, new Rectangle(panel.X + 18, statusY, 162, 70), StatusType.Slow,
+        DrawStatusReference(batch, p, new Rectangle(panel.X + 18, statusY, 162, 70),
             "SLOW", "DASHED CYAN", "Movement reduced", ColorPalette.Slow, "ring");
-        DrawDiscoveredStatus(batch, p, new Rectangle(panel.X + 186, statusY, 162, 70), StatusType.Exposed,
+        DrawStatusReference(batch, p, new Rectangle(panel.X + 186, statusY, 162, 70),
             "EXPOSE", "VIOLET DIAMOND", "All damage rises", ColorPalette.Violet, "diamond");
-        DrawDiscoveredStatus(batch, p, new Rectangle(panel.X + 354, statusY, 162, 70), StatusType.ArmorBreak,
+        DrawStatusReference(batch, p, new Rectangle(panel.X + 354, statusY, 162, 70),
             "BREAK", "GOLD CHEVRONS", "Armor reduced", ColorPalette.Gold, "break");
-        DrawDiscoveredStatus(batch, p, new Rectangle(panel.X + 522, statusY, 162, 70), StatusType.Burn,
+        DrawStatusReference(batch, p, new Rectangle(panel.X + 522, statusY, 162, 70),
             "BURN", "ORANGE INNER RING", "Damage; armor -2", ColorPalette.Orange, "circle");
-        DrawDiscoveredStatus(batch, p, new Rectangle(panel.X + 690, statusY, 182, 70), StatusType.Stun,
+        DrawStatusReference(batch, p, new Rectangle(panel.X + 690, statusY, 182, 70),
             "STUN", "GREEN SQUARES", "Movement halted", ColorPalette.Green, "stun");
     }
 
@@ -4626,7 +4580,7 @@ public sealed class UIManager
             new Vector2(panel.X + 18, panel.Y + 352), ColorPalette.Ink, 0.49f, panel.Width - 36);
         DrawFittedText(batch, "This is a modifier, not a separate body type. Crawler, Runner, Brute, Aegis, and Regenerator carriers retain their normal base profile.",
             new Vector2(panel.X + 18, panel.Y + 382), ColorPalette.Muted, 0.46f, panel.Width - 36);
-        DrawFittedText(batch, "Signal roles are archived only after the carrier appears in a defense.",
+        DrawFittedText(batch, "Signal roles can modify any compatible base enemy in Signal Gauntlet.",
             new Vector2(panel.X + 18, panel.Y + 430), LibraryAccentText(threat.PrimaryColor, ColorPalette.Panel), 0.46f, panel.Width - 36);
     }
 
@@ -4679,23 +4633,13 @@ public sealed class UIManager
         };
     }
 
-    private void DrawDiscoveredRankCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, EnemyRank rank,
+    private void DrawRankCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, EnemyRank rank,
         Color accent, IReadOnlyList<string> lines, float lineScale = 0.42f, int lineSpacing = 19)
-    {
-        if (_discovery.Has(_discovery.EnemyRanks, rank.ToString()))
-            DrawEnemyInfoCard(batch, p, rect, rank.ToString().ToUpperInvariant(), accent, lines, lineScale, lineSpacing);
-        else
-            DrawLockedLibraryCard(batch, p, rect, "RANK NOT ENCOUNTERED");
-    }
+        => DrawEnemyInfoCard(batch, p, rect, rank.ToString().ToUpperInvariant(), accent, lines, lineScale, lineSpacing);
 
-    private void DrawDiscoveredStatus(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, StatusType status,
+    private void DrawStatusReference(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect,
         string title, string symbol, string meaning, Color accent, string shape)
-    {
-        if (_discovery.Has(_discovery.Statuses, status.ToString()))
-            DrawStatusLegendEntry(batch, p, rect, title, symbol, meaning, accent, shape);
-        else
-            DrawLockedLibraryCard(batch, p, rect, "STATUS UNKNOWN", 0.38f);
-    }
+        => DrawStatusLegendEntry(batch, p, rect, title, symbol, meaning, accent, shape);
 
     private void DrawEnemyInfoCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string title, Color accent,
         IReadOnlyList<string> lines, float lineScale = 0.47f, int lineSpacing = 19)
@@ -4810,20 +4754,14 @@ public sealed class UIManager
             : $"DEFAULT TARGET {definition.DefaultTargetMode.ToUpperInvariant()}";
         DrawText(batch, $"{TowerInfo.ShortRole(definition).ToUpperInvariant()}  |  BUILD {definition.PurchaseCost}  |  {operation}",
             new Vector2(panel.X + 72, panel.Y + 43), ColorPalette.Muted, 0.53f);
-        var protocolDiscovered = _discovery.Has(_discovery.TowerProtocols, definition.Id);
-        DrawFittedText(batch, protocolDiscovered ? TowerInfo.ProtocolLibraryEffectSummary(definition) : "PROTOCOL RECORD UNDISCOVERED",
-            new Vector2(panel.X + 72, panel.Y + 62), protocolDiscovered ? ColorPalette.Coral : ColorPalette.Muted, 0.42f, panel.Width - 90);
-        if (protocolDiscovered)
-            DrawFittedText(batch, TowerInfo.ProtocolAutoTriggerSummary(definition.Protocol),
-                new Vector2(panel.X + 72, panel.Y + 79), ColorPalette.Auto, 0.41f, panel.Width - 90);
+        DrawFittedText(batch, TowerInfo.ProtocolLibraryEffectSummary(definition),
+            new Vector2(panel.X + 72, panel.Y + 62), ColorPalette.Coral, 0.42f, panel.Width - 90);
+        DrawFittedText(batch, TowerInfo.ProtocolAutoTriggerSummary(definition.Protocol),
+            new Vector2(panel.X + 72, panel.Y + 79), ColorPalette.Auto, 0.41f, panel.Width - 90);
         DrawFittedText(batch, $"{TowerInfo.Strength(definition)}  |  {TowerInfo.Limitation(definition)}",
             new Vector2(panel.X + 18, panel.Y + 96), towerAccent, 0.42f, panel.Width - 36);
-        DrawFittedText(batch, _discovery.Has(_discovery.ApexTowers, definition.Id)
-                ? TowerInfo.ApexLibrarySummary(definition)
-                : "APEX RECORD UNDISCOVERED",
-            new Vector2(panel.X + 18, panel.Y + 113),
-            _discovery.Has(_discovery.ApexTowers, definition.Id) ? ColorPalette.Violet : ColorPalette.Muted,
-            0.40f, panel.Width - 36);
+        DrawFittedText(batch, TowerInfo.ApexLibrarySummary(definition), new Vector2(panel.X + 18, panel.Y + 113),
+            ColorPalette.Violet, 0.40f, panel.Width - 36);
         p.FillRect(batch, new Rectangle(panel.X + 18, panel.Y + 130, panel.Width - 36, 2),
             towerAccent);
 
@@ -4831,11 +4769,7 @@ public sealed class UIManager
         var levelTwo = definition.Levels.Count > 1 ? definition.Levels[1] : levelOne;
         if (definition.Tier2Doctrines.Count >= 2 && definition.Specializations.Count >= 2)
         {
-            var discoveredDoctrineIndices = definition.Tier2Doctrines.Select((doctrine, index) => (doctrine, index))
-                .Where(entry => IsDoctrineDiscovered(definition, entry.doctrine)).Select(entry => entry.index).ToArray();
-            _towerLibraryDoctrineIndex = discoveredDoctrineIndices.Contains(_towerLibraryDoctrineIndex)
-                ? _towerLibraryDoctrineIndex
-                : discoveredDoctrineIndices.FirstOrDefault();
+            _towerLibraryDoctrineIndex = Math.Clamp(_towerLibraryDoctrineIndex, 0, 1);
             var doctrine = definition.Tier2Doctrines[_towerLibraryDoctrineIndex];
             const int doctrineWidth = 270;
             var topY = panel.Y + 138;
@@ -4845,22 +4779,22 @@ public sealed class UIManager
                 levelOne, "LEVEL 1", $"BUILD {definition.PurchaseCost}  |  TOTAL {definition.PurchaseCost}", towerAccent);
             var firstDoctrine = definition.Tier2Doctrines[0];
             var secondDoctrine = definition.Tier2Doctrines[1];
-            DrawTowerLibraryCardOrLocked(batch, p, _towerLibraryDoctrineAButton, definition,
+            DrawTowerLibraryCard(batch, p, _towerLibraryDoctrineAButton, definition,
                 levelTwo.WithDoctrine(firstDoctrine), $"L2 {firstDoctrine.DisplayName.ToUpperInvariant()}",
                 $"UPGRADE {firstDoctrine.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToDoctrine(definition, firstDoctrine)}",
-                ColorPalette.Cyan, IsDoctrineDiscovered(definition, firstDoctrine), firstDoctrine.Summary, _towerLibraryDoctrineIndex == 0);
-            DrawTowerLibraryCardOrLocked(batch, p, _towerLibraryDoctrineBButton, definition,
+                ColorPalette.Cyan, firstDoctrine.Summary, _towerLibraryDoctrineIndex == 0);
+            DrawTowerLibraryCard(batch, p, _towerLibraryDoctrineBButton, definition,
                 levelTwo.WithDoctrine(secondDoctrine), $"L2 {secondDoctrine.DisplayName.ToUpperInvariant()}",
                 $"UPGRADE {secondDoctrine.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToDoctrine(definition, secondDoctrine)}",
-                ColorPalette.Cyan, IsDoctrineDiscovered(definition, secondDoctrine), secondDoctrine.Summary, _towerLibraryDoctrineIndex == 1);
+                ColorPalette.Cyan, secondDoctrine.Summary, _towerLibraryDoctrineIndex == 1);
 
             for (var index = 0; index < 2; index++)
             {
                 var specialization = definition.Specializations[index];
-                DrawTowerLibraryCardOrLocked(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 318, 418, 206), definition,
+                DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 318, 418, 206), definition,
                     specialization.Level.WithDoctrine(doctrine), specialization.DisplayName.ToUpperInvariant(),
                     $"AFTER {doctrine.DisplayName.ToUpperInvariant()} {specialization.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToSpecialization(definition, doctrine, specialization)}",
-                    ColorPalette.Violet, IsSpecializationDiscovered(definition, specialization), specialization.Summary);
+                    ColorPalette.Violet, specialization.Summary);
             }
             return;
         }
@@ -4869,17 +4803,17 @@ public sealed class UIManager
             var topWidth = 418;
             DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18, panel.Y + 138, topWidth, 162), definition,
                 levelOne, "LEVEL 1", $"BUILD {definition.PurchaseCost}  |  TOTAL {definition.PurchaseCost}", towerAccent);
-            DrawTowerLibraryCardOrLocked(batch, p, new Rectangle(panel.X + 454, panel.Y + 138, topWidth, 162), definition,
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 454, panel.Y + 138, topWidth, 162), definition,
                 levelTwo, "LEVEL 2", $"UPGRADE {levelOne.UpgradeCost ?? 0}  |  TOTAL {TowerInfo.TotalCostToLevel(definition, 1)}", ColorPalette.Cyan,
-                _discovery.HighestTowerLevel(definition.Id) >= 2);
+                null);
 
             for (var index = 0; index < Math.Min(2, definition.Specializations.Count); index++)
             {
                 var specialization = definition.Specializations[index];
-                DrawTowerLibraryCardOrLocked(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 318, topWidth, 206), definition,
+                DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 436, panel.Y + 318, topWidth, 206), definition,
                     specialization.Level, specialization.DisplayName.ToUpperInvariant(),
                     $"FINAL {specialization.UpgradeCost}  |  TOTAL {TowerInfo.TotalCostToSpecialization(definition, specialization)}",
-                    ColorPalette.Violet, IsSpecializationDiscovered(definition, specialization), specialization.Summary);
+                    ColorPalette.Violet, specialization.Summary);
             }
             return;
         }
@@ -4891,24 +4825,10 @@ public sealed class UIManager
             var incrementalCost = index == 0 ? definition.PurchaseCost : definition.Levels[index - 1].UpgradeCost ?? 0;
             var costKind = index == 0 ? "BUILD" : "UPGRADE";
             var accent = index switch { 0 => towerAccent, 1 => ColorPalette.Cyan, _ => ColorPalette.Violet };
-            DrawTowerLibraryCardOrLocked(batch, p, new Rectangle(panel.X + 18 + index * 290, panel.Y + 138, cardWidth, 386), definition,
+            DrawTowerLibraryCard(batch, p, new Rectangle(panel.X + 18 + index * 290, panel.Y + 138, cardWidth, 386), definition,
                 level, $"LEVEL {index + 1}", $"{costKind} {incrementalCost}  |  TOTAL {TowerInfo.TotalCostToLevel(definition, index)}", accent,
-                index == 0 || _discovery.HighestTowerLevel(definition.Id) >= index + 1);
+                null);
         }
-    }
-
-    private bool IsDoctrineDiscovered(TowerDefinition tower, TowerDoctrineDefinition doctrine) =>
-        _discovery.Has(_discovery.TowerDoctrines, DiscoveryProgress.BranchKey(tower.Id, doctrine.Id));
-
-    private bool IsSpecializationDiscovered(TowerDefinition tower, TowerSpecializationDefinition specialization) =>
-        _discovery.Has(_discovery.TowerSpecializations, DiscoveryProgress.BranchKey(tower.Id, specialization.Id));
-
-    private void DrawTowerLibraryCardOrLocked(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect,
-        TowerDefinition definition, TowerLevelDefinition level, string title, string cost, Color accent,
-        bool discovered, string? summary = null, bool selected = false)
-    {
-        if (discovered) DrawTowerLibraryCard(batch, p, rect, definition, level, title, cost, accent, summary, selected);
-        else DrawLockedLibraryCard(batch, p, rect, "UPGRADE NOT DISCOVERED");
     }
 
     private void DrawTowerLibraryCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, TowerDefinition definition,
@@ -4953,13 +4873,6 @@ public sealed class UIManager
         DrawFittedCenteredText(batch, detail, new Vector2(panel.Center.X, panel.Center.Y + 22), ColorPalette.Muted, 0.48f, panel.Width - 80);
     }
 
-    private void DrawLockedLibraryCard(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string label, float scale = 0.48f)
-    {
-        p.FillRect(batch, rect, ColorPalette.PanelAlt);
-        p.DrawRect(batch, rect, ColorPalette.CardOutline, 1);
-        p.FillRect(batch, new Rectangle(rect.X, rect.Y, rect.Width, 4), ColorPalette.Muted);
-        DrawFittedCenteredText(batch, label, rect.Center.ToVector2(), ColorPalette.Muted, scale, rect.Width - 20);
-    }
 
     private sealed record ThreatLibraryEntry(
         string Id,

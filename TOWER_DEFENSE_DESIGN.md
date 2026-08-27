@@ -149,7 +149,7 @@ Result/history identity survives campaign continuation so wave 20 and a later Ma
 - atomic replacement and one `.bak` recovery copy
 - structural/content validation before reconstruction
 
-`RunHistoryStore` stores terminal summaries, medal state, contribution/economy/tactical data, and serialized read-only final layouts. `DiscoveryProgress` stores discovery-gated Tactical Library entries. `UserSettings` stores display, audio, effects, hotkey-badge, and auto-start preferences. Each subsystem fails non-fatally when local persistence is unavailable.
+`RunHistoryStore` stores terminal summaries, medal state, contribution/economy/tactical data, and serialized read-only final layouts. `UserSettings` stores display, audio, effects, hotkey-badge, and auto-start preferences. Each subsystem fails non-fatally when local persistence is unavailable.
 
 Co-op saves are written by the host. They can be reopened as a hosted game or converted into a solo continuation without changing the underlying defense state.
 
@@ -171,7 +171,7 @@ See [docs/co-op-architecture.md](docs/co-op-architecture.md) for the connection 
 
 Input is processed only while the game window is active. Resolution/fullscreen changes update both viewport mapping and hit testing together. Mouse-driven menus do not retain hidden keyboard focus. Text fields explicitly own copy/paste/backspace behavior.
 
-The Tactical Library uses left/right page navigation and discovery gates. In co-op it is a local overlay: network polling and simulation continue while local world input is blocked.
+The Tactical Library uses left/right page navigation and exposes the complete authored planning reference. In co-op it is a local overlay: network polling and simulation continue while local world input is blocked.
 
 ## Audio
 
@@ -207,7 +207,7 @@ src/MinimalBastion/
   Enemies/        runtime enemies and signal roles
   Maps/           route/build/node runtime
   Multiplayer/    transport, commands, fixed ticks, snapshots
-  Persistence/    saves, history, discovery, settings
+  Persistence/    saves, history, settings
   Rendering/      palette and all geometric rendering
   Simulation/     deterministic agents and reports
   Tactics/        Plates and Charge Forge
