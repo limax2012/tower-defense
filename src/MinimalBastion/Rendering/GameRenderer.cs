@@ -790,12 +790,22 @@ public sealed class GameRenderer
             if (enemy.IsSandboxImmortal)
                 p.DashedRing(batch, position, enemy.Radius + (enemy.IsBoss ? 21 : 7), ColorPalette.Paper, 10, 2);
 
+            var barWidth = enemy.Radius * (enemy.IsBoss ? 3.5f : 2.5f);
             var healthRatio = enemy.MaxHealth > 0 ? enemy.Health / enemy.MaxHealth : 0;
-            p.HealthBar(batch, position - new Vector2(0, enemy.Radius + 11), enemy.Radius * (enemy.IsBoss ? 3.5f : 2.5f),
+            p.HealthBar(batch, position - new Vector2(0, enemy.Radius + 11), barWidth,
                 healthRatio, ColorPalette.Health(healthRatio), ColorPalette.HealthTrack, ColorPalette.Ink);
 
             if (enemy.Shield > 0)
+            {
+                var naturalShieldCapacity = enemy.Definition.Shield + (enemy.IsBoss ? enemy.MaxHealth * 0.12f : 0f);
+                var signalShieldCapacity = session.CounterSupportEnabled
+                    ? enemy.Definition.Shield + enemy.MaxHealth * session.Challenge.CounterShieldCapacityFraction
+                    : 0f;
+                var shieldCapacity = MathF.Max(enemy.Shield, MathF.Max(naturalShieldCapacity, signalShieldCapacity));
+                p.HealthBar(batch, position - new Vector2(0, enemy.Radius + 18), barWidth,
+                    enemy.Shield / shieldCapacity, ColorPalette.Shield, ColorPalette.HealthTrack, ColorPalette.Ink, 6);
                 p.Ring(batch, position, enemy.Radius + 5, ColorPalette.Shield, 3);
+            }
             if (enemy.StatusEffects.IsBurning)
             {
                 var burnAlpha = (byte)(145 + (MathF.Sin(time * 7f + enemy.Id) + 1f) * 42f);

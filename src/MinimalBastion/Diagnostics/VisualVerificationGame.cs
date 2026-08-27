@@ -459,7 +459,7 @@ public sealed class VisualVerificationGame : Game
         var supportSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, "close_quarters");
         supportSession.SpawnEnemy("t1_crawler", 1, 1, signalRole: EnemySignalRole.Accelerator);
         supportSession.SpawnEnemy("t1_crawler", 1, 1);
-        supportSession.SpawnEnemy("t3_brute", 1, 1);
+        supportSession.SpawnEnemy("t4_aegis", 1, 1);
         supportSession.Enemies[0].SetSandboxPathDistance(430f, supportSession.Map.Path);
         supportSession.Enemies[1].SetSandboxPathDistance(430f, supportSession.Map.Path);
         supportSession.Enemies[2].SetSandboxPathDistance(335f, supportSession.Map.Path);
@@ -471,6 +471,12 @@ public sealed class VisualVerificationGame : Game
         Require(CountColorPixels(supportPixels,
                     new Rectangle(supportPosition.X - 9, supportPosition.Y - 9, 18, 18), ColorPalette.Cyan) >= 8,
             "A signal carrier and its embedded role glyph remain visible above an overlapping ordinary threat.", assertions);
+        var shieldedThreat = supportSession.Enemies[2];
+        var shieldBarPosition = shieldedThreat.Position - new Vector2(0, shieldedThreat.Radius + 18);
+        Require(CountColorPixels(supportPixels,
+                    new Rectangle((int)(shieldBarPosition.X - shieldedThreat.Radius * 1.25f),
+                        (int)shieldBarPosition.Y, (int)(shieldedThreat.Radius * 2.5f), 6), ColorPalette.Shield) >= 4,
+            "A shielded threat renders a quantitative cyan bar above its separate health bar.", assertions);
         scenes.Add(Capture("05d-signal-support-network.png", ui, GameState.Playing, supportSession));
 
         var crosswindSession = new GameSession(content, "crosswind_basin", DifficultyCatalog.DefaultId,

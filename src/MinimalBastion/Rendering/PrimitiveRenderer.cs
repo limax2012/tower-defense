@@ -154,10 +154,12 @@ public sealed class PrimitiveRenderer : IDisposable
         }
     }
 
-    public void HealthBar(SpriteBatch batch, Vector2 center, float width, float ratio, Color fillColor, Color trackColor, Color outlineColor)
+    public void HealthBar(SpriteBatch batch, Vector2 center, float width, float ratio, Color fillColor, Color trackColor,
+        Color outlineColor, int height = 7)
     {
         ratio = MathHelper.Clamp(ratio, 0, 1);
-        var rect = new Rectangle((int)(center.X - width / 2), (int)center.Y, Math.Max(8, (int)width), 7);
+        height = Math.Max(5, height);
+        var rect = new Rectangle((int)(center.X - width / 2), (int)center.Y, Math.Max(8, (int)width), height);
         FillRect(batch, rect, outlineColor);
         FillRect(batch, new Rectangle(rect.X + 2, rect.Y + 2, rect.Width - 4, rect.Height - 4), trackColor);
         FillRect(batch, new Rectangle(rect.X + 2, rect.Y + 2, (int)((rect.Width - 4) * ratio), rect.Height - 4), fillColor);
