@@ -76,7 +76,6 @@ public sealed class ChallengeDefinition
     public float CounterShieldCapacityFraction { get; set; } = 0.10f;
     public float CounterSuppressionRadius { get; set; } = 148f;
     public float CounterSuppressionDuration { get; set; } = 2.6f;
-    public int CounterSuppressionTargetLimit { get; set; } = 1;
     public float CounterSuppressionRatePenalty { get; set; } = 0.28f;
     public float CounterSuppressionDamagePenalty { get; set; } = 0.14f;
     public bool IsSandbox { get; set; }

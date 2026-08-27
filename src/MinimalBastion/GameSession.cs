@@ -1370,7 +1370,7 @@ public sealed class GameSession
             2 => "SIGNAL: ACCELERATOR // Nearby threats move faster.",
             3 => "SIGNAL: RESTORER // Nearby threats recover health.",
             4 => "SIGNAL: BULWARK // Nearby threats gain shields.",
-            5 => $"SIGNAL: JAMMER // Up to {Challenge.CounterSuppressionTargetLimit} nearby towers are weakened.",
+            5 => "SIGNAL: JAMMER // Every nearby combat tower is weakened.",
             _ => wave.Briefing
         } : wave.Briefing;
         AnnouncementSubtitle = earlyCallBonus > 0 ? $"EARLY CALL +{earlyCallBonus} // {briefing}" : briefing;
@@ -1427,7 +1427,7 @@ public sealed class GameSession
             return;
         }
 
-        var interval = Challenge.CounterPressureInterval * (enemy.SignalRole == EnemySignalRole.Bulwark ? 1.12f : 1f);
+        var interval = Challenge.CounterPressureInterval;
         if (!enemy.TryActivateSignalAbility(interval)) return;
 
         var radiusSquared = Challenge.CounterSupportRadius * Challenge.CounterSupportRadius;
@@ -1474,7 +1474,6 @@ public sealed class GameSession
             .OrderBy(tower => Vector2.DistanceSquared(tower.Position, enemy.Position))
             .ThenBy(tower => tower.Id)
             .Where(tower => tower.ApplySuppression(Challenge.CounterSuppressionDuration, 2.4f))
-            .Take(Challenge.CounterSuppressionTargetLimit)
             .ToArray();
         if (affected.Length == 0) return;
         Effects.AddSplash(enemy.Position, ColorPalette.Orange, Challenge.CounterSuppressionRadius);

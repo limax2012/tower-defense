@@ -187,7 +187,6 @@ public static class DataValidator
             challenge.CounterShieldFraction < 0 || challenge.CounterShieldFraction > 1 ||
             challenge.CounterShieldCapacityFraction < 0 || challenge.CounterShieldCapacityFraction > 1 ||
             challenge.CounterSuppressionRadius <= 0 || challenge.CounterSuppressionDuration <= 0 ||
-            challenge.CounterSuppressionTargetLimit <= 0 || challenge.CounterSuppressionTargetLimit > 16 ||
             challenge.CounterSuppressionRatePenalty < 0 || challenge.CounterSuppressionRatePenalty >= 1 ||
             challenge.CounterSuppressionDamagePenalty < 0 || challenge.CounterSuppressionDamagePenalty >= 1))
             throw new InvalidDataException("Invalid challenge directive.");

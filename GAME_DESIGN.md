@@ -98,11 +98,13 @@ Five base enemy profiles cover light, fast, armored, shielding, and regenerating
 
 Signal Gauntlet adds visible carrier roles:
 
-- **Accelerator:** increases nearby enemy speed.
-- **Restorer:** periodically repairs nearby enemies for 9% of maximum health.
-- **Bulwark:** periodically grants nearby shields equal to 8% of maximum health, up to a 20% shield reserve.
-- **Jammer:** weakens the rate and damage of up to three nearby combat towers for a short duration.
+- **Accelerator:** increases nearby enemy speed by 20% while the carrier remains in formation range.
+- **Restorer:** repairs nearby enemies for 10% of maximum health every 5 seconds.
+- **Bulwark:** grants nearby shields equal to 10% of maximum health every 5 seconds, up to a 20% shield reserve.
+- **Jammer:** weakens the rate and damage of every combat tower in its pulse radius for a short duration.
 - **Disruptor:** temporarily pauses a nearby tower group; reserved for later elite/boss pressure.
+
+Shield is a separate temporary durability pool above health. Ordinary hits remove raw shield before armor mitigation is evaluated; shield-bypassing attacks skip that pool and damage health through the normal armor calculation.
 
 Carriers render above ordinary enemies, use the same in-body glyphs in combat and the Tactical Library, and show their support relationship through aura/recipient feedback.
 

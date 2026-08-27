@@ -113,7 +113,7 @@ Tower statistics do not change with difficulty, wave number, map, or elapsed tim
 ### Directives
 
 - **Standard** enables the complete roster and every tactical system.
-- **Signal Gauntlet** introduces Accelerator, Restorer, Bulwark, Jammer, and Disruptor signal carriers from the early campaign onward without bonus opening credits. Carriers provide substantial area support or interference: Jammers suppress compact tower groups while later Disruptors pause a wider group. The Support targeting mode prioritizes carriers and otherwise selects the strongest available target.
+- **Signal Gauntlet** introduces Accelerator, Restorer, Bulwark, Jammer, and Disruptor signal carriers from the early campaign onward without bonus opening credits. Accelerators raise formation speed by 20%; Restorers repair 10% maximum health every 5 seconds; Bulwarks grant 10% maximum-health shielding every 5 seconds up to a 20% reserve; and Jammers suppress every combat tower in their pulse radius. The Support targeting mode prioritizes carriers and otherwise selects the strongest available target.
 - **Core Six** restricts the roster to Needle Turret, Frost Spire, Shard Fan, Ember Coil, Breaker Cannon, and Signal Beacon with the standard opening economy.
 - **Entrenched** disables Pulse Plates, Charge Forge, Protocols, and selling without compensating credits.
 - **Sandbox Lab** provides unlimited resources and lives for controlled tower, upgrade, Protocol, status, enemy-rank, and authored-wave experiments. Sandbox sessions do not create competitive saves or run-history records.

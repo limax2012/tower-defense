@@ -61,10 +61,10 @@ No map geometry change is justified by these aggregate percentages alone.
 
 ## Directive findings
 
-Across all difficulties in the current 128-run matrix, Standard cleared 11/32, Signal Gauntlet 6/32, Core Six 6/32, and Entrenched 3/32. No restricted directive receives compensating opening credits.
+Directive comparisons use Experienced-agent matrices at the 30-wave target. No restricted directive receives compensating opening credits.
 
 - **Standard** is the complete strategic baseline.
-- **Signal Gauntlet** changes priority and defensive reliability through carriers and disruption. Accelerator grants 14% speed, Restorer repairs 9% maximum health, Bulwark grants an 8% shield up to a 20% reserve, and Jammer suppresses up to three combat towers. A matched 48-run Gauntlet sample cleared 8/12 Easy, 2/12 Medium, 0/12 Hard, and 0/12 Bastion profiles. The Experienced agent uses Support targeting on appropriate towers.
+- **Signal Gauntlet** changes priority and defensive reliability through carriers and disruption. Accelerator grants 20% speed, Restorer repairs 10% maximum health every 5 seconds, Bulwark grants a 10% shield every 5 seconds up to a 20% reserve, and Jammer suppresses every combat tower in its pulse radius. A matched 48-run Gauntlet sample cleared 5/12 Easy, 0/12 Medium, 0/12 Hard, and 0/12 Bastion profiles. The Experienced agent uses Support targeting on appropriate towers.
 - **Core Six** is a thematic roster puzzle, not an assertion that every restricted roster must be numerically harder than Standard. Its available towers form a strong economical progression, so it no longer receives bonus opening credits.
 - **Entrenched** removes correction and temporary rescue. Its lower Hard completion is consistent with permanent placement mistakes and no Protocol/Plate fallback.
 

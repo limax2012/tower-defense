@@ -637,10 +637,14 @@ internal static class Program
             "accelerator does not multiply its own movement");
         Check.Nearly(1f + session.Challenge.CounterHasteBonus, session.Enemies[1].FormationSpeedMultiplier,
             "accelerator increases movement for nearby formation members");
-        Check.True(session.Challenge.CounterHasteBonus >= 0.14f && session.Challenge.CounterRepairFraction >= 0.09f &&
-                   session.Challenge.CounterShieldFraction >= 0.08f &&
-                   session.Challenge.CounterSuppressionTargetLimit >= 3,
-            "Gauntlet support modifiers create a noticeable formation threat");
+        Check.Nearly(5f, session.Challenge.CounterPressureInterval,
+            "Gauntlet support and jammer pulses recur every five seconds");
+        Check.Nearly(0.20f, session.Challenge.CounterHasteBonus,
+            "Gauntlet accelerator creates a pronounced formation threat");
+        Check.Nearly(0.10f, session.Challenge.CounterRepairFraction,
+            "Gauntlet restorer repairs ten percent of maximum health");
+        Check.Nearly(0.10f, session.Challenge.CounterShieldFraction,
+            "Gauntlet bulwark grants ten percent of maximum health as shield");
 
         var repairSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
         repairSession.SpawnEnemy("t1_crawler", 1, 1);
@@ -668,7 +672,8 @@ internal static class Program
         var jammerSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
         Check.True(jammerSession.TryPlaceTower("needle_turret", new Vector2(190, 335)) &&
                    jammerSession.TryPlaceTower("needle_turret", new Vector2(230, 335)) &&
-                   jammerSession.TryPlaceTower("needle_turret", new Vector2(270, 335)),
+                   jammerSession.TryPlaceTower("needle_turret", new Vector2(270, 335)) &&
+                   jammerSession.TryPlaceTower("needle_turret", new Vector2(310, 335)),
             "Gauntlet jammer test places a compact tower cluster beside the route");
         var jammerTower = jammerSession.Towers[0];
         var unsuppressedRate = jammerSession.GetEffectiveAttacksPerSecond(jammerTower);
@@ -678,8 +683,13 @@ internal static class Program
         jammer.UpdateMovement(5.7f, jammerSession.Map.Path);
         jammer.ArmSignalAbility(0);
         jammerSession.TryActivateEnemySignal(jammer);
-        Check.Equal(3, jammerSession.Towers.Count(tower => tower.IsSuppressed),
-            "jammer weakens a bounded nearby tower cluster");
+        var towersInsideJammerPulse = jammerSession.Towers.Count(tower => !tower.IsSupport &&
+            Vector2.DistanceSquared(tower.Position, jammer.Position) <=
+            jammerSession.Challenge.CounterSuppressionRadius * jammerSession.Challenge.CounterSuppressionRadius);
+        Check.True(towersInsideJammerPulse >= 4,
+            "Gauntlet jammer test covers more towers than the former bounded cluster");
+        Check.Equal(towersInsideJammerPulse, jammerSession.Towers.Count(tower => tower.IsSuppressed),
+            "jammer weakens every combat tower inside its pulse radius");
         Check.True(jammerSession.GetEffectiveAttacksPerSecond(jammerTower) < unsuppressedRate &&
                    jammerSession.GetEffectiveDamage(jammerTower, jammerTower.Level.Damage) < unsuppressedDamage,
             "jammer suppression reduces both attack rate and damage without pausing the tower");

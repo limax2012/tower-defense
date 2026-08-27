@@ -4222,7 +4222,7 @@ public sealed class UIManager
             [
                 $"START CREDITS x{challenge.StartingCreditsMultiplier:0.00}",
                 "W2 ACCELERATE / W3 REPAIR / W4 SHIELD",
-                $"W5 JAMMER WEAKENS UP TO {challenge.CounterSuppressionTargetLimit} TOWERS",
+                "W5 JAMMER WEAKENS EVERY TOWER IN RANGE",
                 "ELITE + BOSS GROUP DISRUPTION",
                 "FULL ROSTER + ALL SYSTEMS",
                 "RULE: SIGNAL CARRIERS SUPPORT FORMATIONS"
@@ -4596,7 +4596,7 @@ public sealed class UIManager
         EnemySignalRole.Accelerator => "A passive formation carrier that increases the movement speed of nearby threats.",
         EnemySignalRole.Restorer => "A support carrier that periodically repairs nearby damaged threats.",
         EnemySignalRole.Bulwark => "A support carrier that periodically grants temporary shielding to nearby threats.",
-        EnemySignalRole.Jammer => "An attacker that periodically weakens a nearby cluster of combat towers.",
+        EnemySignalRole.Jammer => "An attacker that periodically weakens every combat tower in its pulse radius.",
         EnemySignalRole.Disruptor => "An elite or boss attacker that periodically pauses groups of nearby towers.",
         _ => "No additional signal behavior."
     };
@@ -4620,13 +4620,13 @@ public sealed class UIManager
             ],
             EnemySignalRole.Bulwark =>
             [
-                [$"GRANTS {rules.CounterShieldFraction:P0} MAX-HEALTH SHIELD", $"SHIELD CAP +{rules.CounterShieldCapacityFraction:P0}", "AFFECTS UP TO 7 NEARBY THREATS"],
-                [$"PULSE EVERY {normalInterval * 1.12f:0.#}s", $"SUPPORT RADIUS {rules.CounterSupportRadius:0}", "FIRST PULSE IS DELAYED"],
+                [$"GRANTS {rules.CounterShieldFraction:P0} MAX-HEALTH SHIELD", $"SHIELD CAP +{rules.CounterShieldCapacityFraction:P0}", "SHIELD ABSORBS DAMAGE BEFORE ARMOR"],
+                [$"PULSE EVERY {normalInterval:0.#}s", $"SUPPORT RADIUS {rules.CounterSupportRadius:0}", "AFFECTS UP TO 7 NEARBY THREATS"],
                 ["REMOVE THE CARRIER FIRST", "USE SHIELD-BYPASSING PRESSURE", "BREAK THE FORMATION WITH CONTROL"]
             ],
             EnemySignalRole.Jammer =>
             [
-                [$"ATTACK RATE -{rules.CounterSuppressionRatePenalty:P0}", $"DAMAGE -{rules.CounterSuppressionDamagePenalty:P0}", $"SUPPRESSES UP TO {rules.CounterSuppressionTargetLimit} COMBAT TOWERS"],
+                [$"ATTACK RATE -{rules.CounterSuppressionRatePenalty:P0}", $"DAMAGE -{rules.CounterSuppressionDamagePenalty:P0}", "SUPPRESSES EVERY COMBAT TOWER IN RANGE"],
                 [$"AREA PULSE EVERY {normalInterval:0.#}s", $"PULSE RADIUS {rules.CounterSuppressionRadius:0}", $"SUPPRESSION LASTS {rules.CounterSuppressionDuration:0.#}s"],
                 ["FOCUS THE CARRIER", "SPREAD CRITICAL DAMAGE SOURCES", "PLACE RANGE OUTSIDE ITS REACH"]
             ],
