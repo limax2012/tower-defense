@@ -3117,9 +3117,10 @@ public sealed class UIManager
             challenge?.Id ?? ChallengeCatalog.DefaultId);
         var startingLives = difficulty?.StartingLives ?? 20;
         var startingLivesLabel = startingLives == 1 ? "1 LIFE" : $"{startingLives} LIVES";
+        var campaignWaves = map.Campaign?.WaveCount > 0 ? map.Campaign.WaveCount : GameConstants.CampaignWaveCount;
         var setupFooter = challenge?.IsSandbox == true
             ? "UNLIMITED CREDITS + LIVES  |  FIXED TARGETS  |  30 AUTHORED WAVES"
-            : $"START {credits} CREDITS  |  {startingLivesLabel}  |  {map.Campaign?.CompactSummary ?? $"{GameConstants.CampaignWaveCount}-WAVE CAMPAIGN"}{(string.IsNullOrEmpty(best) ? "" : $"  |  {best}")}";
+            : $"{credits} CREDITS  |  {startingLivesLabel}  |  {campaignWaves} WAVES{(string.IsNullOrEmpty(best) ? "" : $"  |  {best}")}";
         DrawFittedCenteredText(batch, setupFooter, new Vector2(640, 546), ColorPalette.Navy, 0.46f, 1100);
 
         DrawButton(batch, p, _setupConfirmButton,

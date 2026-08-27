@@ -24,11 +24,7 @@ public sealed record CampaignIntelInfo(
     int PeakContacts,
     string OpeningThreats,
     float FinalHealthMultiplier,
-    int BossWave)
-{
-    public string CompactSummary =>
-        $"{WaveCount}-WAVE CAMPAIGN  OPEN {OpeningThreats}  |  {TotalContacts:N0} CONTACTS  |  PEAK {PeakContacts}  |  FINAL HEALTH x{FinalHealthMultiplier:0.00}  |  BOSS W{BossWave}";
-}
+    int BossWave);
 
 public static class WaveIntel
 {
