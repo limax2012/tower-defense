@@ -9,11 +9,25 @@ using MinimalBastion.UI;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Media;
 
 namespace MinimalBastion;
 
 public sealed class Game1 : Game
 {
+    private static readonly string[] GameplayMusicAssets =
+    [
+        "Audio/Music/BassyRollIn",
+        "Audio/Music/ChillStroll",
+        "Audio/Music/FocusedDanceParty",
+        "Audio/Music/IcyInvestigation",
+        "Audio/Music/KickbackHall",
+        "Audio/Music/MildlyUpbeatArpeggios",
+        "Audio/Music/NightclubHalo",
+        "Audio/Music/QuietInvestigation",
+        "Audio/Music/SneakFocusMission",
+        "Audio/Music/XylophoneBallad"
+    ];
     private const int OnlineCoOpPort = 28741;
     // Commands are scheduled 200ms ahead to tolerate ordinary friend-to-friend
     // jitter. Simulation runs locally on each peer; only commands and periodic
@@ -178,7 +192,13 @@ public sealed class Game1 : Game
             SoundEffect? menuMusic = null;
             try { menuMusic = Content.Load<SoundEffect>("Audio/MainMenuLoop"); }
             catch { }
-            _audio = AudioManager.TryCreate(menuMusic);
+            var gameplayMusic = new List<Song>(GameplayMusicAssets.Length);
+            foreach (var asset in GameplayMusicAssets)
+            {
+                try { gameplayMusic.Add(Content.Load<Song>(asset)); }
+                catch { }
+            }
+            _audio = AudioManager.TryCreate(menuMusic, gameplayMusic);
             if (_audio is not null)
             {
                 _audio.SfxVolume = _settings.SfxVolume;
@@ -1689,6 +1709,7 @@ public sealed class Game1 : Game
     private void HandleSettingsAction(UiAction action)
     {
         if (action == UiAction.ApplySettings) ApplyUserSettings();
+        else if (action == UiAction.PreviewSettings) ApplyPresentationSettings();
         else if (action == UiAction.CloseSettings) _state = _settingsReturnState;
     }
 

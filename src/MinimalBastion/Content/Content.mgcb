@@ -18,3 +18,53 @@
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:Audio/MainMenuLoop.wav
+
+#begin Audio/Music/BassyRollIn.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:Audio/Music/BassyRollIn.ogg
+
+#begin Audio/Music/ChillStroll.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:Audio/Music/ChillStroll.ogg
+
+#begin Audio/Music/FocusedDanceParty.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:Audio/Music/FocusedDanceParty.ogg
+
+#begin Audio/Music/IcyInvestigation.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:Audio/Music/IcyInvestigation.ogg
+
+#begin Audio/Music/KickbackHall.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:Audio/Music/KickbackHall.ogg
+
+#begin Audio/Music/MildlyUpbeatArpeggios.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:Audio/Music/MildlyUpbeatArpeggios.ogg
+
+#begin Audio/Music/NightclubHalo.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:Audio/Music/NightclubHalo.ogg
+
+#begin Audio/Music/QuietInvestigation.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:Audio/Music/QuietInvestigation.ogg
+
+#begin Audio/Music/SneakFocusMission.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:Audio/Music/SneakFocusMission.ogg
+
+#begin Audio/Music/XylophoneBallad.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:Audio/Music/XylophoneBallad.ogg

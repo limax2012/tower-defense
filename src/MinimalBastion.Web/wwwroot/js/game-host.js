@@ -24,6 +24,7 @@ window.minimalBastion = (() => {
         y: 0,
         leftPressed: false,
         leftReleased: false,
+        leftDown: false,
         rightPressed: false,
         middlePressed: false
     };
@@ -231,6 +232,7 @@ window.minimalBastion = (() => {
                     y: pointer.y,
                     leftPressed: pointer.leftPressed,
                     leftReleased: pointer.leftReleased,
+                    leftDown: pointer.leftDown,
                     rightPressed: pointer.rightPressed,
                     middlePressed: pointer.middlePressed,
                     active: !document.hidden
@@ -303,15 +305,25 @@ window.minimalBastion = (() => {
             canvas?.addEventListener("pointermove", updatePointerPosition);
             canvas?.addEventListener("pointerdown", event => {
                 updatePointerPosition(event);
-                if (event.button === 0) pointer.leftPressed = true;
+                if (event.button === 0) {
+                    pointer.leftPressed = true;
+                    pointer.leftDown = true;
+                }
                 else if (event.button === 1) pointer.middlePressed = true;
                 else if (event.button === 2) pointer.rightPressed = true;
                 canvas.setPointerCapture?.(event.pointerId);
             });
             canvas?.addEventListener("pointerup", event => {
                 updatePointerPosition(event);
-                if (event.button === 0) pointer.leftReleased = true;
+                if (event.button === 0) {
+                    pointer.leftReleased = true;
+                    pointer.leftDown = false;
+                }
                 canvas.releasePointerCapture?.(event.pointerId);
+            });
+            canvas?.addEventListener("pointercancel", () => {
+                pointer.leftDown = false;
+                pointer.leftReleased = true;
             });
             running = true;
             initialTickComplete = false;

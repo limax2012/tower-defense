@@ -45,6 +45,7 @@ internal static class Program
             ("content counts", ContentCounts),
             ("high-resolution viewport", HighResolutionViewport),
             ("persistent display and audio settings", PersistentUserSettings),
+            ("gameplay music shuffle bag", GameplayMusicShuffleBag),
             ("complete tactical reference", CompleteTacticalReference),
             ("crash report fallback", CrashReportFallback),
             ("tactical color palette", TacticalColorPalette),
@@ -1003,11 +1004,19 @@ internal static class Program
             "hotkey badge setting applies immediately");
         Check.True(!settings.ShowHotkeyBadges, "hotkey badges can be hidden without changing shortcuts");
         Check.Equal(6, ui.SelectedSettingsIndex, "clicked hotkey badge control remains identifiable");
-        Check.Equal(UiAction.ApplySettings,
-            ui.HandleSettingsInput(WorldInput(new Vector2(640, 485)) with { LeftPressed = true }),
-            "clicked music control applies immediately");
+        Check.Equal(UiAction.PreviewSettings,
+            ui.HandleSettingsInput(WorldInput(new Vector2(700, 485)) with { LeftPressed = true, LeftDown = true }),
+            "pressing the music slider previews its value immediately");
         Check.Equal(4, ui.SelectedSettingsIndex, "clicked music control remains identifiable");
-        Check.Nearly(0, settings.MusicVolume, "full music volume wraps to mute");
+        Check.Nearly(0.5f, settings.MusicVolume, "music slider snaps to five-percent intervals");
+        Check.Equal(UiAction.PreviewSettings,
+            ui.HandleSettingsInput(WorldInput(new Vector2(770, 485)) with { LeftDown = true }),
+            "dragging the music slider continues to preview volume");
+        Check.Nearly(0.75f, settings.MusicVolume, "music slider follows the held pointer");
+        Check.Equal(UiAction.ApplySettings,
+            ui.HandleSettingsInput(WorldInput(new Vector2(840, 485)) with { LeftReleased = true }),
+            "releasing the music slider commits its value");
+        Check.Nearly(1, settings.MusicVolume, "music slider reaches full volume without wrapping");
         Check.Equal(UiAction.CloseSettings,
             ui.HandleSettingsInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),
             "escape closes settings safely");
@@ -1395,6 +1404,21 @@ internal static class Program
             "support mode prioritizes a signal carrier over a stronger ordinary target");
         Check.Equal(6, selector.Select(Vector2.Zero, 500, TargetMode.Support, new[] { second, strong })!.Id,
             "support mode falls back to strongest when no signal carrier is in range");
+    }
+
+    private static void GameplayMusicShuffleBag()
+    {
+        const int trackCount = 10;
+        var bag = new ShuffleBag(trackCount, new Random(8192));
+        var previous = -1;
+        for (var cycle = 0; cycle < 12; cycle++)
+        {
+            var played = Enumerable.Range(0, trackCount).Select(_ => bag.Next()).ToArray();
+            Check.Equal(trackCount, played.Distinct().Count(), $"shuffle cycle {cycle + 1} plays every track once");
+            if (previous >= 0)
+                Check.True(played[0] != previous, $"shuffle cycle {cycle + 1} avoids an immediate boundary repeat");
+            previous = played[^1];
+        }
     }
 
     private static void DamageAndArmor()

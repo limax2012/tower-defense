@@ -22,6 +22,7 @@ public enum UiAction
     Play,
     TowerLibrary,
     Settings,
+    PreviewSettings,
     ApplySettings,
     CloseSettings,
     CoOp,
@@ -170,6 +171,7 @@ public sealed class UIManager
     private string _settingsStatus = "";
     private bool _setupForCoOp;
     private int _settingsSelection;
+    private int _activeVolumeSlider = -1;
     private int _resultMenuSelection;
     private int _towerLibraryIndex;
     private int _towerLibraryDoctrineIndex;
@@ -306,7 +308,11 @@ public sealed class UIManager
     public int SelectedSandboxWave => _sandboxWaveNumber;
     public bool IsGameplayOverlayOpen => _towerLibraryOpen;
 
-    public void ConfigureSettings(UserSettings settings) => _settings = settings;
+    public void ConfigureSettings(UserSettings settings)
+    {
+        _settings = settings;
+        _activeVolumeSlider = -1;
+    }
     public void SetSettingsStatus(string status) => _settingsStatus = status;
 
     public void AdvanceVisualTime(float elapsedSeconds)
@@ -706,13 +712,44 @@ public sealed class UIManager
 
     public UiAction HandleSettingsInput(InputSnapshot input)
     {
-        if (input.EscapePressed || input.PausePressed) return UiAction.CloseSettings;
+        if (input.EscapePressed || input.PausePressed)
+        {
+            _activeVolumeSlider = -1;
+            return UiAction.CloseSettings;
+        }
+
+        if (_activeVolumeSlider is 3 or 4)
+        {
+            _settingsSelection = _activeVolumeSlider;
+            if (input.LeftReleased)
+            {
+                SetVolumeFromSlider(_activeVolumeSlider, input.MousePosition.X);
+                _activeVolumeSlider = -1;
+                return UiAction.ApplySettings;
+            }
+            if (input.LeftDown)
+            {
+                SetVolumeFromSlider(_activeVolumeSlider, input.MousePosition.X);
+                return UiAction.PreviewSettings;
+            }
+
+            _activeVolumeSlider = -1;
+            return UiAction.ApplySettings;
+        }
+
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
         for (var index = 0; index < 8; index++)
         {
             if (!SettingsOptionRectangle(index).Contains(point)) continue;
             _settingsSelection = index;
+            if (index is 3 or 4)
+            {
+                SetVolumeFromSlider(index, input.MousePosition.X);
+                if (!input.LeftDown) return UiAction.ApplySettings;
+                _activeVolumeSlider = index;
+                return UiAction.PreviewSettings;
+            }
             return index == 7 ? UiAction.CloseSettings : ApplySelectedSetting(1);
         }
         return UiAction.None;
@@ -732,12 +769,6 @@ public sealed class UIManager
             case 2:
                 _settings.ReducedEffects = !_settings.ReducedEffects;
                 break;
-            case 3:
-                _settings.SfxVolume = AdjustVolume(_settings.SfxVolume, direction);
-                break;
-            case 4:
-                _settings.MusicVolume = AdjustVolume(_settings.MusicVolume, direction);
-                break;
             case 5:
                 _settings.CycleAutoStart();
                 break;
@@ -750,17 +781,17 @@ public sealed class UIManager
         return UiAction.ApplySettings;
     }
 
-    private static float AdjustVolume(float current, int direction)
+    private void SetVolumeFromSlider(int index, float pointerX)
     {
-        const float step = 0.25f;
-        if (direction < 0)
-        {
-            if (current <= 0.001f) return 1;
-            return MathF.Floor((current - 0.001f) / step) * step;
-        }
-        if (current >= 0.999f) return 0;
-        return MathF.Ceiling((current + 0.001f) / step) * step;
+        var track = VolumeSliderTrack(SettingsOptionRectangle(index));
+        var normalized = MathHelper.Clamp((pointerX - track.X) / Math.Max(1f, track.Width), 0, 1);
+        var snapped = MathF.Round(normalized * 20f) / 20f;
+        if (index == 3) _settings.SfxVolume = snapped;
+        else if (index == 4) _settings.MusicVolume = snapped;
     }
+
+    private static Rectangle VolumeSliderTrack(Rectangle bounds) =>
+        new(bounds.X + 210, bounds.Center.Y - 3, bounds.Width - 300, 6);
 
     private Rectangle SettingsOptionRectangle(int index) => index switch
     {
@@ -3223,16 +3254,36 @@ public sealed class UIManager
         DrawButton(batch, p, _hotkeyBadgesButton,
             _settings.ShowHotkeyBadges ? "HOTKEY BADGES  ON" : "HOTKEY BADGES  OFF",
             true, ColorPalette.Cyan);
-        DrawButton(batch, p, _volumeButton, $"SOUND EFFECTS  {MathF.Round(_settings.SfxVolume * 100):0}%  |  CLICK TO CHANGE",
-            true, ColorPalette.Gold, ColorPalette.Ink);
-        DrawButton(batch, p, _musicVolumeButton, $"BACKGROUND MUSIC  {MathF.Round(_settings.MusicVolume * 100):0}%  |  CLICK TO CHANGE",
-            true, ColorPalette.Violet);
+        DrawVolumeSlider(batch, p, _volumeButton, "SOUND EFFECTS", _settings.SfxVolume, ColorPalette.Gold);
+        DrawVolumeSlider(batch, p, _musicVolumeButton, "BACKGROUND MUSIC", _settings.MusicVolume, ColorPalette.Violet);
         DrawButton(batch, p, _settingsBackButton, "BACK", true, ColorPalette.Coral);
 
         DrawText(batch, "Configured auto-starts earn +20. Wave 1 starts manually.",
             new Vector2(640, 612), ColorPalette.Muted, 0.49f, true);
         if (!string.IsNullOrWhiteSpace(_settingsStatus))
             DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 650), ColorPalette.Cobalt, 0.50f, 900);
+    }
+
+    private void DrawVolumeSlider(SpriteBatch batch, PrimitiveRenderer p, Rectangle bounds, string label, float volume,
+        Color accent)
+    {
+        p.FillRect(batch, bounds, ColorPalette.PanelAlt);
+        p.FillRect(batch, new Rectangle(bounds.X, bounds.Y, 6, bounds.Height), accent);
+        p.DrawRect(batch, bounds, accent, _settingsSelection is 3 or 4 && SettingsOptionRectangle(_settingsSelection) == bounds ? 2 : 1);
+
+        DrawFittedText(batch, label, new Vector2(bounds.X + 18, bounds.Center.Y - 9), ColorPalette.Ink, 0.52f, 174);
+        DrawTextRight(batch, $"{MathF.Round(volume * 100):0}%", new Vector2(bounds.Right - 18, bounds.Center.Y - 9),
+            ColorPalette.Ink, 0.52f);
+
+        var track = VolumeSliderTrack(bounds);
+        p.FillRect(batch, track, ColorPalette.CardOutline);
+        var clamped = MathHelper.Clamp(volume, 0, 1);
+        var filledWidth = (int)MathF.Round(track.Width * clamped);
+        if (filledWidth > 0) p.FillRect(batch, new Rectangle(track.X, track.Y, filledWidth, track.Height), accent);
+        var knobX = (int)MathF.Round(track.X + track.Width * clamped);
+        var knob = new Rectangle(knobX - 5, track.Center.Y - 12, 10, 24);
+        p.FillRect(batch, knob, accent);
+        p.DrawRect(batch, knob, ColorPalette.Ink, 1);
     }
 
     private void DrawSaveSlots(SpriteBatch batch, PrimitiveRenderer p)

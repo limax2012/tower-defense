@@ -6,6 +6,7 @@ public sealed class PlatformPointerState
     public int Y { get; set; }
     public bool LeftPressed { get; set; }
     public bool LeftReleased { get; set; }
+    public bool LeftDown { get; set; }
     public bool RightPressed { get; set; }
     public bool MiddlePressed { get; set; }
     public bool Active { get; set; }

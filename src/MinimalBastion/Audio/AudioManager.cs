@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Media;
 
 namespace MinimalBastion.Audio;
 
@@ -7,13 +8,18 @@ public sealed class AudioManager : IDisposable
 {
     private const int SampleRate = 44100;
     private const float MusicSourceGain = 1.8f;
+    private const float GameplayMusicGain = 1.35f;
     private readonly Dictionary<Cue, SoundEffect> _sounds = new();
     private readonly Dictionary<string, SoundEffect> _towerImpacts = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, float> _towerImpactCooldowns = new(StringComparer.OrdinalIgnoreCase);
     private SoundEffect? _musicSound;
     private SoundEffectInstance? _musicInstance;
     private readonly SoundEffect? _menuMusicSound;
+    private readonly IReadOnlyList<Song> _gameplaySongs;
+    private readonly ShuffleBag? _gameplayShuffle;
     private bool _ownsMusicSound;
+    private bool _gameplayPlaylistActive;
+    private float _playlistStartGrace;
     private float _killCooldown;
     private float _leakCooldown;
     private float _bossPhaseCooldown;
@@ -38,9 +44,11 @@ public sealed class AudioManager : IDisposable
         set => _musicVolume = Math.Clamp(float.IsFinite(value) ? value : 0.20f, 0, 1);
     }
 
-    public AudioManager(SoundEffect? menuMusicSound = null)
+    public AudioManager(SoundEffect? menuMusicSound = null, IReadOnlyList<Song>? gameplaySongs = null)
     {
         _menuMusicSound = menuMusicSound;
+        _gameplaySongs = gameplaySongs?.Where(song => song is not null).ToArray() ?? [];
+        _gameplayShuffle = _gameplaySongs.Count > 0 ? new ShuffleBag(_gameplaySongs.Count) : null;
         try
         {
             _sounds[Cue.Place] = CreateTone(280, 470, 0.10f, WaveShape.Triangle);
@@ -72,9 +80,9 @@ public sealed class AudioManager : IDisposable
         }
     }
 
-    public static AudioManager? TryCreate(SoundEffect? menuMusicSound = null)
+    public static AudioManager? TryCreate(SoundEffect? menuMusicSound = null, IReadOnlyList<Song>? gameplaySongs = null)
     {
-        try { return new AudioManager(menuMusicSound); }
+        try { return new AudioManager(menuMusicSound, gameplaySongs); }
         catch { return null; }
     }
 
@@ -90,7 +98,7 @@ public sealed class AudioManager : IDisposable
             if (remaining <= 0) _towerImpactCooldowns.Remove(towerId);
             else _towerImpactCooldowns[towerId] = remaining;
         }
-        if (_musicInstance is null) return;
+        if (_musicInstance is null && !_gameplayPlaylistActive) return;
         try
         {
             var waveActive = _attachedSession?.Waves.IsActive == true;
@@ -99,15 +107,35 @@ public sealed class AudioManager : IDisposable
             var targetActivity = MusicActivityTarget(waveActive, liveEnemies, bossPresent);
             var blend = 1f - MathF.Exp(-MathF.Max(0, deltaSeconds) * 2.4f);
             _musicActivity = MathHelper.Lerp(_musicActivity, targetActivity, blend);
-            _musicInstance.Volume = Math.Clamp(_musicVolume * _musicActivity, 0, 1);
-            _musicInstance.Pitch = 0;
-            if (_musicInstance.State == SoundState.Stopped) _musicInstance.Play();
+            var playbackVolume = Math.Clamp(_musicVolume * _musicActivity *
+                (_gameplayPlaylistActive ? GameplayMusicGain : 1f), 0, 1);
+            if (_gameplayPlaylistActive)
+            {
+                MediaPlayer.Volume = playbackVolume;
+                _playlistStartGrace = MathF.Max(0, _playlistStartGrace - MathF.Max(0, deltaSeconds));
+                if (_playlistStartGrace <= 0 && MediaPlayer.State == MediaState.Stopped)
+                    PlayNextGameplaySong();
+            }
+            else if (_musicInstance is not null)
+            {
+                _musicInstance.Volume = playbackVolume;
+                _musicInstance.Pitch = 0;
+                if (_musicInstance.State == SoundState.Stopped) _musicInstance.Play();
+            }
         }
         catch
         {
-            // Keep event cues available if a looping instance alone becomes
-            // unavailable after an audio-device transition.
-            DisposeMusic();
+            if (_gameplayPlaylistActive)
+            {
+                StopGameplayPlaylist();
+                TryStartSoundEffectMusic(_musicThemeId);
+            }
+            else
+            {
+                // Keep event cues available if a looping instance alone becomes
+                // unavailable after an audio-device transition.
+                DisposeMusic();
+            }
         }
     }
 
@@ -263,8 +291,8 @@ public sealed class AudioManager : IDisposable
     private void SwitchMusic(string themeId)
     {
         var normalized = string.IsNullOrWhiteSpace(themeId) ? "menu" : themeId.ToLowerInvariant();
-        if (_musicInstance is not null && normalized == _musicThemeId) return;
-        DisposeMusic();
+        if (normalized == _musicThemeId && (_musicInstance is not null || _gameplayPlaylistActive)) return;
+        StopMusicPlayback();
         TryStartMusic(normalized);
     }
 
@@ -273,6 +301,45 @@ public sealed class AudioManager : IDisposable
         try
         {
             _musicThemeId = themeId;
+            if (!themeId.Equals("menu", StringComparison.OrdinalIgnoreCase) && TryStartGameplayPlaylist()) return;
+            TryStartSoundEffectMusic(themeId);
+        }
+        catch
+        {
+            StopMusicPlayback();
+        }
+    }
+
+    private bool TryStartGameplayPlaylist()
+    {
+        if (_gameplayShuffle is null || _gameplaySongs.Count == 0) return false;
+        try
+        {
+            _gameplayPlaylistActive = true;
+            MediaPlayer.IsRepeating = false;
+            MediaPlayer.IsShuffled = false;
+            PlayNextGameplaySong();
+            return true;
+        }
+        catch
+        {
+            StopGameplayPlaylist();
+            return false;
+        }
+    }
+
+    private void PlayNextGameplaySong()
+    {
+        if (_gameplayShuffle is null || _gameplaySongs.Count == 0) return;
+        MediaPlayer.Play(_gameplaySongs[_gameplayShuffle.Next()]);
+        MediaPlayer.Volume = Math.Clamp(_musicVolume * _musicActivity * GameplayMusicGain, 0, 1);
+        _playlistStartGrace = 0.5f;
+    }
+
+    private void TryStartSoundEffectMusic(string themeId)
+    {
+        try
+        {
             if (themeId.Equals("menu", StringComparison.OrdinalIgnoreCase) && _menuMusicSound is not null)
             {
                 _musicSound = _menuMusicSound;
@@ -493,7 +560,7 @@ public sealed class AudioManager : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        DisposeMusic();
+        StopMusicPlayback();
         foreach (var sound in _sounds.Values) sound.Dispose();
         _sounds.Clear();
         foreach (var sound in _towerImpacts.Values) sound.Dispose();
@@ -508,6 +575,20 @@ public sealed class AudioManager : IDisposable
         _musicInstance = null;
         _musicSound = null;
         _ownsMusicSound = false;
+    }
+
+    private void StopGameplayPlaylist()
+    {
+        if (!_gameplayPlaylistActive) return;
+        try { MediaPlayer.Stop(); } catch { }
+        _gameplayPlaylistActive = false;
+        _playlistStartGrace = 0;
+    }
+
+    private void StopMusicPlayback()
+    {
+        StopGameplayPlaylist();
+        DisposeMusic();
     }
 
     private enum Cue
