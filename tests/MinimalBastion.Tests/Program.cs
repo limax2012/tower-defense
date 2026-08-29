@@ -439,10 +439,16 @@ internal static class Program
             "setup intel includes the final campaign act and capstone boss");
         Check.Nearly(1.12f, bastion.Difficulty.EnemyHealthMultiplier, "bastion health pressure");
         Check.Nearly(1.02f, bastion.Difficulty.EnemySpeedMultiplier, "bastion speed pressure");
+        Check.Nearly(0.88f, bastion.Difficulty.LateIncomeMultiplier, "bastion late-campaign income pressure");
+        Check.Nearly(1f, hard.Difficulty.LateIncomeMultiplier, "hard preserves standard campaign income");
         Check.True(bastion.Difficulty.ModifierSummary.Contains("ENEMY HP 112%") &&
             bastion.Difficulty.ModifierSummary.Contains("SPEED 102%") &&
+            bastion.Difficulty.ModifierSummary.Contains("W11+ INCOME 88%") &&
             bastion.Difficulty.ModifierSummary.EndsWith("1 LIFE | 30 WAVES"),
             "bastion selector exposes the tuned expert profile exactly");
+        bastion.OnWaveCompleted(11);
+        Check.True(bastion.AnnouncementSubtitle?.StartsWith("+132 ", StringComparison.Ordinal) == true,
+            "bastion completion announcement shows its reduced late income");
         Check.True(content.Difficulties["normal"].ModifierSummary.Contains("ENEMY HP 100%") &&
             content.Difficulties["normal"].ModifierSummary.Contains("START CREDITS 100%") &&
             content.Difficulties["normal"].ModifierSummary.EndsWith("12 LIVES | 30 WAVES"),
@@ -1697,6 +1703,14 @@ internal static class Program
         Check.Equal(8, EconomyService.CalculateKillReward(8, 10), "opening crawler reward");
         Check.Equal(6, EconomyService.CalculateKillReward(8, 20), "campaign crawler reward");
         Check.Equal(1, EconomyService.CalculateKillReward(1, 100), "positive rewards retain a one-credit floor");
+        Check.Equal(8, EconomyService.CalculateKillReward(8, 10, 0.88f),
+            "late-income pressure does not affect opening kills");
+        Check.Equal(7, EconomyService.CalculateKillReward(10, 20, 0.88f),
+            "late-income pressure reduces campaign kills");
+        Check.Equal(60, EconomyService.CalculateWaveReward(2, 0.88f),
+            "late-income pressure does not affect opening completion rewards");
+        Check.Equal(211, EconomyService.CalculateWaveReward(20, 0.88f),
+            "late-income pressure reduces campaign completion rewards");
         economy.LoseLives(3);
         Check.Equal(17, economy.Lives, "lives");
         Check.Equal(1, economy.EscapedEnemies, "escape count");

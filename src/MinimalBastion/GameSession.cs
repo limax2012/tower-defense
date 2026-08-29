@@ -157,7 +157,8 @@ public sealed class GameSession
             ChallengeCatalog.StartingCredits(mapDefinition, Difficulty, Challenge),
             Difficulty.StartingLives,
             unlimitedCredits: IsSandbox,
-            unlimitedLives: IsSandbox);
+            unlimitedLives: IsSandbox,
+            lateIncomeMultiplier: Difficulty.LateIncomeMultiplier);
         Waves = new WaveManager(waveSet.Waves);
         DamageResolver = new DamageResolver(this);
         Statistics = new RunStatistics(this);
@@ -1373,7 +1374,7 @@ public sealed class GameSession
             ? $"Generated Endless begins at wave {GameConstants.GeneratedEndlessStartWave}."
             : finalEscalationUnlocked
                 ? "APEX PROMOTIONS UNLOCKED // 10 WAVES REMAIN"
-                : $"+{EconomyService.CalculateWaveReward(waveNumber)} completion credits";
+                : $"+{Economy.EffectiveWaveReward(waveNumber)} completion credits";
         AnnouncementPositive = true;
         AnnouncementRemaining = campaignCleared || finalEscalationUnlocked ? 3.2f : 2.2f;
         WaveCompleted?.Invoke(waveNumber);

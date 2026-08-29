@@ -16,12 +16,14 @@ public sealed class Economy
     public int WaveCreditsEarned { get; private set; }
     public int EarlyStartCreditsEarned { get; private set; }
     public int SaleCreditsRecovered { get; private set; }
+    public float LateIncomeMultiplier { get; }
     public int TotalCreditsEarned => (int)Math.Min(int.MaxValue,
         (long)KillCreditsEarned + WaveCreditsEarned + EarlyStartCreditsEarned);
     public bool UnlimitedCredits { get; }
     public bool UnlimitedLives { get; }
 
-    public Economy(int startingCredits, int startingLives, bool unlimitedCredits = false, bool unlimitedLives = false)
+    public Economy(int startingCredits, int startingLives, bool unlimitedCredits = false, bool unlimitedLives = false,
+        float lateIncomeMultiplier = 1f)
     {
         StartingCredits = startingCredits;
         Credits = startingCredits;
@@ -29,6 +31,7 @@ public sealed class Economy
         StartingLives = startingLives;
         UnlimitedCredits = unlimitedCredits;
         UnlimitedLives = unlimitedLives;
+        LateIncomeMultiplier = Math.Max(0, lateIncomeMultiplier);
     }
 
     public bool CanAfford(int amount) => amount >= 0 && (UnlimitedCredits || Credits >= amount);
@@ -46,7 +49,7 @@ public sealed class Economy
     public void AwardKill(int reward, int waveNumber)
     {
         TotalKills = SaturatingAdd(TotalKills, 1);
-        var amount = CalculateKillReward(reward, waveNumber);
+        var amount = CalculateKillReward(reward, waveNumber, LateIncomeMultiplier);
         KillCreditsEarned = SaturatingAdd(KillCreditsEarned, amount);
         AddCredits(amount);
     }
@@ -58,23 +61,39 @@ public sealed class Economy
             1f / (1f + GameConstants.KillRewardTaperPerWave * wavesPastOpening));
     }
 
-    public static int CalculateKillReward(int reward, int waveNumber)
+    public static int CalculateKillReward(int reward, int waveNumber, float lateIncomeMultiplier = 1f)
     {
         if (reward <= 0) return 0;
+        var incomeMultiplier = waveNumber > GameConstants.FullKillRewardThroughWave
+            ? Math.Max(0, lateIncomeMultiplier)
+            : 1f;
         return Math.Max(1, (int)Math.Round(
-            reward * CalculateKillRewardMultiplier(waveNumber),
+            reward * CalculateKillRewardMultiplier(waveNumber) * incomeMultiplier,
             MidpointRounding.AwayFromZero));
     }
 
+    public float EffectiveKillRewardMultiplier(int waveNumber) =>
+        CalculateKillRewardMultiplier(waveNumber) *
+        (waveNumber > GameConstants.FullKillRewardThroughWave ? LateIncomeMultiplier : 1f);
+
     public void AwardWave(int waveNumber)
     {
-        var amount = CalculateWaveReward(waveNumber);
+        var amount = CalculateWaveReward(waveNumber, LateIncomeMultiplier);
         WaveCreditsEarned = SaturatingAdd(WaveCreditsEarned, amount);
         AddCredits(amount);
     }
 
-    public static int CalculateWaveReward(int waveNumber) =>
-        (int)Math.Min(int.MaxValue, 40L + 10L * Math.Max(0, waveNumber));
+    public static int CalculateWaveReward(int waveNumber, float lateIncomeMultiplier = 1f)
+    {
+        var baseReward = Math.Min(int.MaxValue, 40L + 10L * Math.Max(0, waveNumber));
+        var incomeMultiplier = waveNumber > GameConstants.FullKillRewardThroughWave
+            ? Math.Max(0, lateIncomeMultiplier)
+            : 1f;
+        return (int)Math.Min(int.MaxValue, Math.Round(baseReward * incomeMultiplier,
+            MidpointRounding.AwayFromZero));
+    }
+
+    public int EffectiveWaveReward(int waveNumber) => CalculateWaveReward(waveNumber, LateIncomeMultiplier);
 
     public void AwardEarlyStart()
     {
