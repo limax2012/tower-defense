@@ -30,6 +30,7 @@ public sealed class GameRenderer
             DrawEffects(batch, primitives, session, presentation);
         }
         DrawForegroundTowerOverlays(batch, primitives, session, presentation, foregroundTowerId);
+        DrawPlacementIndicators(batch, primitives, session);
     }
 
     internal void DrawCombatShowcase(SpriteBatch batch, PrimitiveRenderer primitives,
@@ -432,8 +433,6 @@ public sealed class GameRenderer
                 needlePreview ? ColorPalette.NeedlePlacementGhostAccentAlpha : ColorPalette.PlacementGhostAccentAlpha);
             p.DrawShape(batch, position, definition.Visual.Radius, definition.Visual.Shape,
                 previewPrimary, previewAccent, 1, true, levelMarks: true);
-            DrawPowerNodePlacementIndicator(batch, p, position, definition.Visual.Radius,
-                session.Map.GetPowerNodes(position));
         }
 
         if (!placementOnMap || session.TacticalPlacement == TacticalPlacementKind.None) return;
@@ -469,19 +468,25 @@ public sealed class GameRenderer
     private static float DisplayRange(MinimalBastion.GameSession session, TowerInstance tower) =>
         tower.IsSupport ? session.GetEffectiveAuraRange(tower) : session.GetEffectiveRange(tower);
 
+    private static void DrawPlacementIndicators(SpriteBatch batch, PrimitiveRenderer p,
+        MinimalBastion.GameSession session)
+    {
+        if (!session.HasPlacementPreview || session.PlacementTowerId is null) return;
+
+        var position = session.PlacementPreviewPosition;
+        DrawPowerNodePlacementIndicator(batch, p, position, session.Map.GetPowerNodes(position));
+    }
+
     internal static void DrawPowerNodePlacementIndicator(SpriteBatch batch, PrimitiveRenderer p, Vector2 position,
-        int towerRadius, IReadOnlyList<PowerNodeData> powerNodes)
+        IReadOnlyList<PowerNodeData> powerNodes)
     {
         if (powerNodes.Count == 0) return;
 
-        var direction = Vector2.Normalize(new Vector2(1, 1));
-        var perpendicular = new Vector2(-direction.Y, direction.X);
-        var markerCenter = position + direction * (towerRadius + 5f);
         var visibleNodeCount = Math.Min(3, powerNodes.Count);
         for (var index = 0; index < visibleNodeCount; index++)
         {
             var offset = (index - (visibleNodeCount - 1) * 0.5f) * 7f;
-            var pipCenter = markerCenter + perpendicular * offset;
+            var pipCenter = position + new Vector2(offset, 0);
             var pixelCenter = new Point((int)MathF.Round(pipCenter.X), (int)MathF.Round(pipCenter.Y));
             p.FillRect(batch, new Rectangle(pixelCenter.X - 5, pixelCenter.Y - 5, 11, 11), ColorPalette.Navy);
             p.FillRect(batch, new Rectangle(pixelCenter.X - 3, pixelCenter.Y - 3, 7, 7),
