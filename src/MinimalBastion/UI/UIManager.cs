@@ -4172,7 +4172,7 @@ public sealed class UIManager
         DrawFittedText(batch, $"MAP-SPECIFIC WAVES W1-W{visibleWaveCount}  |  DIFFICULTIES SCALE THE SAME ROSTER",
             new Vector2(detailPanel.X + 18, detailPanel.Y + 68),
             LibraryAccentText(mapAccent, ColorPalette.Panel), 0.40f, detailPanel.Width - 238);
-        DrawFittedText(batch, "GAUNTLET SIGNALS IN [BRACKETS]: ACC ACCELERATOR | RES RESTORER | BUL BULWARK | JAM JAMMER | DIS DISRUPTOR",
+        DrawFittedText(batch, "GAUNTLET SIGNAL COUNTS IN [BRACKETS]: ACC ACCELERATOR | RES RESTORER | BUL BULWARK | JAM JAMMER | DIS DISRUPTOR",
             new Vector2(detailPanel.X + 18, detailPanel.Y + 84), ColorPalette.Violet, 0.32f,
             detailPanel.Width - 238);
         DrawRoutePreview(batch, p, new Rectangle(detailPanel.Right - 202, detailPanel.Y + 39, 184, 54),
@@ -4304,7 +4304,7 @@ public sealed class UIManager
                 $"START CREDITS x{challenge.StartingCreditsMultiplier:0.00}",
                 "W2 ACCELERATE / W3 REPAIR / W4 SHIELD",
                 "W5 JAMMER WEAKENS EVERY TOWER IN RANGE",
-                "ELITE + BOSS GROUP DISRUPTION",
+                "ELITE + BOSS PRECISION DISRUPTION",
                 "FULL ROSTER + ALL SYSTEMS",
                 "RULE: SIGNAL ENEMIES SUPPORT FORMATIONS"
             ];
@@ -4493,8 +4493,38 @@ public sealed class UIManager
             ColorPalette.Navy, compact ? 0.40f : 0.46f, compact ? rect.Width - 126 : 190);
         DrawTextRight(batch, $"{wave.Contacts} | HP x{wave.HealthMultiplier:0.00} | SPD x{wave.SpeedMultiplier:0.00}",
             new Vector2(rect.Right - 8, rect.Y + 4), LibraryAccentText(accent, ColorPalette.PanelAlt), compact ? 0.31f : 0.38f);
-        DrawWrappedText(batch, wave.Roster, new Rectangle(rect.X + 10, rect.Y + 19, rect.Width - 20, rect.Height - 19),
-            ColorPalette.Muted, compact ? 0.27f : 0.31f, 2);
+        DrawCampaignRoster(batch, wave.Roster,
+            new Rectangle(rect.X + 10, rect.Y + 19, rect.Width - 20, rect.Height - 19),
+            compact ? 0.27f : 0.31f);
+    }
+
+    private void DrawCampaignRoster(SpriteBatch batch, string roster, Rectangle bounds, float scale)
+    {
+        var entries = roster.Split(" + ", StringSplitOptions.RemoveEmptyEntries);
+        if (entries.Length <= 1 ||
+            _font.MeasureString(roster).X * scale * GameConstants.FontDrawScale <= bounds.Width)
+        {
+            DrawStrictFittedText(batch, roster, new Vector2(bounds.X, bounds.Y), ColorPalette.Muted,
+                scale, bounds.Width, 0.22f);
+            return;
+        }
+
+        var bestSplit = 1;
+        var bestMaximumWidth = float.MaxValue;
+        for (var split = 1; split < entries.Length; split++)
+        {
+            var firstWidth = _font.MeasureString(string.Join(" + ", entries.Take(split))).X;
+            var secondWidth = _font.MeasureString(string.Join(" + ", entries.Skip(split))).X;
+            var maximumWidth = MathF.Max(firstWidth, secondWidth);
+            if (maximumWidth >= bestMaximumWidth) continue;
+            bestMaximumWidth = maximumWidth;
+            bestSplit = split;
+        }
+
+        DrawStrictFittedText(batch, string.Join(" + ", entries.Take(bestSplit)),
+            new Vector2(bounds.X, bounds.Y), ColorPalette.Muted, scale, bounds.Width, 0.22f);
+        DrawStrictFittedText(batch, string.Join(" + ", entries.Skip(bestSplit)),
+            new Vector2(bounds.X, bounds.Y + 9), ColorPalette.Muted, scale, bounds.Width, 0.22f);
     }
 
     private static Color MapLibraryAccent(string pathStyle) => pathStyle.ToLowerInvariant() switch
@@ -4714,7 +4744,7 @@ public sealed class UIManager
             ],
             EnemySignalRole.Disruptor =>
             [
-                ["PAUSES ONE TOWER", "HIGHEST INVESTMENT IN REACH", $"ATTACKS EVERY {normalInterval:0.#}s"],
+                ["PAUSES ONE TOWER", "TARGETS THE MOST EXPENSIVE TOWER IN RANGE", $"ATTACKS EVERY {normalInterval:0.#}s"],
                 ["BASE / ELITE / BOSS", $"PAUSE {rules.CounterPressureDuration:0.#} / {EnemySignalTuning.DisruptorPause(rules, EnemyRank.Elite):0.#} / {EnemySignalTuning.DisruptorPause(rules, EnemyRank.Boss):0.#}s", $"REACH R{rules.CounterPressureRadius:0} / R{EnemySignalTuning.DisruptorReach(rules, EnemyRank.Elite):0} / R{EnemySignalTuning.DisruptorReach(rules, EnemyRank.Boss):0}"],
                 ["DAMAGE IT BEFORE THE NEXT ATTACK", "DISTRIBUTE TOWERS ACROSS THE MAP", "USE LONG RANGE OUTSIDE ITS REACH"]
             ],
@@ -4830,9 +4860,9 @@ public sealed class UIManager
                     first.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase) ? "B-" : "";
                 var signals = groups.Where(entry => entry.SignalRole != EnemySignalRole.None)
                     .GroupBy(entry => entry.SignalRole)
-                    .Select(signalGroup => $"{(signalGroup.Count() > 1 ? signalGroup.Count().ToString() : "")}{SignalCode(signalGroup.Key)}")
+                    .Select(signalGroup => $"{signalGroup.Count()} {SignalCode(signalGroup.Key)}")
                     .ToArray();
-                var signalSuffix = signals.Length == 0 ? "" : $"[{string.Join(",", signals)}]";
+                var signalSuffix = signals.Length == 0 ? "" : $" [{string.Join(", ", signals)}]";
                 return $"{groups.Count()} {rank}{compactName}{signalSuffix}";
             }));
             return new CampaignWaveReference(wave.Number, wave.Archetype, wave.Groups.Sum(group => group.Count),
@@ -5008,7 +5038,7 @@ public sealed class UIManager
             EnemySignalRole.Jammer => new("signal:jammer", "Jammer Signal", null, role,
                 EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // TOWER SUPPRESSION", "ORANGE MINUS"),
             EnemySignalRole.Disruptor => new("signal:disruptor", "Disruptor Signal", null, role,
-                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // GROUP DISRUPTION", "VIOLET X"),
+                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // SINGLE-TOWER PAUSE", "VIOLET X"),
             _ => new("signal:none", "No Signal", null, role, ColorPalette.Muted, "circle", "NO SPECIAL ROLE", "NO SIGNAL")
         };
     }
