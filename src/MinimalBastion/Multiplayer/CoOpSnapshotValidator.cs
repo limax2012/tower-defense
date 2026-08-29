@@ -101,7 +101,8 @@ internal static class CoOpSnapshotValidator
                 statuses.Count > MaximumStatusesPerEnemy || statuses.Any(status => status is null ||
                     !Enum.IsDefined(status.Type) || !IsPositiveFinite(status.RemainingSeconds) ||
                     !IsPositiveFinite(status.Magnitude) || !IsPositiveFinite(status.TickInterval) || status.TickInterval < 0.05f ||
-                    !IsNonnegativeFinite(status.TickProgress) || status.TickProgress >= status.TickInterval))
+                    !IsNonnegativeFinite(status.TickProgress) || status.TickProgress >= status.TickInterval ||
+                    !IsNonnegativeFinite(status.ArmorPierce)))
                 throw new InvalidDataException("Co-op snapshot enemy state is structurally invalid.");
         }
         if (enemies.Any(enemy => enemy.Id >= snapshot.NextEnemyId))
@@ -189,7 +190,7 @@ internal static class CoOpSnapshotValidator
 
     private static bool IsValidStatus(StatusApplication? status) => status is null ||
         Enum.IsDefined(status.Type) && IsPositiveFinite(status.Duration) && IsPositiveFinite(status.Magnitude) &&
-        IsPositiveFinite(status.TickInterval);
+        IsPositiveFinite(status.TickInterval) && IsNonnegativeFinite(status.ArmorPierce);
 
     private static bool IsPositiveFinite(float value) => float.IsFinite(value) && value > 0;
     private static bool IsNonnegativeFinite(float value) => float.IsFinite(value) && value >= 0;

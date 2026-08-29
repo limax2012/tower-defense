@@ -39,9 +39,10 @@ internal static class BehaviorHelpers
             {
                 Type = StatusType.Burn,
                 Duration = level.BurnDuration,
-                Magnitude = level.BurnDamagePerSecond,
+                Magnitude = context.Session.GetEffectiveDamage(context.Tower, level.BurnDamagePerSecond),
                 SourceId = context.Tower.Id,
-                TickInterval = level.BurnTickInterval
+                TickInterval = level.BurnTickInterval,
+                ArmorPierce = context.Session.GetEffectiveArmorPierce(context.Tower, level.ArmorPierce)
             }
             : null;
     }
@@ -119,7 +120,8 @@ public sealed class BurnProjectileBehavior : ITowerBehavior
         var level = context.Tower.Level;
         var status = BehaviorHelpers.BurnStatus(context, level);
         BehaviorHelpers.Projectile(context, context.Target, ProjectileKind.Homing, context.Target.Position, level.SplashRadius,
-            BehaviorHelpers.Payload(context, level, level.Damage, status), level.ProjectileSpeed, context.Tower.Definition.Visual.PrimaryColor);
+            BehaviorHelpers.Payload(context, level, level.Damage, status, armorPierce: level.ArmorPierce),
+            level.ProjectileSpeed, context.Tower.Definition.Visual.PrimaryColor);
     }
 }
 

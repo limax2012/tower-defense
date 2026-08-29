@@ -521,7 +521,7 @@ public sealed class VisualVerificationGame : Game
 
         var surgeWinningSample = CaptureSimulationLayout(content, ui,
             "05h-surge-medium-standard-win.png", "relay_divide", "normal", "standard",
-            AutoPlayerStrategy.Experienced, 9256, true, assertions);
+            AutoPlayerStrategy.Experienced, 326704, true, assertions);
         var surgeLosingSample = CaptureSimulationLayout(content, ui,
             "05i-surge-hard-entrenched-loss.png", "relay_divide", "hard", "no_reserves",
             AutoPlayerStrategy.Experienced, 1337, false, assertions);

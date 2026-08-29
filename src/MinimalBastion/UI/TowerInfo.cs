@@ -101,7 +101,8 @@ public static class TowerInfo
         AddPotential("RICO RANGE", level => level.RicochetRange, current.RicochetRange, shown.RicochetRange, "0");
         AddPotential("SLOW", level => level.SlowPercent, current.SlowPercent, shown.SlowPercent, "P0");
         AddPotential("SLOW TIME", level => level.SlowDuration, current.SlowDuration, shown.SlowDuration, "0.#", "s");
-        AddPotential("BURN", level => level.BurnDamagePerSecond, current.BurnDamagePerSecond, shown.BurnDamagePerSecond, "0.#", "/s");
+        AddPotential("BURN", level => level.BurnDamagePerSecond, current.BurnDamagePerSecond * damageMultiplier,
+            shown.BurnDamagePerSecond * damageMultiplier, "0.#", "/s");
         AddPotential("BURN TIME", level => level.BurnDuration, current.BurnDuration, shown.BurnDuration, "0.#", "s");
         AddPotential("PIERCE", level => level.ArmorPierce, current.ArmorPierce + powerBuff.ArmorPierceBonus + protocolPierce,
             shown.ArmorPierce + powerBuff.ArmorPierceBonus + protocolPierce, "0.#");
@@ -482,7 +483,7 @@ public static class TowerInfo
         if (Changed(current.SlowPercent, next.SlowPercent) || Changed(current.SlowDuration, next.SlowDuration))
             changes["SLOW"] = $"SLOW {current.SlowPercent:P0} {current.SlowDuration:0.#}s>{next.SlowPercent:P0} {next.SlowDuration:0.#}s";
         if (Changed(current.BurnDamagePerSecond, next.BurnDamagePerSecond) || Changed(current.BurnDuration, next.BurnDuration))
-            changes["BURN"] = $"BURN {current.BurnDamagePerSecond:0.#}/s {current.BurnDuration:0.#}s>{next.BurnDamagePerSecond:0.#}/s {next.BurnDuration:0.#}s";
+            changes["BURN"] = $"BURN {current.BurnDamagePerSecond * damageMultiplier:0.#}/s {current.BurnDuration:0.#}s>{next.BurnDamagePerSecond * damageMultiplier:0.#}/s {next.BurnDuration:0.#}s";
         AddFloat("PIERCE", "PIERCE", current.ArmorPierce + powerBuff.ArmorPierceBonus,
             next.ArmorPierce + powerBuff.ArmorPierceBonus, "0.#");
         if (Changed(current.ArmorReduction, next.ArmorReduction) ||
@@ -577,6 +578,8 @@ public static class TowerInfo
         var changes = new List<string>();
         if (power.DamageBonus > 0 && level.Damage > 0)
             changes.Add($"DAMAGE {level.Damage:0.#}>{level.Damage * (1 + power.DamageBonus):0.#}");
+        if (power.DamageBonus > 0 && level.BurnDamagePerSecond > 0)
+            changes.Add($"BURN {level.BurnDamagePerSecond:0.#}>{level.BurnDamagePerSecond * (1 + power.DamageBonus):0.#}/s");
         if (power.AttackSpeedBonus > 0 && level.AttacksPerSecond > 0)
             changes.Add($"RATE {level.AttacksPerSecond:0.##}>{level.AttacksPerSecond * (1 + power.AttackSpeedBonus):0.##}/s");
         if (power.RangeBonus > 0 && level.Range > 0)

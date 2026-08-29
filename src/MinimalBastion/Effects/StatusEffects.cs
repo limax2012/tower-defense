@@ -16,6 +16,7 @@ public sealed class StatusApplication
     public float Magnitude { get; init; }
     public int SourceId { get; init; }
     public float TickInterval { get; init; } = 0.5f;
+    public float ArmorPierce { get; init; }
 }
 
 public sealed class ActiveStatus
@@ -26,9 +27,10 @@ public sealed class ActiveStatus
     public int SourceId { get; set; }
     public float TickInterval { get; set; } = 0.5f;
     public float TickProgress { get; set; }
+    public float ArmorPierce { get; set; }
 }
 
-public readonly record struct BurnTick(float Damage, int SourceId);
+public readonly record struct BurnTick(float Damage, int SourceId, float ArmorPierce);
 
 public sealed class StatusEffectController
 {
@@ -52,6 +54,7 @@ public sealed class StatusEffectController
                 sameSource.RemainingSeconds = MathF.Max(sameSource.RemainingSeconds, application.Duration);
                 sameSource.Magnitude = application.Magnitude;
                 sameSource.TickInterval = MathF.Max(0.05f, application.TickInterval);
+                sameSource.ArmorPierce = MathF.Max(0, application.ArmorPierce);
             }
             else
             {
@@ -66,7 +69,8 @@ public sealed class StatusEffectController
                     RemainingSeconds = application.Duration,
                     Magnitude = application.Magnitude,
                     SourceId = application.SourceId,
-                    TickInterval = MathF.Max(0.05f, application.TickInterval)
+                    TickInterval = MathF.Max(0.05f, application.TickInterval),
+                    ArmorPierce = MathF.Max(0, application.ArmorPierce)
                 });
             }
             return;
@@ -104,7 +108,7 @@ public sealed class StatusEffectController
             if (tickCount <= 0) continue;
             status.TickProgress -= tickCount * interval;
             for (var index = 0; index < tickCount; index++)
-                ticks.Add(new BurnTick(status.Magnitude * interval, status.SourceId));
+                ticks.Add(new BurnTick(status.Magnitude * interval, status.SourceId, status.ArmorPierce));
         }
         return ticks;
     }
@@ -125,7 +129,8 @@ public sealed class StatusEffectController
         Magnitude = status.Magnitude,
         SourceId = status.SourceId,
         TickInterval = status.TickInterval,
-        TickProgress = status.TickProgress
+        TickProgress = status.TickProgress,
+        ArmorPierce = status.ArmorPierce
     }).ToList();
 
     public void RestoreState(IEnumerable<ActiveStatus> statuses)
@@ -144,7 +149,8 @@ public sealed class StatusEffectController
                 Magnitude = status.Magnitude,
                 SourceId = status.SourceId,
                 TickInterval = tickInterval,
-                TickProgress = tickProgress
+                TickProgress = tickProgress,
+                ArmorPierce = MathF.Max(0, status.ArmorPierce)
             });
         }
     }

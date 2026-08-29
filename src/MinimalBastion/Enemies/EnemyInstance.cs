@@ -183,7 +183,8 @@ public sealed class EnemyInstance
             Duration = application.Duration * (1f - ControlResistance),
             Magnitude = application.Magnitude,
             SourceId = application.SourceId,
-            TickInterval = application.TickInterval
+            TickInterval = application.TickInterval,
+            ArmorPierce = application.ArmorPierce
         });
     }
 

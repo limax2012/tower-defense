@@ -62,6 +62,7 @@ internal static class Program
             ("target modes", TargetModes),
             ("damage and armor", DamageAndArmor),
             ("damage over time floor", DamageOverTimeFloor),
+            ("ember piercing burn", EmberPiercingBurn),
             ("status effects", StatusEffects),
             ("effect budget", EffectBudget),
             ("elite and boss ranks", EliteAndBossRanks),
@@ -1534,6 +1535,51 @@ internal static class Program
         Check.Nearly(97, enemy.Health, "normal hit retains one damage floor");
     }
 
+    private static void EmberPiercingBurn()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        var session = new GameSession(content, "relay_divide");
+        var definition = content.Towers["ember_coil"];
+        var target = new EnemyInstance(1, content.Enemies["t3_brute"], session.Map.Path, 1, 1);
+
+        var amplifierTower = new TowerInstance(101, definition, new Vector2(285, 330));
+        Check.True(amplifierTower.TryChooseDoctrine("ember_hot_core") && amplifierTower.TrySpecialize("searing_brand"),
+            "create completed Piercing Burn on an Amplifier Node");
+        TowerBehaviorRegistry.Create("burn_projectile").Attack(new TowerInstanceContext
+        {
+            Tower = amplifierTower,
+            Target = target,
+            Session = session
+        });
+        var amplified = session.Projectiles.Projectiles.Single().Payload;
+        Check.Nearly(session.GetEffectiveDamage(amplifierTower, amplifierTower.Level.BurnDamagePerSecond),
+            amplified.Status!.Magnitude, "Amplifier Node scales Piercing Burn damage");
+        Check.Nearly(session.GetEffectiveArmorPierce(amplifierTower, amplifierTower.Level.ArmorPierce),
+            amplified.ArmorPierce, "Piercing Burn applies its authored pierce to the impact");
+        Check.Nearly(amplified.ArmorPierce, amplified.Status.ArmorPierce,
+            "Piercing Burn carries its authored pierce into damage-over-time ticks");
+
+        session.Projectiles.Clear();
+        var breachTower = new TowerInstance(102, definition, new Vector2(290, 425));
+        Check.True(breachTower.TryChooseDoctrine("ember_hot_core") && breachTower.TrySpecialize("searing_brand"),
+            "create completed Piercing Burn on a Breach Node");
+        TowerBehaviorRegistry.Create("burn_projectile").Attack(new TowerInstanceContext
+        {
+            Tower = breachTower,
+            Target = target,
+            Session = session
+        });
+        var breached = session.Projectiles.Projectiles.Single().Payload;
+        Check.Nearly(session.GetEffectiveArmorPierce(breachTower, breachTower.Level.ArmorPierce),
+            breached.Status!.ArmorPierce, "Breach Node pierce carries into burn ticks");
+        Check.True(breached.Status.ArmorPierce > amplifierTower.Level.ArmorPierce,
+            "Breach Node improves Piercing Burn beyond its authored pierce");
+        Check.True(TowerInfo.PowerNodeStatChange(definition, amplifierTower.Level,
+                session.Map.GetPowerBuff(amplifierTower.Position)).Contains("BURN", StringComparison.Ordinal),
+            "Amplifier Node preview exposes its burn damage increase");
+    }
+
     private static void StatusEffects()
     {
         var statuses = new StatusEffectController();
@@ -2370,6 +2416,14 @@ internal static class Program
         hostRunner.RunTicks(8);
         Check.True(host.Waves.IsActive && host.Enemies.Count > 0, "snapshot captured during active wave");
         host.Enemies[0].ApplyStatus(new StatusApplication { Type = StatusType.Slow, Duration = 2, Magnitude = 0.25f, SourceId = 1 });
+        host.Enemies[0].ApplyStatus(new StatusApplication
+        {
+            Type = StatusType.Burn,
+            Duration = 2,
+            Magnitude = 4,
+            SourceId = 1,
+            ArmorPierce = 3
+        });
         Check.True(host.TryDeployEmergencyDefense(new Vector2(200, 30)), "snapshot stored plate deployment");
         Check.True(host.TryDeployEmergencyDefense(new Vector2(300, 30)), "snapshot direct plate deployment");
         Check.True(host.Enemies[0].TryApplyKnockback(4, 0.75f, host.Map.Path), "snapshot enemy knockback grace");
@@ -2397,7 +2451,9 @@ internal static class Program
             "snapshot restores the active Protocol stat package");
         Check.True(client.IsCoOpPaused, "snapshot restores synchronized pause state");
         Check.Equal(1, client.CoOpPausePlayerId, "snapshot restores the host's pause attribution");
-        Check.Equal(1, client.Enemies[0].StatusEffects.Active.Count, "snapshot restores status effects");
+        Check.Equal(2, client.Enemies[0].StatusEffects.Active.Count, "snapshot restores status effects");
+        Check.Nearly(3, client.Enemies[0].StatusEffects.Active.Single(status => status.Type == StatusType.Burn).ArmorPierce,
+            "snapshot restores burn armor pierce");
         Check.Equal(1, client.EmergencyDirectPurchasesThisWave, "snapshot restores escalating plate purchase count");
         Check.Nearly(host.Enemies[0].KnockbackGraceRemaining, client.Enemies[0].KnockbackGraceRemaining, "snapshot restores plate knockback grace");
         Check.Equal(1, clientRunner.CapturePendingCommands().Count, "snapshot restores future commands");

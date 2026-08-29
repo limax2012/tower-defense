@@ -957,8 +957,13 @@ public sealed class GameSession
                 {
                     Type = statusType.Value,
                     Duration = protocol.BurstStatusDuration,
-                    Magnitude = protocol.BurstStatusMagnitude,
-                    SourceId = tower.Id
+                    Magnitude = statusType == StatusType.Burn
+                        ? GetEffectiveDamage(tower, protocol.BurstStatusMagnitude)
+                        : protocol.BurstStatusMagnitude,
+                    SourceId = tower.Id,
+                    ArmorPierce = statusType == StatusType.Burn
+                        ? GetEffectiveArmorPierce(tower, tower.Level.ArmorPierce)
+                        : 0
                 };
             if (protocol.BurstDamage > 0)
             {

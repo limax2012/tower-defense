@@ -210,7 +210,9 @@ public static class SessionChecksum
                 Add(ref hash, status.SourceId);
                 Add(ref hash, status.Magnitude);
                 Add(ref hash, status.RemainingSeconds);
+                Add(ref hash, status.TickInterval);
                 Add(ref hash, status.TickProgress);
+                Add(ref hash, status.ArmorPierce);
             }
         }
 
@@ -242,6 +244,7 @@ public static class SessionChecksum
                 Add(ref hash, status.Magnitude);
                 Add(ref hash, status.SourceId);
                 Add(ref hash, status.TickInterval);
+                Add(ref hash, status.ArmorPierce);
             }
         }
 

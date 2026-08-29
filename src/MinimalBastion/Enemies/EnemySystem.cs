@@ -22,6 +22,7 @@ public sealed class EnemySystem
                 session.DamageResolver.Apply(enemy, new MinimalBastion.Combat.DamagePayload
                 {
                     Damage = burnTick.Damage,
+                    ArmorPierce = burnTick.ArmorPierce,
                     IsDamageOverTime = true,
                     IgnoreShield = false,
                     SourceTowerId = burnTick.SourceId
