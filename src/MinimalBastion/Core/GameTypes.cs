@@ -25,8 +25,8 @@ public static class GameConstants
     public const int FullKillRewardThroughWave = 10;
     public const float KillRewardTaperPerWave = 0.025f;
     public const float MinimumKillRewardMultiplier = 0.40f;
-    public const int LateIncomeAnchorWave = 15;
-    public const float LateIncomeGrowthPerWave = 0.02f;
+    public const int HalfIncomeStartWave = 16;
+    public const int QuarterIncomeStartWave = 25;
     public const float OverdriveDurationSeconds = 5f;
     public const float OverdriveCooldownSeconds = 18f;
     public const float OverdriveAttackSpeedBonus = 0.75f;

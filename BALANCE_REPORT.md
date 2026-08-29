@@ -32,12 +32,12 @@ The current full validation sweep used two seeds for every arena/directive combi
 
 | Difficulty | Wins | Runs | Completion | Average wave | Average lives |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Easy | 16 | 32 | 50.0% | 28.7 | 9.7 |
-| Medium | 8 | 32 | 25.0% | 24.1 | 2.4 |
-| Hard | 2 | 32 | 6.3% | 19.1 | 0.3 |
-| Bastion | 0 | 32 | 0.0% | 14.2 | 0.0 |
+| Easy | 6 | 32 | 18.8% | 26.2 | 3.4 |
+| Medium | 1 | 32 | 3.1% | 20.5 | 0.3 |
+| Hard | 0 | 32 | 0.0% | 15.9 | 0.0 |
+| Bastion | 0 | 32 | 0.0% | 11.4 | 0.0 |
 
-These bands keep the ladder strictly ordered for the deterministic agent across the complete 30-wave campaign. Easy commonly reaches the finale and retains the widest recovery margin. Medium demands a developed defense in the final act. Hard rejects most imperfect executions. Bastion is deliberately aspirational: one leak ends the run, and no run in this small fixed-seed sweep was flawless. These percentages are not forecasts of literal human win rates: a person can adapt across attempts, interpret spatial patterns, and deliberately reproduce a successful layout in ways the agent cannot.
+These bands keep the ladder strictly ordered for the deterministic agent across the complete 30-wave campaign. The staged late-income reductions sharply reduce clears after wave 15: Easy still reaches the finale most consistently, while the small Medium, Hard, and Bastion samples are now predominantly progression measurements rather than completion estimates. Bastion remains deliberately aspirational: one leak ends the run, and no run in this fixed-seed sweep was flawless. These percentages are not forecasts of literal human win rates: a person can adapt across attempts, interpret spatial patterns, preserve a reserve for the final act, and deliberately reproduce a successful layout in ways the agent cannot.
 
 ## Arena findings
 
@@ -47,7 +47,7 @@ The same sweep exposes a major limitation in the Experienced policy at Bastion:
 | --- | ---: | ---: |
 | Foundry Loop | 0/8 | 0/8 |
 | Crosswind Basin | 0/8 | 0/8 |
-| Prism Circuit | 2/8 | 0/8 |
+| Prism Circuit | 0/8 | 0/8 |
 | Surge Divide | 0/8 | 0/8 |
 
 Prism remains overrepresented and Surge underrepresented in bot clears. Human evidence is materially better on Surge: informed players discovered the intended plan—early node use, Fastest Frost control, Arc group damage, and timely armor/shield counters—and cleared it after limited iteration. That does not prove Surge is easy; it means a bot zero remains a lower-bound warning rather than evidence of impossibility.
@@ -64,7 +64,7 @@ No map geometry change is justified by these aggregate percentages alone.
 Directive comparisons use Experienced-agent matrices at the 30-wave target. No restricted directive receives compensating opening credits.
 
 - **Standard** is the complete strategic baseline.
-- **Signal Gauntlet** changes priority and defensive reliability through signal enemies and disruption. Accelerator grants 20% speed, Restorer repairs 10% maximum health every 5 seconds, Bulwark grants a 10% shield every 5 seconds up to a 20% reserve, and Jammer suppresses every combat tower in its pulse radius. Disruptor is the precision counterpart: every 5 seconds it directly pauses one high-investment tower, with modest rank-based pause and reach increases. A matched 48-run Gauntlet sample cleared 5/12 Easy, 0/12 Medium, 0/12 Hard, and 0/12 Bastion profiles. After the precision-Disruptor change, a focused 20-run Experienced sample still cleared 0/20 Hard and 0/20 Bastion profiles; removing support signals raised Hard average progress from wave 12.6 to 19.6, while removing attacking signals produced one clear without improving average progress. The mode's measured difficulty therefore remains primarily formation-support pressure rather than blanket tower shutdown. The Experienced agent uses Support targeting on appropriate towers.
+- **Signal Gauntlet** changes priority and defensive reliability through signal enemies and disruption. Accelerator grants 20% speed, Restorer repairs 10% maximum health every 5 seconds, Bulwark grants a 10% shield every 5 seconds up to a 20% reserve, and Jammer suppresses every combat tower in its pulse radius. Disruptor is the precision counterpart: every 5 seconds it directly pauses one high-investment tower, with modest rank-based pause and reach increases. The current 32-run cross-difficulty sample produced no clears and averaged wave 14.9; the Experienced agent uses Support targeting on appropriate towers.
 - **Core Six** is a thematic roster puzzle, not an assertion that every restricted roster must be numerically harder than Standard. Its available towers form a strong economical progression, so it no longer receives bonus opening credits.
 - **Entrenched** removes correction and temporary rescue. Its lower Hard completion is consistent with permanent placement mistakes and no Protocol/Plate fallback.
 
@@ -85,9 +85,9 @@ The detailed use case for every tower and branch is documented in [STRATEGY_GUID
 
 ## Economy and progression
 
-Kill bounties retain full value through wave 10 and begin their standard taper afterward. Every authored reward remains unchanged through wave 15. From wave 16 onward, each arena's total kill-and-clear income is stabilized against its wave-15 payout and grows by 2% of that anchor per wave. Early-call rewards remain separate and tower prices and combat statistics do not inflate with wave number.
+Kill bounties retain full value through wave 10 and begin their standard taper afterward. Kill and completion rewards retain their authored value through wave 15, are halved for waves 16–24, and are quartered from wave 25 onward. Early-call rewards remain separate, and tower prices and combat statistics do not inflate with wave number.
 
-The stabilized curve prevents dense late compositions and boss waves from producing disproportionate windfalls while preserving the opening exactly. Wave 21 now sustains wave-20 durability and the following waves continue upward instead of resetting beneath the defense that cleared the boss. Generated Endless begins after wave 30.
+The staged reductions prevent dense late compositions and boss waves from producing disproportionate windfalls while preserving the opening exactly. Wave 21 sustains wave-20 durability and the following waves continue upward instead of resetting beneath the defense that cleared the boss. Generated Endless begins after wave 30 and retains quarter rewards.
 
 ## Interpretation limits
 

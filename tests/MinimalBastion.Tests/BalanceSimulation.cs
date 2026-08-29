@@ -17,16 +17,11 @@ internal static class BalanceSimulation
     {
         Console.WriteLine("BALANCE BENCHMARK (deterministic, current data)");
         var totalEnemies = content.Waves.Waves.SelectMany(x => x.Groups).Sum(x => x.Count);
-        var incomeAnchor = content.Waves.Waves.FirstOrDefault(wave => wave.Number == GameConstants.LateIncomeAnchorWave);
         var totalKillRewards = content.Waves.Waves.Sum(wave =>
-        {
-            var scale = MinimalBastion.Economy.WaveIncomeCurve.CalculateScale(wave, incomeAnchor, content.Enemies);
-            return wave.Groups.Sum(group => group.Count * MinimalBastion.Economy.Economy.CalculateKillReward(
-                content.Enemies[group.EnemyId].Reward, wave.Number, scale));
-        });
+            wave.Groups.Sum(group => group.Count * MinimalBastion.Economy.Economy.CalculateKillReward(
+                content.Enemies[group.EnemyId].Reward * RankRewardMultiplier(group.Rank), wave.Number)));
         var totalWaveRewards = content.Waves.Waves.Sum(wave =>
-            MinimalBastion.Economy.Economy.CalculateWaveReward(wave.Number,
-                MinimalBastion.Economy.WaveIncomeCurve.CalculateScale(wave, incomeAnchor, content.Enemies)));
+            MinimalBastion.Economy.Economy.CalculateWaveReward(wave.Number));
         Console.WriteLine($"Wave economy: {totalEnemies} enemies, {totalKillRewards} kill credits, {totalWaveRewards} wave credits, up to {content.Waves.Waves.Count * GameConstants.EarlyStartBonus} early-start credits, {GameConstants.StartingCredits} starting credits.");
         Console.WriteLine("Tower                 Cost  Raw L1  Single L1  Dense L1  Raw L3  Upgrade DPS/currency");
         Console.WriteLine("--------------------  ----  ------  ---------  --------  ------  ----------------------");
@@ -80,6 +75,14 @@ internal static class BalanceSimulation
         PrintCrossTowerSynergies(content);
         Console.WriteLine("Metrics include projectile travel, path movement, armor, shields, DOT persistence, overkill, kills, leaks, and damage reports.");
     }
+
+    private static int RankRewardMultiplier(string rank) =>
+        Enum.TryParse<EnemyRank>(rank, true, out var parsed) ? parsed switch
+        {
+            EnemyRank.Elite => 2,
+            EnemyRank.Boss => 5,
+            _ => 1
+        } : 1;
 
     private static void PrintFinalRoleScenarios(GameContent content)
     {

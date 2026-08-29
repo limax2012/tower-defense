@@ -67,7 +67,7 @@ internal static class Program
             ("effect budget", EffectBudget),
             ("elite and boss ranks", EliteAndBossRanks),
             ("economy", EconomyRules),
-            ("late campaign income curve", LateCampaignIncomeCurve),
+            ("late campaign income steps", LateCampaignIncomeSteps),
             ("placement rules", PlacementRules),
             ("wave final group", WaveFinalGroup),
             ("endless wave continuation", EndlessWaveContinuation),
@@ -1701,16 +1701,10 @@ internal static class Program
         Check.Nearly(2f / 3f, EconomyService.CalculateKillRewardMultiplier(30), "late-campaign kill rewards taper smoothly");
         Check.Nearly(0.4f, EconomyService.CalculateKillRewardMultiplier(100), "deep Endless kill reward floor");
         Check.Equal(8, EconomyService.CalculateKillReward(8, 10), "opening crawler reward");
-        Check.Equal(6, EconomyService.CalculateKillReward(8, 20), "campaign crawler reward");
+        Check.Equal(3, EconomyService.CalculateKillReward(8, 20), "second-act crawler reward");
         Check.Equal(1, EconomyService.CalculateKillReward(1, 100), "positive rewards retain a one-credit floor");
-        Check.Equal(4, EconomyService.CalculateKillReward(8, 10, 0.5f),
-            "wave income scale applies to kill rewards");
-        Check.Equal(4, EconomyService.CalculateKillReward(10, 20, 0.5f),
-            "wave income scale composes with the standard bounty taper");
-        Check.Equal(30, EconomyService.CalculateWaveReward(2, 0.5f),
-            "wave income scale applies to completion rewards");
-        Check.Equal(120, EconomyService.CalculateWaveReward(20, 0.5f),
-            "wave income scale applies consistently in the late campaign");
+        Check.Equal(150, EconomyService.CalculateKillReward(375, 20), "boss bounty follows the half-income step");
+        Check.Equal(68, EconomyService.CalculateKillReward(375, 25), "boss bounty follows the quarter-income step");
         economy.LoseLives(3);
         Check.Equal(17, economy.Lives, "lives");
         Check.Equal(1, economy.EscapedEnemies, "escape count");
@@ -1720,41 +1714,27 @@ internal static class Program
         saturated.AwardKill(int.MaxValue);
         saturated.AwardWave(int.MaxValue);
         saturated.RecoverSale(int.MaxValue);
+        var extremeWaveReward = EconomyService.CalculateWaveReward(int.MaxValue);
         Check.Equal(int.MaxValue, saturated.Credits, "deep-run credits saturate instead of wrapping negative");
         Check.Equal(int.MaxValue, saturated.TotalCreditsEarned, "deep-run earned total saturates");
         Check.Equal(int.MaxValue, saturated.KillCreditsEarned, "deep-run kill income saturates");
-        Check.Equal(int.MaxValue, saturated.WaveCreditsEarned, "deep-run wave income saturates");
+        Check.Equal(extremeWaveReward, saturated.WaveCreditsEarned, "deep-run wave income remains bounded");
         Check.Equal(int.MaxValue, saturated.SaleCreditsRecovered, "deep-run sale recovery saturates");
-        Check.Equal(int.MaxValue, EconomyService.CalculateWaveReward(int.MaxValue), "extreme wave reward remains nonnegative");
+        Check.True(extremeWaveReward > 0, "extreme wave reward remains positive");
     }
 
-    private static void LateCampaignIncomeCurve()
+    private static void LateCampaignIncomeSteps()
     {
-        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
-        var content = new ContentLoader(root).Load();
-        foreach (var map in content.Maps.Values)
-        {
-            var waves = content.WaveSets[map.WaveSet].Waves;
-            var anchor = waves.Single(wave => wave.Number == GameConstants.LateIncomeAnchorWave);
-            var anchorIncome = WaveIncomeCurve.CalculateBaseIncome(anchor, content.Enemies);
-            foreach (var wave in waves.Take(GameConstants.LateIncomeAnchorWave))
-            {
-                Check.Nearly(1f, WaveIncomeCurve.CalculateScale(wave, anchor, content.Enemies),
-                    $"{map.Id} wave {wave.Number} preserves the opening economy");
-                Check.Equal(WaveIncomeCurve.CalculateBaseIncome(wave, content.Enemies),
-                    WaveIncomeCurve.CalculateScaledIncome(wave, anchor, content.Enemies),
-                    $"{map.Id} wave {wave.Number} keeps every pre-anchor credit");
-            }
-
-            foreach (var wave in waves.Skip(GameConstants.LateIncomeAnchorWave))
-            {
-                var expected = anchorIncome *
-                    (1f + GameConstants.LateIncomeGrowthPerWave * (wave.Number - GameConstants.LateIncomeAnchorWave));
-                var actual = WaveIncomeCurve.CalculateScaledIncome(wave, anchor, content.Enemies);
-                Check.True(MathF.Abs(actual - expected) <= expected * 0.04f,
-                    $"{map.Id} wave {wave.Number} follows the smooth late-campaign income target");
-            }
-        }
+        Check.Nearly(1f, EconomyService.CalculateIncomeMultiplier(15), "wave 15 preserves authored rewards");
+        Check.Nearly(0.5f, EconomyService.CalculateIncomeMultiplier(16), "wave 16 starts half rewards");
+        Check.Nearly(0.5f, EconomyService.CalculateIncomeMultiplier(24), "wave 24 remains at half rewards");
+        Check.Nearly(0.25f, EconomyService.CalculateIncomeMultiplier(25), "wave 25 starts quarter rewards");
+        Check.Nearly(0.25f, EconomyService.CalculateIncomeMultiplier(100), "Endless retains quarter rewards");
+        Check.Equal(190, EconomyService.CalculateWaveReward(15), "wave 15 completion reward");
+        Check.Equal(100, EconomyService.CalculateWaveReward(16), "wave 16 completion reward");
+        Check.Equal(140, EconomyService.CalculateWaveReward(24), "wave 24 completion reward");
+        Check.Equal(73, EconomyService.CalculateWaveReward(25), "wave 25 completion reward");
+        Check.Equal(85, EconomyService.CalculateWaveReward(30), "wave 30 completion reward");
     }
 
     private static void EconomyTelemetry()

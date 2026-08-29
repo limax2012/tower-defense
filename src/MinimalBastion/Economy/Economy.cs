@@ -43,10 +43,10 @@ public sealed class Economy
     public void AddCredits(int amount) => Credits = SaturatingAdd(Credits, amount);
     public void AwardKill(int reward) => AwardKill(reward, 1);
 
-    public void AwardKill(int reward, int waveNumber, float incomeScale = 1f)
+    public void AwardKill(int reward, int waveNumber)
     {
         TotalKills = SaturatingAdd(TotalKills, 1);
-        var amount = CalculateKillReward(reward, waveNumber, incomeScale);
+        var amount = CalculateKillReward(reward, waveNumber);
         KillCreditsEarned = SaturatingAdd(KillCreditsEarned, amount);
         AddCredits(amount);
     }
@@ -58,33 +58,39 @@ public sealed class Economy
             1f / (1f + GameConstants.KillRewardTaperPerWave * wavesPastOpening));
     }
 
-    public static int CalculateKillReward(int reward, int waveNumber, float incomeScale = 1f)
+    public static float CalculateIncomeMultiplier(int waveNumber) => waveNumber switch
+    {
+        >= GameConstants.QuarterIncomeStartWave => 0.25f,
+        >= GameConstants.HalfIncomeStartWave => 0.50f,
+        _ => 1f
+    };
+
+    public static int CalculateKillReward(int reward, int waveNumber)
     {
         if (reward <= 0) return 0;
         return Math.Max(1, (int)Math.Round(
-            reward * CalculateKillRewardMultiplier(waveNumber) * Math.Max(0, incomeScale),
+            reward * CalculateKillRewardMultiplier(waveNumber) * CalculateIncomeMultiplier(waveNumber),
             MidpointRounding.AwayFromZero));
     }
 
-    public static float EffectiveKillRewardMultiplier(int waveNumber, float incomeScale = 1f) =>
-        CalculateKillRewardMultiplier(waveNumber) * Math.Max(0, incomeScale);
+    public static float EffectiveKillRewardMultiplier(int waveNumber) =>
+        CalculateKillRewardMultiplier(waveNumber) * CalculateIncomeMultiplier(waveNumber);
 
-    public void AwardWave(int waveNumber, float incomeScale = 1f)
+    public void AwardWave(int waveNumber)
     {
-        var amount = CalculateWaveReward(waveNumber, incomeScale);
+        var amount = CalculateWaveReward(waveNumber);
         WaveCreditsEarned = SaturatingAdd(WaveCreditsEarned, amount);
         AddCredits(amount);
     }
 
-    public static int CalculateWaveReward(int waveNumber, float incomeScale = 1f)
+    public static int CalculateWaveReward(int waveNumber)
     {
         var baseReward = Math.Min(int.MaxValue, 40L + 10L * Math.Max(0, waveNumber));
-        return (int)Math.Min(int.MaxValue, Math.Round(baseReward * Math.Max(0, incomeScale),
+        return (int)Math.Min(int.MaxValue, Math.Round(baseReward * CalculateIncomeMultiplier(waveNumber),
             MidpointRounding.AwayFromZero));
     }
 
-    public static int EffectiveWaveReward(int waveNumber, float incomeScale = 1f) =>
-        CalculateWaveReward(waveNumber, incomeScale);
+    public static int EffectiveWaveReward(int waveNumber) => CalculateWaveReward(waveNumber);
 
     public void AwardEarlyStart()
     {
