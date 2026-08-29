@@ -1473,14 +1473,13 @@ internal static class Program
     {
         const int trackCount = 10;
         var bag = new ShuffleBag(trackCount, new Random(8192));
-        var previous = -1;
+        int[]? firstCycle = null;
         for (var cycle = 0; cycle < 12; cycle++)
         {
             var played = Enumerable.Range(0, trackCount).Select(_ => bag.Next()).ToArray();
             Check.Equal(trackCount, played.Distinct().Count(), $"shuffle cycle {cycle + 1} plays every track once");
-            if (previous >= 0)
-                Check.True(played[0] != previous, $"shuffle cycle {cycle + 1} avoids an immediate boundary repeat");
-            previous = played[^1];
+            if (firstCycle is null) firstCycle = played;
+            else Check.True(played.SequenceEqual(firstCycle), $"shuffle cycle {cycle + 1} preserves the startup order");
         }
     }
 
