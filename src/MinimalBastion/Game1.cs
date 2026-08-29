@@ -253,7 +253,7 @@ public sealed class Game1 : Game
                 HandleMenuAction(WithUiAudio(_ui.HandleTitleTowerLibrary(input)));
                 break;
             case GameState.Settings:
-                HandleSettingsAction(WithUiAudio(_ui.HandleSettingsInput(input)));
+                HandleSettingsAction(WithSettingsUiAudio(_ui.HandleSettingsInput(input), input));
                 break;
             case GameState.SaveSlots:
                 HandleSaveSlotAction(WithUiAudio(_ui.HandleSaveSlots(input)));
@@ -602,6 +602,17 @@ public sealed class Game1 : Game
         else
             _audio.PlayUiConfirm();
         return action;
+    }
+
+    private UiAction WithSettingsUiAudio(UiAction action, InputSnapshot input)
+    {
+        if (_ui.SelectedSettingsIndex is 3 or 4 &&
+            action is (UiAction.PreviewSettings or UiAction.ApplySettings))
+        {
+            if (input.LeftPressed) _audio?.PlayUiConfirm();
+            return action;
+        }
+        return WithUiAudio(action);
     }
 
     private void HandleCoOpMenuAction(UiAction action)
