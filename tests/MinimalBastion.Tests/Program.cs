@@ -655,6 +655,8 @@ internal static class Program
         var damagedHealth = repairTarget.Health;
         repairSession.Enemies[1].ArmSignalAbility(0);
         repairSession.TryActivateEnemySignal(repairSession.Enemies[1]);
+        Check.Nearly(5f, repairSession.Enemies[1].SignalAbilityCooldownRemaining,
+            "restorer repeats on the shared five-second signal cadence");
         Check.Nearly(repairTarget.MaxHealth * repairSession.Challenge.CounterRepairFraction,
             repairTarget.Health - damagedHealth, "restorer repairs its authored share of nearby health");
         Check.True(repairSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Beam),
@@ -665,6 +667,8 @@ internal static class Program
         shieldSession.SpawnEnemy("t1_crawler", 1, 1, signalRole: EnemySignalRole.Bulwark);
         shieldSession.Enemies[1].ArmSignalAbility(0);
         shieldSession.TryActivateEnemySignal(shieldSession.Enemies[1]);
+        Check.Nearly(5f, shieldSession.Enemies[1].SignalAbilityCooldownRemaining,
+            "bulwark repeats on the shared five-second signal cadence");
         Check.Nearly(shieldSession.Enemies[0].MaxHealth * shieldSession.Challenge.CounterShieldFraction,
             shieldSession.Enemies[0].Shield, "bulwark grants its authored shield share to nearby threats");
         Check.True(shieldSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Beam),
@@ -684,6 +688,8 @@ internal static class Program
         jammer.UpdateMovement(5.7f, jammerSession.Map.Path);
         jammer.ArmSignalAbility(0);
         jammerSession.TryActivateEnemySignal(jammer);
+        Check.Nearly(5f, jammer.SignalAbilityCooldownRemaining,
+            "jammer repeats on the shared five-second signal cadence");
         var towersInsideJammerPulse = jammerSession.Towers.Count(tower => !tower.IsSupport &&
             Vector2.DistanceSquared(tower.Position, jammer.Position) <=
             jammerSession.Challenge.CounterSuppressionRadius * jammerSession.Challenge.CounterSuppressionRadius);
@@ -691,23 +697,35 @@ internal static class Program
             "Gauntlet jammer test covers more towers than the former bounded cluster");
         Check.Equal(towersInsideJammerPulse, jammerSession.Towers.Count(tower => tower.IsSuppressed),
             "jammer weakens every combat tower inside its pulse radius");
+        Check.True(jammerSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Splash) &&
+                   jammerSession.Effects.Effects.All(effect => effect.Kind != EffectKind.Beam),
+            "jammer interference is presented as a radial pulse without aimed attack beams");
         Check.True(jammerSession.GetEffectiveAttacksPerSecond(jammerTower) < unsuppressedRate &&
                    jammerSession.GetEffectiveDamage(jammerTower, jammerTower.Level.Damage) < unsuppressedDamage,
             "jammer suppression reduces both attack rate and damage without pausing the tower");
 
         var sessionWithDisruptor = new GameSession(content, "foundry_loop", "hard", "close_quarters");
-        Check.True(sessionWithDisruptor.TryPlaceTower("needle_turret", new Vector2(45, 200)),
-            "Gauntlet disruptor test places a tower beside the opening route");
+        Check.True(sessionWithDisruptor.TryPlaceTower("needle_turret", new Vector2(45, 200)) &&
+                   sessionWithDisruptor.TryPlaceTower("frost_spire", new Vector2(190, 190)),
+            "Gauntlet disruptor test places two towers beside the opening route");
         sessionWithDisruptor.SpawnEnemy("t4_aegis", 1, 1, "Elite", EnemySignalRole.Disruptor);
         var pressureSource = sessionWithDisruptor.Enemies.Single();
-        pressureSource.UpdateMovement(1f, sessionWithDisruptor.Map.Path);
+        pressureSource.UpdateMovement(3f, sessionWithDisruptor.Map.Path);
         pressureSource.ArmSignalAbility(0);
         sessionWithDisruptor.TryActivateEnemySignal(pressureSource);
 
-        Check.True(sessionWithDisruptor.Towers[0].IsDisrupted,
-            "an Elite disruptor briefly pauses nearby tower groups");
-        Check.True(pressureSource.SignalAbilityCooldownRemaining > 0,
-            "enemy signal ability has a deterministic repeat interval");
+        Check.Equal(1, sessionWithDisruptor.Towers.Count(tower => tower.IsDisrupted),
+            "a disruptor pauses exactly one nearby tower");
+        Check.True(sessionWithDisruptor.Towers.Single(tower => tower.Definition.Id == "frost_spire").IsDisrupted,
+            "a disruptor prioritizes the highest-investment tower in reach");
+        Check.Nearly(sessionWithDisruptor.Challenge.CounterPressureInterval,
+            pressureSource.SignalAbilityCooldownRemaining,
+            "disruptors use the same five-second pulse interval as other active signals");
+        Check.Nearly(1.35f, sessionWithDisruptor.Towers.Single(tower => tower.IsDisrupted).DisruptionRemaining,
+            "an Elite disruptor applies a short single-target pause");
+        Check.True(sessionWithDisruptor.Effects.Effects.Any(effect => effect.Kind == EffectKind.Beam) &&
+                   sessionWithDisruptor.Effects.Effects.All(effect => effect.Kind != EffectKind.Splash),
+            "disruptor interference is presented as a direct attack without a radial pulse");
 
         var snapshot = jammerSession.CaptureCoOpState(12, 0, false);
         var restored = GameSession.RestoreCoOpState(content, snapshot, 2);
@@ -743,6 +761,9 @@ internal static class Program
         var session = new GameSession(content, "foundry_loop", "hard", "sandbox_lab");
 
         Check.True(session.IsSandbox, "sandbox content creates a laboratory session");
+        Check.True(session.CounterPressureEnabled && session.SupportTargetingEnabled &&
+                   session.AvailableTargetModes.Contains(TargetMode.Support),
+            "sandbox exposes complete Signal Gauntlet behavior and targeting for experiments");
         Check.True(session.Economy.UnlimitedCredits && session.Economy.UnlimitedLives,
             "sandbox economy explicitly exposes unlimited resources");
         Check.True(!session.CanSaveCheckpoint && !session.StartNextWave(),
@@ -805,12 +826,23 @@ internal static class Program
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { GeneratorPressed = true }, session);
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxRankPressed = true }, session);
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxHealthPressed = true }, session);
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxSignalPressed = true }, session);
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxSignalPressed = true }, session);
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxSpawnPressed = true }, session);
         Check.Equal(5, session.Enemies.Count, "sandbox G and F hotkeys spawn the configured five-target group");
         Check.True(session.Enemies.All(enemy => enemy.Rank == EnemyRank.Elite),
             "sandbox K hotkey advances the configured target rank");
         Check.True(session.Enemies.All(enemy => MathF.Abs(enemy.HealthScale - session.SandboxHealthMultiplierForWave(10)) < 0.001f),
             "sandbox H hotkey advances the configured target health");
+        Check.True(session.Enemies.All(enemy => enemy.SignalRole == EnemySignalRole.Restorer),
+            "sandbox J hotkey assigns the selected signal role to manual targets");
+        var sandboxRepairTarget = session.Enemies[0];
+        sandboxRepairTarget.ApplyHealthDamage(sandboxRepairTarget.MaxHealth * 0.25f);
+        var sandboxDamagedHealth = sandboxRepairTarget.Health;
+        session.Enemies[1].ArmSignalAbility(0);
+        session.TryActivateEnemySignal(session.Enemies[1]);
+        Check.True(sandboxRepairTarget.Health > sandboxDamagedHealth,
+            "manually spawned sandbox signals execute their normal game behavior");
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxResetPressed = true }, session);
         Check.Equal(0, session.Enemies.Count, "sandbox R hotkey resets test targets");
         Check.True(!tower.IsOverdriven && session.OverdriveCooldownRemaining <= 0,
@@ -822,6 +854,10 @@ internal static class Program
         for (var step = 0; step < 80 && session.Enemies.Count == 0; step++) session.Update(0.05f);
         Check.True(session.Enemies.Count > 0, "authored test wave uses normal timed enemy spawning");
         Check.True(session.Enemies.All(enemy => !enemy.IsSandboxImmortal), "authored wave targets remain destructible");
+        for (var step = 0; step < 240 && session.Enemies.All(enemy => enemy.SignalRole == EnemySignalRole.None); step++)
+            session.Update(0.05f);
+        Check.True(session.Enemies.Any(enemy => enemy.SignalRole != EnemySignalRole.None),
+            "authored sandbox waves apply the deterministic Signal Gauntlet carrier overlay");
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SellPressed = true }, session);
         Check.Equal(0, session.Towers.Count, "sandbox Delete hotkey removes only the selected tower");
         Check.True(session.Enemies.Count > 0, "removing one sandbox tower preserves active test targets");

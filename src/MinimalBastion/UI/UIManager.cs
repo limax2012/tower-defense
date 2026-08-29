@@ -92,6 +92,7 @@ public sealed class UIManager
     private Rectangle _sandboxGroupButton;
     private Rectangle _sandboxRankButton;
     private Rectangle _sandboxHealthButton;
+    private Rectangle _sandboxSignalButton;
     private Rectangle _sandboxSpawnButton;
     private Rectangle _sandboxClearTowersButton;
     private Rectangle _sandboxResetButton;
@@ -115,6 +116,7 @@ public sealed class UIManager
     private int _sandboxGroupIndex;
     private int _sandboxRankIndex;
     private int _sandboxHealthIndex;
+    private int _sandboxSignalIndex;
     private int _sandboxWaveNumber = 1;
     private TacticalPlacementKind _hoveredTacticalPlacement;
     private string _joinHostInput = "";
@@ -270,6 +272,7 @@ public sealed class UIManager
     private readonly Rectangle _settingsBackButton = new(500, 526, 280, 48);
     private static readonly int[] SandboxGroupSizes = [1, 5, 12];
     private static readonly EnemyRank[] SandboxRanks = [EnemyRank.Standard, EnemyRank.Elite, EnemyRank.Boss];
+    private static readonly EnemySignalRole[] SandboxSignals = Enum.GetValues<EnemySignalRole>();
 
     public string JoinHostInput => _joinHostInput;
     public string JoinCodeInput => _joinCodeInput;
@@ -1306,6 +1309,7 @@ public sealed class UIManager
             if (input.GeneratorPressed) CycleSandboxGroup();
             if (input.SandboxRankPressed) CycleSandboxRank();
             if (input.SandboxHealthPressed) CycleSandboxHealth();
+            if (input.SandboxSignalPressed) CycleSandboxSignal();
         }
         if (input.OverdrivePressed)
         {
@@ -1497,6 +1501,11 @@ public sealed class UIManager
             CycleSandboxHealth();
             return true;
         }
+        if (_sandboxSignalButton.Contains(point))
+        {
+            CycleSandboxSignal();
+            return true;
+        }
         if (_sandboxSpawnButton.Contains(point))
         {
             SpawnSelectedSandboxTargets(session);
@@ -1560,6 +1569,9 @@ public sealed class UIManager
     private void CycleSandboxHealth() =>
         _sandboxHealthIndex = (_sandboxHealthIndex + 1) % 4;
 
+    private void CycleSandboxSignal() =>
+        _sandboxSignalIndex = (_sandboxSignalIndex + 1) % SandboxSignals.Length;
+
     private void SpawnSelectedSandboxTargets(MinimalBastion.GameSession session)
     {
         var enemies = SandboxEnemies(session);
@@ -1576,7 +1588,8 @@ public sealed class UIManager
             SandboxGroupSizes[_sandboxGroupIndex],
             healthMultiplier,
             SandboxRanks[_sandboxRankIndex].ToString(),
-            _sandboxHealthIndex == 3);
+            _sandboxHealthIndex == 3,
+            SandboxSignals[_sandboxSignalIndex]);
     }
 
     private static IReadOnlyList<EnemyDefinition> SandboxEnemies(MinimalBastion.GameSession session) =>
@@ -2534,9 +2547,10 @@ public sealed class UIManager
             enemyFill, enemy is null ? ColorPalette.Muted : SandboxEnemyButtonTextColor(enemy));
         DrawSandboxButton(batch, p, _sandboxEnemyNextButton, ">", enemies.Count > 1, ColorPalette.Cyan, "]");
 
-        _sandboxGroupButton = new Rectangle(972, 132, 94, 28);
-        _sandboxRankButton = new Rectangle(1070, 132, 94, 28);
-        _sandboxHealthButton = new Rectangle(1168, 132, 100, 28);
+        _sandboxGroupButton = new Rectangle(972, 132, 70, 28);
+        _sandboxRankButton = new Rectangle(1046, 132, 70, 28);
+        _sandboxHealthButton = new Rectangle(1120, 132, 70, 28);
+        _sandboxSignalButton = new Rectangle(1194, 132, 74, 28);
         var groupLabel = SandboxGroupSizes[_sandboxGroupIndex] switch
         {
             1 => "1 TARGET",
@@ -2551,11 +2565,23 @@ public sealed class UIManager
             3 => "IMMORTAL",
             _ => "BASE HP"
         };
+        var signalRole = SandboxSignals[_sandboxSignalIndex];
+        var signalLabel = signalRole switch
+        {
+            EnemySignalRole.None => "NO SIGNAL",
+            EnemySignalRole.Accelerator => "ACCEL",
+            EnemySignalRole.Restorer => "RESTORE",
+            EnemySignalRole.Bulwark => "SHIELD",
+            EnemySignalRole.Jammer => "JAMMER",
+            _ => "DISRUPT"
+        };
         DrawSandboxButton(batch, p, _sandboxGroupButton, groupLabel, true, ColorPalette.Cobalt, "G");
         DrawSandboxButton(batch, p, _sandboxRankButton, rankLabel, true,
             SandboxRanks[_sandboxRankIndex] == EnemyRank.Boss ? ColorPalette.Coral : ColorPalette.Violet, "K");
         DrawSandboxButton(batch, p, _sandboxHealthButton, healthLabel, true,
             _sandboxHealthIndex == 3 ? ColorPalette.Gold : ColorPalette.Cyan, "H");
+        DrawSandboxButton(batch, p, _sandboxSignalButton, signalLabel, true,
+            EnemySignalGlyphRenderer.Accent(signalRole), "J");
 
         _sandboxSpawnButton = new Rectangle(972, 166, 48, 28);
         _sandboxResetButton = new Rectangle(1024, 166, 68, 28);
@@ -2616,7 +2642,7 @@ public sealed class UIManager
                 DrawText(batch, "SANDBOX QUICK GUIDE", new Vector2(980, 482), ColorPalette.Navy, 0.64f);
                 DrawFittedText(batch, "U / I UPGRADES  |  X APEX  |  D TOGGLES TOWER", new Vector2(980, 507), ColorPalette.Violet, 0.46f, 280);
                 DrawFittedText(batch, "T TARGET  |  DELETE REMOVES  |  E TESTS PROTOCOL", new Vector2(980, 530), ColorPalette.Cobalt, 0.44f, 280);
-                DrawFittedText(batch, "F SPAWN  |  R RESET TEST  |  C CLEAR TOWERS", new Vector2(980, 553), ColorPalette.Coral, 0.44f, 280);
+                DrawFittedText(batch, "F SPAWN  |  J SIGNAL  |  R RESET  |  C CLEAR", new Vector2(980, 553), ColorPalette.Coral, 0.44f, 280);
                 DrawFittedText(batch, "- / + SELECT WAVE  |  SPACE SENDS WAVE", new Vector2(980, 576), ColorPalette.Muted, 0.46f, 280);
                 DrawFittedText(batch, "[ / ] ENEMY  |  G GROUP  |  K RANK  |  H HEALTH", new Vector2(980, 599), ColorPalette.Muted, 0.43f, 280);
                 return;
@@ -4143,12 +4169,15 @@ public sealed class UIManager
             new Vector2(detailPanel.Right - 18, detailPanel.Y + 21), LibraryAccentText(mapAccent, ColorPalette.Panel), 0.50f);
         DrawFittedText(batch, selectedMap.Description, new Vector2(detailPanel.X + 18, detailPanel.Y + 48), ColorPalette.Muted, 0.48f, detailPanel.Width - 238);
         var visibleWaveCount = Math.Min(GameConstants.CampaignWaveCount, waves.Count);
-        DrawFittedText(batch, $"COMPLETE WAVE REFERENCE  W1-W{visibleWaveCount}",
-            new Vector2(detailPanel.X + 18, detailPanel.Y + 72),
-            LibraryAccentText(mapAccent, ColorPalette.Panel), 0.43f, detailPanel.Width - 238);
+        DrawFittedText(batch, $"MAP-SPECIFIC WAVES W1-W{visibleWaveCount}  |  DIFFICULTIES SCALE THE SAME ROSTER",
+            new Vector2(detailPanel.X + 18, detailPanel.Y + 68),
+            LibraryAccentText(mapAccent, ColorPalette.Panel), 0.40f, detailPanel.Width - 238);
+        DrawFittedText(batch, "GAUNTLET: W2 ACCEL | W3 REPAIR | W4 SHIELD | W5 JAMMER | W6+ CARRIERS | ELITE/BOSS DISRUPT",
+            new Vector2(detailPanel.X + 18, detailPanel.Y + 84), ColorPalette.Violet, 0.34f,
+            detailPanel.Width - 238);
         DrawRoutePreview(batch, p, new Rectangle(detailPanel.Right - 202, detailPanel.Y + 39, 184, 54),
             selectedMap.Path, selectedMap.PathBase, selectedMap.PathAccent);
-        p.FillRect(batch, new Rectangle(detailPanel.X + 18, detailPanel.Y + 98, detailPanel.Width - 36, 2), mapAccent);
+        p.FillRect(batch, new Rectangle(detailPanel.X + 18, detailPanel.Y + 104, detailPanel.Width - 36, 2), mapAccent);
 
         var waveColumns = visibleWaveCount >= GameConstants.ApexUnlockWave ? 3 : 2;
         var waveGap = 10;
@@ -4158,7 +4187,7 @@ public sealed class UIManager
             var column = index / 10;
             var row = index % 10;
             var rect = new Rectangle(detailPanel.X + 18 + column * (waveColumnWidth + waveGap),
-                detailPanel.Y + 112 + row * 41, waveColumnWidth, 37);
+                detailPanel.Y + 116 + row * 41, waveColumnWidth, 37);
             DrawCampaignWaveRow(batch, p, rect, waves[index]);
         }
 
@@ -4263,8 +4292,8 @@ public sealed class UIManager
                 "SOLO TEST ENVIRONMENT",
                 "UNLIMITED CREDITS + LIVES",
                 "FIXED OR IMMORTAL TARGETS",
-                "STANDARD / ELITE / BOSS RANKS",
-                "REPLAY ANY AUTHORED WAVE",
+                "ALL RANKS + SELECTABLE SIGNAL ROLES",
+                "AUTHORED WAVES USE GAUNTLET SIGNALS",
                 "RESET TOWER DATA + PROTOCOLS"
             ];
         }
@@ -4332,7 +4361,7 @@ public sealed class UIManager
                 "1-0: SELECT    U/I: UPGRADE CHOICES",
                 "X: APEX    T: TARGET    DELETE: SELL",
                 "Q: PLATE    G: FORGE    E: PROTOCOL    A: AUTO",
-                "SANDBOX [ ]: ENEMY    G/K/H: GROUP/RANK/HP",
+                "SANDBOX [ ]: ENEMY    G/K/H/J: GROUP/RANK/HP/SIGNAL",
                 "SANDBOX F/R/C/D: SPAWN/RESET/CLEAR/TOGGLE"
             ])
         };
@@ -4389,7 +4418,8 @@ public sealed class UIManager
 
     private static IReadOnlyList<string> ChallengeReferenceLinesWithSignals(ChallengeDefinition challenge, int totalTowerCount)
     {
-        if (!challenge.CounterPressureEnabled) return ChallengeReferenceLines(challenge, totalTowerCount);
+        if (challenge.IsSandbox || !challenge.CounterPressureEnabled)
+            return ChallengeReferenceLines(challenge, totalTowerCount);
         var roles = Enum.GetValues<EnemySignalRole>()
             .Where(role => role != EnemySignalRole.None)
             .Select(role => role.ToString().ToUpperInvariant())
@@ -4649,7 +4679,7 @@ public sealed class UIManager
         EnemySignalRole.Restorer => "A support carrier that periodically repairs nearby damaged threats.",
         EnemySignalRole.Bulwark => "A support carrier that periodically grants temporary shielding to nearby threats.",
         EnemySignalRole.Jammer => "An attacker that periodically weakens every combat tower in its pulse radius.",
-        EnemySignalRole.Disruptor => "An elite or boss attacker that periodically pauses groups of nearby towers.",
+        EnemySignalRole.Disruptor => "A precision attacker that periodically pauses one high-investment tower in reach.",
         _ => "No additional signal behavior."
     };
 
@@ -4684,9 +4714,9 @@ public sealed class UIManager
             ],
             EnemySignalRole.Disruptor =>
             [
-                ["PAUSES EVERY TOWER IN ITS PULSE", "ELITE AND BOSS CARRIERS ONLY", "TOWERS HAVE A SHORT RE-HIT LOCKOUT"],
-                [$"ELITE: {normalInterval * 0.86f:0.#}s / R{rules.CounterPressureRadius * 1.12f:0}", $"BOSS: {normalInterval * 0.72f:0.#}s / R{rules.CounterPressureRadius * 1.32f:0}", $"BASE PAUSE {rules.CounterPressureDuration:0.#}s"],
-                ["DAMAGE IT BEFORE THE NEXT PULSE", "DISTRIBUTE TOWERS ACROSS THE MAP", "USE LONG RANGE OUTSIDE THE FIELD"]
+                ["PAUSES ONE TOWER", "HIGHEST INVESTMENT IN REACH", $"ATTACKS EVERY {normalInterval:0.#}s"],
+                ["BASE / ELITE / BOSS", $"PAUSE {rules.CounterPressureDuration:0.#} / {EnemySignalTuning.DisruptorPause(rules, EnemyRank.Elite):0.#} / {EnemySignalTuning.DisruptorPause(rules, EnemyRank.Boss):0.#}s", $"REACH R{rules.CounterPressureRadius:0} / R{EnemySignalTuning.DisruptorReach(rules, EnemyRank.Elite):0} / R{EnemySignalTuning.DisruptorReach(rules, EnemyRank.Boss):0}"],
+                ["DAMAGE IT BEFORE THE NEXT ATTACK", "DISTRIBUTE TOWERS ACROSS THE MAP", "USE LONG RANGE OUTSIDE ITS REACH"]
             ],
             _ => [[], [], []]
         };

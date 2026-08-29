@@ -53,7 +53,7 @@ public sealed class GameSession
     public bool ProtocolsEnabled => Challenge.ProtocolsEnabled;
     public bool SellingEnabled => Challenge.SellingEnabled || IsSandbox;
     public bool CounterPressureEnabled => Challenge.CounterPressureEnabled;
-    public bool SupportTargetingEnabled => ChallengeId.Equals(ChallengeCatalog.SignalGauntletId,
+    public bool SupportTargetingEnabled => IsSandbox || ChallengeId.Equals(ChallengeCatalog.SignalGauntletId,
         StringComparison.OrdinalIgnoreCase);
     public IReadOnlyList<TargetMode> AvailableTargetModes => SupportTargetingEnabled
         ? SignalGauntletTargetModes
@@ -1035,7 +1035,8 @@ public sealed class GameSession
         return wave is null ? 1f : wave.HealthMultiplier * Difficulty.EnemyHealthMultiplier;
     }
 
-    public bool SpawnSandboxTargets(string enemyId, int count, float healthMultiplier, string rank, bool immortal)
+    public bool SpawnSandboxTargets(string enemyId, int count, float healthMultiplier, string rank, bool immortal,
+        EnemySignalRole signalRole = EnemySignalRole.None)
     {
         if (!IsSandbox || count is < 1 or > 24 || !float.IsFinite(healthMultiplier) || healthMultiplier <= 0 ||
             !_content.Enemies.TryGetValue(enemyId, out var definition)) return false;
@@ -1045,15 +1046,18 @@ public sealed class GameSession
         for (var index = 0; index < count; index++)
         {
             if (_nextEnemyId >= int.MaxValue) break;
-            var enemy = new EnemyInstance(_nextEnemyId++, definition, Map.Path, healthMultiplier, 1f, rank, immortal);
+            var enemy = new EnemyInstance(_nextEnemyId++, definition, Map.Path, healthMultiplier, 1f, rank, immortal,
+                signalRole);
             enemy.SetSandboxPathDistance(18f + index * spacing, Map.Path);
+            ArmEnemySignalAbility(enemy);
             Enemies.Add(enemy);
         }
 
         AnnouncementTitle = immortal ? "IMMORTAL TARGETS DEPLOYED" : $"{count} {definition.DisplayName.ToUpperInvariant()} DEPLOYED";
+        var signalLabel = signalRole == EnemySignalRole.None ? "" : $" | {signalRole.ToString().ToUpperInvariant()} SIGNAL";
         AnnouncementSubtitle = immortal
-            ? "Damage and status effects register, but target health cannot fall."
-            : $"Fixed health scale {healthMultiplier:0.##}x // {rank.ToUpperInvariant()} rank.";
+            ? $"Damage and status effects register, but target health cannot fall.{signalLabel}"
+            : $"Fixed health scale {healthMultiplier:0.##}x // {rank.ToUpperInvariant()} rank{signalLabel}.";
         AnnouncementPositive = true;
         AnnouncementRemaining = 2.5f;
         return true;
@@ -1069,7 +1073,7 @@ public sealed class GameSession
         _sandboxDelayRemaining = wave.Groups.Count > 0 ? wave.Groups[0].DelayBefore : 0;
         _sandboxQueuedEnemies = wave.Groups.Sum(group => group.Count);
         AnnouncementTitle = $"TEST WAVE {wave.Number} // {wave.Archetype.ToUpperInvariant()}";
-        AnnouncementSubtitle = $"{Map.Definition.DisplayName} composition with {Difficulty.DisplayName} scaling.";
+        AnnouncementSubtitle = $"{Map.Definition.DisplayName} composition with {Difficulty.DisplayName} scaling and Gauntlet signals.";
         AnnouncementPositive = false;
         AnnouncementRemaining = 2.8f;
         return wave.Groups.Count > 0;
@@ -1190,7 +1194,8 @@ public sealed class GameSession
         _sandboxGroupTimer -= deltaSeconds;
         if (_sandboxSpawnedInGroup < group.Count && _sandboxGroupTimer <= 0)
         {
-            SpawnEnemy(group.EnemyId, wave.HealthMultiplier, wave.SpeedMultiplier, group.Rank);
+            var signalRole = ResolveEnemySignalRole(wave, _sandboxGroupIndex, _sandboxSpawnedInGroup, group);
+            SpawnEnemy(group.EnemyId, wave.HealthMultiplier, wave.SpeedMultiplier, group.Rank, signalRole);
             _sandboxSpawnedInGroup++;
             _sandboxQueuedEnemies = Math.Max(0, _sandboxQueuedEnemies - 1);
             _sandboxGroupTimer += group.SpawnInterval;
@@ -1327,18 +1332,7 @@ public sealed class GameSession
             healthMultiplier * Difficulty.EnemyHealthMultiplier,
             speedMultiplier * Difficulty.EnemySpeedMultiplier,
             rank, signalRole: signalRole);
-        if (IsCounterRoleEnabled(signalRole) && signalRole is EnemySignalRole.Restorer or EnemySignalRole.Bulwark or
-            EnemySignalRole.Jammer or EnemySignalRole.Disruptor)
-        {
-            var initialDelay = signalRole switch
-            {
-                EnemySignalRole.Jammer => 2.6f,
-                EnemySignalRole.Restorer => 3.0f,
-                EnemySignalRole.Bulwark => 3.4f,
-                _ => enemy.IsBoss ? 1.6f : enemy.IsElite ? 2.2f : 2.8f
-            };
-            enemy.ArmSignalAbility(initialDelay + enemy.Id % 3 * 0.35f);
-        }
+        ArmEnemySignalAbility(enemy);
         Enemies.Add(enemy);
         EnemySpawned?.Invoke(enemy);
         if (enemy.IsBoss)
@@ -1396,6 +1390,22 @@ public sealed class GameSession
         AnnouncementPositive = true;
         AnnouncementRemaining = campaignCleared || finalEscalationUnlocked ? 3.2f : 2.2f;
         WaveCompleted?.Invoke(waveNumber);
+    }
+
+    private void ArmEnemySignalAbility(EnemyInstance enemy)
+    {
+        if (!IsCounterRoleEnabled(enemy.SignalRole) || enemy.SignalRole is not
+            (EnemySignalRole.Restorer or EnemySignalRole.Bulwark or EnemySignalRole.Jammer or EnemySignalRole.Disruptor))
+            return;
+
+        var initialDelay = enemy.SignalRole switch
+        {
+            EnemySignalRole.Jammer => 2.6f,
+            EnemySignalRole.Restorer => 3.0f,
+            EnemySignalRole.Bulwark => 3.4f,
+            _ => enemy.IsBoss ? 1.6f : enemy.IsElite ? 2.2f : 2.8f
+        };
+        enemy.ArmSignalAbility(initialDelay + enemy.Id % 3 * 0.35f);
     }
 
     public void RefreshEnemySignalFormation()
@@ -1479,33 +1489,29 @@ public sealed class GameSession
         Effects.AddSplash(enemy.Position, ColorPalette.Orange, Challenge.CounterSuppressionRadius);
         Effects.AddFlash(enemy.Position, ColorPalette.Orange, 0.38f, enemy.Radius + 8);
         foreach (var tower in affected)
-        {
-            Effects.AddBeam(enemy.Position, tower.Position, ColorPalette.Orange, 0.40f);
             Effects.AddFlash(tower.Position, ColorPalette.Orange, 0.34f,
                 tower.Definition.Visual.Radius + 7);
-        }
     }
 
     private void TryEmitDisruption(EnemyInstance enemy)
     {
-        var interval = Challenge.CounterPressureInterval * (enemy.IsBoss ? 0.72f : enemy.IsElite ? 0.86f : 1f);
-        if (!enemy.TryActivateSignalAbility(interval)) return;
+        if (!enemy.TryActivateSignalAbility(Challenge.CounterPressureInterval)) return;
 
-        var radius = Challenge.CounterPressureRadius * (enemy.IsBoss ? 1.32f : enemy.IsElite ? 1.12f : 1f);
-        var duration = Challenge.CounterPressureDuration * (enemy.IsBoss ? 1.55f : enemy.IsElite ? 1.22f : 1f);
+        var radius = EnemySignalTuning.DisruptorReach(Challenge, enemy.Rank);
+        var duration = EnemySignalTuning.DisruptorPause(Challenge, enemy.Rank);
         var radiusSquared = radius * radius;
-        var affected = Towers.Where(tower => !tower.IsSandboxDisabled &&
+        var target = Towers.Where(tower => !tower.IsSandboxDisabled &&
                 Vector2.DistanceSquared(tower.Position, enemy.Position) <= radiusSquared)
-            .Where(tower => tower.ApplyDisruption(duration, 2.4f))
-            .ToArray();
-        if (affected.Length == 0) return;
+            .OrderByDescending(tower => tower.InvestedCredits)
+            .ThenBy(tower => Vector2.DistanceSquared(tower.Position, enemy.Position))
+            .ThenBy(tower => tower.Id)
+            .FirstOrDefault(tower => tower.ApplyDisruption(duration, 2.4f));
+        if (target is null) return;
 
-        Effects.AddSplash(enemy.Position, ColorPalette.Violet, radius);
-        foreach (var tower in affected.Take(5))
-        {
-            Effects.AddBeam(enemy.Position, tower.Position, ColorPalette.Violet, 0.38f);
-            Effects.AddFlash(tower.Position, ColorPalette.Violet, 0.22f, tower.Definition.Visual.Radius + 7);
-        }
+        Effects.AddFlash(enemy.Position, ColorPalette.Violet, 0.24f, enemy.Radius + 6);
+        Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Violet, 0.38f);
+        Effects.AddImpact(target.Position, ColorPalette.Violet, target.Definition.Visual.Radius + 7);
+        Effects.AddFlash(target.Position, ColorPalette.Violet, 0.26f, target.Definition.Visual.Radius + 7);
     }
 
     public void OnEnemyKilled(EnemyInstance enemy)

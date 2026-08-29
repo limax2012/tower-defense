@@ -153,6 +153,7 @@ public readonly record struct InputSnapshot(
     bool SandboxEnemyNextPressed = false,
     bool SandboxRankPressed = false,
     bool SandboxHealthPressed = false,
+    bool SandboxSignalPressed = false,
     bool LeftDown = false);
 
 public sealed class ViewportTransform
@@ -319,6 +320,7 @@ public sealed class InputRouter
             IsPressed(keyboard, _previousKeyboard, Keys.OemCloseBrackets),
             IsPressed(keyboard, _previousKeyboard, Keys.K),
             IsPressed(keyboard, _previousKeyboard, Keys.H),
+            IsPressed(keyboard, _previousKeyboard, Keys.J),
             platformPointer?.LeftDown ?? mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed);
         _previousKeyboard = keyboard;
         _previousMouse = mouse;
