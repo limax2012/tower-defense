@@ -85,9 +85,9 @@ The detailed use case for every tower and branch is documented in [STRATEGY_GUID
 
 ## Economy and progression
 
-Kill bounties retain full value through wave 10, then taper smoothly to about 80% at wave 20, 67% at wave 30, and 50% at wave 50, with a 40% deep-Endless floor. Wave-clear and early-call rewards are unchanged. Tower prices and combat statistics do not inflate with wave number.
+Kill bounties retain full value through wave 10 and begin their standard taper afterward. Every authored reward remains unchanged through wave 15. From wave 16 onward, each arena's total kill-and-clear income is stabilized against its wave-15 payout and grows by 2% of that anchor per wave. Early-call rewards remain separate and tower prices and combat statistics do not inflate with wave number.
 
-The bounty curve restrains reserve snowball without changing the opening. The required waves 21–30 create a natural use for mature reserves through Apex and completed coverage. Generated Endless begins after wave 30.
+The stabilized curve prevents dense late compositions and boss waves from producing disproportionate windfalls while preserving the opening exactly. Wave 21 now sustains wave-20 durability and the following waves continue upward instead of resetting beneath the defense that cleared the boss. Generated Endless begins after wave 30.
 
 ## Interpretation limits
 

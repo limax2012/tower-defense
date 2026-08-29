@@ -103,7 +103,7 @@ public sealed class WaveManager
     {
         if (!IsActive || _activeDefinition is null || _groupIndex < _activeDefinition.Groups.Count || !noLiveEnemies) return;
         var completedWave = CurrentWaveNumber;
-        session.Economy.AwardWave(completedWave);
+        session.AwardWaveCompletion(_activeDefinition);
         session.OnWaveCompleted(completedWave);
         _activeDefinition = null;
         _groupIndex = 0;

@@ -31,6 +31,8 @@ public sealed class GameSession
     private readonly BuffSystem _buffSystem = new();
     private readonly TacticalDefenseSystem _tacticalDefenseSystem = new();
     private readonly HashSet<int> _resolvedOutcomes = new();
+    private readonly WaveDefinition? _incomeAnchorWave;
+    private float _activeWaveIncomeScale = 1f;
     private int _nextEnemyId = 1;
     private int _nextTowerId = 1;
     private int _nextEmergencyDefenseId = 1;
@@ -157,9 +159,10 @@ public sealed class GameSession
             ChallengeCatalog.StartingCredits(mapDefinition, Difficulty, Challenge),
             Difficulty.StartingLives,
             unlimitedCredits: IsSandbox,
-            unlimitedLives: IsSandbox,
-            lateIncomeMultiplier: Difficulty.LateIncomeMultiplier);
+            unlimitedLives: IsSandbox);
         Waves = new WaveManager(waveSet.Waves);
+        _incomeAnchorWave = waveSet.Waves.FirstOrDefault(wave =>
+            wave.Number == GameConstants.LateIncomeAnchorWave);
         DamageResolver = new DamageResolver(this);
         Statistics = new RunStatistics(this);
         _towerSystem = new TowerSystem(TargetSelector);
@@ -1345,6 +1348,7 @@ public sealed class GameSession
 
     public void OnWaveStarted(WaveDefinition wave, int earlyCallBonus = 0)
     {
+        _activeWaveIncomeScale = IncomeScaleForWave(wave);
         EmergencyDirectPurchasesThisWave = 0;
         AnnouncementTitle = $"WAVE {wave.Number} // {wave.Archetype.ToUpperInvariant()}";
         var briefing = CounterPressureEnabled ? wave.Number switch
@@ -1374,7 +1378,7 @@ public sealed class GameSession
             ? $"Generated Endless begins at wave {GameConstants.GeneratedEndlessStartWave}."
             : finalEscalationUnlocked
                 ? "APEX PROMOTIONS UNLOCKED // 10 WAVES REMAIN"
-                : $"+{Economy.EffectiveWaveReward(waveNumber)} completion credits";
+                : $"+{EconomyService.EffectiveWaveReward(waveNumber, _activeWaveIncomeScale)} completion credits";
         AnnouncementPositive = true;
         AnnouncementRemaining = campaignCleared || finalEscalationUnlocked ? 3.2f : 2.2f;
         WaveCompleted?.Invoke(waveNumber);
@@ -1505,7 +1509,7 @@ public sealed class GameSession
     public void OnEnemyKilled(EnemyInstance enemy)
     {
         if (!_resolvedOutcomes.Add(enemy.Id)) return;
-        Economy.AwardKill(enemy.Reward, CurrentWave);
+        Economy.AwardKill(enemy.Reward, CurrentWave, _activeWaveIncomeScale);
         Effects.AddShatter(enemy.Position, enemy.Definition.Visual.PrimaryColor, enemy.Radius + 8);
         EnemyKilled?.Invoke(enemy);
     }
@@ -1608,6 +1612,8 @@ public sealed class GameSession
         session.CoOpPausePlayerId = data.IsPaused ? data.PausedByPlayerId : 0;
         session.Economy.RestoreSaveData(data.Economy);
         session.Waves.RestoreCoOpState(data.Waves);
+        if (session.Waves.ActiveWave is { } activeWave)
+            session._activeWaveIncomeScale = session.IncomeScaleForWave(activeWave);
         session.Speed = data.Speed >= 1.5f ? 2f : 1f;
         session.OverdriveCooldownRemaining = session.ProtocolsEnabled ? MathF.Max(0, data.OverdriveCooldownRemaining) : 0;
         session.AutoOverdriveTowerId = session.ProtocolsEnabled && data.Towers.Any(tower => tower.Id == data.AutoOverdriveTowerId)
@@ -1727,6 +1733,18 @@ public sealed class GameSession
         session.AnnouncementRemaining = 2.8f;
         session.AnnouncementPositive = true;
         return session;
+    }
+
+    public float IncomeScaleForWave(WaveDefinition wave) =>
+        WaveIncomeCurve.CalculateScale(wave, _incomeAnchorWave, _content.Enemies);
+
+    public float EffectiveKillRewardMultiplier(WaveDefinition wave) =>
+        EconomyService.EffectiveKillRewardMultiplier(wave.Number, IncomeScaleForWave(wave));
+
+    public void AwardWaveCompletion(WaveDefinition wave)
+    {
+        _activeWaveIncomeScale = IncomeScaleForWave(wave);
+        Economy.AwardWave(wave.Number, _activeWaveIncomeScale);
     }
 
     private void NormalizeTargetMode(TowerInstance tower)

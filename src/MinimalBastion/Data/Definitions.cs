@@ -25,13 +25,12 @@ public sealed class DifficultyDefinition
     public float EnemyHealthMultiplier { get; set; } = 1f;
     public float EnemySpeedMultiplier { get; set; } = 1f;
     public float StartingCreditsMultiplier { get; set; } = 1f;
-    public float LateIncomeMultiplier { get; set; } = 1f;
     public int StartingLives { get; set; } = 20;
     public string Accent { get; set; } = "#EC5062";
     public Color AccentColor => TowerVisualData.ParseColor(Accent);
     public string ModifierSummary =>
         $"ENEMY HP {EnemyHealthMultiplier * 100:0.#}% | SPEED {EnemySpeedMultiplier * 100:0.#}% | " +
-        $"START CREDITS {StartingCreditsMultiplier * 100:0.#}% | W11+ INCOME {LateIncomeMultiplier * 100:0.#}% | " +
+        $"START CREDITS {StartingCreditsMultiplier * 100:0.#}% | " +
         $"{StartingLives} {(StartingLives == 1 ? "LIFE" : "LIVES")} | {GameConstants.CampaignWaveCount} WAVES";
 }
 

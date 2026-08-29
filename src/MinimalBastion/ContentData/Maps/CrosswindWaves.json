@@ -129,10 +129,10 @@
       { "enemyId": "t2_runner", "count": 14, "spawnInterval": 0.11, "delayBefore": 0.13 }, { "enemyId": "t3_brute", "count": 10, "spawnInterval": 0.26, "delayBefore": 0.08 }, { "enemyId": "t4_aegis", "count": 6, "spawnInterval": 0.42, "delayBefore": 0.13 }, { "enemyId": "t5_regenerator", "count": 3, "spawnInterval": 0.64, "delayBefore": 0.18 },
       { "enemyId": "t5_regenerator", "rank": "Boss", "count": 1, "spawnInterval": 1.0, "delayBefore": 0.82 }
     ] },
-    { "number": 21, "archetype": "Rising Front", "briefing": "A fast but orderly front opens the campaign's final storm.", "healthMultiplier": 4.550, "speedMultiplier": 1.120, "groups": [
+    { "number": 21, "archetype": "Rising Front", "briefing": "A fast but orderly front opens the campaign's final storm.", "healthMultiplier": 5.136, "speedMultiplier": 1.120, "groups": [
       { "enemyId": "t2_runner", "count": 28, "spawnInterval": 0.11, "delayBefore": 0 }, { "enemyId": "t1_crawler", "count": 20, "spawnInterval": 0.21, "delayBefore": 0.16 }, { "enemyId": "t3_brute", "count": 18, "spawnInterval": 0.25, "delayBefore": 0.16 }, { "enemyId": "t4_aegis", "count": 10, "spawnInterval": 0.39, "delayBefore": 0.18 }, { "enemyId": "t5_regenerator", "count": 7, "spawnInterval": 0.58, "delayBefore": 0.24 }
     ] },
-    { "number": 22, "archetype": "Tailwind Spear", "briefing": "Separated runner spears test late-route coverage and reaction speed.", "healthMultiplier": 5.500, "speedMultiplier": 1.135, "groups": [
+    { "number": 22, "archetype": "Tailwind Spear", "briefing": "Separated runner spears test late-route coverage and reaction speed.", "healthMultiplier": 6.550, "speedMultiplier": 1.135, "groups": [
       { "enemyId": "t2_runner", "count": 22, "spawnInterval": 0.10, "delayBefore": 0 }, { "enemyId": "t2_runner", "rank": "Elite", "count": 1, "spawnInterval": 0.44, "delayBefore": 0.12 }, { "enemyId": "t3_brute", "count": 18, "spawnInterval": 0.25, "delayBefore": 0.32 }, { "enemyId": "t2_runner", "count": 24, "spawnInterval": 0.10, "delayBefore": 0.18 }, { "enemyId": "t4_aegis", "count": 12, "spawnInterval": 0.38, "delayBefore": 0.28 }, { "enemyId": "t2_runner", "count": 26, "spawnInterval": 0.09, "delayBefore": 0.16 }
     ] },
     { "number": 23, "archetype": "Headwind Armor", "briefing": "Heavy contacts advance behind short runner screens instead of one dense pack.", "healthMultiplier": 4.000, "speedMultiplier": 1.135, "groups": [

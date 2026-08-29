@@ -51,7 +51,7 @@ Competitive directives use the selected difficulty's opening economy without com
 - A Charge Forge exchanges a large permanent investment and remote build freedom for recurring stored Plates during active waves.
 - Apex promotions provide a compact late-game credit sink beginning with the final campaign act.
 
-The economy is intentionally tight during campaign openings and increasingly flexible later. Waves 21–30 absorb accumulated reserves through Apex and coverage investment; Endless health growth eventually outpaces a static defense.
+The economy is intentionally tight during campaign openings. Rewards are authored unchanged through wave 15; later kill-and-clear income follows a slowly rising arena-specific target so larger formations do not automatically create a reserve surplus. Waves 21–30 sustain the wave-20 pressure baseline and use Apex and completed coverage as compact late investments. Endless health growth eventually outpaces a static defense.
 
 ## Tower progression
 

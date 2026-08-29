@@ -2,44 +2,40 @@
   {
     "id": "easy",
     "displayName": "Easy",
-    "description": "Enemy health 90% | speed 98% | starting credits 113% | full campaign income.",
+    "description": "Enemy health 90% | speed 98% | starting credits 113%.",
     "enemyHealthMultiplier": 0.90,
     "enemySpeedMultiplier": 0.98,
     "startingCreditsMultiplier": 1.125,
-    "lateIncomeMultiplier": 1.0,
     "startingLives": 20,
     "accent": "#2AC275"
   },
   {
     "id": "normal",
     "displayName": "Medium",
-    "description": "Enemy health 100% | speed 100% | standard economy.",
+    "description": "Enemy health 100% | speed 100%.",
     "enemyHealthMultiplier": 1.0,
     "enemySpeedMultiplier": 1.0,
     "startingCreditsMultiplier": 1.0,
-    "lateIncomeMultiplier": 1.0,
     "startingLives": 12,
     "accent": "#2C7AE7"
   },
   {
     "id": "hard",
     "displayName": "Hard",
-    "description": "Enemy health 112% | speed 102% | standard economy.",
+    "description": "Enemy health 112% | speed 102%.",
     "enemyHealthMultiplier": 1.12,
     "enemySpeedMultiplier": 1.02,
     "startingCreditsMultiplier": 1.0,
-    "lateIncomeMultiplier": 1.0,
     "startingLives": 6,
     "accent": "#EC5062"
   },
   {
     "id": "bastion",
     "displayName": "Bastion",
-    "description": "Enemy health 112% | speed 102% | wave 11+ income 88% | one life.",
+    "description": "Enemy health 112% | speed 102% | one life.",
     "enemyHealthMultiplier": 1.12,
     "enemySpeedMultiplier": 1.02,
     "startingCreditsMultiplier": 1.0,
-    "lateIncomeMultiplier": 0.88,
     "startingLives": 1,
     "accent": "#7C53DA"
   }

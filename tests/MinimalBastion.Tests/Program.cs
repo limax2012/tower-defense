@@ -67,6 +67,7 @@ internal static class Program
             ("effect budget", EffectBudget),
             ("elite and boss ranks", EliteAndBossRanks),
             ("economy", EconomyRules),
+            ("late campaign income curve", LateCampaignIncomeCurve),
             ("placement rules", PlacementRules),
             ("wave final group", WaveFinalGroup),
             ("endless wave continuation", EndlessWaveContinuation),
@@ -439,16 +440,15 @@ internal static class Program
             "setup intel includes the final campaign act and capstone boss");
         Check.Nearly(1.12f, bastion.Difficulty.EnemyHealthMultiplier, "bastion health pressure");
         Check.Nearly(1.02f, bastion.Difficulty.EnemySpeedMultiplier, "bastion speed pressure");
-        Check.Nearly(0.88f, bastion.Difficulty.LateIncomeMultiplier, "bastion late-campaign income pressure");
-        Check.Nearly(1f, hard.Difficulty.LateIncomeMultiplier, "hard preserves standard campaign income");
         Check.True(bastion.Difficulty.ModifierSummary.Contains("ENEMY HP 112%") &&
             bastion.Difficulty.ModifierSummary.Contains("SPEED 102%") &&
-            bastion.Difficulty.ModifierSummary.Contains("W11+ INCOME 88%") &&
             bastion.Difficulty.ModifierSummary.EndsWith("1 LIFE | 30 WAVES"),
             "bastion selector exposes the tuned expert profile exactly");
+        var foundryWave11 = content.WaveSets[bastion.Map.Definition.WaveSet].Waves[10];
+        bastion.OnWaveStarted(foundryWave11);
         bastion.OnWaveCompleted(11);
-        Check.True(bastion.AnnouncementSubtitle?.StartsWith("+132 ", StringComparison.Ordinal) == true,
-            "bastion completion announcement shows its reduced late income");
+        Check.True(bastion.AnnouncementSubtitle?.StartsWith("+150 ", StringComparison.Ordinal) == true,
+            "wave 11 preserves the authored completion reward");
         Check.True(content.Difficulties["normal"].ModifierSummary.Contains("ENEMY HP 100%") &&
             content.Difficulties["normal"].ModifierSummary.Contains("START CREDITS 100%") &&
             content.Difficulties["normal"].ModifierSummary.EndsWith("12 LIVES | 30 WAVES"),
@@ -1703,14 +1703,14 @@ internal static class Program
         Check.Equal(8, EconomyService.CalculateKillReward(8, 10), "opening crawler reward");
         Check.Equal(6, EconomyService.CalculateKillReward(8, 20), "campaign crawler reward");
         Check.Equal(1, EconomyService.CalculateKillReward(1, 100), "positive rewards retain a one-credit floor");
-        Check.Equal(8, EconomyService.CalculateKillReward(8, 10, 0.88f),
-            "late-income pressure does not affect opening kills");
-        Check.Equal(7, EconomyService.CalculateKillReward(10, 20, 0.88f),
-            "late-income pressure reduces campaign kills");
-        Check.Equal(60, EconomyService.CalculateWaveReward(2, 0.88f),
-            "late-income pressure does not affect opening completion rewards");
-        Check.Equal(211, EconomyService.CalculateWaveReward(20, 0.88f),
-            "late-income pressure reduces campaign completion rewards");
+        Check.Equal(4, EconomyService.CalculateKillReward(8, 10, 0.5f),
+            "wave income scale applies to kill rewards");
+        Check.Equal(4, EconomyService.CalculateKillReward(10, 20, 0.5f),
+            "wave income scale composes with the standard bounty taper");
+        Check.Equal(30, EconomyService.CalculateWaveReward(2, 0.5f),
+            "wave income scale applies to completion rewards");
+        Check.Equal(120, EconomyService.CalculateWaveReward(20, 0.5f),
+            "wave income scale applies consistently in the late campaign");
         economy.LoseLives(3);
         Check.Equal(17, economy.Lives, "lives");
         Check.Equal(1, economy.EscapedEnemies, "escape count");
@@ -1726,6 +1726,35 @@ internal static class Program
         Check.Equal(int.MaxValue, saturated.WaveCreditsEarned, "deep-run wave income saturates");
         Check.Equal(int.MaxValue, saturated.SaleCreditsRecovered, "deep-run sale recovery saturates");
         Check.Equal(int.MaxValue, EconomyService.CalculateWaveReward(int.MaxValue), "extreme wave reward remains nonnegative");
+    }
+
+    private static void LateCampaignIncomeCurve()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        foreach (var map in content.Maps.Values)
+        {
+            var waves = content.WaveSets[map.WaveSet].Waves;
+            var anchor = waves.Single(wave => wave.Number == GameConstants.LateIncomeAnchorWave);
+            var anchorIncome = WaveIncomeCurve.CalculateBaseIncome(anchor, content.Enemies);
+            foreach (var wave in waves.Take(GameConstants.LateIncomeAnchorWave))
+            {
+                Check.Nearly(1f, WaveIncomeCurve.CalculateScale(wave, anchor, content.Enemies),
+                    $"{map.Id} wave {wave.Number} preserves the opening economy");
+                Check.Equal(WaveIncomeCurve.CalculateBaseIncome(wave, content.Enemies),
+                    WaveIncomeCurve.CalculateScaledIncome(wave, anchor, content.Enemies),
+                    $"{map.Id} wave {wave.Number} keeps every pre-anchor credit");
+            }
+
+            foreach (var wave in waves.Skip(GameConstants.LateIncomeAnchorWave))
+            {
+                var expected = anchorIncome *
+                    (1f + GameConstants.LateIncomeGrowthPerWave * (wave.Number - GameConstants.LateIncomeAnchorWave));
+                var actual = WaveIncomeCurve.CalculateScaledIncome(wave, anchor, content.Enemies);
+                Check.True(MathF.Abs(actual - expected) <= expected * 0.04f,
+                    $"{map.Id} wave {wave.Number} follows the smooth late-campaign income target");
+            }
+        }
     }
 
     private static void EconomyTelemetry()
@@ -3954,8 +3983,8 @@ internal static class Program
             foreach (var wave in waves.Skip(GameConstants.ApexUnlockWave - 1))
             {
                 var durability = WaveDurability(wave, content.Enemies);
-                Check.True(durability >= previous * 0.90f,
-                    $"{map.Id} wave {wave.Number} does not collapse below the preceding pressure");
+                Check.True(durability >= previous,
+                    $"{map.Id} wave {wave.Number} sustains or raises the preceding pressure");
                 Check.True(durability <= previous * 1.30f,
                     $"{map.Id} wave {wave.Number} avoids an abrupt durability cliff");
                 previous = durability;
