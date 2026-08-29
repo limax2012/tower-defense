@@ -631,6 +631,33 @@ internal static class Program
             session.ResolveEnemySignalRole(wave6, 1, (wave6.Groups[1].Count - 1) / 2, wave6.Groups[1]),
             "mature Gauntlet waves leave room between carrier formations");
 
+        var surgeSession = new GameSession(content, "relay_divide", "bastion", "close_quarters");
+        var surgeWave14 = surgeSession.Waves.GetAuthoredWave(14)!;
+        var surgeWave14Signals = surgeWave14.Groups.Select((group, groupIndex) =>
+                surgeSession.ResolveEnemySignalRole(surgeWave14, groupIndex, (group.Count - 1) / 2, group))
+            .Where(role => role != EnemySignalRole.None)
+            .ToArray();
+        Check.Equal(1, surgeWave14Signals.Count(role => role == EnemySignalRole.Jammer),
+            "mature Gauntlet rotation includes a jammer on Surge Divide wave fourteen");
+        Check.Equal(3, surgeWave14Signals.Count(role => role == EnemySignalRole.Bulwark),
+            "mature Gauntlet rotation does not turn every eligible ordinary group into a bulwark");
+        var matureRoles = Enum.GetValues<EnemySignalRole>().Where(role => role is not
+            (EnemySignalRole.None or EnemySignalRole.Disruptor));
+        foreach (var mapId in content.Maps.Keys)
+        {
+            var mapSession = new GameSession(content, mapId, "bastion", "close_quarters");
+            var mapSignals = Enumerable.Range(6, GameConstants.CampaignWaveCount - 5)
+                .SelectMany(waveNumber =>
+                {
+                    var wave = mapSession.Waves.GetAuthoredWave(waveNumber)!;
+                    return wave.Groups.Select((group, groupIndex) => mapSession.ResolveEnemySignalRole(
+                        wave, groupIndex, (group.Count - 1) / 2, group));
+                })
+                .ToHashSet();
+            Check.True(matureRoles.All(mapSignals.Contains),
+                $"mature Gauntlet waves rotate through every support and jammer role on {mapId}");
+        }
+
         session.SpawnEnemy("t1_crawler", 1, 1, signalRole: EnemySignalRole.Accelerator);
         session.SpawnEnemy("t1_crawler", 1, 1);
         session.RefreshEnemySignalFormation();

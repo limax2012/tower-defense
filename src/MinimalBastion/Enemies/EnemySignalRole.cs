@@ -39,7 +39,7 @@ public static class EnemySignalSchedule
                 ? EnemySignalRole.Bulwark
                 : group.EnemyId.Contains("regenerator", StringComparison.OrdinalIgnoreCase)
                     ? EnemySignalRole.Restorer
-                    : roles[(wave.Number + groupIndex) % roles.Length];
+                    : roles[((wave.Number + groupIndex) / 2) % roles.Length];
         return role switch
         {
             EnemySignalRole.Accelerator or EnemySignalRole.Restorer or EnemySignalRole.Bulwark
