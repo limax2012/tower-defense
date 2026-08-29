@@ -554,7 +554,7 @@ public sealed class VisualVerificationGame : Game
         scenes.Add(Capture("06b-threat-library-contrast.png", ui, GameState.TowerLibrary, null));
         _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = 6 });
         Require(ui.SelectedLibraryEnemyId == "signal:accelerator",
-            "Tactical Library includes signal-carrier roles beside base enemies.", assertions);
+            "Tactical Library includes signal roles beside base enemies.", assertions);
         scenes.Add(Capture("06b1-signal-role-library.png", ui, GameState.TowerLibrary, null));
         Require(ui.LibraryTowerCount == content.Towers.Count &&
                 ui.LibraryThreatCount == content.Enemies.Count + Enum.GetValues<EnemySignalRole>().Count(role => role != EnemySignalRole.None) &&
@@ -576,6 +576,12 @@ public sealed class VisualVerificationGame : Game
         _ = ui.HandleTitleTowerLibrary(Pointer(850, 57, leftPressed: true));
         Require(ui.LibraryShowsCampaign, "Tactical Library contrast scene opens campaign wave scaling.", assertions);
         scenes.Add(Capture("06c-campaign-library-contrast.png", ui, GameState.TowerLibrary, null));
+        for (var mapIndex = 2; mapIndex <= content.Maps.Count; mapIndex++)
+        {
+            _ = ui.HandleTitleTowerLibrary(Pointer(0, 0) with { TowerHotkey = mapIndex });
+            scenes.Add(Capture($"06c{mapIndex}-campaign-library-map-{mapIndex}.png", ui,
+                GameState.TowerLibrary, null));
+        }
         Require(ColorPalette.ContrastRatio(
             ColorPalette.BalancedAccentText(ColorPalette.Gold, ColorPalette.PanelAlt),
             ColorPalette.PanelAlt) >= 2.55f,

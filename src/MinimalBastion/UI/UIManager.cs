@@ -4172,8 +4172,8 @@ public sealed class UIManager
         DrawFittedText(batch, $"MAP-SPECIFIC WAVES W1-W{visibleWaveCount}  |  DIFFICULTIES SCALE THE SAME ROSTER",
             new Vector2(detailPanel.X + 18, detailPanel.Y + 68),
             LibraryAccentText(mapAccent, ColorPalette.Panel), 0.40f, detailPanel.Width - 238);
-        DrawFittedText(batch, "GAUNTLET: W2 ACCEL | W3 REPAIR | W4 SHIELD | W5 JAMMER | W6+ CARRIERS | ELITE/BOSS DISRUPT",
-            new Vector2(detailPanel.X + 18, detailPanel.Y + 84), ColorPalette.Violet, 0.34f,
+        DrawFittedText(batch, "GAUNTLET SIGNALS IN [BRACKETS]: ACC ACCELERATOR | RES RESTORER | BUL BULWARK | JAM JAMMER | DIS DISRUPTOR",
+            new Vector2(detailPanel.X + 18, detailPanel.Y + 84), ColorPalette.Violet, 0.32f,
             detailPanel.Width - 238);
         DrawRoutePreview(batch, p, new Rectangle(detailPanel.Right - 202, detailPanel.Y + 39, 184, 54),
             selectedMap.Path, selectedMap.PathBase, selectedMap.PathAccent);
@@ -4187,7 +4187,7 @@ public sealed class UIManager
             var column = index / 10;
             var row = index % 10;
             var rect = new Rectangle(detailPanel.X + 18 + column * (waveColumnWidth + waveGap),
-                detailPanel.Y + 116 + row * 41, waveColumnWidth, 37);
+                detailPanel.Y + 116 + row * 42, waveColumnWidth, 39);
             DrawCampaignWaveRow(batch, p, rect, waves[index]);
         }
 
@@ -4306,7 +4306,7 @@ public sealed class UIManager
                 "W5 JAMMER WEAKENS EVERY TOWER IN RANGE",
                 "ELITE + BOSS GROUP DISRUPTION",
                 "FULL ROSTER + ALL SYSTEMS",
-                "RULE: SIGNAL CARRIERS SUPPORT FORMATIONS"
+                "RULE: SIGNAL ENEMIES SUPPORT FORMATIONS"
             ];
         }
         var available = Math.Max(0, totalTowerCount - challenge.ExcludedTowerIds.Count);
@@ -4334,7 +4334,7 @@ public sealed class UIManager
         lines.Add(challenge.Id.ToLowerInvariant() switch
         {
             "standard" => "RULE: ALL SYSTEMS AVAILABLE",
-            "close_quarters" => "RULE: SIGNAL CARRIERS SUPPORT FORMATIONS",
+            "close_quarters" => "RULE: SIGNAL ENEMIES SUPPORT FORMATIONS",
             "core_six" => "RULE: SIX-TOWER ROSTER LOCK",
             "no_reserves" => "RULE: TOWERS + UPGRADES ONLY; NO SALES",
             _ => $"RULE: {challenge.Description.ToUpperInvariant()}"
@@ -4374,7 +4374,7 @@ public sealed class UIManager
             "NEAREST: SHORTEST DISTANCE TO TOWER",
             "FASTEST: HIGHEST CURRENT MOVE SPEED",
             "ARMORED: HIGHEST CURRENT ARMOR",
-            "SUPPORT (GAUNTLET): SIGNAL CARRIERS, THEN STRONGEST"
+            "SUPPORT (GAUNTLET): SIGNAL ENEMIES, THEN STRONGEST"
         ]));
         cards.Add(("STATUS RULES", ColorPalette.Coral, "hexagon", StatusReferenceLines()));
         cards.Add(("TOWER PROTOCOLS", ColorPalette.Auto, "square",
@@ -4428,7 +4428,7 @@ public sealed class UIManager
         {
             $"START CREDITS x{challenge.StartingCreditsMultiplier:0.00}",
             "FULL ROSTER + ALL SYSTEMS",
-            "RULE: SIGNAL CARRIERS SUPPORT FORMATIONS"
+            "RULE: SIGNAL ENEMIES SUPPORT FORMATIONS"
         };
         lines.Add($"SIGNALS: {string.Join(" / ", roles.Take(3))}");
         if (roles.Length > 3) lines.Add(string.Join(" / ", roles.Skip(3)));
@@ -4493,8 +4493,8 @@ public sealed class UIManager
             ColorPalette.Navy, compact ? 0.40f : 0.46f, compact ? rect.Width - 126 : 190);
         DrawTextRight(batch, $"{wave.Contacts} | HP x{wave.HealthMultiplier:0.00} | SPD x{wave.SpeedMultiplier:0.00}",
             new Vector2(rect.Right - 8, rect.Y + 4), LibraryAccentText(accent, ColorPalette.PanelAlt), compact ? 0.31f : 0.38f);
-        DrawStrictFittedText(batch, $"{wave.Threats}  |  {wave.Roster}", new Vector2(rect.X + 10, rect.Y + 20),
-            ColorPalette.Muted, compact ? 0.31f : 0.35f, rect.Width - 20, 0.24f);
+        DrawWrappedText(batch, wave.Roster, new Rectangle(rect.X + 10, rect.Y + 19, rect.Width - 20, rect.Height - 19),
+            ColorPalette.Muted, compact ? 0.27f : 0.31f, 2);
     }
 
     private static Color MapLibraryAccent(string pathStyle) => pathStyle.ToLowerInvariant() switch
@@ -4665,9 +4665,9 @@ public sealed class UIManager
         DrawEnemyInfoCard(batch, p, new Rectangle(panel.X + 594, profileY, 278, 174), "COUNTERPLAY", ColorPalette.Green, cards[2], 0.43f, 22);
 
         DrawText(batch, "IDENTIFICATION", new Vector2(panel.X + 18, panel.Y + 322), ColorPalette.Navy, 0.62f);
-        DrawFittedText(batch, $"A carrier displays the {threat.SymbolLabel.ToLowerInvariant()} glyph inside its normal enemy body.",
+        DrawFittedText(batch, $"A signal enemy displays the {threat.SymbolLabel.ToLowerInvariant()} glyph inside its normal body.",
             new Vector2(panel.X + 18, panel.Y + 352), ColorPalette.Ink, 0.49f, panel.Width - 36);
-        DrawFittedText(batch, "This is a modifier, not a separate body type. Crawler, Runner, Brute, Aegis, and Regenerator carriers retain their normal base profile.",
+        DrawFittedText(batch, "This is a modifier, not a separate body type. Signal Crawlers, Runners, Brutes, Aegis, and Regenerators retain their normal base profile.",
             new Vector2(panel.X + 18, panel.Y + 382), ColorPalette.Muted, 0.46f, panel.Width - 36);
         DrawFittedText(batch, "Signal roles can modify any compatible base enemy in Signal Gauntlet.",
             new Vector2(panel.X + 18, panel.Y + 430), LibraryAccentText(threat.PrimaryColor, ColorPalette.Panel), 0.46f, panel.Width - 36);
@@ -4675,9 +4675,9 @@ public sealed class UIManager
 
     private static string SignalRoleDescription(EnemySignalRole role) => role switch
     {
-        EnemySignalRole.Accelerator => "A passive formation carrier that increases the movement speed of nearby threats.",
-        EnemySignalRole.Restorer => "A support carrier that periodically repairs nearby damaged threats.",
-        EnemySignalRole.Bulwark => "A support carrier that periodically grants temporary shielding to nearby threats.",
+        EnemySignalRole.Accelerator => "A signal enemy that passively increases the movement speed of nearby threats.",
+        EnemySignalRole.Restorer => "A signal enemy that periodically repairs nearby damaged threats.",
+        EnemySignalRole.Bulwark => "A signal enemy that periodically grants temporary shielding to nearby threats.",
         EnemySignalRole.Jammer => "An attacker that periodically weakens every combat tower in its pulse radius.",
         EnemySignalRole.Disruptor => "A precision attacker that periodically pauses one high-investment tower in reach.",
         _ => "No additional signal behavior."
@@ -4690,27 +4690,27 @@ public sealed class UIManager
         {
             EnemySignalRole.Accelerator =>
             [
-                [$"NEARBY THREAT SPEED +{rules.CounterHasteBonus:P0}", "PASSIVE WHILE CARRIER LIVES", "DOES NOT HASTE ITSELF"],
-                [$"FORMATION RADIUS {rules.CounterSupportRadius:0}", "UPDATES CONTINUOUSLY", "MULTIPLE CARRIERS DO NOT STACK"],
-                ["FOCUS THE SIGNAL CARRIER", "SLOW THE FORMATION", "COVER THE ROUTE BEFORE THE AURA"]
+                [$"NEARBY THREAT SPEED +{rules.CounterHasteBonus:P0}", "PASSIVE WHILE SIGNAL ENEMY LIVES", "DOES NOT HASTE ITSELF"],
+                [$"FORMATION RADIUS {rules.CounterSupportRadius:0}", "UPDATES CONTINUOUSLY", "MULTIPLE SIGNALS DO NOT STACK"],
+                ["FOCUS THE SIGNAL ENEMY", "SLOW THE FORMATION", "COVER THE ROUTE BEFORE THE AURA"]
             ],
             EnemySignalRole.Restorer =>
             [
                 [$"RESTORES {rules.CounterRepairFraction:P0} MAX HEALTH", "AFFECTS UP TO 7 NEARBY THREATS", "ONLY DAMAGED HEALTH IS RESTORED"],
                 [$"PULSE EVERY {normalInterval:0.#}s", $"SUPPORT RADIUS {rules.CounterSupportRadius:0}", "FIRST PULSE IS DELAYED"],
-                ["BURST DOWN THE CARRIER", "MAINTAIN CONTINUOUS DAMAGE", "SEPARATE OR CONTROL THE GROUP"]
+                ["BURST DOWN THE SIGNAL ENEMY", "MAINTAIN CONTINUOUS DAMAGE", "SEPARATE OR CONTROL THE GROUP"]
             ],
             EnemySignalRole.Bulwark =>
             [
                 [$"GRANTS {rules.CounterShieldFraction:P0} MAX-HEALTH SHIELD", $"SHIELD CAP +{rules.CounterShieldCapacityFraction:P0}", "SHIELD ABSORBS DAMAGE BEFORE ARMOR"],
                 [$"PULSE EVERY {normalInterval:0.#}s", $"SUPPORT RADIUS {rules.CounterSupportRadius:0}", "AFFECTS UP TO 7 NEARBY THREATS"],
-                ["REMOVE THE CARRIER FIRST", "USE SHIELD-BYPASSING PRESSURE", "BREAK THE FORMATION WITH CONTROL"]
+                ["REMOVE THE SIGNAL ENEMY FIRST", "USE SHIELD-BYPASSING PRESSURE", "BREAK THE FORMATION WITH CONTROL"]
             ],
             EnemySignalRole.Jammer =>
             [
                 [$"ATTACK RATE -{rules.CounterSuppressionRatePenalty:P0}", $"DAMAGE -{rules.CounterSuppressionDamagePenalty:P0}", "SUPPRESSES EVERY COMBAT TOWER IN RANGE"],
                 [$"AREA PULSE EVERY {normalInterval:0.#}s", $"PULSE RADIUS {rules.CounterSuppressionRadius:0}", $"SUPPRESSION LASTS {rules.CounterSuppressionDuration:0.#}s"],
-                ["FOCUS THE CARRIER", "SPREAD CRITICAL DAMAGE SOURCES", "PLACE RANGE OUTSIDE ITS REACH"]
+                ["FOCUS THE SIGNAL ENEMY", "SPREAD CRITICAL DAMAGE SOURCES", "PLACE RANGE OUTSIDE ITS REACH"]
             ],
             EnemySignalRole.Disruptor =>
             [
@@ -4806,8 +4806,13 @@ public sealed class UIManager
         public static CampaignWaveReference From(WaveDefinition wave, IReadOnlyDictionary<string, EnemyDefinition> enemies)
         {
             var intel = WaveIntel.Analyze(wave, enemies);
-            var roster = string.Join(" + ", wave.Groups
-                .GroupBy(group => (group.EnemyId, group.Rank))
+            var rosterEntries = wave.Groups
+                .SelectMany((group, groupIndex) => Enumerable.Range(0, group.Count)
+                    .Select(spawnedInGroup => (group.EnemyId, group.Rank,
+                        SignalRole: EnemySignalSchedule.Resolve(wave, groupIndex, spawnedInGroup, group))))
+                .ToArray();
+            var roster = string.Join(" + ", rosterEntries
+                .GroupBy(entry => (entry.EnemyId, entry.Rank))
                 .Select(groups =>
             {
                 var first = groups.First();
@@ -4823,11 +4828,26 @@ public sealed class UIManager
                 };
                 var rank = first.Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase) ? "E-" :
                     first.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase) ? "B-" : "";
-                return $"{groups.Sum(group => group.Count)} {rank}{compactName}";
+                var signals = groups.Where(entry => entry.SignalRole != EnemySignalRole.None)
+                    .GroupBy(entry => entry.SignalRole)
+                    .Select(signalGroup => $"{(signalGroup.Count() > 1 ? signalGroup.Count().ToString() : "")}{SignalCode(signalGroup.Key)}")
+                    .ToArray();
+                var signalSuffix = signals.Length == 0 ? "" : $"[{string.Join(",", signals)}]";
+                return $"{groups.Count()} {rank}{compactName}{signalSuffix}";
             }));
             return new CampaignWaveReference(wave.Number, wave.Archetype, wave.Groups.Sum(group => group.Count),
                 wave.HealthMultiplier, wave.SpeedMultiplier, intel.CompactThreats, roster);
         }
+
+        private static string SignalCode(EnemySignalRole role) => role switch
+        {
+            EnemySignalRole.Accelerator => "ACC",
+            EnemySignalRole.Restorer => "RES",
+            EnemySignalRole.Bulwark => "BUL",
+            EnemySignalRole.Jammer => "JAM",
+            EnemySignalRole.Disruptor => "DIS",
+            _ => ""
+        };
     }
 
     private void DrawTowerLibraryDetails(SpriteBatch batch, PrimitiveRenderer p, TowerDefinition definition, Rectangle panel)

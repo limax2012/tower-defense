@@ -78,7 +78,7 @@ Wave 21 unlocks one authored Apex promotion for completed level-three towers. Ap
 - **Siege Mortar:** predictive long-range area fire. It uses current target movement at launch and authored impact caps to prevent unbounded packed-wave damage.
 - **Prism Beam:** sustained durable-target pressure and Expose support.
 
-Targeting remains a player-controlled tactical layer. Signal Gauntlet adds Support, which prioritizes its signal carriers; Sandbox also exposes it for controlled signal tests. The general modes weight route progress, health, distance, speed, or armor. A targeting choice opens a menu and does not change until the replacement is confirmed.
+Targeting remains a player-controlled tactical layer. Signal Gauntlet adds Support, which prioritizes its signal enemies; Sandbox also exposes it for controlled signal tests. The general modes weight route progress, health, distance, speed, or armor. A targeting choice opens a menu and does not change until the replacement is confirmed.
 
 ## Protocols and automatic activation
 
@@ -96,19 +96,19 @@ The Charge Forge produces stored Plates only while enemies are being fought. Its
 
 Five base enemy profiles cover light, fast, armored, shielding, and regenerating pressure, with Standard, Elite, and Boss ranks. Authored waves combine profiles and rank pressure per arena.
 
-Signal Gauntlet adds visible carrier roles:
+Signal Gauntlet adds visible signal roles to ordinary enemies:
 
-- **Accelerator:** increases nearby enemy speed by 20% while the carrier remains in formation range.
+- **Accelerator:** increases nearby enemy speed by 20% while the signal enemy remains in formation range.
 - **Restorer:** repairs nearby enemies for 10% of maximum health every 5 seconds.
 - **Bulwark:** grants nearby shields equal to 10% of maximum health every 5 seconds, up to a 20% shield reserve.
 - **Jammer:** weakens the rate and damage of every combat tower in its pulse radius for a short duration.
 - **Disruptor:** every five seconds, pauses the highest-investment tower in reach. Rank increases its single-target pause and reach; a recovery lockout prevents multiple Disruptors from repeatedly disabling the same tower at once.
 
-Each arena owns its authored wave composition. Difficulty profiles scale that same arena roster, while Signal Gauntlet deterministically overlays carrier roles: Accelerator appears on wave 2, Restorer on wave 3, Bulwark on wave 4, Jammer on wave 5, later formations alternate carriers, and elite or boss groups use Disruptor. Sandbox authored-wave replays use this overlay so formations can be inspected with unlimited resources; manual Sandbox spawning remains the controlled way to isolate any enemy, rank, health scale, or signal role.
+Each arena owns its authored wave composition. Difficulty profiles scale that same arena roster, while Signal Gauntlet deterministically assigns signal roles: Accelerator appears on wave 2, Restorer on wave 3, Bulwark on wave 4, Jammer on wave 5, later formations alternate signal enemies, and elite or boss groups use Disruptor. The Campaign Library marks the exact affected enemies with bracketed signal codes and counts. Sandbox authored-wave replays use these assignments so formations can be inspected with unlimited resources; manual Sandbox spawning remains the controlled way to isolate any enemy, rank, health scale, or signal role.
 
 Shield is a separate temporary durability pool above health. Ordinary hits remove raw shield before armor mitigation is evaluated; shield-bypassing attacks skip that pool and damage health through the normal armor calculation.
 
-Carriers render above ordinary enemies, use the same in-body glyphs in combat and the Tactical Library, and show their support relationship through aura/recipient feedback.
+Signal enemies render above ordinary enemies, use the same in-body glyphs in combat and the Tactical Library, and show their support relationship through aura/recipient feedback.
 
 Core statuses are Slow, Stun, Expose, and Armor Break. Their glyphs are distinct and can coexist. Damage resolution applies armor, shields, pierce, rank modifiers, Expose, Armor Break, burn, splash caps, and source attribution deterministically.
 

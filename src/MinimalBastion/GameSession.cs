@@ -1287,28 +1287,10 @@ public sealed class GameSession
     public EnemySignalRole ResolveEnemySignalRole(WaveDefinition wave, int groupIndex, int spawnedInGroup,
         WaveGroupDefinition group)
     {
-        if (!CounterPressureEnabled || wave.Number < 2 || group.Count <= 0) return EnemySignalRole.None;
-        if (Enum.TryParse<EnemyRank>(group.Rank, true, out var rank) && rank is EnemyRank.Elite or EnemyRank.Boss)
-            return CounterAttackersEnabled ? EnemySignalRole.Disruptor : EnemySignalRole.None;
-
-        var carrierIndex = (group.Count - 1) / 2;
-        if (spawnedInGroup != carrierIndex) return EnemySignalRole.None;
-        if (wave.Number >= 6 && (wave.Number + groupIndex) % 2 != 0) return EnemySignalRole.None;
-
-        EnemySignalRole[] roles =
-        [
-            EnemySignalRole.Accelerator,
-            EnemySignalRole.Restorer,
-            EnemySignalRole.Bulwark,
-            EnemySignalRole.Jammer
-        ];
-        EnemySignalRole role;
-        if (wave.Number <= 5)
-            role = groupIndex < wave.Number - 1 ? roles[groupIndex] : EnemySignalRole.None;
-        else if (group.EnemyId.Contains("aegis", StringComparison.OrdinalIgnoreCase)) role = EnemySignalRole.Bulwark;
-        else if (group.EnemyId.Contains("regenerator", StringComparison.OrdinalIgnoreCase)) role = EnemySignalRole.Restorer;
-        else role = roles[(wave.Number + groupIndex) % roles.Length];
-        return IsCounterRoleEnabled(role) ? role : EnemySignalRole.None;
+        return CounterPressureEnabled
+            ? EnemySignalSchedule.Resolve(wave, groupIndex, spawnedInGroup, group,
+                CounterSupportEnabled, CounterAttackersEnabled)
+            : EnemySignalRole.None;
     }
 
     internal void ConfigureCounterPressureSimulation(bool supportEnabled, bool attackersEnabled)
