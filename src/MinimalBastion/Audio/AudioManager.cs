@@ -139,14 +139,16 @@ public sealed class AudioManager : IDisposable
         }
     }
 
-    public void Attach(GameSession session)
+    public void Attach(GameSession session, bool preserveMusic = false)
     {
         if (ReferenceEquals(_attachedSession, session)) return;
         _attachedSession = session;
         _leakCooldown = 0;
         _bossPhaseCooldown = 0;
         _defeatCuePlayed = false;
-        SwitchMusic(session.Map.Definition.Id);
+        var themeId = session.Map.Definition.Id;
+        if (preserveMusic && HasActiveGameplayMusic()) _musicThemeId = themeId.ToLowerInvariant();
+        else SwitchMusic(themeId);
         session.TowerPlaced += _ => Play(Cue.Place, 0.72f);
         session.TowerUpgraded += (_, _) => Play(Cue.Upgrade, 0.78f);
         session.TowerSold += (_, _) => Play(Cue.Sell, 0.62f);
@@ -166,14 +168,14 @@ public sealed class AudioManager : IDisposable
         session.DamageResolver.DamageApplied += OnDamageApplied;
     }
 
-    public void Detach()
+    public void Detach(bool preserveMusic = false)
     {
         _attachedSession = null;
         _leakCooldown = 0;
         _bossPhaseCooldown = 0;
         _defeatCuePlayed = false;
         _towerImpactCooldowns.Clear();
-        SwitchMusic("menu");
+        if (!preserveMusic || !HasActiveGameplayMusic()) SwitchMusic("menu");
     }
 
     public void PlayUiConfirm() => Play(Cue.UiConfirm, 0.42f);
@@ -295,6 +297,10 @@ public sealed class AudioManager : IDisposable
         StopMusicPlayback();
         TryStartMusic(normalized);
     }
+
+    private bool HasActiveGameplayMusic() =>
+        _gameplayPlaylistActive ||
+        (_musicInstance is not null && !_musicThemeId.Equals("menu", StringComparison.OrdinalIgnoreCase));
 
     private void TryStartMusic(string themeId)
     {

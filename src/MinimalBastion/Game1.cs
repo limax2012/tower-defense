@@ -633,12 +633,13 @@ public sealed class Game1 : Game
         }
     }
 
-    private void BeginHostingCoOp(GameSession? restoredSession = null, int? saveSlot = null)
+    private void BeginHostingCoOp(GameSession? restoredSession = null, int? saveSlot = null,
+        bool preserveMusic = false)
     {
-        CleanupNetwork();
+        CleanupNetwork(preserveMusic);
         try
         {
-            AssignSession(restoredSession);
+            AssignSession(restoredSession, preserveMusic);
             _activeSaveSlot = saveSlot is > SaveSlotRepository.AutosaveSlot ? saveSlot : null;
             _lastAutosaveAttemptedWave = restoredSession?.CurrentWave ?? -1;
             _networkCancellation = new CancellationTokenSource();
@@ -1182,7 +1183,7 @@ public sealed class Game1 : Game
         SyncRemoteCoOpCursor();
     }
 
-    private void CleanupNetwork()
+    private void CleanupNetwork(bool preserveMusic = false)
     {
         var pendingConnection = _connectionTask;
         _connectionTask = null;
@@ -1215,7 +1216,7 @@ public sealed class Game1 : Game
         _joinEndpoint = null;
         _joinCode = "";
         _reconnectRetryRemaining = 0;
-        AssignSession(null);
+        AssignSession(null, preserveMusic);
         _activeSaveSlot = null;
     }
 
@@ -1567,17 +1568,18 @@ public sealed class Game1 : Game
         try
         {
             var restored = SaveGameStore.Load(_content, slot);
+            var preserveMusic = _session is not null;
             if (hostCoOp)
             {
                 _ui.SetSaveState(true, $"Hosting {SaveSlotLabel(slot).ToLowerInvariant()}; waiting for player 2.");
-                BeginHostingCoOp(restored, slot);
+                BeginHostingCoOp(restored, slot, preserveMusic);
                 return true;
             }
 
-            CleanupNetwork();
+            CleanupNetwork(preserveMusic);
             var resumedFromCoOp = restored.IsCoOp;
             restored.ConfigureSolo();
-            AssignSession(restored);
+            AssignSession(restored, preserveMusic);
             _activeSaveSlot = slot > SaveSlotRepository.AutosaveSlot ? slot : null;
             _lastAutosaveAttemptedWave = restored.CurrentWave;
             _ui.SetSaveState(true, resumedFromCoOp
@@ -1968,15 +1970,15 @@ public sealed class Game1 : Game
     }
 #endif
 
-    private void AssignSession(GameSession? session)
+    private void AssignSession(GameSession? session, bool preserveMusic = false)
     {
         _session = session;
         _lastRecordedResultKey = "";
         if (session is not null)
         {
-            _audio?.Attach(session);
+            _audio?.Attach(session, preserveMusic);
         }
-        else _audio?.Detach();
+        else _audio?.Detach(preserveMusic);
     }
 
     protected override void Dispose(bool disposing)
