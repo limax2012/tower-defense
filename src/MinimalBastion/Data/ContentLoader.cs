@@ -72,7 +72,7 @@ public sealed class ContentLoader
             .GroupBy(x => x.Signature, StringComparer.Ordinal)
             .FirstOrDefault(group => group.Count() > 1);
         if (duplicatedRoster is not null)
-            throw new InvalidDataException($"Maps {string.Join(", ", duplicatedRoster.Select(x => x.Map.Id))} use identical wave rosters; each arena requires independently authored waves.");
+            throw new InvalidDataException($"Maps {string.Join(", ", duplicatedRoster.Select(x => x.Map.Id))} use identical enemy lineups; each arena requires independent campaign waves.");
     }
 
     private Dictionary<string, MapDefinition> LoadMaps()
@@ -170,10 +170,10 @@ public static class DataValidator
 {
     public static void ValidateChallenges(IReadOnlyList<ChallengeDefinition> challenges, IReadOnlyList<TowerDefinition> towers)
     {
-        if (challenges.Count < 2) throw new InvalidDataException("At least two challenge directives are required.");
+        if (challenges.Count < 2) throw new InvalidDataException("At least two modes are required.");
         RequireUnique(challenges.Select(x => x.Id), "challenge");
         if (!challenges.Any(x => x.Id.Equals(ChallengeCatalog.DefaultId, StringComparison.OrdinalIgnoreCase)))
-            throw new InvalidDataException("Challenge directives must include standard.");
+            throw new InvalidDataException("Modes must include Standard.");
         var towerIds = towers.Select(tower => tower.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (challenges.Any(challenge => string.IsNullOrWhiteSpace(challenge.DisplayName) ||
             string.IsNullOrWhiteSpace(challenge.MenuLabel) || challenge.StartingCreditsMultiplier <= 0 ||
@@ -189,7 +189,7 @@ public static class DataValidator
             challenge.CounterSuppressionRadius <= 0 || challenge.CounterSuppressionDuration <= 0 ||
             challenge.CounterSuppressionRatePenalty < 0 || challenge.CounterSuppressionRatePenalty >= 1 ||
             challenge.CounterSuppressionDamagePenalty < 0 || challenge.CounterSuppressionDamagePenalty >= 1))
-            throw new InvalidDataException("Invalid challenge directive.");
+            throw new InvalidDataException("Invalid mode definition.");
     }
 
     public static void ValidateDifficulties(IReadOnlyList<DifficultyDefinition> difficulties)
@@ -252,7 +252,7 @@ public static class DataValidator
             throw new InvalidDataException($"Power node center is not a valid tower position in map: {map.Id}");
         RequireUnique(map.PowerNodes.Select(x => x.Id), "power node");
         if (waves.Waves.Count != GameConstants.CampaignWaveCount)
-            throw new InvalidDataException($"Each arena requires exactly {GameConstants.CampaignWaveCount} authored waves.");
+            throw new InvalidDataException($"Each arena requires exactly {GameConstants.CampaignWaveCount} campaign waves.");
         if (tactics.EmergencyDefense.PurchaseCost <= 0 || tactics.EmergencyDefense.DirectPurchaseCostIncrease < 0 ||
             tactics.EmergencyDefense.MaximumActive <= 0 || tactics.EmergencyDefense.Charges <= 0 ||
             tactics.EmergencyDefense.Damage <= 0 || tactics.EmergencyDefense.BlastRadius <= tactics.EmergencyDefense.TriggerRadius ||

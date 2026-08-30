@@ -512,7 +512,7 @@ public sealed class VisualVerificationGame : Game
 
         var crosswindWinningSample = CaptureSimulationLayout(content, ui,
             "05f-crosswind-easy-standard-win.png", "crosswind_basin", "easy", "standard",
-            AutoPlayerStrategy.Experienced, 72608, true, assertions);
+            AutoPlayerStrategy.Experienced, 128041, true, assertions);
         var crosswindLosingSample = CaptureSimulationLayout(content, ui,
             "05g-crosswind-hard-standard-loss.png", "crosswind_basin", "hard", "standard",
             AutoPlayerStrategy.Experienced, 56770, false, assertions);
@@ -791,7 +791,7 @@ public sealed class VisualVerificationGame : Game
             ChallengeId = "standard",
             ChallengeName = "Standard",
             CurrentWave = 65,
-            TotalWaves = 20,
+            TotalWaves = GameConstants.CampaignWaveCount,
             Lives = 0,
             StartingLives = 24,
             Kills = 7_420,
@@ -814,8 +814,34 @@ public sealed class VisualVerificationGame : Game
             DefenseSeconds = 4_287,
             TopTowerName = "Siege Mortar",
             TopTowerContribution = 302_400,
-            GreatestLeakThreatName = "Bastion Core",
-            GreatestLeakThreatLivesLost = 12,
+            DefeatFieldRecorded = true,
+            QueuedEnemiesRemaining = 4,
+            RemainingEnemies =
+            [
+                new RunHistoryRemainingEnemyEntry
+                {
+                    EnemyId = "t4_aegis",
+                    DisplayName = "Aegis",
+                    Rank = "Standard",
+                    SignalRole = "None",
+                    Count = 6,
+                    TotalHealth = 9_600,
+                    TotalMaxHealth = 19_200,
+                    TotalShield = 540,
+                    FurthestProgress = 0.94f
+                },
+                new RunHistoryRemainingEnemyEntry
+                {
+                    EnemyId = "t5_regenerator",
+                    DisplayName = "Elite Regenerator",
+                    Rank = "Elite",
+                    SignalRole = "Disruptor",
+                    Count = 3,
+                    TotalHealth = 8_400,
+                    TotalMaxHealth = 12_000,
+                    FurthestProgress = 0.82f
+                }
+            ],
             Towers =
             [
                 new RunHistoryTowerEntry { TowerId = "siege_mortar", DisplayName = "Siege Mortar", Purchases = 5, Upgrades = 10, CreditsSpent = 8_500, Hits = 3_208, Kills = 1_442, ProtocolActivations = 18, Damage = 285_000, SupportDamageEquivalent = 17_400, Overkill = 21_300 },

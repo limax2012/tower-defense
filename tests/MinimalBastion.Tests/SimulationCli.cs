@@ -87,7 +87,7 @@ internal static class SimulationCli
             Console.WriteLine($"Forced requested path: {onlyForcedBuild.TowerId}:{onlyForcedBuild.DoctrineId}>{onlyForcedBuild.SpecializationId}");
         if (!useProtocols) Console.WriteLine("Protocol activations disabled for this control group.");
         else if (runs.Count > 0 && runs.All(run => !run.ProtocolsEnabled))
-            Console.WriteLine("The selected directive disables Protocol activations.");
+            Console.WriteLine("The selected mode disables Protocol activations.");
         if (!useApexUpgrades) Console.WriteLine("Apex purchases disabled for this control group.");
         if (!useCounterSupport) Console.WriteLine("Enemy support carriers disabled for this control group.");
         if (!useCounterAttackers) Console.WriteLine("Enemy attacking signals disabled for this control group.");
@@ -106,6 +106,7 @@ internal static class SimulationCli
         PrintDoctrineSummary(runs);
         PrintSpecializationSummary(runs);
         PrintBuildPathSummary(runs);
+        PrintRemainingFieldSummary(runs);
         Console.WriteLine($"Early calls earned {runs.Sum(x => x.EarlyStartCreditsEarned)} credits; overdrives {runs.Sum(x => x.Overdrives)}. Emergency defenses: {runs.Sum(x => x.EmergencyDeployments)} deployed, {runs.Sum(x => x.EmergencyTriggers)} triggers, {runs.Sum(x => x.EmergencyKills)} kills, {runs.Sum(x => x.EmergencyDamage):0} damage; generators {runs.Sum(x => x.GeneratorPurchases)}.");
 
         var root = FindProjectRoot();
@@ -254,7 +255,7 @@ internal static class SimulationCli
         var materialized = runs.ToArray();
         if (materialized.Select(x => x.ChallengeId).Distinct(StringComparer.OrdinalIgnoreCase).Count() < 2) return;
         Console.WriteLine();
-        Console.WriteLine("CHALLENGE SUMMARY");
+        Console.WriteLine("MODE SUMMARY");
         foreach (var group in materialized.GroupBy(x => x.ChallengeId).OrderBy(x => x.Key))
             Console.WriteLine($"{group.Key,-18} {group.Count(x => x.Won),2}/{group.Count(),-2} {outcomeLabel}  avg wave {group.Average(x => x.WaveReached),4:0.0}  avg lives {group.Average(x => x.LivesRemaining),4:0.0}");
     }
@@ -294,7 +295,7 @@ internal static class SimulationCli
         if (challengeIds.Length < 2) return;
 
         Console.WriteLine();
-        Console.WriteLine("ARENA x DIRECTIVE (success rate / average wave)");
+        Console.WriteLine("ARENA x MODE (success rate / average wave)");
         Console.Write($"{"Arena",-18}");
         foreach (var challengeId in challengeIds) Console.Write($"  {challengeId,-15}");
         Console.WriteLine();
@@ -397,6 +398,46 @@ internal static class SimulationCli
                 Console.Write($"  {value,-22}");
             }
             Console.WriteLine();
+        }
+    }
+
+    private static void PrintRemainingFieldSummary(IEnumerable<SimulationRunResult> runs)
+    {
+        var defeats = runs.Where(run => run.Result == "Defeat").ToArray();
+        if (defeats.Length == 0) return;
+
+        Console.WriteLine();
+        Console.WriteLine("FIELD REMAINING AT DEFEAT");
+        foreach (var waveGroup in defeats.GroupBy(run => run.WaveReached).OrderBy(group => group.Key))
+        {
+            var waveRuns = waveGroup.ToArray();
+            Console.WriteLine(
+                $"Wave {waveGroup.Key,2}: {waveRuns.Length,3} defeats  " +
+                $"avg live {waveRuns.Average(run => run.RemainingEnemyCount),5:0.0}  " +
+                $"avg queued {waveRuns.Average(run => run.QueuedEnemiesRemaining),5:0.0}  " +
+                $"avg remaining durability {waveRuns.Average(run => run.RemainingHealth + run.RemainingShield),9:0}");
+
+            foreach (var enemyGroup in waveRuns.SelectMany(run => run.RemainingEnemies)
+                         .GroupBy(enemy => new { enemy.DisplayName, enemy.Rank, enemy.SignalRole })
+                         .OrderByDescending(group => group.Sum(enemy => enemy.CurrentHealth + enemy.Shield))
+                         .Take(4))
+            {
+                var count = enemyGroup.Sum(enemy => enemy.Count);
+                var health = enemyGroup.Sum(enemy => enemy.CurrentHealth);
+                var maxHealth = enemyGroup.Sum(enemy => enemy.MaxHealth);
+                var shield = enemyGroup.Sum(enemy => enemy.Shield);
+                var signal = enemyGroup.Key.SignalRole.Equals("None", StringComparison.OrdinalIgnoreCase)
+                    ? ""
+                    : $" {enemyGroup.Key.SignalRole}";
+                var rank = enemyGroup.Key.Rank.Equals("Standard", StringComparison.OrdinalIgnoreCase) ||
+                           enemyGroup.Key.DisplayName.StartsWith(enemyGroup.Key.Rank, StringComparison.OrdinalIgnoreCase)
+                    ? ""
+                    : $"{enemyGroup.Key.Rank} ";
+                Console.WriteLine(
+                    $"  {rank}{enemyGroup.Key.DisplayName}{signal}: " +
+                    $"avg count {count / (float)waveRuns.Length:0.0}, HP {(maxHealth <= 0 ? 0 : health / maxHealth):P0}, " +
+                    $"avg shield {shield / waveRuns.Length:0}");
+            }
         }
     }
 

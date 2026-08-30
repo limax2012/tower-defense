@@ -41,8 +41,9 @@ public sealed record RunHistoryEntry
     public float DefenseSeconds { get; init; }
     public string TopTowerName { get; init; } = "NONE";
     public float TopTowerContribution { get; init; }
-    public string GreatestLeakThreatName { get; init; } = "NONE";
-    public int GreatestLeakThreatLivesLost { get; init; }
+    public bool DefeatFieldRecorded { get; init; }
+    public int QueuedEnemiesRemaining { get; init; }
+    public List<RunHistoryRemainingEnemyEntry> RemainingEnemies { get; init; } = new();
     public List<RunHistoryTowerEntry> Towers { get; init; } = new();
     public List<RunHistoryEnemyEntry> Enemies { get; init; } = new();
     public RunHistoryLayoutSnapshot? FinalLayout { get; init; }
@@ -50,7 +51,31 @@ public sealed record RunHistoryEntry
     public static RunHistoryEntry FromSession(GameSession session)
     {
         var leader = session.Statistics.TowerLeaders.FirstOrDefault();
-        var leakThreat = session.Statistics.GreatestLeakThreat;
+        var remainingEnemies = session.Enemies
+            .Where(enemy => !enemy.IsDead && !enemy.HasEscaped)
+            .GroupBy(enemy => new
+            {
+                EnemyId = enemy.Definition.Id,
+                enemy.DisplayName,
+                Rank = enemy.Rank.ToString(),
+                SignalRole = enemy.SignalRole.ToString()
+            })
+            .Select(group => new RunHistoryRemainingEnemyEntry
+            {
+                EnemyId = group.Key.EnemyId,
+                DisplayName = group.Key.DisplayName,
+                Rank = group.Key.Rank,
+                SignalRole = group.Key.SignalRole,
+                Count = group.Count(),
+                TotalHealth = FiniteSum(group.Select(enemy => enemy.Health)),
+                TotalMaxHealth = FiniteSum(group.Select(enemy => enemy.MaxHealth)),
+                TotalShield = FiniteSum(group.Select(enemy => enemy.Shield)),
+                FurthestProgress = group.Max(enemy => enemy.PathProgress)
+            })
+            .OrderByDescending(group => group.TotalHealth + group.TotalShield)
+            .ThenByDescending(group => group.Count)
+            .ThenBy(group => group.DisplayName)
+            .ToList();
         return new RunHistoryEntry
         {
             RunId = session.RunId,
@@ -88,8 +113,9 @@ public sealed record RunHistoryEntry
             DefenseSeconds = session.Statistics.SimulatedSeconds,
             TopTowerName = leader?.DisplayName ?? "NONE",
             TopTowerContribution = leader?.ContributionDamage ?? 0,
-            GreatestLeakThreatName = leakThreat?.DisplayName ?? "NONE",
-            GreatestLeakThreatLivesLost = leakThreat?.LivesLost ?? 0,
+            DefeatFieldRecorded = session.IsDefeat,
+            QueuedEnemiesRemaining = session.IsDefeat ? session.Waves.QueuedEnemies : 0,
+            RemainingEnemies = session.IsDefeat ? remainingEnemies : new List<RunHistoryRemainingEnemyEntry>(),
             Towers = session.Statistics.Towers
                 .OrderByDescending(tower => tower.ContributionDamage)
                 .ThenBy(tower => tower.DisplayName)
@@ -129,6 +155,12 @@ public sealed record RunHistoryEntry
                 }).ToList(),
             FinalLayout = RunHistoryLayoutSnapshot.FromSession(session)
         };
+    }
+
+    private static float FiniteSum(IEnumerable<float> values)
+    {
+        var sum = values.Sum(value => (double)MathF.Max(0, value));
+        return (float)Math.Min(float.MaxValue, sum);
     }
 
     public GameSession CreateInspectionSession(GameContent content)
@@ -297,6 +329,19 @@ public sealed record RunHistoryEnemyEntry
     public int LivesLost { get; init; }
 }
 
+public sealed record RunHistoryRemainingEnemyEntry
+{
+    public string EnemyId { get; init; } = "";
+    public string DisplayName { get; init; } = "";
+    public string Rank { get; init; } = "Standard";
+    public string SignalRole { get; init; } = "None";
+    public int Count { get; init; }
+    public float TotalHealth { get; init; }
+    public float TotalMaxHealth { get; init; }
+    public float TotalShield { get; init; }
+    public float FurthestProgress { get; init; }
+}
+
 public sealed class RunHistoryRepository
 {
     public const long MaximumHistoryFileBytes = 16 * 1024 * 1024;
@@ -428,7 +473,8 @@ public sealed class RunHistoryRepository
             float.IsFinite(entry.PlateDamage) && entry.PlateDamage >= 0 &&
             float.IsFinite(entry.DefenseSeconds) && entry.DefenseSeconds >= 0 &&
             float.IsFinite(entry.TopTowerContribution) && entry.TopTowerContribution >= 0 &&
-            IsValidLabel(entry.GreatestLeakThreatName) && entry.GreatestLeakThreatLivesLost >= 0 &&
+            entry.QueuedEnemiesRemaining >= 0 && entry.RemainingEnemies is not null &&
+            entry.RemainingEnemies.Count <= 128 && entry.RemainingEnemies.All(IsValidRemainingEnemyEntry) &&
             entry.Towers is not null && entry.Towers.Count <= 128 && entry.Towers.All(IsValidTowerEntry) &&
             entry.Enemies is not null && entry.Enemies.Count <= 128 && entry.Enemies.All(IsValidEnemyEntry) &&
             (entry.FinalLayout is null || IsValidLayout(entry.FinalLayout));
@@ -445,6 +491,12 @@ public sealed class RunHistoryRepository
     private static bool IsValidEnemyEntry(RunHistoryEnemyEntry enemy) =>
         IsValidLabel(enemy.EnemyId) && IsValidLabel(enemy.DisplayName) &&
         enemy.Kills >= 0 && enemy.Escapes >= 0 && enemy.LivesLost >= 0;
+
+    private static bool IsValidRemainingEnemyEntry(RunHistoryRemainingEnemyEntry enemy) =>
+        IsValidLabel(enemy.EnemyId) && IsValidLabel(enemy.DisplayName) && IsValidLabel(enemy.Rank) &&
+        IsValidLabel(enemy.SignalRole) && enemy.Count > 0 &&
+        AreFiniteNonnegative(enemy.TotalHealth, enemy.TotalMaxHealth, enemy.TotalShield, enemy.FurthestProgress) &&
+        enemy.TotalHealth <= enemy.TotalMaxHealth && enemy.FurthestProgress <= 1.001f;
 
     private static bool IsValidLayout(RunHistoryLayoutSnapshot layout) =>
         layout.StoredPlates >= 0 && layout.AutoProtocolTowerId >= 0 &&

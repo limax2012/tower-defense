@@ -73,6 +73,11 @@ public sealed class SimulationRunResult
     public required IReadOnlyDictionary<string, TowerRunMetrics> Towers { get; init; }
     public required IReadOnlyDictionary<string, int> EnemyKills { get; init; }
     public required IReadOnlyDictionary<string, int> EnemyLeaks { get; init; }
+    public IReadOnlyList<SimulationRemainingEnemy> RemainingEnemies { get; init; } = Array.Empty<SimulationRemainingEnemy>();
+    public int QueuedEnemiesRemaining { get; init; }
+    public float RemainingHealth => RemainingEnemies.Sum(enemy => enemy.CurrentHealth);
+    public float RemainingShield => RemainingEnemies.Sum(enemy => enemy.Shield);
+    public int RemainingEnemyCount => RemainingEnemies.Sum(enemy => enemy.Count);
     public required IReadOnlyList<WaveRunMetrics> Waves { get; init; }
     public IReadOnlyList<SimulationTowerPlacement> FinalTowers { get; init; } = Array.Empty<SimulationTowerPlacement>();
     public int EmergencyDeployments { get; init; }
@@ -101,6 +106,17 @@ public sealed record SimulationTowerPlacement(
     string? SpecializationId,
     bool IsApex,
     string? PowerNodeId);
+
+public sealed record SimulationRemainingEnemy(
+    string EnemyId,
+    string DisplayName,
+    string Rank,
+    string SignalRole,
+    int Count,
+    float CurrentHealth,
+    float MaxHealth,
+    float Shield,
+    float FurthestProgress);
 
 public sealed class TowerRunMetrics
 {

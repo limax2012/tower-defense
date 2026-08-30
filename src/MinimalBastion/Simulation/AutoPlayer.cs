@@ -476,7 +476,9 @@ public sealed class AutoPlayer
             {
                 var apexNext = UpgradeValue(session, tower, tower.ApexPreviewLevel, threat);
                 Consider(new UpgradeOption(tower, null, null,
-                    MathF.Max(0.01f, apexNext - current) * StrategyWeight(tower.Definition.Id, threat) /
+                    (MathF.Max(0.01f, apexNext - current) +
+                     ApexProtocolValue(session, tower, tower.ApexPreviewLevel, threat)) *
+                    StrategyWeight(tower.Definition.Id, threat) /
                     tower.ApexUpgradeCost));
                 continue;
             }
@@ -582,6 +584,13 @@ public sealed class AutoPlayer
             candidate.Definition.Id == tower.Definition.Id && candidate.LevelIndex >= tower.LevelIndex);
 
         var breadth = 1f / (1f + peersAhead * 0.34f + MathF.Max(0, roleMaturity - 3) * 0.08f);
+        if (tower.LevelIndex >= 2)
+        {
+            var apexPeers = session.Towers.Count(candidate =>
+                candidate.Definition.Id == tower.Definition.Id && candidate.IsApex);
+            breadth /= 1f + apexPeers * 1.15f;
+            if (tower.Definition.Id == "needle_turret" && apexPeers > 0) breadth *= 0.35f;
+        }
         if (tower.Definition.Id == "needle_turret")
         {
             var upgradedNeedles = session.Towers.Count(candidate =>
@@ -620,6 +629,38 @@ public sealed class AutoPlayer
             value += 3f + throughput * (level.AuraAttackSpeedBonus + level.AuraRangeBonus * 0.42f);
         }
         return value;
+    }
+
+    private float ApexProtocolValue(
+        GameSession session,
+        TowerInstance tower,
+        TowerLevelDefinition apexLevel,
+        ThreatProfile threat)
+    {
+        var protocol = tower.Protocol;
+        var uptime = MathHelper.Clamp(protocol.DurationSeconds / MathF.Max(
+            protocol.DurationSeconds, protocol.CooldownSeconds), 0, 1);
+        if (uptime <= 0) return 0;
+
+        if (tower.IsSupport)
+        {
+            var supportValue = UpgradeValue(session, tower, apexLevel, threat);
+            var auraGain = protocol.AuraAttackSpeedBonus * 2f + protocol.AuraRangeBonus * 0.6f;
+            return supportValue * uptime * auraGain;
+        }
+
+        var activeValue = TowerValue(tower.Definition, apexLevel, threat);
+        var throughputGain = (1f + protocol.AttackSpeedBonus) * (1f + protocol.DamageBonus) - 1f;
+        var rangeGain = protocol.RangeBonus * 0.35f;
+        var armorGain = protocol.ArmorPierceBonus * apexLevel.AttacksPerSecond * threat.Armored * 1.8f;
+        var sustainedValue = activeValue * uptime * MathF.Max(0, throughputGain + rangeGain) + armorGain * uptime;
+
+        var expectedTargets = protocol.BurstRadius > 0 ? Math.Clamp(protocol.AutoTriggerCount, 1, 6) : 0;
+        var burstValue = protocol.BurstDamage * expectedTargets / MathF.Max(1f, protocol.CooldownSeconds);
+        if (protocol.FireOnActivation)
+            burstValue += apexLevel.Damage * Math.Max(1, apexLevel.PelletCount) /
+                          MathF.Max(1f, protocol.CooldownSeconds);
+        return sustainedValue + burstValue;
     }
 
     private Vector2? FindBestPosition(GameSession session, TowerDefinition definition, ThreatProfile threat)

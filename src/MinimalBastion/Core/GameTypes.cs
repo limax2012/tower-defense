@@ -156,7 +156,8 @@ public readonly record struct InputSnapshot(
     bool SandboxRankPressed = false,
     bool SandboxHealthPressed = false,
     bool SandboxSignalPressed = false,
-    bool LeftDown = false);
+    bool LeftDown = false,
+    bool SandboxWaveSignalsPressed = false);
 
 public sealed class ViewportTransform
 {
@@ -323,7 +324,8 @@ public sealed class InputRouter
             IsPressed(keyboard, _previousKeyboard, Keys.K),
             IsPressed(keyboard, _previousKeyboard, Keys.H),
             IsPressed(keyboard, _previousKeyboard, Keys.J),
-            platformPointer?.LeftDown ?? mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed);
+            platformPointer?.LeftDown ?? mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed,
+            IsPressed(keyboard, _previousKeyboard, Keys.L));
         _previousKeyboard = keyboard;
         _previousMouse = mouse;
         _wasWindowActive = true;

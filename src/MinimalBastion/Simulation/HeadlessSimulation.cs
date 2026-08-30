@@ -185,6 +185,8 @@ public static class HeadlessSimulation
                 Towers = _towers.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
                 EnemyKills = _enemyKills.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
                 EnemyLeaks = _enemyLeaks.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
+                RemainingEnemies = CaptureRemainingEnemies(session),
+                QueuedEnemiesRemaining = session.Waves.QueuedEnemies,
                 Waves = _waves.ToArray(),
                 FinalTowers = session.Towers.OrderBy(tower => tower.Id).Select(tower => new SimulationTowerPlacement(
                     tower.Id,
@@ -210,6 +212,39 @@ public static class HeadlessSimulation
                 ProtocolsEnabled = options.UseProtocols && (session.ProtocolsEnabled || options.UseApexUpgrades),
                 ApexUpgradesEnabled = options.UseApexUpgrades
             };
+        }
+
+        private static IReadOnlyList<SimulationRemainingEnemy> CaptureRemainingEnemies(GameSession session) =>
+            session.Enemies
+                .Where(enemy => !enemy.IsDead && !enemy.HasEscaped)
+                .GroupBy(enemy => new
+                {
+                    EnemyId = enemy.Definition.Id,
+                    enemy.DisplayName,
+                    Rank = enemy.Rank.ToString(),
+                    SignalRole = enemy.SignalRole.ToString()
+                })
+                .Select(group => new SimulationRemainingEnemy(
+                    group.Key.EnemyId,
+                    group.Key.DisplayName,
+                    group.Key.Rank,
+                    group.Key.SignalRole,
+                    group.Count(),
+                    FiniteSum(group.Select(enemy => enemy.Health)),
+                    FiniteSum(group.Select(enemy => enemy.MaxHealth)),
+                    FiniteSum(group.Select(enemy => enemy.Shield)),
+                    group.Max(enemy => enemy.PathProgress)))
+                .OrderByDescending(group => group.CurrentHealth + group.Shield)
+                .ThenByDescending(group => group.Count)
+                .ThenBy(group => group.DisplayName)
+                .ToArray();
+
+        private static float FiniteSum(IEnumerable<float> values)
+        {
+            double total = 0;
+            foreach (var value in values)
+                if (float.IsFinite(value) && value > 0) total += value;
+            return (float)Math.Min(float.MaxValue, total);
         }
 
         public void SampleUtility(GameSession session, float deltaSeconds)

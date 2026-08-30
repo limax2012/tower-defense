@@ -1,19 +1,19 @@
 # Minimal Bastion
 
-Minimal Bastion is a colorful geometric tower-defense game built with C# and .NET 10. The Windows build uses MonoGame DesktopGL, and the solo browser build uses WebAssembly and WebGL. Both versions combine 30-wave authored campaigns, generated Endless play, branching tower upgrades, tactical devices, persistent progression, and deterministic balance tools. The Windows build also supports direct two-player online co-op.
+Minimal Bastion is a colorful geometric tower-defense game built with C# and .NET 10. The Windows build uses MonoGame DesktopGL, and the solo browser build uses WebAssembly and WebGL. Both versions combine 30-wave campaigns, Endless play, branching tower upgrades, tactical devices, persistent progression, and deterministic balance tools. The Windows build also supports direct two-player online co-op.
 
 ## Current feature set
 
-- Four arenas with distinct route geometry, build areas, visual treatments, starting economies, and 30 authored waves each.
+- Four arenas with distinct route geometry, build areas, visual treatments, starting economies, and 30 campaign waves each.
 - Easy, Medium, Hard, and Bastion difficulty profiles.
-- Standard, Signal Gauntlet, Core Six, and Entrenched directives, plus a solo Sandbox Lab.
+- Standard, Signal Gauntlet, Core Six, and Entrenched modes, plus a solo Sandbox Lab.
 - Ten towers. Every tower has two tier-two doctrines, two compatible tier-three roles, a unique Protocol, and an Apex promotion with independent automatic Protocol activation.
 - Seven general targeting modes: First, Last, Strongest, Weakest, Nearest, Fastest, and Armored. Signal Gauntlet adds Support targeting for its signal enemies, and Sandbox exposes it for signal testing.
 - Pulse Plates, a three-level Charge Forge, Surge Nodes, automatic Protocol activation, and configurable wave auto-start.
 - One rolling autosave, expandable manual save slots, save duplication/deletion, recovery generations, run history, final-layout inspection, medals, achievements, and career records.
-- A complete Tactical Library for researching towers, upgrades, enemies, signal roles, maps, waves, profiles, directives, statuses, and game systems before committing resources.
+- A complete Tactical Library for researching towers, upgrades, enemies, signal roles, maps, waves, profiles, modes, statuses, and game systems before committing resources.
 - Direct two-player Windows co-op with host-authoritative commands, deterministic local simulation, reconnect repair, shared defenses, and visible remote cursor/placement state.
-- Runtime-generated vector-like visuals, procedural music, and synthesized sound effects; no external art or audio files are required.
+- Runtime-generated vector-like visuals, a shuffled gameplay soundtrack, menu music, and synthesized sound effects.
 - Headless deterministic agents, isolated regression tests, and a hidden UI renderer for verification without taking desktop focus.
 
 The title screen includes two small live combat scenes. They use normal enemy and tower behavior with randomized groups of three to five enemies and three to five non-Beacon towers at varied levels.
@@ -88,14 +88,14 @@ The browser build contains the complete solo campaign, Endless, Sandbox, persist
 
 ## Campaign structure
 
-Each arena contains one 30-wave authored campaign on every difficulty. Waves 21–30 form the final escalation and unlock Apex tower promotions. Victory is awarded after wave 30, and generated Endless begins at wave 31 using the arena's wave-30 roster as its anchor.
+Each arena contains one 30-wave campaign on every difficulty. Waves 21–30 form the final escalation and unlock Apex tower promotions. Victory is awarded after wave 30, and Endless begins at wave 31 using the arena's wave-30 enemy lineup as its anchor.
 
-| Arena | Base credits | Build areas | Surge Nodes | Authored contacts |
+| Arena | Base credits | Build areas | Surge Nodes | Campaign enemies |
 | --- | ---: | ---: | ---: | ---: |
-| Foundry Loop | 400 | 8 | 0 | 2,185 |
-| Crosswind Basin | 390 | 9 | 0 | 2,192 |
-| Prism Circuit | 380 | 6 | 3 | 2,362 |
-| Surge Divide | 360 | 6 | 9 | 2,458 |
+| Foundry Loop | 400 | 8 | 0 | 2,158 |
+| Crosswind Basin | 390 | 9 | 0 | 2,173 |
+| Prism Circuit | 380 | 6 | 3 | 2,336 |
+| Surge Divide | 360 | 6 | 9 | 2,383 |
 
 Surge Nodes grant focused attack-rate, range, damage, or armor-piercing bonuses. The active node is shown during placement and in Tower Intel; effective node and Signal Beacon modifiers are included in displayed stats.
 
@@ -110,13 +110,13 @@ Surge Nodes grant focused attack-rate, range, damage, or armor-piercing bonuses.
 
 Tower statistics do not change with difficulty, wave number, map, or elapsed time.
 
-### Directives
+### Modes
 
 - **Standard** enables the complete roster and every tactical system.
 - **Signal Gauntlet** introduces Accelerator, Restorer, Bulwark, Jammer, and Disruptor signal enemies from the early campaign onward without bonus opening credits. Accelerators raise formation speed by 20%; Restorers repair 10% maximum health every 5 seconds; Bulwarks grant 10% maximum-health shielding every 5 seconds up to a 20% reserve; Jammers suppress every combat tower in their pulse radius; and Disruptors pause one high-investment tower in reach every 5 seconds. The Support targeting mode prioritizes signal enemies and otherwise selects the strongest available target.
 - **Core Six** restricts the roster to Needle Turret, Frost Spire, Shard Fan, Ember Coil, Breaker Cannon, and Signal Beacon with the standard opening economy.
 - **Entrenched** disables Pulse Plates, Charge Forge, manual and armed Protocol controls, and selling without compensating credits. Apex towers retain their permanent self-activating Protocol system.
-- **Sandbox Lab** provides unlimited resources and lives for controlled tower, upgrade, Protocol, status, enemy-rank, selectable signal-role, and authored-wave experiments. Replayed waves use the same deterministic signal-enemy assignments as Signal Gauntlet. Sandbox sessions do not create competitive saves or run-history records.
+- **Sandbox Lab** provides unlimited resources and lives for controlled tower, upgrade, Protocol, status, enemy-rank, selectable signal-role, and campaign-wave experiments. Wave signals are off by default and can be toggled before a replay; when enabled, waves use the same signal assignments as Signal Gauntlet. Sandbox sessions do not create competitive saves or run-history records.
 
 ## Towers and tactical systems
 
@@ -157,7 +157,7 @@ The Charge Forge costs 300 credits and creates stored Plates only while a wave i
 - Middle click sends a co-op location ping.
 - `F11` toggles borderless desktop fullscreen. `F4` toggles the debug overlay in Debug builds.
 
-Settings can hide hotkey badges without disabling any keyboard shortcuts. Sandbox adds compact hotkeys for enemy selection, group/rank/health selection, spawning, test reset, tower clearing, and authored-wave selection; the active controls are shown in its interface and Tactical Library.
+Settings can hide hotkey badges without disabling any keyboard shortcuts. Sandbox adds compact hotkeys for enemy selection, group/rank/health selection, spawning, test reset, tower clearing, campaign-wave selection, and the `L` wave-signal toggle; the active controls are shown in its interface and Tactical Library.
 
 Placement remains continuous rather than grid-based. Tower, Forge, and Plate previews snap to the nearest legal point inside a small assistance radius, display the resolved position and range, and do not alter co-op state until placement is confirmed.
 
@@ -173,9 +173,9 @@ Persistent data lives under `%LocalAppData%\MinimalBastion`:
 
 Save and settings writes are atomic and retain one bounded `.bak` recovery generation. Saves can be duplicated into a manual slot, including the autosave, and deleted with confirmation. A co-op checkpoint can be reopened as a host or continued alone; the original tower placer remains recorded but does not restrict control.
 
-The Tactical Library is a complete planning reference from the first launch. It exposes every tower and upgrade path, exact Protocol and Apex effects, enemy and signal rules, authored wave roster, profile, directive, status, and system so difficult runs can be planned with complete information. Campaign rosters mark the exact enemies receiving Signal Gauntlet roles with compact bracketed codes and counts.
+The Tactical Library is a complete planning reference from the first launch. It exposes every tower and upgrade path, exact Protocol and Apex effects, enemy and signal rules, campaign enemy lineups, profiles, modes, statuses, and systems so difficult runs can be planned with complete information. Campaign lineups mark the exact enemies receiving Signal Gauntlet roles with compact bracketed codes and counts.
 
-Run History records campaign, Endless, victory, and defeat outcomes under one persistent run identity. Continuing beyond wave 30 updates that run instead of creating a second campaign record. Records include tower contributions, economy, tactical-system use, leak threats, medals, achievements, and a path-cleared final layout whose towers can be inspected. The current career contains 28 run medals and 56 broader achievements, plus best-result records by profile.
+Run History records campaign, Endless, victory, and defeat outcomes under one persistent run identity. Continuing beyond wave 30 updates that run instead of creating a second campaign record. Records include tower contributions, economy, tactical-system use, the complete enemy field remaining at defeat, medals, achievements, and a path-cleared final layout whose towers can be inspected. The current career contains 28 run medals and 56 broader achievements, plus best-result records by profile.
 
 ## Online co-op
 
@@ -184,7 +184,7 @@ Online co-op uses direct TCP on port `28741` for a private two-player match. The
 To play:
 
 1. Choose **Online Co-op**.
-2. The host chooses **Host Online Game**, configures the arena, difficulty, and directive, then shares the displayed address and six-character code.
+2. The host chooses **Host Online Game**, configures the arena, difficulty, and mode, then shares the displayed address and six-character code.
 3. The guest enters the host address or DNS name and code. Port `28741` is added automatically when no port is supplied.
 
 The handshake validates the compiled build and recursive gameplay-content fingerprint. Both peers simulate deterministic fixed ticks locally while the host sequences commands and repairs divergence with bounded compressed snapshots. Shared state includes enemies, waves, credits, lives, towers, upgrades, targeting, sales, Plates, Forge, Protocols, speed, pause, and ready state. Both players may operate every tower regardless of who placed it.
@@ -212,7 +212,7 @@ dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --
 dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --map relay_divide --max-wave 40 --runs 10
 ```
 
-Reports are written under `.build\balance`. Filters include strategy, seed, run count, map, difficulty, directive, target wave, forced tower paths, checkpoint continuation, Protocol/Apex controls, Signal Gauntlet counter-pressure controls, build/footprint holds, summary output, and output path. See [AUTONOMOUS_BALANCE.md](AUTONOMOUS_BALANCE.md) for the full harness and interpretation guidance.
+Reports are written under `.build\balance`. Filters include strategy, seed, run count, map, difficulty, mode, target wave, forced tower paths, checkpoint continuation, Protocol/Apex controls, Signal Gauntlet counter-pressure controls, build/footprint holds, summary output, and output path. Defeat reports include every surviving enemy group, its remaining health and shield, and enemies still queued. See [AUTONOMOUS_BALANCE.md](AUTONOMOUS_BALANCE.md) for the full harness and interpretation guidance.
 
 ## Documentation
 

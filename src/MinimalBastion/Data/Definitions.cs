@@ -95,7 +95,7 @@ public static class ChallengeCatalog
     {
         var requested = string.IsNullOrWhiteSpace(challengeId) ? DefaultId : challengeId;
         if (content.Challenges.TryGetValue(requested, out var challenge)) return challenge;
-        if (content.Challenges.Count > 0) throw new ArgumentException($"Unknown challenge directive '{requested}'.", nameof(challengeId));
+        if (content.Challenges.Count > 0) throw new ArgumentException($"Unknown mode '{requested}'.", nameof(challengeId));
         return Standard;
     }
 

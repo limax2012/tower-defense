@@ -102,6 +102,7 @@ public sealed class UIManager
     private Rectangle _sandboxRemoveTowerButton;
     private Rectangle _sandboxWavePreviousButton;
     private Rectangle _sandboxWaveNextButton;
+    private Rectangle _sandboxWaveSignalsButton;
     private string? _hoveredTowerCardId;
     private TowerLevelDefinition? _hoveredUpgradePreview;
     private string? _hoveredUpgradePreviewLabel;
@@ -1317,6 +1318,7 @@ public sealed class UIManager
         {
             if (input.SandboxWavePreviousPressed) ChangeSandboxWave(session, -1);
             if (input.SandboxWaveNextPressed) ChangeSandboxWave(session, 1);
+            if (input.SandboxWaveSignalsPressed) session.ToggleSandboxWaveSignals();
             if (input.SandboxSpawnPressed) SpawnSelectedSandboxTargets(session);
             if (input.SandboxResetPressed) session.ResetSandboxExperiment();
             if (input.SandboxClearTowersPressed) session.ClearSandboxTowers();
@@ -1492,6 +1494,11 @@ public sealed class UIManager
         if (_sandboxWaveNextButton.Contains(point))
         {
             ChangeSandboxWave(session, 1);
+            return true;
+        }
+        if (_sandboxWaveSignalsButton.Contains(point))
+        {
+            session.ToggleSandboxWaveSignals();
             return true;
         }
         if (_sandboxEnemyPreviousButton.Contains(point))
@@ -2337,15 +2344,20 @@ public sealed class UIManager
 
         if (session.IsSandbox)
         {
-            _sandboxWavePreviousButton = new Rectangle(820, 9, 62, 38);
-            _sandboxWaveNextButton = new Rectangle(890, 9, 62, 38);
-            DrawSandboxButton(batch, p, _sandboxWavePreviousButton, "WAVE", true, ColorPalette.Cyan, "-");
-            DrawSandboxButton(batch, p, _sandboxWaveNextButton, "WAVE", true, ColorPalette.Cyan, "+");
+            _sandboxWavePreviousButton = new Rectangle(820, 9, 38, 38);
+            _sandboxWaveNextButton = new Rectangle(864, 9, 38, 38);
+            _sandboxWaveSignalsButton = new Rectangle(908, 9, 56, 38);
+            DrawSandboxButton(batch, p, _sandboxWavePreviousButton, "W-", true, ColorPalette.Cyan, "-");
+            DrawSandboxButton(batch, p, _sandboxWaveNextButton, "W+", true, ColorPalette.Cyan, "+");
+            DrawSandboxButton(batch, p, _sandboxWaveSignalsButton,
+                session.SandboxWaveSignalsEnabled ? "SIG ON" : "SIG OFF", !session.SandboxWaveActive,
+                session.SandboxWaveSignalsEnabled ? ColorPalette.Orange : ColorPalette.Cyan, "L");
         }
         else
         {
             _sandboxWavePreviousButton = Rectangle.Empty;
             _sandboxWaveNextButton = Rectangle.Empty;
+            _sandboxWaveSignalsButton = Rectangle.Empty;
         }
 
         DrawText(batch, "RUN SETUP", new Vector2(HudRunSetupBounds.X, 8), ColorPalette.Cyan, 0.55f);
@@ -2392,11 +2404,11 @@ public sealed class UIManager
             var archiveNotice = new Rectangle(972, 98, 296, 96);
             p.FillRect(batch, archiveNotice, ColorPalette.PanelAlt);
             p.DrawRect(batch, archiveNotice, ColorPalette.Cyan, 1);
-            DrawFittedCenteredText(batch, "READ-ONLY FINAL DEFENSE", new Vector2(archiveNotice.Center.X, 113),
+            DrawFittedCenteredText(batch, "FINAL DEFENSE REVIEW", new Vector2(archiveNotice.Center.X, 113),
                 ColorPalette.Navy, 0.51f, archiveNotice.Width - 20);
             DrawFittedCenteredText(batch, "SELECT A PLACED TOWER TO INSPECT", new Vector2(archiveNotice.Center.X, 139),
                 ColorPalette.Cobalt, 0.42f, archiveNotice.Width - 20);
-            DrawFittedCenteredText(batch, "ENEMIES, SHOTS, AND EFFECTS OMITTED", new Vector2(archiveNotice.Center.X, 165),
+            DrawFittedCenteredText(batch, "TOWERS SHOWN WITHOUT COMBAT", new Vector2(archiveNotice.Center.X, 165),
                 ColorPalette.Muted, 0.39f, archiveNotice.Width - 20);
             return;
         }
@@ -2415,12 +2427,12 @@ public sealed class UIManager
         var defense = session.Content.Tactics.EmergencyDefense;
         var plateFieldFull = session.EmergencyDefenses.Count >= defense.MaximumActive;
         var emergencyReady = session.TacticalSystemsEnabled && !plateFieldFull && (session.EmergencyInventory > 0 || session.CanDirectPurchaseEmergencyDefense);
-        var emergencyLabel = session.TacticalSystemsEnabled ? PulsePlateButtonLabel(session) : "PLATES | DIRECTIVE OFF";
+        var emergencyLabel = session.TacticalSystemsEnabled ? PulsePlateButtonLabel(session) : "PLATES | MODE OFF";
         DrawButton(batch, p, _emergencyButton, emergencyLabel, emergencyReady, ColorPalette.Gold, ColorPalette.Ink, "Q");
 
         var generator = session.Content.Tactics.Generator;
         var generatorReady = session.TacticalSystemsEnabled && (session.Generator is not null || session.Economy.CanAfford(generator.PurchaseCost));
-        var generatorLabel = !session.TacticalSystemsEnabled ? "FORGE | DIRECTIVE OFF" : session.Generator is { } active
+        var generatorLabel = !session.TacticalSystemsEnabled ? "FORGE | MODE OFF" : session.Generator is { } active
             ? session.EmergencyInventory >= active.Level.Capacity
                 ? $"FORGE L{active.LevelIndex + 1} | FULL"
                 : session.Waves.IsActive
@@ -2441,7 +2453,7 @@ public sealed class UIManager
                     : selectedApexCooldown > 0
                         ? $"APEX AUTO | {selectedApexCooldown:0.0}s"
                         : "APEX AUTO | READY"
-                : "PROTOCOLS | DIRECTIVE OFF"
+                : "PROTOCOLS | MODE OFF"
             : selected is { IsApex: true } && selected.IsOverdriven
                 ? $"{selected.Protocol.DisplayName.ToUpperInvariant()} {selected.OverdriveRemaining:0.0}s"
             : selected is { IsApex: true } && selectedApexCooldown > 0
@@ -2549,7 +2561,7 @@ public sealed class UIManager
             DrawFittedText(batch, definition.DisplayName, new Vector2(rect.X + 38, rect.Y + 5), ColorPalette.Ink, 0.53f, 80);
             var cardSubtitle = _archivedLayoutInspection
                 ? placedCount > 0 ? $"{placedCount} PLACED  {TowerInfo.ShortRole(definition)}" : TowerInfo.ShortRole(definition)
-                : available ? $"{definition.PurchaseCost}  {TowerInfo.ShortRole(definition)}" : "DIRECTIVE OFF";
+                : available ? $"{definition.PurchaseCost}  {TowerInfo.ShortRole(definition)}" : "MODE LOCKED";
             DrawFittedText(batch, cardSubtitle, new Vector2(rect.X + 38, rect.Y + 21),
                 _archivedLayoutInspection ? placedCount > 0
                     ? definition.Visual.AccentColor
@@ -3241,7 +3253,7 @@ public sealed class UIManager
         var startingLivesLabel = startingLives == 1 ? "1 LIFE" : $"{startingLives} LIVES";
         var campaignWaves = map.Campaign?.WaveCount > 0 ? map.Campaign.WaveCount : GameConstants.CampaignWaveCount;
         var setupFooter = challenge?.IsSandbox == true
-            ? "UNLIMITED CREDITS + LIVES  |  FIXED TARGETS  |  30 AUTHORED WAVES"
+            ? "UNLIMITED CREDITS + LIVES  |  FIXED TARGETS  |  30 CAMPAIGN WAVES"
             : $"{credits} CREDITS  |  {startingLivesLabel}  |  {campaignWaves} WAVES{(string.IsNullOrEmpty(best) ? "" : $"  |  {best}")}";
         DrawFittedCenteredText(batch, setupFooter, new Vector2(640, 546), ColorPalette.Navy, 0.46f, 1100);
 
@@ -3349,7 +3361,7 @@ public sealed class UIManager
         DrawVolumeSlider(batch, p, _musicVolumeButton, "BACKGROUND MUSIC", _settings.MusicVolume, ColorPalette.Violet);
         DrawButton(batch, p, _settingsBackButton, "BACK", true, ColorPalette.Coral);
 
-        DrawText(batch, "Configured auto-starts earn +20. Wave 1 starts manually.",
+        DrawText(batch, "Auto-start always earns +20. Wave 1 starts manually.",
             new Vector2(640, 612), ColorPalette.Muted, 0.49f, true);
         if (!string.IsNullOrWhiteSpace(_settingsStatus))
             DrawFittedCenteredText(batch, _settingsStatus, new Vector2(640, 650), ColorPalette.Cobalt, 0.50f, 900);
@@ -3746,7 +3758,7 @@ public sealed class UIManager
         DrawText(batch, "FINAL DEFENSE", new Vector2(834, 333), ColorPalette.Muted, 0.38f);
         DrawFittedText(batch,
             finalTowerCount is null
-                ? "NOT ARCHIVED"
+                ? "UNAVAILABLE"
                 : $"{finalTowerCount} {(finalTowerCount == 1 ? "TOWER" : "TOWERS")}  |  {apexTowerCount} APEX",
             new Vector2(940, 333), finalTowerCount is null ? ColorPalette.Muted : ColorPalette.Cobalt, 0.42f, 284);
 
@@ -3761,20 +3773,15 @@ public sealed class UIManager
         DrawSummaryMetric(batch, "FORGES BUILT", entry.ForgePurchases.ToString(), 834, 513, ColorPalette.GreenText);
         DrawSummaryMetric(batch, "FORGE UPGRADES", entry.ForgeUpgrades.ToString(), 1038, 513, ColorPalette.GreenText);
 
-        DrawText(batch, "GREATEST LEAK THREAT", new Vector2(834, 568), ColorPalette.Muted, 0.40f);
-        var leakThreat = entry.GreatestLeakThreatLivesLost <= 0
-            ? "NONE"
-            : $"{entry.GreatestLeakThreatName.ToUpperInvariant()}  -{entry.GreatestLeakThreatLivesLost} LIVES";
-        DrawFittedText(batch, leakThreat, new Vector2(834, 588), entry.GreatestLeakThreatLivesLost <= 0 ? ColorPalette.GreenText : ColorPalette.Coral, 0.52f, 390);
-        var enemySummary = entry.Enemies.Count == 0
-            ? "NO DETAILED THREAT TELEMETRY"
-            : string.Join("  |  ", entry.Enemies.Where(enemy => enemy.Escapes > 0).Take(3)
-                .Select(enemy => $"{enemy.DisplayName.ToUpperInvariant()} {enemy.Escapes} ESC"));
-        if (string.IsNullOrWhiteSpace(enemySummary)) enemySummary = "NO ENEMIES ESCAPED";
-        DrawFittedText(batch, enemySummary, new Vector2(834, 612), ColorPalette.Muted, 0.36f, 390);
+        DrawText(batch, entry.Victory ? "FIELD AT FINISH" : "FIELD AT DEFEAT",
+            new Vector2(834, 568), ColorPalette.Muted, 0.40f);
+        var fieldHeadline = RecordedFieldHeadline(entry);
+        var fieldColor = entry.Victory ? ColorPalette.GreenText : entry.DefeatFieldRecorded ? ColorPalette.Coral : ColorPalette.Muted;
+        DrawFittedText(batch, fieldHeadline, new Vector2(834, 588), fieldColor, 0.52f, 390);
+        DrawFittedText(batch, RecordedFieldDetails(entry), new Vector2(834, 612), ColorPalette.Muted, 0.36f, 390);
 
         DrawButton(batch, p, _runHistoryLayoutButton,
-            entry.FinalLayout is null ? "LAYOUT NOT ARCHIVED" : "VIEW FINAL LAYOUT",
+            entry.FinalLayout is null ? "LAYOUT UNAVAILABLE" : "VIEW FINAL LAYOUT",
             entry.FinalLayout is not null, ColorPalette.Cyan);
         DrawButton(batch, p, _runHistoryDetailBackButton, "BACK TO HISTORY", true, ColorPalette.Violet);
     }
@@ -3785,6 +3792,38 @@ public sealed class UIManager
         return duration.TotalHours >= 1
             ? $"{(int)duration.TotalHours}:{duration.Minutes:00}:{duration.Seconds:00}"
             : $"{duration.Minutes:00}:{duration.Seconds:00}";
+    }
+
+    private static string RecordedFieldHeadline(RunHistoryEntry entry)
+    {
+        if (entry.Victory) return "CLEAR";
+        if (!entry.DefeatFieldRecorded) return "NOT RECORDED";
+        var count = entry.RemainingEnemies.Sum(enemy => enemy.Count);
+        return entry.QueuedEnemiesRemaining > 0
+            ? $"{count} ON FIELD  |  {entry.QueuedEnemiesRemaining} QUEUED"
+            : $"{count} ON FIELD";
+    }
+
+    private static string RecordedFieldDetails(RunHistoryEntry entry)
+    {
+        if (entry.Victory) return "NO ENEMIES REMAINED";
+        if (!entry.DefeatFieldRecorded) return "NEW RUNS SAVE THE FULL REMAINING FIELD";
+        if (entry.RemainingEnemies.Count == 0) return entry.QueuedEnemiesRemaining > 0
+            ? "NO ENEMIES ON FIELD; LATER GROUPS WERE STILL QUEUED"
+            : "NO ENEMIES REMAINED ON FIELD";
+        return string.Join("  |  ", entry.RemainingEnemies.Take(2).Select(RecordedRemainingEnemyLabel));
+    }
+
+    private static string RecordedRemainingEnemyLabel(RunHistoryRemainingEnemyEntry enemy)
+    {
+        var healthPercent = enemy.TotalMaxHealth <= 0
+            ? 0
+            : Math.Clamp(enemy.TotalHealth / enemy.TotalMaxHealth, 0, 1);
+        var shield = enemy.TotalShield > 0 ? $" +{enemy.TotalShield:0} SHIELD" : "";
+        var signal = enemy.SignalRole.Equals(nameof(EnemySignalRole.None), StringComparison.OrdinalIgnoreCase)
+            ? ""
+            : $" {enemy.SignalRole.ToUpperInvariant()}";
+        return $"{enemy.Count} {enemy.DisplayName.ToUpperInvariant()} {healthPercent:P0} HP{shield}{signal}";
     }
 
     private void DrawCoOpMenu(SpriteBatch batch, PrimitiveRenderer p)
@@ -3879,7 +3918,7 @@ public sealed class UIManager
         p.DrawRect(batch, new Rectangle(260, 64, 760, 584), ColorPalette.Ink, 2);
 
         DrawText(batch, victory ? "BASTION SECURED" : "BASTION BREACHED", new Vector2(640, 105), ColorPalette.Ink, 1.55f, true);
-        DrawText(batch, victory ? $"All {GameConstants.CampaignWaveCount} authored waves secured. Endless begins at wave {GameConstants.GeneratedEndlessStartWave}." : $"Defense collapsed during wave {session.CurrentWave}.", new Vector2(640, 142), ColorPalette.Muted, 0.72f, true);
+        DrawText(batch, victory ? $"All {GameConstants.CampaignWaveCount} campaign waves secured. Endless begins at wave {GameConstants.GeneratedEndlessStartWave}." : $"Defense collapsed during wave {session.CurrentWave}.", new Vector2(640, 142), ColorPalette.Muted, 0.72f, true);
         DrawFittedCenteredText(batch,
             $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
             new Vector2(640, 160), session.Challenge.AccentColor, 0.40f, 650);
@@ -3942,7 +3981,7 @@ public sealed class UIManager
         var label = new Rectangle(432, 9, 188, 38);
         p.FillRect(batch, label, ColorPalette.Cyan);
         p.DrawRect(batch, label, ColorPalette.Ink, 2);
-        DrawText(batch, "ARCHIVED LAYOUT", new Vector2(label.Center.X, label.Center.Y), ColorPalette.Paper, 0.54f, true);
+        DrawText(batch, "FINAL LAYOUT", new Vector2(label.Center.X, label.Center.Y), ColorPalette.Paper, 0.54f, true);
         DrawButton(batch, p, _fieldResultsButton, "BACK TO HISTORY", true, ColorPalette.Violet);
     }
 
@@ -4001,7 +4040,6 @@ public sealed class UIManager
 
         var economy = session.Economy;
         var stats = session.Statistics;
-        var threat = stats.GreatestLeakThreat;
         var elapsed = TimeSpan.FromSeconds(stats.SimulatedSeconds);
         var left = rect.X + 14;
         var right = rect.X + 134;
@@ -4013,9 +4051,29 @@ public sealed class UIManager
         DrawSummaryMetric(batch, "PLATES", stats.EmergencyDeployments.ToString(), right, rect.Y + 129, ColorPalette.Coral);
         DrawSummaryMetric(batch, "PLATE DAMAGE", stats.EmergencyDamage.ToString("0"), left, rect.Y + 167, ColorPalette.Coral);
         DrawSummaryMetric(batch, "FORGED", stats.GeneratedCharges.ToString(), right, rect.Y + 167, ColorPalette.GreenText);
-        DrawText(batch, "GREATEST LEAK THREAT", new Vector2(rect.X + 14, rect.Y + 210), ColorPalette.Muted, 0.44f);
-        DrawText(batch, threat is null ? "NONE" : $"{threat.DisplayName.ToUpperInvariant()}  -{threat.LivesLost} LIVES", new Vector2(rect.X + 14, rect.Y + 228), threat is null ? ColorPalette.GreenText : ColorPalette.Coral, 0.52f);
+        DrawText(batch, session.IsDefeat ? "FIELD AT DEFEAT" : "FIELD AT FINISH",
+            new Vector2(rect.X + 14, rect.Y + 210), ColorPalette.Muted, 0.44f);
+        DrawFittedText(batch, LiveFieldHeadline(session), new Vector2(rect.X + 14, rect.Y + 228),
+            session.IsDefeat ? ColorPalette.Coral : ColorPalette.GreenText, 0.52f, rect.Width - 28);
         DrawText(batch, $"DEFENSE TIME  {elapsed.Minutes:00}:{elapsed.Seconds:00}", new Vector2(rect.X + 14, rect.Bottom - 27), ColorPalette.Cobalt, 0.52f);
+    }
+
+    private static string LiveFieldHeadline(MinimalBastion.GameSession session)
+    {
+        if (!session.IsDefeat) return "CLEAR";
+        var remaining = session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped).ToArray();
+        if (remaining.Length == 0)
+            return session.Waves.QueuedEnemies > 0 ? $"0 LIVE  |  {session.Waves.QueuedEnemies} QUEUED" : "0 LIVE";
+        var largestGroup = remaining
+            .GroupBy(enemy => enemy.DisplayName)
+            .OrderByDescending(group => group.Count())
+            .ThenByDescending(group => group.Sum(enemy => enemy.Health + enemy.Shield))
+            .First();
+        var healthPercent = largestGroup.Sum(enemy => enemy.MaxHealth) <= 0
+            ? 0
+            : Math.Clamp(largestGroup.Sum(enemy => enemy.Health) / largestGroup.Sum(enemy => enemy.MaxHealth), 0, 1);
+        var queued = session.Waves.QueuedEnemies > 0 ? $"  |  {session.Waves.QueuedEnemies} QUEUED" : "";
+        return $"{remaining.Length} LIVE  |  {largestGroup.Count()} {largestGroup.Key.ToUpperInvariant()} {healthPercent:P0} HP{queued}";
     }
 
     private void DrawSummaryMetric(SpriteBatch batch, string label, string value, int x, int y, Color valueColor)
@@ -4090,9 +4148,9 @@ public sealed class UIManager
         DrawFittedText(batch, _libraryShowsSystems
             ? "Core rules, targeting, reserves, support, and co-op."
             : _libraryShowsProfiles
-            ? "Difficulty scaling and directive restrictions."
+            ? "Difficulty effects and mode restrictions."
             : _libraryShowsCampaign
-            ? "Authored waves, scaling, routes, and threat order."
+            ? "Campaign waves, routes, enemy strength, and threat order."
             : _libraryShowsThreats
                 ? "Enemy stats, ranks, counters, and status symbols."
                 : "Exact stats, upgrades, roles, and Protocols.",
@@ -4159,7 +4217,7 @@ public sealed class UIManager
         var towers = _libraryTowers;
         if (towers.Count == 0)
         {
-            DrawDiscoveryEmptyState(batch, "NO TOWERS CONFIGURED", "No tower definitions are available.", detailPanel);
+            DrawDiscoveryEmptyState(batch, "NO TOWERS AVAILABLE", "No towers are available.", detailPanel);
             return;
         }
 
@@ -4198,7 +4256,7 @@ public sealed class UIManager
         _towerLibraryDoctrineBButton = Rectangle.Empty;
         if (_libraryMaps.Count == 0)
         {
-            DrawDiscoveryEmptyState(batch, "NO CAMPAIGNS CONFIGURED", "No arena definitions are available.", detailPanel);
+            DrawDiscoveryEmptyState(batch, "NO CAMPAIGNS AVAILABLE", "No arenas are available.", detailPanel);
             return;
         }
 
@@ -4223,7 +4281,7 @@ public sealed class UIManager
             var authoredWaveCount = _libraryCampaignWaves.TryGetValue(map.Id, out var mapWaves)
                 ? Math.Min(GameConstants.CampaignWaveCount, mapWaves.Count)
                 : 0;
-            DrawFittedText(batch, authoredWaveCount > 0 ? $"AUTHORED WAVES 1-{authoredWaveCount}" : "NO AUTHORED WAVE DATA",
+            DrawFittedText(batch, authoredWaveCount > 0 ? $"CAMPAIGN WAVES 1-{authoredWaveCount}" : "NO CAMPAIGN WAVES",
                 new Vector2(row.X + 14, row.Y + 78), LibraryAccentText(accent, selected ? ColorPalette.Tint(accent, 0.80f) : ColorPalette.PanelAlt),
                 0.40f, row.Width - 28);
             if (_settings.ShowHotkeyBadges)
@@ -4236,7 +4294,7 @@ public sealed class UIManager
         var selectedMap = _libraryMaps[_campaignLibraryMapIndex];
         if (!_libraryCampaignWaves.TryGetValue(selectedMap.Id, out var waves) || waves.Count == 0)
         {
-            DrawText(batch, "NO AUTHORED WAVES FOR THIS ARENA", new Vector2(detailPanel.Center.X, detailPanel.Center.Y), ColorPalette.Coral, 0.72f, true);
+            DrawText(batch, "NO CAMPAIGN WAVES FOR THIS ARENA", new Vector2(detailPanel.Center.X, detailPanel.Center.Y), ColorPalette.Coral, 0.72f, true);
             return;
         }
 
@@ -4246,7 +4304,7 @@ public sealed class UIManager
             new Vector2(detailPanel.Right - 18, detailPanel.Y + 21), LibraryAccentText(mapAccent, ColorPalette.Panel), 0.50f);
         DrawFittedText(batch, selectedMap.Description, new Vector2(detailPanel.X + 18, detailPanel.Y + 48), ColorPalette.Muted, 0.48f, detailPanel.Width - 238);
         var visibleWaveCount = Math.Min(GameConstants.CampaignWaveCount, waves.Count);
-        DrawFittedText(batch, $"MAP-SPECIFIC WAVES W1-W{visibleWaveCount}  |  DIFFICULTIES SCALE THE SAME ROSTER",
+        DrawFittedText(batch, $"WAVES W1-W{visibleWaveCount}  |  SAME ENEMY LINEUP ON EVERY DIFFICULTY",
             new Vector2(detailPanel.X + 18, detailPanel.Y + 68),
             LibraryAccentText(mapAccent, ColorPalette.Panel), 0.40f, detailPanel.Width - 238);
         DrawFittedText(batch, "GAUNTLET SIGNAL COUNTS IN [BRACKETS]: ACC ACCELERATOR | RES RESTORER | BUL BULWARK | JAM JAMMER | DIS DISRUPTOR",
@@ -4269,7 +4327,7 @@ public sealed class UIManager
         }
 
         DrawFittedCenteredText(batch,
-            $"Complete authored rosters are available for planning.  TAB changes page; ESC or BACK returns to {returnDestination}.",
+            $"Complete enemy lineups are available for planning.  TAB changes page; ESC or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
     }
 
@@ -4308,7 +4366,7 @@ public sealed class UIManager
         _towerLibraryDoctrineBButton = Rectangle.Empty;
         if (_libraryDifficulties.Count == 0 && _libraryChallenges.Count == 0)
         {
-            DrawDiscoveryEmptyState(batch, "NO PROFILES CONFIGURED", "No difficulty or directive definitions are available.", panel);
+            DrawDiscoveryEmptyState(batch, "NO PROFILES AVAILABLE", "No difficulties or modes are available.", panel);
             return;
         }
 
@@ -4335,12 +4393,12 @@ public sealed class UIManager
         {
             var challenge = _libraryChallenges[index];
             DrawSystemCard(batch, p, new Rectangle(firstX + index * (challengeCardWidth + gap), secondY, challengeCardWidth, cardHeight),
-                $"{challenge.DisplayName.ToUpperInvariant()} DIRECTIVE", challenge.AccentColor, "square",
+                $"{challenge.DisplayName.ToUpperInvariant()} MODE", challenge.AccentColor, "square",
                 ChallengeReferenceLinesWithSignals(challenge, _allLibraryTowers.Count));
         }
 
         DrawFittedCenteredText(batch,
-            $"Difficulty scales every arena and endless wave; directives change available systems and enemy rules.  TAB changes page; ESC or BACK returns to {returnDestination}.",
+            $"Difficulty changes enemy strength; modes change available systems and enemy rules.  TAB changes page; ESC or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.43f, 1160);
     }
 
@@ -4353,7 +4411,7 @@ public sealed class UIManager
         difficulty.Id.ToLowerInvariant() switch
         {
             "easy" => "INTENT: LEARNING MARGIN + RECOVERY",
-            "normal" => "INTENT: AUTHORED COMBAT BASELINE",
+            "normal" => "INTENT: STANDARD CAMPAIGN PRESSURE",
             "hard" => "INTENT: EXPERT CAMPAIGN PRESSURE",
             "bastion" => "INTENT: MAXIMUM CAMPAIGN PRESSURE",
             _ => $"INTENT: {difficulty.Description.ToUpperInvariant()}"
@@ -4370,7 +4428,7 @@ public sealed class UIManager
                 "UNLIMITED CREDITS + LIVES",
                 "FIXED OR IMMORTAL TARGETS",
                 "ALL RANKS + SELECTABLE SIGNAL ROLES",
-                "AUTHORED WAVES USE GAUNTLET SIGNALS",
+                "WAVE SIGNALS OPTIONAL; OFF BY DEFAULT",
                 "RESET TOWER DATA + PROTOCOLS"
             ];
         }
@@ -4663,7 +4721,7 @@ public sealed class UIManager
         _towerLibraryDoctrineBButton = Rectangle.Empty;
         if (_libraryThreats.Count == 0)
         {
-            DrawDiscoveryEmptyState(batch, "NO THREATS CONFIGURED", "No enemy definitions are available.", detailPanel);
+            DrawDiscoveryEmptyState(batch, "NO THREATS AVAILABLE", "No enemies are available.", detailPanel);
             return;
         }
 
@@ -4689,7 +4747,7 @@ public sealed class UIManager
         var selectedThreat = _libraryThreats[_enemyLibraryIndex];
         if (selectedThreat.Definition is { } definition) DrawEnemyLibraryDetails(batch, p, definition, detailPanel);
         else DrawSignalRoleLibraryDetails(batch, p, selectedThreat.SignalRole, detailPanel);
-        DrawText(batch, $"Complete threat and signal references; values precede scaling.  TAB changes page; ESC, right-click, or BACK returns to {returnDestination}.",
+        DrawText(batch, $"Complete enemy and signal details; values shown before difficulty effects.  TAB changes page; ESC, right-click, or BACK returns to {returnDestination}.",
             new Vector2(640, 674), ColorPalette.Muted, 0.45f, true);
     }
 
@@ -4775,7 +4833,7 @@ public sealed class UIManager
         var rules = _challenges.FirstOrDefault(challenge => challenge.CounterPressureEnabled) ?? new ChallengeDefinition();
         DrawThreatIcon(batch, p, threat, new Vector2(panel.X + 42, panel.Y + 45), 24);
         DrawText(batch, threat.DisplayName.ToUpperInvariant(), new Vector2(panel.X + 84, panel.Y + 17), ColorPalette.Ink, 0.98f);
-        DrawText(batch, "SIGNAL GAUNTLET MODIFIER", new Vector2(panel.X + 84, panel.Y + 49),
+        DrawText(batch, "SIGNAL GAUNTLET ROLE", new Vector2(panel.X + 84, panel.Y + 49),
             LibraryAccentText(threat.PrimaryColor, ColorPalette.Panel), 0.57f);
         DrawFittedText(batch, SignalRoleDescription(role), new Vector2(panel.X + 18, panel.Y + 82),
             ColorPalette.Muted, 0.48f, panel.Width - 36);
@@ -4790,9 +4848,9 @@ public sealed class UIManager
         DrawText(batch, "IDENTIFICATION", new Vector2(panel.X + 18, panel.Y + 322), ColorPalette.Navy, 0.62f);
         DrawFittedText(batch, $"A signal enemy displays the {threat.SymbolLabel.ToLowerInvariant()} glyph inside its normal body.",
             new Vector2(panel.X + 18, panel.Y + 352), ColorPalette.Ink, 0.49f, panel.Width - 36);
-        DrawFittedText(batch, "This is a modifier, not a separate body type. Signal Crawlers, Runners, Brutes, Aegis, and Regenerators retain their normal base profile.",
+        DrawFittedText(batch, "A signal role changes an existing enemy; Crawlers, Runners, Brutes, Aegis, and Regenerators keep their normal body and base stats.",
             new Vector2(panel.X + 18, panel.Y + 382), ColorPalette.Muted, 0.46f, panel.Width - 36);
-        DrawFittedText(batch, "Signal roles can modify any compatible base enemy in Signal Gauntlet.",
+        DrawFittedText(batch, "Any compatible enemy can carry a signal role in Signal Gauntlet.",
             new Vector2(panel.X + 18, panel.Y + 430), LibraryAccentText(threat.PrimaryColor, ColorPalette.Panel), 0.46f, panel.Width - 36);
     }
 
@@ -5123,15 +5181,15 @@ public sealed class UIManager
         public static ThreatLibraryEntry FromSignalRole(EnemySignalRole role) => role switch
         {
             EnemySignalRole.Accelerator => new("signal:accelerator", "Accelerator Signal", null, role,
-                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // FORMATION SPEED", "CYAN DOUBLE-CHEVRON"),
+                EnemySignalGlyphRenderer.Accent(role), "circle", "SIGNAL ROLE // FORMATION SPEED", "CYAN DOUBLE-CHEVRON"),
             EnemySignalRole.Restorer => new("signal:restorer", "Restorer Signal", null, role,
-                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // FORMATION REPAIR", "GREEN PLUS"),
+                EnemySignalGlyphRenderer.Accent(role), "circle", "SIGNAL ROLE // FORMATION REPAIR", "GREEN PLUS"),
             EnemySignalRole.Bulwark => new("signal:bulwark", "Bulwark Signal", null, role,
-                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // FORMATION SHIELD", "CYAN DIAMOND"),
+                EnemySignalGlyphRenderer.Accent(role), "circle", "SIGNAL ROLE // FORMATION SHIELD", "CYAN DIAMOND"),
             EnemySignalRole.Jammer => new("signal:jammer", "Jammer Signal", null, role,
-                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // TOWER SUPPRESSION", "ORANGE MINUS"),
+                EnemySignalGlyphRenderer.Accent(role), "circle", "SIGNAL ROLE // TOWER SUPPRESSION", "ORANGE MINUS"),
             EnemySignalRole.Disruptor => new("signal:disruptor", "Disruptor Signal", null, role,
-                EnemySignalGlyphRenderer.Accent(role), "circle", "MODIFIER // SINGLE-TOWER PAUSE", "VIOLET X"),
+                EnemySignalGlyphRenderer.Accent(role), "circle", "SIGNAL ROLE // SINGLE-TOWER PAUSE", "VIOLET X"),
             _ => new("signal:none", "No Signal", null, role, ColorPalette.Muted, "circle", "NO SPECIAL ROLE", "NO SIGNAL")
         };
     }

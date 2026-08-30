@@ -28,8 +28,8 @@ Reports are written to `.build\balance` unless `--output` selects another path.
 - `--runs <1-100>` selects seeds per profile/policy.
 - `--map <id>` selects one arena.
 - `--difficulty <id|all>` selects a profile or all four.
-- `--challenge <id|all>` selects a directive or all competitive directives.
-- `--max-wave <n>` sets the success target. Every authored campaign ends at wave 30 unless a later Endless target is requested.
+- `--challenge <id|all>` selects a mode or all competitive modes.
+- `--max-wave <n>` sets the success target. Every campaign ends at wave 30 unless a later Endless target is requested.
 - `--force-build <tower:doctrine>specialization>` constrains one complete path.
 - `--force-build <tower:all>` compares a tower's four paths; `all` audits every completed path.
 - `--no-protocols` and `--no-apex` create matched system controls.
@@ -59,10 +59,11 @@ The matrix can use multiple deterministic strategies that vary opening prioritie
 The Experienced policy is the expert reference. It adds:
 
 - an economical three-Needle opening;
-- authored counter milestones for Frost, Shard, Breaker, Arc, Prism, Ember, Mortar, and Watchtower;
+- planned counter milestones for Frost, Shard, Breaker, Arc, Prism, Ember, Mortar, and Watchtower;
 - Fastest Frost, Armored Breaker, Strongest priority fire, and Support targeting in Signal Gauntlet;
 - compact Surge Node candidates, including four-tower patterns on sufficiently large unobstructed nodes;
 - Signal Beacon scoring based on new recipients and strongest-value non-stacking rules;
+- Apex scoring that includes expected independent Protocol uptime and discourages repeatedly promoting one tower role;
 - upgrade breadth so duplicate generalists do not mature before key counters;
 - late Forge timing and Apex reinvestment.
 
@@ -93,12 +94,15 @@ Other output includes:
 - Pulse Plate and Forge activity;
 - Apex purchases and spend;
 - campaign clear and target-wave reach.
+- every enemy group still alive at defeat, including count, health, shield, rank, signal role, furthest progress, and enemies still queued.
+
+Static wave checks measure total health and shield, armor-adjusted damage demand, spawn duration, scheduled signal carriers, and the largest speed-weighted demand arriving inside an eight-second window. These measurements are pressure proxies rather than win-rate predictions, but they catch composition and cadence cliffs that a health-multiplier sequence alone cannot reveal.
 
 Support/control attribution is deliberately separate from direct damage. Signal Beacon, Frost Spire, Prism Beam, Breaker Cannon, and Arc Relay cannot be assessed fairly from kills alone.
 
 ## Current Experienced baseline
 
-The latest complete validation sweep used two seeds for all four arenas and all four competitive directives, or 32 runs per difficulty:
+The latest complete validation sweep used two seeds for all four arenas and all four competitive modes, or 32 runs per difficulty:
 
 | Difficulty | Completion | Average wave | Average lives |
 | --- | ---: | ---: | ---: |
@@ -107,14 +111,14 @@ The latest complete validation sweep used two seeds for all four arenas and all 
 | Hard | 0.0% | 15.8 | 0.0 |
 | Bastion | 0.0% | 11.3 | 0.0 |
 
-Every profile uses wave 30 as the campaign success target and enables Apex at wave 21. Bastion is the no-breach profile; its zero in this limited deterministic sample identifies an aspirational ceiling, not proof that human completion is impossible. See [BALANCE_REPORT.md](BALANCE_REPORT.md) for map/directive splits and interpretation.
+Every profile uses wave 30 as the campaign success target and enables Apex at wave 21. Bastion is the no-breach profile; its zero in this limited deterministic sample identifies an aspirational ceiling, not proof that human completion is impossible. See [BALANCE_REPORT.md](BALANCE_REPORT.md) for arena/mode splits and interpretation.
 
 ## Interpretation rules
 
 1. Treat completion as comparative evidence, not a difficulty promise.
-2. Compare matched seeds, strategies, map, difficulty, directive, and target wave.
-3. Review map and directive distributions before changing global values.
-4. Inspect final layouts and completed-path coverage when an aggregate is surprising.
+2. Compare matched seeds, strategies, map, difficulty, mode, and target wave.
+3. Review arena and mode distributions before changing global values.
+4. Inspect final layouts, completed-path coverage, and the full field remaining at defeat when an aggregate is surprising.
 5. Use checkpoint controls to separate economy, footprint, and tactical execution.
 6. Pair simulation findings with human runs, especially for node use, selling/reorganization, Protocol timing, and emergency spending.
 7. Re-run focused controls after any content or heuristic change before spending time on a full matrix.

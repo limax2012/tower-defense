@@ -40,6 +40,7 @@ public sealed class GameSession
     private float _sandboxGroupTimer;
     private float _sandboxDelayRemaining;
     private int _sandboxQueuedEnemies;
+    private bool _sandboxWaveSignalsEnabled;
     private bool _counterSupportSimulationEnabled = true;
     private bool _counterAttackersSimulationEnabled = true;
     private bool _apexProtocolAutomationEnabled = true;
@@ -127,6 +128,7 @@ public sealed class GameSession
     public bool CanSaveCheckpoint => !IsSandbox && !Waves.IsActive && Enemies.Count == 0 && !IsVictory && !IsDefeat;
     public bool SandboxWaveActive => _sandboxActiveWave is not null;
     public int SandboxQueuedEnemies => _sandboxQueuedEnemies;
+    public bool SandboxWaveSignalsEnabled => _sandboxWaveSignalsEnabled;
 
     public event Action<TowerInstance>? TowerPlaced;
     public event Action<TowerInstance, int>? TowerUpgraded;
@@ -167,7 +169,7 @@ public sealed class GameSession
         if (IsSandbox)
         {
             AnnouncementTitle = "SANDBOX LAB ONLINE";
-            AnnouncementSubtitle = "Build freely, spawn fixed targets, or replay an authored wave.";
+            AnnouncementSubtitle = "Build freely, deploy fixed targets, or replay any campaign wave.";
             AnnouncementRemaining = 4.2f;
             AnnouncementPositive = true;
         }
@@ -1105,10 +1107,24 @@ public sealed class GameSession
         _sandboxDelayRemaining = wave.Groups.Count > 0 ? wave.Groups[0].DelayBefore : 0;
         _sandboxQueuedEnemies = wave.Groups.Sum(group => group.Count);
         AnnouncementTitle = $"TEST WAVE {wave.Number} // {wave.Archetype.ToUpperInvariant()}";
-        AnnouncementSubtitle = $"{Map.Definition.DisplayName} composition with {Difficulty.DisplayName} scaling and Gauntlet signals.";
+        var signalStatus = _sandboxWaveSignalsEnabled ? "Wave signals on." : "Wave signals off.";
+        AnnouncementSubtitle = $"{Map.Definition.DisplayName} enemies at {Difficulty.DisplayName} strength. {signalStatus}";
         AnnouncementPositive = false;
         AnnouncementRemaining = 2.8f;
         return wave.Groups.Count > 0;
+    }
+
+    public bool ToggleSandboxWaveSignals()
+    {
+        if (!IsSandbox || SandboxWaveActive) return false;
+        _sandboxWaveSignalsEnabled = !_sandboxWaveSignalsEnabled;
+        AnnouncementTitle = _sandboxWaveSignalsEnabled ? "WAVE SIGNALS ON" : "WAVE SIGNALS OFF";
+        AnnouncementSubtitle = _sandboxWaveSignalsEnabled
+            ? "Campaign wave tests now include Signal Gauntlet roles."
+            : "Campaign wave tests now use their normal enemy lineup.";
+        AnnouncementPositive = _sandboxWaveSignalsEnabled;
+        AnnouncementRemaining = 2.2f;
+        return true;
     }
 
     public void ClearSandboxTargets()
@@ -1226,7 +1242,9 @@ public sealed class GameSession
         _sandboxGroupTimer -= deltaSeconds;
         if (_sandboxSpawnedInGroup < group.Count && _sandboxGroupTimer <= 0)
         {
-            var signalRole = ResolveEnemySignalRole(wave, _sandboxGroupIndex, _sandboxSpawnedInGroup, group);
+            var signalRole = _sandboxWaveSignalsEnabled
+                ? ResolveEnemySignalRole(wave, _sandboxGroupIndex, _sandboxSpawnedInGroup, group)
+                : EnemySignalRole.None;
             SpawnEnemy(group.EnemyId, wave.HealthMultiplier, wave.SpeedMultiplier, group.Rank, signalRole);
             _sandboxSpawnedInGroup++;
             _sandboxQueuedEnemies = Math.Max(0, _sandboxQueuedEnemies - 1);
@@ -1270,7 +1288,7 @@ public sealed class GameSession
         if (!IsVictory || IsDefeat || !Waves.EnableEndlessMode()) return false;
         IsVictory = false;
         AnnouncementTitle = "ENDLESS // APEX ONLINE";
-        AnnouncementSubtitle = $"Generated Endless begins at wave {GameConstants.GeneratedEndlessStartWave}. Promote final-tier towers or expand the defense.";
+        AnnouncementSubtitle = $"Endless begins at wave {GameConstants.GeneratedEndlessStartWave}. Promote final-tier towers or expand the defense.";
         AnnouncementPositive = true;
         AnnouncementRemaining = 3.4f;
         return true;
@@ -1400,7 +1418,7 @@ public sealed class GameSession
             ? "CAMPAIGN SECURED"
             : finalEscalationUnlocked ? "FINAL ESCALATION" : $"WAVE {waveNumber} CLEARED";
         AnnouncementSubtitle = campaignCleared
-            ? $"Generated Endless begins at wave {GameConstants.GeneratedEndlessStartWave}."
+            ? $"Endless begins at wave {GameConstants.GeneratedEndlessStartWave}."
             : finalEscalationUnlocked
                 ? "APEX PROMOTIONS UNLOCKED // 10 WAVES REMAIN"
                 : $"+{EconomyService.EffectiveWaveReward(waveNumber)} completion credits";
@@ -1669,7 +1687,7 @@ public sealed class GameSession
             var maximumShield = definition.Shield + (savedEnemy.Rank == EnemyRank.Boss ? maximumHealth * 0.12f : 0);
             if (!float.IsFinite(maximumHealth) || savedEnemy.Health > maximumHealth + 0.01f ||
                 savedEnemy.Shield > maximumShield + 0.01f)
-                throw new InvalidDataException("Network enemy health or shield exceeds its authored maximum.");
+                throw new InvalidDataException("Network enemy health or shield exceeds its allowed maximum.");
             session.Enemies.Add(EnemyInstance.RestoreCoOpState(savedEnemy, definition, session.Map.Path));
         }
 
@@ -1808,7 +1826,7 @@ public sealed class GameSession
         if (plates.Any(plate => plate.ChargesRemaining <= 0 || plate.ChargesRemaining > plateDefinition.Charges ||
             plate.ArmRemaining > plateDefinition.ArmTime + 0.01f ||
             plate.CooldownRemaining > plateDefinition.TriggerCooldown + 0.01f))
-            throw new InvalidDataException("Restored Pulse Plate charge or timer state exceeds its authored limits.");
+            throw new InvalidDataException("Restored Pulse Plate charge or timer state exceeds its allowed limits.");
 
         if (generator is null) return;
         var definition = session._content.Tactics.Generator;
@@ -1816,7 +1834,7 @@ public sealed class GameSession
             generator.InvestedCredits < definition.PurchaseCost ||
             !float.IsFinite(generator.ProductionRemaining) || generator.ProductionRemaining < 0 ||
             generator.ProductionRemaining > definition.Levels[generator.LevelIndex].ProductionSeconds + 0.01f)
-            throw new InvalidDataException("Restored Charge Forge progression or timer state exceeds its authored limits.");
+            throw new InvalidDataException("Restored Charge Forge progression or timer state exceeds its allowed limits.");
     }
 
     private static void ValidateRestoredDefenseLayout(GameSession session)
@@ -1824,7 +1842,7 @@ public sealed class GameSession
         if (!session.TacticalSystemsEnabled &&
             (session.EmergencyInventory != 0 || session.EmergencyDirectPurchasesThisWave != 0 ||
              session.EmergencyDefenses.Count != 0 || session.Generator is not null))
-            throw new InvalidDataException("Restored tactical defenses conflict with the selected directive.");
+            throw new InvalidDataException("Restored tactical defenses conflict with the selected mode.");
 
         foreach (var tower in session.Towers)
         {

@@ -464,7 +464,7 @@ public sealed class Game1 : Game
                 InitializeDefenseSession(
                     _pendingDefenseMapId ?? throw new InvalidOperationException("Defense loading has no pending map."),
                     _pendingDefenseDifficultyId ?? throw new InvalidOperationException("Defense loading has no pending difficulty."),
-                    _pendingDefenseChallengeId ?? throw new InvalidOperationException("Defense loading has no pending directive."));
+                    _pendingDefenseChallengeId ?? throw new InvalidOperationException("Defense loading has no pending mode."));
                 SetLoadingPresentationStatus("RENDERING DEFENSE GRID");
                 _loadingTransitionPhase = 2;
                 return;

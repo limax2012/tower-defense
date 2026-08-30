@@ -39,12 +39,6 @@ public sealed class RunStatistics
         .Where(x => x.ContributionDamage > 0)
         .OrderByDescending(x => x.ContributionDamage)
         .ThenBy(x => x.DisplayName);
-    public RunEnemyStatistics? GreatestLeakThreat => _enemies.Values
-        .Where(x => x.Escapes > 0)
-        .OrderByDescending(x => x.LivesLost)
-        .ThenByDescending(x => x.Escapes)
-        .FirstOrDefault();
-
     public RunStatistics(GameSession session)
     {
         _session = session;

@@ -851,6 +851,8 @@ internal static class Program
         Check.True(session.CounterPressureEnabled && session.SupportTargetingEnabled &&
                    session.AvailableTargetModes.Contains(TargetMode.Support),
             "sandbox exposes complete Signal Gauntlet behavior and targeting for experiments");
+        Check.True(!session.SandboxWaveSignalsEnabled,
+            "sandbox campaign-wave signals start disabled");
         Check.True(session.Economy.UnlimitedCredits && session.Economy.UnlimitedLives,
             "sandbox economy explicitly exposes unlimited resources");
         Check.True(!session.CanSaveCheckpoint && !session.StartNextWave(),
@@ -935,16 +937,30 @@ internal static class Program
         Check.True(!tower.IsOverdriven && session.OverdriveCooldownRemaining <= 0,
             "sandbox R hotkey also resets Protocol state");
 
-        Check.True(session.StartSandboxWave(10), "sandbox can replay a selected authored wave");
+        var waveSignals = new List<EnemySignalRole>();
+        session.EnemySpawned += enemy => waveSignals.Add(enemy.SignalRole);
+        Check.True(session.StartSandboxWave(10), "sandbox can replay a selected campaign wave");
         Check.True(session.SandboxWaveActive && session.SandboxQueuedEnemies > 0,
-            "authored test wave exposes deployment progress");
-        for (var step = 0; step < 80 && session.Enemies.Count == 0; step++) session.Update(0.05f);
-        Check.True(session.Enemies.Count > 0, "authored test wave uses normal timed enemy spawning");
-        Check.True(session.Enemies.All(enemy => !enemy.IsSandboxImmortal), "authored wave targets remain destructible");
-        for (var step = 0; step < 240 && session.Enemies.All(enemy => enemy.SignalRole == EnemySignalRole.None); step++)
+            "campaign test wave exposes deployment progress");
+        for (var step = 0; step < 4000 && session.SandboxWaveActive; step++) session.Update(0.05f);
+        Check.True(waveSignals.Count > 0, "campaign test wave uses normal timed enemy spawning");
+        Check.True(session.Enemies.All(enemy => !enemy.IsSandboxImmortal), "campaign wave targets remain destructible");
+        Check.True(waveSignals.All(role => role == EnemySignalRole.None),
+            "sandbox campaign waves use their normal lineup while Wave Signals is off");
+        session.ClearSandboxTargets();
+
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxWaveSignalsPressed = true }, session);
+        Check.True(session.SandboxWaveSignalsEnabled,
+            "sandbox L hotkey enables Signal Gauntlet roles for campaign-wave tests");
+        waveSignals.Clear();
+        Check.True(session.StartSandboxWave(10), "sandbox can replay the same campaign wave with signals enabled");
+        sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SandboxWaveSignalsPressed = true }, session);
+        Check.True(session.SandboxWaveSignalsEnabled,
+            "Wave Signals cannot change partway through an active deployment");
+        for (var step = 0; step < 4000 && waveSignals.All(role => role == EnemySignalRole.None); step++)
             session.Update(0.05f);
-        Check.True(session.Enemies.Any(enemy => enemy.SignalRole != EnemySignalRole.None),
-            "authored sandbox waves apply the deterministic Signal Gauntlet carrier overlay");
+        Check.True(waveSignals.Any(role => role != EnemySignalRole.None),
+            "enabled Wave Signals apply Signal Gauntlet roles to campaign-wave tests");
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { SellPressed = true }, session);
         Check.Equal(0, session.Towers.Count, "sandbox Delete hotkey removes only the selected tower");
         Check.True(session.Enemies.Count > 0, "removing one sandbox tower preserves active test targets");
@@ -1879,8 +1895,9 @@ internal static class Program
 
         var escaped = new EnemyInstance(2, session.Content.Enemies["armored"], session.Map.Path, 1, 1);
         session.OnEnemyEscaped(escaped);
-        Check.Equal("armored", session.Statistics.GreatestLeakThreat!.EnemyId, "stats leak threat");
-        Check.Equal(1, session.Statistics.GreatestLeakThreat.LivesLost, "stats lives lost");
+        var escapedStats = session.Statistics.Enemies.Single(metrics => metrics.EnemyId == "armored");
+        Check.Equal(1, escapedStats.Escapes, "stats retain escaped enemy counts");
+        Check.Equal(1, escapedStats.LivesLost, "stats retain lives lost by enemy type");
         session.Update(0.05f);
         Check.Nearly(0.26f, session.Statistics.SimulatedSeconds, "stats defense time");
     }
@@ -3717,6 +3734,25 @@ internal static class Program
         });
         Check.Equal(0, noProtocols.Overdrives, "Protocol-disabled control group records no activations");
         Check.True(!noProtocols.ProtocolsEnabled, "simulation report identifies Protocol-disabled control group");
+
+        var unattendedDefeat = MinimalBastion.Simulation.HeadlessSimulation.Run(content,
+            new MinimalBastion.Simulation.SimulationOptions
+            {
+                Strategy = options.Strategy,
+                Seed = options.Seed,
+                MapId = "relay_divide",
+                DifficultyId = "bastion",
+                ChallengeId = "close_quarters",
+                MaximumWave = 1,
+                MaximumSimulatedSeconds = 240,
+                HoldBuild = true
+            });
+        Check.Equal("Defeat", unattendedDefeat.Result, "unattended Bastion defense produces a defeat sample");
+        Check.True(unattendedDefeat.RemainingEnemyCount + unattendedDefeat.QueuedEnemiesRemaining > 0,
+            "simulation defeat telemetry captures the complete unresolved wave");
+        Check.True(unattendedDefeat.RemainingEnemies.All(enemy => enemy.CurrentHealth > 0 &&
+                                                                enemy.MaxHealth >= enemy.CurrentHealth),
+            "simulation defeat telemetry records the health of every surviving group");
     }
 
     private static void SimulationFootprintHold()
@@ -4036,62 +4072,64 @@ internal static class Program
     {
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
         var content = new ContentLoader(root).Load();
+        var bastion = content.Difficulties["bastion"];
         foreach (var map in content.Maps.Values)
         {
             var waves = content.WaveSets[map.WaveSet].Waves;
-            var openingFinale = waves.Skip(18).Take(4).Select(wave => WaveDurability(wave, content.Enemies)).ToArray();
-            for (var index = 1; index < openingFinale.Length; index++)
+            var pressure = waves.Select(wave => WavePressureAnalysis.Analyze(
+                wave, content.Enemies, bastion.EnemyHealthMultiplier, bastion.EnemySpeedMultiplier)).ToArray();
+            Check.True(pressure.All(metric => metric.EnemyCount > 0 && metric.TotalDurability > 0 &&
+                                              metric.ArmorAdjustedDemand >= metric.TotalDurability &&
+                                              metric.PeakPacedDemand > 0 && metric.TotalCredits > 0),
+                $"{map.Id} campaign pressure is measurable across the complete wave arc");
+
+            for (var index = GameConstants.ApexUnlockWave - 1; index < pressure.Length; index++)
             {
-                Check.True(openingFinale[index] >= openingFinale[index - 1] * 1.08f,
-                    $"{map.Id} waves 19-22 maintain deliberate durability growth");
-                Check.True(openingFinale[index] <= openingFinale[index - 1] * 1.20f,
-                    $"{map.Id} waves 19-22 avoid an inherited finale spike");
+                Check.True(pressure[index].ArmorAdjustedDemand <= pressure[index - 1].ArmorAdjustedDemand * 1.30f,
+                    $"{map.Id} wave {waves[index].Number} avoids an abrupt total-demand cliff");
+                Check.True(pressure[index].PeakPacedDemand <= pressure[index - 1].PeakPacedDemand * 1.85f,
+                    $"{map.Id} wave {waves[index].Number} avoids an unbounded concentrated-demand cliff");
             }
 
-            var firstActFinal = WaveDurability(waves[GameConstants.ApexUnlockWave - 2], content.Enemies);
-            var previous = firstActFinal;
-            foreach (var wave in waves.Skip(GameConstants.ApexUnlockWave - 1))
-            {
-                var durability = WaveDurability(wave, content.Enemies);
-                Check.True(durability >= previous,
-                    $"{map.Id} wave {wave.Number} sustains or raises the preceding pressure");
-                Check.True(durability <= previous * 1.30f,
-                    $"{map.Id} wave {wave.Number} avoids an abrupt durability cliff");
-                previous = durability;
-            }
-
-            Check.True(WaveDurability(waves[GameConstants.CampaignWaveCount - 1], content.Enemies) >= firstActFinal * 2.30f,
+            Check.True(pressure[GameConstants.CampaignWaveCount - 1].ArmorAdjustedDemand >=
+                       pressure[GameConstants.ApexUnlockWave - 2].ArmorAdjustedDemand * 2.60f,
                 $"{map.Id} final capstone substantially exceeds the wave-20 boss");
         }
 
-        var surgeFinale = content.WaveSets[content.Maps["relay_divide"].WaveSet].Waves.Skip(25).Take(5).ToArray();
-        for (var index = 1; index < surgeFinale.Length; index++)
-        {
-            Check.Nearly(0.325f, surgeFinale[index].HealthMultiplier - surgeFinale[index - 1].HealthMultiplier,
-                $"Surge Divide wave {surgeFinale[index].Number} follows the even final health curve");
-            var durabilityGrowth = WaveDurability(surgeFinale[index], content.Enemies) /
-                                   WaveDurability(surgeFinale[index - 1], content.Enemies);
-            Check.True(durabilityGrowth is >= 1.10f and <= 1.20f,
-                $"Surge Divide wave {surgeFinale[index].Number} keeps final durability growth gradual");
-        }
-    }
+        var surgeMap = content.Maps["relay_divide"];
+        var surgeWaves = content.WaveSets[surgeMap.WaveSet].Waves;
+        var surgePressure = surgeWaves.Select(wave => WavePressureAnalysis.Analyze(
+            wave, content.Enemies, bastion.EnemyHealthMultiplier, bastion.EnemySpeedMultiplier)).ToArray();
+        var wave27 = surgePressure[26];
+        var wave28 = surgePressure[27];
+        var wave29 = surgePressure[28];
+        var wave30 = surgePressure[29];
+        Check.True(wave28.ArmorAdjustedDemand >= wave27.ArmorAdjustedDemand * 0.90f &&
+                   wave28.ArmorAdjustedDemand <= wave27.ArmorAdjustedDemand * 0.96f,
+            "Surge wave 28 trades a small amount of total demand for a concentrated burst");
+        Check.True(wave28.PeakPacedDemand >= wave27.PeakPacedDemand * 1.05f &&
+                   wave28.PeakPacedDemand <= wave27.PeakPacedDemand * 1.18f,
+            "Surge wave 28 remains a controlled concentration test");
+        Check.True(wave29.ArmorAdjustedDemand >= wave28.ArmorAdjustedDemand * 1.10f &&
+                   wave29.ArmorAdjustedDemand <= wave28.ArmorAdjustedDemand * 1.18f,
+            "Surge wave 29 raises total demand without recreating the previous cliff");
+        Check.True(wave30.ArmorAdjustedDemand >= wave29.ArmorAdjustedDemand * 1.10f &&
+                   wave30.ArmorAdjustedDemand <= wave29.ArmorAdjustedDemand * 1.18f,
+            "Surge wave 30 is a distinct but bounded capstone");
+        Check.True(wave30.PeakPacedDemand <= wave29.PeakPacedDemand * 1.18f,
+            "Surge wave 30 keeps its boss pressure within the late-defense throughput envelope");
 
-    private static float WaveDurability(
-        WaveDefinition wave,
-        IReadOnlyDictionary<string, EnemyDefinition> enemies)
-    {
-        var total = 0f;
-        foreach (var group in wave.Groups)
+        var cumulativeCredits = surgeMap.StartingCredits;
+        var previousDemandPerCredit = 0f;
+        for (var index = 0; index < surgePressure.Length; index++)
         {
-            var enemy = enemies[group.EnemyId];
-            var rankMultiplier = group.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase) ? 4.5f
-                : group.Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase) ? 1.85f
-                : 1f;
-            var health = enemy.MaxHealth * wave.HealthMultiplier * rankMultiplier;
-            var shield = enemy.Shield + (group.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase) ? health * 0.12f : 0f);
-            total += (health + shield) * group.Count;
+            cumulativeCredits += surgePressure[index].TotalCredits;
+            var demandPerCredit = surgePressure[index].ArmorAdjustedDemand / Math.Max(1, cumulativeCredits);
+            if (index >= GameConstants.QuarterIncomeStartWave - 1 && previousDemandPerCredit > 0)
+                Check.True(demandPerCredit <= previousDemandPerCredit * 1.15f,
+                    $"Surge wave {surgeWaves[index].Number} pressure respects the quarter-income defense budget");
+            previousDemandPerCredit = demandPerCredit;
         }
-        return total;
     }
 
     private static void ArcRelayChain()
@@ -5332,8 +5370,6 @@ internal static class Program
                 ForgeUpgrades = 2,
                 DefenseSeconds = 1234,
                 TopTowerName = "Needle Turret",
-                GreatestLeakThreatName = "Aegis",
-                GreatestLeakThreatLivesLost = 3,
                 Towers =
                 [
                     new RunHistoryTowerEntry
@@ -5386,7 +5422,22 @@ internal static class Program
                 IsEndless = true,
                 CurrentWave = 31,
                 Lives = 0,
-                Kills = 2500
+                Kills = 2500,
+                DefeatFieldRecorded = true,
+                QueuedEnemiesRemaining = 3,
+                RemainingEnemies =
+                [
+                    new RunHistoryRemainingEnemyEntry
+                    {
+                        EnemyId = "t4_aegis",
+                        DisplayName = "Aegis",
+                        Count = 4,
+                        TotalHealth = 1040,
+                        TotalMaxHealth = 2080,
+                        TotalShield = 120,
+                        FurthestProgress = 0.92f
+                    }
+                ]
             });
             var updated = repository.GetEntries().Single();
             Check.Equal(31, updated.CurrentWave, "endless continuation updates the original run record");
@@ -5400,6 +5451,13 @@ internal static class Program
             Check.Equal(14, updated.PlateTriggers, "run history retains plate triggers");
             Check.Equal(1, updated.Towers.Count, "run history retains per-tower statistics");
             Check.Equal(1, updated.Enemies.Count, "run history retains per-threat statistics");
+            Check.True(updated.DefeatFieldRecorded && updated.QueuedEnemiesRemaining == 3,
+                "run history identifies a complete defeat-field snapshot");
+            Check.Equal(4, updated.RemainingEnemies.Single().Count,
+                "run history retains every grouped enemy still on the field at defeat");
+            Check.Nearly(0.5f, updated.RemainingEnemies.Single().TotalHealth /
+                updated.RemainingEnemies.Single().TotalMaxHealth,
+                "run history retains remaining health for pressure analysis");
             Check.Equal(1, updated.FinalLayout!.Towers.Count, "run history retains the final placed defense layout");
             Check.Equal(TargetMode.Strongest, updated.FinalLayout.Towers[0].TargetMode,
                 "run history layout retains tower targeting and progression state");

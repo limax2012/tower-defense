@@ -62,7 +62,7 @@
     "id": "sandbox_lab",
     "displayName": "Sandbox Lab",
     "menuLabel": "Sandbox",
-    "description": "Free towers and upgrades | configurable targets | replayable authored waves.",
+    "description": "Free towers and upgrades | configurable targets | replay any campaign wave.",
     "startingCreditsMultiplier": 1.0,
     "tacticalSystemsEnabled": false,
     "protocolsEnabled": true,
