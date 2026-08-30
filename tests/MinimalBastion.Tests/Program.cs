@@ -4104,17 +4104,17 @@ internal static class Program
         var wave28 = surgePressure[27];
         var wave29 = surgePressure[28];
         var wave30 = surgePressure[29];
-        Check.True(wave28.ArmorAdjustedDemand >= wave27.ArmorAdjustedDemand * 0.90f &&
-                   wave28.ArmorAdjustedDemand <= wave27.ArmorAdjustedDemand * 0.96f,
-            "Surge wave 28 trades a small amount of total demand for a concentrated burst");
+        Check.True(wave28.ArmorAdjustedDemand >= wave27.ArmorAdjustedDemand * 1.04f &&
+                   wave28.ArmorAdjustedDemand <= wave27.ArmorAdjustedDemand * 1.07f,
+            "Surge wave 28 sustains a modest total-demand increase through its concentrated burst");
         Check.True(wave28.PeakPacedDemand >= wave27.PeakPacedDemand * 1.05f &&
                    wave28.PeakPacedDemand <= wave27.PeakPacedDemand * 1.18f,
             "Surge wave 28 remains a controlled concentration test");
-        Check.True(wave29.ArmorAdjustedDemand >= wave28.ArmorAdjustedDemand * 1.10f &&
-                   wave29.ArmorAdjustedDemand <= wave28.ArmorAdjustedDemand * 1.18f,
-            "Surge wave 29 raises total demand without recreating the previous cliff");
-        Check.True(wave30.ArmorAdjustedDemand >= wave29.ArmorAdjustedDemand * 1.10f &&
-                   wave30.ArmorAdjustedDemand <= wave29.ArmorAdjustedDemand * 1.18f,
+        Check.True(wave29.ArmorAdjustedDemand >= wave28.ArmorAdjustedDemand * 1.04f &&
+                   wave29.ArmorAdjustedDemand <= wave28.ArmorAdjustedDemand * 1.07f,
+            "Surge wave 29 continues the total-demand rise without recreating the previous cliff");
+        Check.True(wave30.ArmorAdjustedDemand >= wave29.ArmorAdjustedDemand * 1.04f &&
+                   wave30.ArmorAdjustedDemand <= wave29.ArmorAdjustedDemand * 1.07f,
             "Surge wave 30 is a distinct but bounded capstone");
         Check.True(wave30.PeakPacedDemand <= wave29.PeakPacedDemand * 1.18f,
             "Surge wave 30 keeps its boss pressure within the late-defense throughput envelope");
