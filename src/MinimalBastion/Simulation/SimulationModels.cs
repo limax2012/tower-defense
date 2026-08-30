@@ -42,6 +42,7 @@ public sealed class SimulationOptions
     public bool UseCounterAttackers { get; init; } = true;
     public bool HoldBuild { get; init; }
     public bool HoldFootprint { get; init; }
+    public WavePlan? WavePlan { get; init; }
 }
 
 public sealed class SimulationRunResult

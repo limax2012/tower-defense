@@ -13,7 +13,8 @@ internal static class SimulationCli
     {
         var selectedStrategy = ReadValue(args, "--strategy");
         var saveFile = ReadValue(args, "--save-file");
-        var saveData = saveFile is null ? null : ReadSaveFile(saveFile);
+        var saveData = saveFile is null ? null : ReadSaveFile(saveFile, content);
+        var strategyPlanFile = ReadValue(args, "--strategy-plan");
         var strategies = selectedStrategy is not null && Enum.TryParse<AutoPlayerStrategy>(selectedStrategy, true, out var parsed)
             ? new[] { parsed }
             : Enum.GetValues<AutoPlayerStrategy>();
@@ -38,6 +39,34 @@ internal static class SimulationCli
         var holdBuild = args.Any(arg => arg.Equals("--hold-build", StringComparison.OrdinalIgnoreCase));
         var holdFootprint = args.Any(arg => arg.Equals("--hold-footprint", StringComparison.OrdinalIgnoreCase));
         var summaryOnly = args.Any(arg => arg.Equals("--summary-only", StringComparison.OrdinalIgnoreCase));
+
+        if (strategyPlanFile is not null)
+        {
+            if (saveData is null)
+                throw new ArgumentException("--strategy-plan requires an inter-wave --save-file checkpoint.");
+            var strategyPlan = StrategyArtifactStore.LoadPlan(strategyPlanFile);
+            strategyPlan.ValidateForCheckpoint(saveData);
+            var wave = saveData.Waves.CurrentWaveNumber + 1;
+            var wavePlan = strategyPlan.FindWave(wave) ??
+                throw new InvalidDataException($"Strategy '{strategyPlan.ArtifactId}' has no decision for wave {wave}.");
+            var forcedBuild = ResolveForcedBuilds(ReadValue(args, "--force-build"), content).SingleOrDefault();
+            return RunPlannedWave(content, args, saveData, strategyPlan, wavePlan, new SimulationOptions
+            {
+                Strategy = strategyPlan.DefaultStrategy,
+                MapId = saveData.MapId,
+                DifficultyId = saveData.DifficultyId,
+                ChallengeId = saveData.ChallengeId,
+                ForcedTowerId = forcedBuild?.TowerId,
+                ForcedDoctrineId = forcedBuild?.DoctrineId,
+                ForcedSpecializationId = forcedBuild?.SpecializationId,
+                UseProtocols = useProtocols,
+                UseApexUpgrades = useApexUpgrades,
+                UseCounterSupport = useCounterSupport,
+                UseCounterAttackers = useCounterAttackers,
+                HoldBuild = holdBuild,
+                HoldFootprint = holdFootprint
+            });
+        }
 
         var runs = new List<SimulationRunResult>();
         foreach (var mapId in maps)
@@ -118,6 +147,48 @@ internal static class SimulationCli
         File.WriteAllText(output, JsonSerializer.Serialize(batch, jsonOptions));
         Console.WriteLine($"Machine-readable report: {output}");
         return 0;
+    }
+
+    private static int RunPlannedWave(
+        GameContent content,
+        string[] args,
+        SaveGameData checkpoint,
+        StrategyPlan strategyPlan,
+        WavePlan wavePlan,
+        SimulationOptions options)
+    {
+        var result = HeadlessSimulation.RunWave(content, checkpoint, options, strategyPlan, wavePlan);
+        var failure = result.Simulation.FailureMargin;
+        Console.WriteLine(
+            $"{strategyPlan.ArtifactId} wave {wavePlan.Wave} seed {wavePlan.DecisionSeed}: " +
+            $"{result.Simulation.Result}, lives {result.Simulation.LivesRemaining}, credits {result.Simulation.CreditsUnspent}");
+        if (failure is not null)
+            Console.WriteLine(
+                $"Remaining pressure: {failure.TotalEnemyCount} enemies, {failure.TotalArmorAdjustedDurability:0.##} " +
+                $"armor-adjusted durability ({failure.RemainingArmorAdjustedDurabilityFraction:P2}), " +
+                $"furthest progress {failure.FurthestProgress:P2}.");
+
+        var root = FindProjectRoot();
+        var output = ReadValue(args, "--output") ?? Path.Combine(root, ".build", "balance",
+            $"planned-wave-{wavePlan.Wave}.json");
+        if (!Path.IsPathRooted(output)) output = Path.Combine(root, output);
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
+        jsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+        File.WriteAllText(output, JsonSerializer.Serialize(result, jsonOptions));
+        Console.WriteLine($"Planned-wave report: {output}");
+
+        var nextCheckpointPath = ReadValue(args, "--next-checkpoint");
+        if (nextCheckpointPath is not null)
+        {
+            if (result.NextCheckpoint is null)
+                throw new InvalidOperationException("The planned wave did not produce a resumable inter-wave checkpoint.");
+            if (!Path.IsPathRooted(nextCheckpointPath)) nextCheckpointPath = Path.Combine(root, nextCheckpointPath);
+            StrategyArtifactStore.SaveCheckpoint(nextCheckpointPath,
+                StrategyCheckpointArtifact.Create(strategyPlan.ArtifactId, result.NextCheckpoint), content);
+            Console.WriteLine($"Next strategy checkpoint: {nextCheckpointPath}");
+        }
+        return result.Succeeded ? 0 : 2;
     }
 
     internal static int ResolveMaximumWave(string[] args, int campaignWaveCount)
@@ -585,12 +656,15 @@ internal static class SimulationCli
         return null;
     }
 
-    private static SaveGameData ReadSaveFile(string path)
+    private static SaveGameData ReadSaveFile(string path, GameContent content)
     {
         var fullPath = Path.GetFullPath(path);
         if (!File.Exists(fullPath)) throw new FileNotFoundException("Simulation checkpoint was not found.", fullPath);
+        using var document = JsonDocument.Parse(File.ReadAllText(fullPath));
+        if (document.RootElement.TryGetProperty("checkpoint", out _))
+            return StrategyArtifactStore.LoadCheckpoint(fullPath, content).Checkpoint;
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };
-        return JsonSerializer.Deserialize<SaveGameData>(File.ReadAllText(fullPath), options) ??
+        return document.Deserialize<SaveGameData>(options) ??
             throw new InvalidDataException("Simulation checkpoint is empty or malformed.");
     }
 

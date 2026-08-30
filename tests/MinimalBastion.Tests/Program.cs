@@ -121,6 +121,9 @@ internal static class Program
             ("save slot recovery backup", SaveSlotRecoveryBackup),
             ("persistent run history", PersistentRunHistory),
             ("career medals and records", CareerMedalsAndRecords),
+            ("strategy artifact round trip", StrategyArtifactRoundTrip),
+            ("single-wave checkpoint simulation", SingleWaveCheckpointSimulation),
+            ("deterministic checkpoint beam search", DeterministicCheckpointBeamSearch),
             ("headless simulation deterministic", HeadlessSimulationDeterministic),
             ("simulation footprint hold", SimulationFootprintHold),
             ("forced build completion summary", ForcedBuildCompletionSummary),
@@ -3693,6 +3696,206 @@ internal static class Program
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(file, target);
         }
+    }
+
+    private static void StrategyArtifactRoundTrip()
+    {
+        var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        var plan = new StrategyPlan
+        {
+            ArtifactId = "foundry-balance-validation",
+            MapId = "foundry_loop",
+            DifficultyId = DifficultyCatalog.LegacyId,
+            ChallengeId = ChallengeCatalog.DefaultId,
+            BaseSeed = 31017,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive,
+            Waves =
+            [
+                new WavePlan
+                {
+                    Wave = 1,
+                    DecisionSeed = 31018,
+                    PolicyId = "checkpoint-search-v1",
+                    EconomyProfileId = "mature-first",
+                    PlacementProfileId = "node-coverage",
+                    TargetingProfileId = "split-signal",
+                    TacticalProfileId = "plate-window",
+                    Parameters = new SortedDictionary<string, double>(StringComparer.Ordinal)
+                    {
+                        ["placement.nodeWeight"] = 1.25,
+                        ["reserve.credits"] = 40
+                    }
+                }
+            ]
+        };
+        var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        var planPath = Path.Combine(directory, "strategy.json");
+        var checkpointPath = Path.Combine(directory, "checkpoint.json");
+        try
+        {
+            StrategyArtifactStore.SavePlan(planPath, plan);
+            var firstPayload = File.ReadAllBytes(planPath);
+            var restoredPlan = StrategyArtifactStore.LoadPlan(planPath);
+            Check.Equal(plan.ArtifactId, restoredPlan.ArtifactId, "strategy artifact identity");
+            Check.Equal(plan.Waves.Single().StableKey, restoredPlan.Waves.Single().StableKey,
+                "strategy artifact preserves deterministic wave decisions");
+            StrategyArtifactStore.SavePlan(planPath, restoredPlan);
+            Check.True(firstPayload.SequenceEqual(File.ReadAllBytes(planPath)),
+                "strategy serialization is byte-stable across a round trip");
+
+            var session = new GameSession(content, plan.MapId, plan.DifficultyId, plan.ChallengeId);
+            var checkpoint = session.CaptureSaveGame();
+            var fingerprint = StrategyArtifactStore.Fingerprint(checkpoint);
+            checkpoint.SavedAtUtc = checkpoint.SavedAtUtc.AddYears(1);
+            checkpoint.RunId = Guid.NewGuid().ToString("N");
+            Check.Equal(fingerprint, StrategyArtifactStore.Fingerprint(checkpoint),
+                "checkpoint identity ignores run metadata that does not affect decisions");
+            var checkpointArtifact = StrategyCheckpointArtifact.Create(plan.ArtifactId, checkpoint);
+            StrategyArtifactStore.SaveCheckpoint(checkpointPath, checkpointArtifact, content);
+            var restoredCheckpoint = StrategyArtifactStore.LoadCheckpoint(checkpointPath, content);
+            Check.Equal(checkpointArtifact.CheckpointFingerprint, restoredCheckpoint.CheckpointFingerprint,
+                "checkpoint artifact verifies its deterministic fingerprint");
+            Check.Equal(0, restoredCheckpoint.Checkpoint.Waves.CurrentWaveNumber,
+                "checkpoint artifact preserves campaign position");
+
+            Check.Throws<InvalidDataException>(() => StrategyArtifactStore.SaveCheckpoint(checkpointPath,
+                checkpointArtifact with { CheckpointFingerprint = new string('0', 64) }, content),
+                "checkpoint artifacts reject a mismatched fingerprint");
+            Check.Throws<InvalidDataException>(() => (plan with { SchemaVersion = 99 }).Validate(),
+                "strategy artifacts reject an unknown schema");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    private static void SingleWaveCheckpointSimulation()
+    {
+        var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        var checkpoint = new GameSession(content, "foundry_loop", DifficultyCatalog.LegacyId,
+            ChallengeCatalog.DefaultId).CaptureSaveGame();
+        var plan = new StrategyPlan
+        {
+            ArtifactId = "single-wave-fixture",
+            MapId = checkpoint.MapId,
+            DifficultyId = checkpoint.DifficultyId,
+            ChallengeId = checkpoint.ChallengeId,
+            BaseSeed = 8128,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive
+        };
+        var wavePlan = new WavePlan
+        {
+            Wave = 1,
+            DecisionSeed = 8129,
+            PolicyId = "checkpoint-search-v1",
+            PlacementProfileId = "node-coverage",
+            TargetingProfileId = "split-signal"
+        };
+        var options = new SimulationOptions
+        {
+            Strategy = AutoPlayerStrategy.Randomized,
+            StepSeconds = 0.1f,
+            MaximumSimulatedSeconds = 240
+        };
+        var replayPlan = plan with { Waves = [wavePlan] };
+
+        var first = HeadlessSimulation.RunWave(content, checkpoint, options, replayPlan, wavePlan);
+        var second = HeadlessSimulation.RunWave(content, checkpoint, options, replayPlan, wavePlan);
+        Check.True(first.Succeeded && !first.CampaignCompleted, "one-wave simulation clears its requested campaign wave");
+        Check.Equal("WaveLimit", first.Simulation.Result, "one-wave simulation stops at its exact boundary");
+        Check.Equal(wavePlan.DecisionSeed, first.Simulation.Seed, "one-wave simulation uses the wave decision seed");
+        Check.Equal(plan.DefaultStrategy, first.Simulation.Strategy, "strategy artifact supplies the default player policy");
+        Check.Equal(1, first.NextCheckpoint!.Waves.CurrentWaveNumber, "successful wave returns the next inter-wave checkpoint");
+        Check.Equal(first.NextCheckpointFingerprint!, second.NextCheckpointFingerprint!,
+            "fixed checkpoint and wave plan reproduce the same next state");
+        Check.Throws<InvalidDataException>(() => HeadlessSimulation.RunWave(content, checkpoint, options,
+            wavePlan with { Wave = 2 }), "single-wave simulation rejects a skipped campaign wave");
+    }
+
+    private static void DeterministicCheckpointBeamSearch()
+    {
+        var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        var checkpoint = new GameSession(content, "foundry_loop", DifficultyCatalog.LegacyId,
+            ChallengeCatalog.DefaultId).CaptureSaveGame();
+        var plan = new StrategyPlan
+        {
+            ArtifactId = "beam-fixture",
+            MapId = checkpoint.MapId,
+            DifficultyId = checkpoint.DifficultyId,
+            ChallengeId = checkpoint.ChallengeId,
+            BaseSeed = 100,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive
+        };
+        var frontier = new[] { CheckpointSearchState.Create(content, plan, checkpoint) };
+        var candidates = new[] { 103, 101, 102 }.Select(seed => new WavePlan
+        {
+            Wave = 1,
+            DecisionSeed = seed,
+            PolicyId = "checkpoint-search-v1",
+            EconomyProfileId = seed == 101 ? "mature-first" : "balanced",
+            PlacementProfileId = "node-coverage",
+            TargetingProfileId = "split-signal",
+            TacticalProfileId = "adaptive"
+        }).ToArray();
+        var options = new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 240 };
+        var first = CheckpointBeamOptimizer.EvaluateWave(content, frontier, candidates, options, 2);
+        var second = CheckpointBeamOptimizer.EvaluateWave(content, frontier, candidates.Reverse().ToArray(), options, 2);
+        Check.Equal(3, first.Evaluations, "beam search evaluates every deterministic candidate");
+        Check.Equal(3, first.SuccessfulEvaluations.Count, "beam search retains every successful evaluation in its trace");
+        Check.Equal(2, first.RetainedStates.Count, "beam search applies the configured frontier width");
+        Check.True(first.RetainedStates.Select(state => state.CheckpointFingerprint)
+                       .SequenceEqual(second.RetainedStates.Select(state => state.CheckpointFingerprint)),
+            "beam ranking is independent of candidate enumeration order");
+        Check.True(first.RetainedStates.All(state => state.Strategy.Waves.Count == 1 &&
+                                                    state.Strategy.Waves[0].Wave == 1),
+            "successful beam states retain their wave decision prefix");
+        var searchPath = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"),
+            "search.json");
+        try
+        {
+            StrategyArtifactStore.SaveSearchResult(searchPath, first, content);
+            var restoredSearch = StrategyArtifactStore.LoadSearchResult(searchPath, content);
+            Check.Equal(first.Evaluations, restoredSearch.Evaluations,
+                "search artifact preserves its complete evaluation trace");
+            Check.True(first.RetainedStates.Select(state => state.CheckpointFingerprint)
+                           .SequenceEqual(restoredSearch.RetainedStates.Select(state => state.CheckpointFingerprint)),
+                "search artifact preserves its ranked checkpoint frontier");
+        }
+        finally
+        {
+            var searchDirectory = Path.GetDirectoryName(searchPath)!;
+            if (Directory.Exists(searchDirectory)) Directory.Delete(searchDirectory, true);
+        }
+
+        var defeatCheckpoint = new GameSession(content, "relay_divide", "bastion", "close_quarters")
+            .CaptureSaveGame();
+        var defeatPlan = new StrategyPlan
+        {
+            ArtifactId = "beam-defeat-fixture",
+            MapId = defeatCheckpoint.MapId,
+            DifficultyId = defeatCheckpoint.DifficultyId,
+            ChallengeId = defeatCheckpoint.ChallengeId,
+            BaseSeed = 404,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive
+        };
+        var defeatSearch = CheckpointBeamOptimizer.EvaluateWave(content,
+            [CheckpointSearchState.Create(content, defeatPlan, defeatCheckpoint)],
+            [new WavePlan { Wave = 1, DecisionSeed = 405, PolicyId = "hold-build-control" }],
+            new SimulationOptions
+            {
+                HoldBuild = true,
+                StepSeconds = 0.1f,
+                MaximumSimulatedSeconds = 240
+            }, 1);
+        Check.Equal(1, defeatSearch.Failures.Count, "beam search retains failed candidate evaluations");
+        var failure = defeatSearch.Failures.Single();
+        Check.True(failure.FailureMargin is not null, "beam failure retains the normalized failure margin");
+        Check.Equal(failure.FailureMargin!.TotalEnemyCount,
+            failure.RemainingEnemies.Sum(enemy => enemy.Count) + failure.QueuedEnemies.Sum(enemy => enemy.Count),
+            "beam failure retains exact live and queued enemy composition");
+        Check.True(failure.FailureMargin.TotalArmorAdjustedDurability > 0,
+            "beam failure retains exact unresolved armor-adjusted pressure");
     }
 
     private static void HeadlessSimulationDeterministic()

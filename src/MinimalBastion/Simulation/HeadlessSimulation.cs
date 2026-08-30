@@ -22,6 +22,57 @@ public static class HeadlessSimulation
     public static SimulationRunResult Run(Data.GameContent content, SaveGameData save, SimulationOptions options) =>
         Run(ConfigureSession(GameSession.RestoreSaveGame(content, save), options), options);
 
+    public static CheckpointWaveRunResult RunWave(
+        Data.GameContent content,
+        SaveGameData checkpoint,
+        SimulationOptions options,
+        WavePlan wavePlan) => RunWave(content, checkpoint, options, wavePlan, null);
+
+    public static CheckpointWaveRunResult RunWave(
+        Data.GameContent content,
+        SaveGameData checkpoint,
+        SimulationOptions options,
+        StrategyPlan strategyPlan,
+        WavePlan wavePlan)
+    {
+        strategyPlan.ValidateForCheckpoint(checkpoint);
+        if (strategyPlan.FindWave(wavePlan.Wave) is { } persistedPlan &&
+            !persistedPlan.StableKey.Equals(wavePlan.StableKey, StringComparison.Ordinal))
+            throw new InvalidDataException($"Strategy artifact contains a different decision for wave {wavePlan.Wave}.");
+        return RunWave(content, checkpoint, options, wavePlan, strategyPlan.DefaultStrategy);
+    }
+
+    private static CheckpointWaveRunResult RunWave(
+        Data.GameContent content,
+        SaveGameData checkpoint,
+        SimulationOptions options,
+        WavePlan wavePlan,
+        AutoPlayerStrategy? defaultStrategy)
+    {
+        wavePlan.Validate();
+        var session = ConfigureSession(GameSession.RestoreSaveGame(content, checkpoint), options);
+        if (!session.CanSaveCheckpoint)
+            throw new InvalidDataException("Wave optimization requires an inter-wave campaign checkpoint.");
+        var expectedWave = session.CurrentWave + 1;
+        if (wavePlan.Wave != expectedWave)
+            throw new InvalidDataException($"Checkpoint is ready for wave {expectedWave}, not planned wave {wavePlan.Wave}.");
+
+        var waveOptions = StrategySimulationOptions.ForWave(options, wavePlan, defaultStrategy);
+        var result = Run(session, waveOptions);
+        var succeeded = !session.IsDefeat && !session.Waves.IsActive && session.Enemies.Count == 0 &&
+                        session.CurrentWave == wavePlan.Wave && result.Result is "WaveLimit" or "Victory";
+        var nextCheckpoint = succeeded && session.CanSaveCheckpoint ? session.CaptureSaveGame() : null;
+        return new CheckpointWaveRunResult
+        {
+            WavePlan = wavePlan,
+            Simulation = result,
+            Succeeded = succeeded,
+            CampaignCompleted = succeeded && session.IsVictory,
+            NextCheckpoint = nextCheckpoint,
+            NextCheckpointFingerprint = nextCheckpoint is null ? null : StrategyArtifactStore.Fingerprint(nextCheckpoint)
+        };
+    }
+
     private static GameSession CreateSession(Data.GameContent content, SimulationOptions options) =>
         ConfigureSession(new GameSession(content, options.MapId, options.DifficultyId, options.ChallengeId), options);
 
