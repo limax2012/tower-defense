@@ -1,6 +1,7 @@
 using MinimalBastion.Core;
 using MinimalBastion.Data;
 using MinimalBastion.Towers;
+using System.Text.Json.Serialization;
 
 namespace MinimalBastion.Simulation;
 
@@ -85,6 +86,8 @@ public sealed class SimulationRunResult
     public float QueuedArmorAdjustedDurability => QueuedEnemies.Sum(enemy => enemy.ArmorAdjustedDurability);
     public int RemainingEnemyCount => RemainingEnemies.Sum(enemy => enemy.Count);
     public SimulationFailureMargin? FailureMargin { get; init; }
+    [JsonIgnore]
+    public SimulationEscapedEnemy? FatalEscapedEnemy => FailureMargin?.FatalEscapedEnemy;
     public required IReadOnlyList<WaveRunMetrics> Waves { get; init; }
     public IReadOnlyList<SimulationTowerPlacement> FinalTowers { get; init; } = Array.Empty<SimulationTowerPlacement>();
     public int EmergencyDeployments { get; init; }
@@ -141,6 +144,17 @@ public sealed record SimulationRemainingEnemy(
     float ArmorAdjustedDurability,
     float FurthestProgress);
 
+public sealed record SimulationEscapedEnemy(
+    string EnemyId,
+    string DisplayName,
+    string Rank,
+    string SignalRole,
+    float CurrentHealth,
+    float MaxHealth,
+    float Shield,
+    float ArmorAdjustedDurability,
+    float Progress);
+
 public sealed record SimulationFailureMargin(
     int Wave,
     int LiveEnemyCount,
@@ -155,6 +169,7 @@ public sealed record SimulationFailureMargin(
     int WaveEnemyCount,
     float WaveArmorAdjustedDurability)
 {
+    public SimulationEscapedEnemy? FatalEscapedEnemy { get; init; }
     public int TotalEnemyCount => LiveEnemyCount + QueuedEnemyCount;
     public float LiveDurability => LiveHealth + LiveShield;
     public float QueuedDurability => QueuedHealth + QueuedShield;

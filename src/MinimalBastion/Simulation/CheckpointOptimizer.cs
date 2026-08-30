@@ -117,6 +117,10 @@ public static class CheckpointBeamOptimizer
         foreach (var parent in frontier.OrderBy(state => state.CheckpointFingerprint, StringComparer.Ordinal))
         {
             parent.Strategy.ValidatePrefixForCheckpoint(parent.Checkpoint);
+            if (!StrategyArtifactStore.Fingerprint(parent.Checkpoint)
+                    .Equals(parent.CheckpointFingerprint, StringComparison.Ordinal) ||
+                Rank(content, parent.Checkpoint) != parent.Score)
+                throw new InvalidDataException("Checkpoint search frontier identity or ranking score is invalid.");
             if (parent.Checkpoint.Waves.CurrentWaveNumber + 1 != targetWave)
                 throw new ArgumentException($"Frontier checkpoint is not ready for wave {targetWave}.", nameof(frontier));
 
@@ -162,22 +166,11 @@ public static class CheckpointBeamOptimizer
             }
         }
 
-        var retained = successes
-            .GroupBy(success => success.State.CheckpointFingerprint, StringComparer.Ordinal)
-            .Select(group => group.OrderBy(success => success.WavePlan.StableKey, StringComparer.Ordinal).First().State)
-            .OrderByDescending(state => state.Score.CompletedWave)
-            .ThenByDescending(state => state.Score.Lives)
-            .ThenByDescending(state => state.Score.PoweredNodeCount)
-            .ThenByDescending(state => state.Score.MaturePoweredTowerCount)
-            .ThenByDescending(state => state.Score.MatureTowerCount)
-            .ThenByDescending(state => state.Score.ApexTowerCount)
-            .ThenByDescending(state => state.Score.PoweredTowerCount)
-            .ThenByDescending(state => state.Score.LifetimeContributionPerCredit)
-            .ThenByDescending(state => state.Score.Credits)
-            .ThenByDescending(state => state.Score.InvestedCredits)
-            .ThenBy(state => state.CheckpointFingerprint, StringComparer.Ordinal)
-            .Take(beamWidth)
-            .ToArray();
+        var retained = RankStates(successes
+            .GroupBy(success => $"{success.State.CheckpointFingerprint}|{success.State.Strategy.DefaultStrategy}",
+                StringComparer.Ordinal)
+            .Select(group => group.OrderBy(success => success.WavePlan.StableKey, StringComparer.Ordinal).First().State),
+            beamWidth);
 
         return new CheckpointSearchResult
         {
@@ -200,10 +193,33 @@ public static class CheckpointBeamOptimizer
         };
     }
 
+    public static IReadOnlyList<CheckpointSearchState> RankStates(
+        IEnumerable<CheckpointSearchState> states,
+        int limit = int.MaxValue)
+    {
+        if (limit <= 0) throw new ArgumentOutOfRangeException(nameof(limit));
+        return states
+            .OrderByDescending(state => state.Score.CompletedWave)
+            .ThenByDescending(state => state.Score.Lives)
+            .ThenByDescending(state => state.Score.PoweredNodeCount)
+            .ThenByDescending(state => state.Score.MaturePoweredTowerCount)
+            .ThenByDescending(state => state.Score.MatureTowerCount)
+            .ThenByDescending(state => state.Score.ApexTowerCount)
+            .ThenByDescending(state => state.Score.PoweredTowerCount)
+            .ThenByDescending(state => state.Score.LifetimeContributionPerCredit)
+            .ThenByDescending(state => state.Score.Credits)
+            .ThenByDescending(state => state.Score.InvestedCredits)
+            .ThenBy(state => state.CheckpointFingerprint, StringComparer.Ordinal)
+            .Take(limit)
+            .ToArray();
+    }
+
     public static CheckpointStateScore Rank(GameContent content, SaveGameData checkpoint)
     {
-        if (!content.Maps.TryGetValue(checkpoint.MapId, out var map))
+        if (!content.Maps.TryGetValue(checkpoint.MapId, out var map) &&
+            !content.Map.Id.Equals(checkpoint.MapId, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException($"Checkpoint map '{checkpoint.MapId}' is not available.");
+        map ??= content.Map;
         var occupiedNodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var poweredTowers = 0;
         var maturePoweredTowers = 0;

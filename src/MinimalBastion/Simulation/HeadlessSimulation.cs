@@ -138,6 +138,8 @@ public static class HeadlessSimulation
         private readonly Dictionary<string, int> _enemyLeaks = new(StringComparer.OrdinalIgnoreCase);
         private readonly List<WaveRunMetrics> _waves = new();
         private WaveSnapshot? _activeWave;
+        private WaveSnapshot? _lastWave;
+        private SimulationEscapedEnemy? _fatalEscapedEnemy;
         private int _emergencyDeployments;
         private int _emergencyDirectPurchases;
         private int _emergencyTriggers;
@@ -160,7 +162,7 @@ public static class HeadlessSimulation
             };
             session.TowerSold += OnTowerSold;
             session.EnemyKilled += OnEnemyKilled;
-            session.EnemyEscaped += OnEnemyEscaped;
+            session.EnemyEscaped += enemy => OnEnemyEscaped(session, enemy);
             session.DamageResolver.DamageApplied += report => OnDamage(session, report);
             session.EmergencyDefenseDeployed += (_, purchased) =>
             {
@@ -180,6 +182,13 @@ public static class HeadlessSimulation
 
         public void BeginWave(GameSession session, float elapsed)
         {
+            var pressure = session.Waves.ActiveWave is { } wave
+                ? WavePressureAnalysis.Analyze(
+                    wave,
+                    session.Content.Enemies,
+                    session.Difficulty.EnemyHealthMultiplier,
+                    session.Difficulty.EnemySpeedMultiplier)
+                : null;
             _activeWave = new WaveSnapshot(
                 session.CurrentWave,
                 elapsed,
@@ -187,7 +196,9 @@ public static class HeadlessSimulation
                 session.Economy.TotalKills,
                 session.Economy.EscapedEnemies,
                 session.Economy.TotalCreditsSpent,
-                DescribeWave(session.Waves.ActiveWave, session.Content.Enemies));
+                DescribeWave(session.Waves.ActiveWave, session.Content.Enemies),
+                pressure?.EnemyCount ?? 0,
+                pressure?.ArmorAdjustedDemand ?? 0);
         }
 
         public void EndWave(GameSession session, float elapsed)
@@ -205,6 +216,7 @@ public static class HeadlessSimulation
                 CreditsSpent = session.Economy.TotalCreditsSpent - start.CreditsSpent,
                 EndingCredits = session.Economy.Credits
             });
+            _lastWave = start;
             _activeWave = null;
         }
 
@@ -343,18 +355,11 @@ public static class HeadlessSimulation
                 .ToArray();
         }
 
-        private static SimulationFailureMargin CaptureFailureMargin(
+        private SimulationFailureMargin CaptureFailureMargin(
             GameSession session,
             IReadOnlyList<SimulationRemainingEnemy> remainingEnemies,
             IReadOnlyList<SimulationRemainingEnemy> queuedEnemies)
         {
-            var pressure = session.Waves.ActiveWave is { } activeWave
-                ? WavePressureAnalysis.Analyze(
-                    activeWave,
-                    session.Content.Enemies,
-                    session.Difficulty.EnemyHealthMultiplier,
-                    session.Difficulty.EnemySpeedMultiplier)
-                : null;
             return new SimulationFailureMargin(
                 session.CurrentWave,
                 remainingEnemies.Sum(enemy => enemy.Count),
@@ -366,8 +371,11 @@ public static class HeadlessSimulation
                 FiniteSum(queuedEnemies.Select(enemy => enemy.Shield)),
                 FiniteSum(queuedEnemies.Select(enemy => enemy.ArmorAdjustedDurability)),
                 remainingEnemies.Count == 0 ? 0 : remainingEnemies.Max(enemy => enemy.FurthestProgress),
-                pressure?.EnemyCount ?? 0,
-                pressure?.ArmorAdjustedDemand ?? 0);
+                _lastWave?.Wave == session.CurrentWave ? _lastWave.EnemyCount : 0,
+                _lastWave?.Wave == session.CurrentWave ? _lastWave.ArmorAdjustedDurability : 0)
+            {
+                FatalEscapedEnemy = _fatalEscapedEnemy
+            };
         }
 
         private static float ArmorAdjustedDurability(float health, float shield, float armor) =>
@@ -471,7 +479,21 @@ public static class HeadlessSimulation
         }
 
         private void OnEnemyKilled(EnemyInstance enemy) => Increment(_enemyKills, EnemyKey(enemy));
-        private void OnEnemyEscaped(EnemyInstance enemy) => Increment(_enemyLeaks, EnemyKey(enemy));
+        private void OnEnemyEscaped(GameSession session, EnemyInstance enemy)
+        {
+            Increment(_enemyLeaks, EnemyKey(enemy));
+            if (_fatalEscapedEnemy is not null || session.Economy.Lives > 0) return;
+            _fatalEscapedEnemy = new SimulationEscapedEnemy(
+                enemy.Definition.Id,
+                enemy.DisplayName,
+                enemy.Rank.ToString(),
+                enemy.SignalRole.ToString(),
+                FiniteProduct(enemy.Health, 1),
+                FiniteProduct(enemy.MaxHealth, 1),
+                FiniteProduct(enemy.Shield, 1),
+                ArmorAdjustedDurability(enemy.Health, enemy.Shield, enemy.BaseArmor),
+                float.IsFinite(enemy.PathProgress) ? Math.Clamp(enemy.PathProgress, 0, 1) : 0);
+        }
 
         private void OnDamage(GameSession session, DamageReport report)
         {
@@ -534,6 +556,15 @@ public static class HeadlessSimulation
             return tags.Count == 0 ? "Standard" : string.Join(" + ", tags);
         }
 
-        private sealed record WaveSnapshot(int Wave, float StartedAt, int Lives, int Kills, int Leaks, int CreditsSpent, string Archetype);
+        private sealed record WaveSnapshot(
+            int Wave,
+            float StartedAt,
+            int Lives,
+            int Kills,
+            int Leaks,
+            int CreditsSpent,
+            string Archetype,
+            int EnemyCount,
+            float ArmorAdjustedDurability);
     }
 }

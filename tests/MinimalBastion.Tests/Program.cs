@@ -27,7 +27,9 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
-        if (args.Any(x => x.Equals("--simulate", StringComparison.OrdinalIgnoreCase) || x.Equals("--simulate-full", StringComparison.OrdinalIgnoreCase)))
+        if (args.Any(x => x.Equals("--simulate", StringComparison.OrdinalIgnoreCase) ||
+                          x.Equals("--simulate-full", StringComparison.OrdinalIgnoreCase) ||
+                          x.Equals("--optimize-strategy", StringComparison.OrdinalIgnoreCase)))
         {
             var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
             return SimulationCli.Run(new ContentLoader(root).Load(), args, args.Any(x => x.Equals("--simulate-full", StringComparison.OrdinalIgnoreCase)));
@@ -124,6 +126,10 @@ internal static class Program
             ("strategy artifact round trip", StrategyArtifactRoundTrip),
             ("single-wave checkpoint simulation", SingleWaveCheckpointSimulation),
             ("deterministic checkpoint beam search", DeterministicCheckpointBeamSearch),
+            ("deterministic campaign candidate family", DeterministicCampaignCandidateFamily),
+            ("multi-wave campaign search artifacts", MultiWaveCampaignSearchArtifacts),
+            ("campaign search retry frontier", CampaignSearchRetryFrontier),
+            ("campaign search completion", CampaignSearchCompletion),
             ("headless simulation deterministic", HeadlessSimulationDeterministic),
             ("simulation footprint hold", SimulationFootprintHold),
             ("forced build completion summary", ForcedBuildCompletionSummary),
@@ -3898,6 +3904,257 @@ internal static class Program
             "beam failure retains exact unresolved armor-adjusted pressure");
     }
 
+    private static void DeterministicCampaignCandidateFamily()
+    {
+        var options = new CampaignSearchOptions
+        {
+            BaseSeed = 7719,
+            CandidateCount = 5,
+            BundleIds = ["mature-nodes", "apex-precise", "plate-coverage"],
+            ParameterOverrides = new SortedDictionary<string, double>(StringComparer.Ordinal)
+            {
+                ["reserveCredits"] = 215,
+                ["saleLimit"] = 3
+            }
+        };
+        var first = CampaignWavePlanGenerator.Generate(21, options, 0, 5);
+        var second = CampaignWavePlanGenerator.Generate(21, options, 0, 5);
+        var broadened = CampaignWavePlanGenerator.Generate(21, options, 1, 5);
+        Check.Equal(5, first.Count, "campaign candidate family honors its configured size");
+        Check.True(first.Select(plan => plan.StableKey).SequenceEqual(second.Select(plan => plan.StableKey)),
+            "campaign candidate generation is deterministic");
+        Check.Equal(5, first.Select(plan => plan.DecisionSeed).Distinct().Count(),
+            "campaign candidate family assigns a unique deterministic seed to each plan");
+        Check.True(!first.Select(plan => plan.StableKey).Intersect(broadened.Select(plan => plan.StableKey)).Any(),
+            "broadened campaign search emits a new candidate tranche");
+        Check.True(first.All(plan => plan.Parameters["reserveCredits"] == 215 &&
+                                     plan.Parameters["saleLimit"] == 3),
+            "campaign parameter overrides apply to every curated bundle");
+        Check.True(first.All(plan => plan.EconomyProfileId is "mature" or "apex" or "balanced" &&
+                                     plan.PlacementProfileId is "nodes" or "precise" or "coverage"),
+            "campaign candidates use the requested profile bundles");
+
+        var preferred = new WavePlan
+        {
+            Wave = 21,
+            DecisionSeed = 42,
+            PolicyId = "persisted-choice",
+            EconomyProfileId = "reserve",
+            PlacementProfileId = "explore",
+            TargetingProfileId = "first",
+            TacticalProfileId = "conserve"
+        };
+        var withPreferred = CampaignWavePlanGenerator.Generate(21, options, 0, 3, preferred);
+        Check.True(withPreferred.Any(plan => plan.StableKey == preferred.StableKey),
+            "a persisted wave decision remains in the candidate family during replay");
+        Check.Throws<InvalidDataException>(() => new CampaignSearchOptions
+        {
+            ParameterOverrides = new Dictionary<string, double> { ["unknownPolicyKnob"] = 1 }
+        }.Validate(), "campaign search rejects policy parameters that the player cannot consume");
+    }
+
+    private static void MultiWaveCampaignSearchArtifacts()
+    {
+        var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            static StrategyPlan Plan(SaveGameData checkpoint) => new()
+            {
+                ArtifactId = "campaign-search-fixture",
+                MapId = checkpoint.MapId,
+                DifficultyId = checkpoint.DifficultyId,
+                ChallengeId = checkpoint.ChallengeId,
+                BaseSeed = 90210,
+                DefaultStrategy = AutoPlayerStrategy.Adaptive
+            };
+
+            var checkpoint = new GameSession(content, "foundry_loop", DifficultyCatalog.LegacyId,
+                ChallengeCatalog.DefaultId).CaptureSaveGame();
+            var plan = Plan(checkpoint);
+            var segmentOneDirectory = Path.Combine(directory, "segment-one");
+            var segmentOne = CampaignStrategyOptimizer.Search(content,
+                [CheckpointSearchState.Create(content, plan, checkpoint)],
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 240 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 2,
+                    CandidateCount = 2,
+                    MaximumWave = 1,
+                    BroadeningRounds = 0,
+                    ArtifactDirectory = segmentOneDirectory
+                });
+            Check.Equal(CampaignSearchStatus.WaveLimitReached, segmentOne.Status,
+                "campaign search reaches its first requested boundary");
+            Check.Equal(1, segmentOne.LastCompletedWave, "campaign search advances exactly one layer");
+            Check.Equal(1, segmentOne.WaveAttempts.Count, "campaign search records its per-wave trace");
+            Check.True(File.Exists(Path.Combine(segmentOneDirectory, "campaign-search.json")) &&
+                       segmentOne.WaveAttempts[0].TracePath is { } tracePath &&
+                       File.Exists(Path.Combine(segmentOneDirectory, tracePath)),
+                "campaign search persists its manifest and wave trace");
+
+            var loadedManifest = CampaignSearchArtifactStore.LoadManifest(
+                Path.Combine(segmentOneDirectory, "campaign-search.json"));
+            var resumedFrontier = CampaignSearchArtifactStore.LoadFrontier(content,
+                Path.Combine(segmentOneDirectory, "campaign-search.json"));
+            Check.Equal(segmentOne.ResumeFrontier.Count, resumedFrontier.Count,
+                "campaign manifest restores every retained beam state");
+            Check.True(resumedFrontier.All(state => state.Checkpoint.Waves.CurrentWaveNumber == 1),
+                "restored campaign frontier remains at its completed wave");
+            Check.Equal(segmentOne.TotalEvaluations, loadedManifest.TotalEvaluations,
+                "campaign manifest retains the exact evaluation count");
+
+            var segmentTwo = CampaignStrategyOptimizer.Search(content, resumedFrontier,
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 240 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 2,
+                    CandidateCount = 2,
+                    MaximumWave = 2,
+                    BroadeningRounds = 0,
+                    ArtifactDirectory = Path.Combine(directory, "segment-two")
+                }, resumedFrontier[0].Strategy);
+            Check.Equal(CampaignSearchStatus.WaveLimitReached, segmentTwo.Status,
+                "resumed campaign search reaches the next requested boundary");
+            Check.Equal(2, segmentTwo.LastCompletedWave, "resumed campaign advances from its artifact checkpoint");
+
+            var uninterruptedCheckpoint = new GameSession(content, "foundry_loop", DifficultyCatalog.LegacyId,
+                ChallengeCatalog.DefaultId).CaptureSaveGame();
+            var uninterruptedPlan = Plan(uninterruptedCheckpoint);
+            var uninterrupted = CampaignStrategyOptimizer.Search(content,
+                [CheckpointSearchState.Create(content, uninterruptedPlan, uninterruptedCheckpoint)],
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 240 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = uninterruptedPlan.BaseSeed,
+                    BeamWidth = 2,
+                    CandidateCount = 2,
+                    MaximumWave = 2,
+                    BroadeningRounds = 0,
+                    ArtifactDirectory = Path.Combine(directory, "uninterrupted")
+                });
+            Check.Equal(CampaignSearchStatus.WaveLimitReached, uninterrupted.Status,
+                "uninterrupted campaign search reaches the comparison boundary");
+            Check.True(segmentTwo.FinalStrategy!.Waves.Select(wave => wave.StableKey)
+                           .SequenceEqual(uninterrupted.FinalStrategy!.Waves.Select(wave => wave.StableKey)),
+                "resumed and uninterrupted campaign searches retain the same deterministic strategy");
+            Check.True(segmentTwo.ResumeFrontier.Select(state => state.CheckpointFingerprint)
+                           .SequenceEqual(uninterrupted.ResumeFrontier.Select(state => state.CheckpointFingerprint)),
+                "resumed and uninterrupted campaign searches retain the same checkpoint beam");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    private static void CampaignSearchRetryFrontier()
+    {
+        var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        var checkpoint = new GameSession(content, "relay_divide", "bastion", "close_quarters").CaptureSaveGame();
+        var plan = new StrategyPlan
+        {
+            ArtifactId = "campaign-search-defeat-fixture",
+            MapId = checkpoint.MapId,
+            DifficultyId = checkpoint.DifficultyId,
+            ChallengeId = checkpoint.ChallengeId,
+            BaseSeed = 4404,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive
+        };
+        var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var result = CampaignStrategyOptimizer.Search(content,
+                [CheckpointSearchState.Create(content, plan, checkpoint)],
+                new SimulationOptions
+                {
+                    HoldBuild = true,
+                    StepSeconds = 0.1f,
+                    MaximumSimulatedSeconds = 240
+                },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 1,
+                    CandidateCount = 2,
+                    MaximumWave = 1,
+                    BroadeningRounds = 1,
+                    ArtifactDirectory = directory
+                });
+            Check.Equal(CampaignSearchStatus.FrontierExhausted, result.Status,
+                "campaign search identifies a deterministically exhausted wave");
+            Check.Equal(0, result.LastCompletedWave, "exhausted campaign search retains its prior checkpoint wave");
+            Check.Equal(2, result.WaveAttempts.Count, "dead frontier triggers one deterministic broadening round");
+            Check.Equal(6, result.TotalEvaluations, "broadening evaluates the configured two- then four-plan tranches");
+            Check.Equal(1, result.ResumeFrontier.Count, "dead frontier remains available for backtracking or widening");
+            Check.Equal(0, result.ResumeFrontier[0].Checkpoint.Waves.CurrentWaveNumber,
+                "retry frontier is the state before the blocking wave");
+            var failure = result.BestFailure ??
+                throw new InvalidOperationException("Exhausted campaign search did not retain its best failure.");
+            Check.True(failure.FailureMargin is { TotalArmorAdjustedDurability: > 0 },
+                "exhausted campaign search retains exact armor-adjusted failure pressure");
+            Check.Equal(failure.FailureMargin!.TotalEnemyCount,
+                failure.RemainingEnemies.Sum(enemy => enemy.Count) + failure.QueuedEnemies.Sum(enemy => enemy.Count),
+                "campaign best failure retains its exact live and queued composition");
+            Check.Equal(2, result.Manifest.NextBroadeningRound,
+                "exhausted manifest identifies the next unseen deterministic candidate round");
+            var restored = CampaignSearchArtifactStore.LoadFrontier(content, Path.Combine(directory, "campaign-search.json"));
+            Check.Equal(result.ResumeFrontier[0].CheckpointFingerprint, restored.Single().CheckpointFingerprint,
+                "exhausted manifest restores the retained retry frontier");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    private static void CampaignSearchCompletion()
+    {
+        var session = SessionWithWaves(1);
+        var checkpoint = session.CaptureSaveGame();
+        var plan = new StrategyPlan
+        {
+            ArtifactId = "campaign-completion-fixture",
+            MapId = checkpoint.MapId,
+            DifficultyId = checkpoint.DifficultyId,
+            ChallengeId = checkpoint.ChallengeId,
+            BaseSeed = 5150,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive
+        };
+        var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var result = CampaignStrategyOptimizer.Search(session.Content,
+                [CheckpointSearchState.Create(session.Content, plan, checkpoint)],
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 2,
+                    CandidateCount = 2,
+                    MaximumWave = 1,
+                    BroadeningRounds = 0,
+                    ArtifactDirectory = directory
+                });
+            Check.Equal(CampaignSearchStatus.CampaignCompleted, result.Status,
+                "campaign optimizer captures final-wave completion without an inter-wave checkpoint");
+            Check.Equal(1, result.LastCompletedWave, "completed campaign records its final wave");
+            Check.True(result.CampaignCompletions.Count > 0 && result.ResumeFrontier.Count == 0,
+                "campaign completion is retained separately from resumable checkpoint states");
+            Check.Equal(1, result.FinalStrategy!.Waves.Count,
+                "campaign completion persists its winning wave decision");
+            Check.True(result.Manifest.FinalStrategyPath is { } strategyPath &&
+                       File.Exists(Path.Combine(directory, strategyPath)),
+                "campaign completion persists its final StrategyPlan artifact");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
     private static void HeadlessSimulationDeterministic()
     {
         var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
@@ -4040,6 +4297,41 @@ internal static class Program
                    exactDefeat.RemainingEnemies.SequenceEqual(exactRepeat.RemainingEnemies) &&
                    exactDefeat.FailureMargin == exactRepeat.FailureMargin,
             "failure telemetry is deterministic for a fixed seed and checkpoint state");
+
+        var fatalEscape = HeadlessSimulation.Run(FatalEscapeTelemetryContent(content), exactDefeatOptions);
+        var fatalRepeat = HeadlessSimulation.Run(FatalEscapeTelemetryContent(content), exactDefeatOptions);
+        Check.Equal("Defeat", fatalEscape.Result, "fatal-escape fixture reaches defeat");
+        Check.Equal(0, fatalEscape.RemainingEnemyCount, "fatal-escape fixture leaves no live pressure");
+        Check.Equal(0, fatalEscape.QueuedEnemiesRemaining, "fatal-escape fixture leaves no queued pressure");
+        Check.True(fatalEscape.EmergencyDeployments == 0 && fatalEscape.CreditsSpent == 0 &&
+                   fatalEscape.FinalTowers.Count == 0 && fatalEscape.Overdrives == 0,
+            "fatal escape does not permit a post-defeat player action");
+        var emptyFailure = fatalEscape.FailureMargin ??
+            throw new InvalidOperationException("Fatal escape did not produce a failure margin.");
+        var escapedEnemy = fatalEscape.FatalEscapedEnemy ??
+            throw new InvalidOperationException("Fatal escape did not retain its escaped enemy.");
+        Check.True(emptyFailure.LiveEnemyCount == 0 && emptyFailure.QueuedEnemyCount == 0 &&
+                   emptyFailure.TotalEnemyCount == 0 && emptyFailure.FurthestProgress == 0,
+            "fatal enemy stays separate from live and queued failure pressure");
+        Check.Equal(1, emptyFailure.WaveEnemyCount, "completed fatal wave retains its pressure denominator");
+        Check.Equal("fatal", escapedEnemy.EnemyId, "fatal escape enemy identity");
+        Check.Equal("Elite fatal", escapedEnemy.DisplayName, "fatal escape display identity");
+        Check.Equal("Elite", escapedEnemy.Rank, "fatal escape rank");
+        Check.Equal("Disruptor", escapedEnemy.SignalRole, "fatal escape Signal role");
+        Check.Nearly(414.4f, escapedEnemy.CurrentHealth, "fatal escape remaining health");
+        Check.Nearly(414.4f, escapedEnemy.MaxHealth, "fatal escape maximum health");
+        Check.Nearly(20, escapedEnemy.Shield, "fatal escape remaining shield");
+        Check.Nearly(560.52f, escapedEnemy.ArmorAdjustedDurability,
+            "fatal escape armor-adjusted durability");
+        Check.Nearly(1, escapedEnemy.Progress, "fatal escape path progress");
+        Check.Nearly(escapedEnemy.ArmorAdjustedDurability, emptyFailure.WaveArmorAdjustedDurability,
+            "fatal escape failure margin retains the completed wave baseline");
+        Check.True(emptyFailure.RemainingEnemyFraction == 0 &&
+                   emptyFailure.RemainingArmorAdjustedDurabilityFraction == 0,
+            "zero unresolved pressure produces zero normalized failure margins");
+        Check.True(fatalEscape.FatalEscapedEnemy == fatalRepeat.FatalEscapedEnemy &&
+                   fatalEscape.FailureMargin == fatalRepeat.FailureMargin,
+            "fatal escape telemetry is deterministic for a fixed seed and checkpoint state");
     }
 
     private static void SimulationFootprintHold()
@@ -6467,6 +6759,35 @@ internal static class Program
             },
             Tactics = authored.Tactics
         };
+    }
+
+    private static GameContent FatalEscapeTelemetryContent(GameContent authored)
+    {
+        var content = DefeatTelemetryContent(authored);
+        var fatal = Enemy("fatal", 100, 300, 0, 5, 20);
+        content.Enemies.Clear();
+        content.Enemies.Add(fatal.Id, fatal);
+        content.Waves.Waves =
+        [
+            new WaveDefinition
+            {
+                Number = 3,
+                Archetype = "Fatal Escape",
+                HealthMultiplier = 2,
+                SpeedMultiplier = 1,
+                Groups =
+                [
+                    new WaveGroupDefinition
+                    {
+                        EnemyId = fatal.Id,
+                        Rank = "Elite",
+                        Count = 1,
+                        SpawnInterval = 0
+                    }
+                ]
+            }
+        ];
+        return content;
     }
 
     private static GameSession Session()

@@ -11,6 +11,9 @@ internal static class SimulationCli
 {
     public static int Run(GameContent content, string[] args, bool deep)
     {
+        if (args.Any(arg => arg.Equals("--optimize-strategy", StringComparison.OrdinalIgnoreCase)))
+            return RunStrategyOptimization(content, args);
+
         var selectedStrategy = ReadValue(args, "--strategy");
         var saveFile = ReadValue(args, "--save-file");
         var saveData = saveFile is null ? null : ReadSaveFile(saveFile, content);
@@ -189,6 +192,191 @@ internal static class SimulationCli
             Console.WriteLine($"Next strategy checkpoint: {nextCheckpointPath}");
         }
         return result.Succeeded ? 0 : 2;
+    }
+
+    private static int RunStrategyOptimization(GameContent content, string[] args)
+    {
+        var root = FindProjectRoot();
+        var resumeManifestPath = ReadValue(args, "--resume-manifest");
+        var resumeSearchPath = ReadValue(args, "--resume-search");
+        var resumeCheckpointPath = ReadValue(args, "--resume-checkpoint");
+        var resumePlanPath = ReadValue(args, "--resume-plan");
+        var resumeModes = new[] { resumeManifestPath, resumeSearchPath, resumeCheckpointPath }.Count(path => path is not null);
+        if (resumeModes > 1)
+            throw new ArgumentException("Choose only one of --resume-manifest, --resume-search, or --resume-checkpoint.");
+        if ((resumeCheckpointPath is null) != (resumePlanPath is null))
+            throw new ArgumentException("--resume-checkpoint and --resume-plan must be supplied together.");
+
+        CampaignSearchManifest? resumeManifest = null;
+        StrategyPlan? preferredPlan = null;
+        IReadOnlyList<CheckpointSearchState> frontier;
+        if (resumeManifestPath is not null)
+        {
+            resumeManifestPath = Path.GetFullPath(resumeManifestPath);
+            resumeManifest = CampaignSearchArtifactStore.LoadManifest(resumeManifestPath);
+            if (resumeManifest.Status == CampaignSearchStatus.CampaignCompleted)
+            {
+                Console.WriteLine($"Campaign search '{resumeManifest.ArtifactId}' is already complete.");
+                return 0;
+            }
+            frontier = CampaignSearchArtifactStore.LoadFrontier(content, resumeManifestPath);
+            if (frontier.Count == 0)
+                throw new InvalidDataException("Resume manifest does not contain a usable frontier.");
+            preferredPlan = frontier[0].Strategy;
+        }
+        else if (resumeSearchPath is not null)
+        {
+            var trace = StrategyArtifactStore.LoadSearchResult(Path.GetFullPath(resumeSearchPath), content);
+            frontier = trace.RetainedStates;
+            if (frontier.Count == 0)
+                throw new InvalidDataException("Resume search trace has no retained states; use its campaign manifest retry frontier.");
+            preferredPlan = frontier[0].Strategy;
+        }
+        else if (resumeCheckpointPath is not null && resumePlanPath is not null)
+        {
+            var checkpoint = ReadSaveFile(resumeCheckpointPath, content);
+            preferredPlan = StrategyArtifactStore.LoadPlan(resumePlanPath);
+            preferredPlan.ValidateForCheckpoint(checkpoint);
+            var prefix = preferredPlan with
+            {
+                Waves = preferredPlan.Waves.Where(wave => wave.Wave <= checkpoint.Waves.CurrentWaveNumber).ToArray()
+            };
+            frontier = [CheckpointSearchState.Create(content, prefix, checkpoint)];
+        }
+        else
+        {
+            var mapId = ReadValue(args, "--map") ?? content.Map.Id;
+            if (!content.Maps.ContainsKey(mapId))
+                throw new ArgumentException($"Unknown map '{mapId}'.");
+            var difficultyId = ResolveDifficulties(ReadValue(args, "--difficulty"), content).Single();
+            var challengeId = ResolveChallenges(ReadValue(args, "--challenge"), content).Single();
+            var baseSeed = ParseInt(args, "--seed", 1337, int.MinValue, int.MaxValue);
+            var strategy = ParseStrategy(ReadValue(args, "--strategy"), AutoPlayerStrategy.Experienced);
+            var checkpoint = new GameSession(content, mapId, difficultyId, challengeId).CaptureSaveGame();
+            preferredPlan = new StrategyPlan
+            {
+                ArtifactId = $"{mapId}-{difficultyId}-{challengeId}-seed-{baseSeed}",
+                MapId = mapId,
+                DifficultyId = difficultyId,
+                ChallengeId = challengeId,
+                BaseSeed = baseSeed,
+                DefaultStrategy = strategy
+            };
+            frontier = [CheckpointSearchState.Create(content, preferredPlan, checkpoint)];
+        }
+
+        var strategySeed = frontier[0].Strategy.BaseSeed;
+        if (ReadValue(args, "--seed") is { } requestedSeedText &&
+            (!int.TryParse(requestedSeedText, out var requestedSeed) || requestedSeed != strategySeed))
+            throw new ArgumentException("A resumed campaign search must retain its strategy seed.");
+        var baseSeedValue = strategySeed;
+        var maximumWaveDefault = resumeManifest?.MaximumWave ?? GameConstants.CampaignWaveCount;
+        var maximumWave = ParseInt(args, "--max-wave", maximumWaveDefault, 1, int.MaxValue);
+        var beamWidth = ParseInt(args, "--beam-width", resumeManifest?.BeamWidth ?? 3, 1, 32);
+        var candidateCount = ParseInt(args, "--candidates", resumeManifest?.CandidateCount ?? 6, 1, 128);
+        var broadeningRounds = ParseInt(args, "--broaden-rounds", resumeManifest?.BroadeningRounds ?? 1, 0, 8);
+        var startingRound = ParseInt(args, "--start-round", resumeManifest?.NextBroadeningRound ?? 0, 0, 1000);
+        var bundleText = ReadValue(args, "--bundles");
+        var bundleIds = bundleText is null ? resumeManifest?.BundleIds ?? Array.Empty<string>() : SplitList(bundleText);
+        var parameterOverrides = HasParameterArguments(args)
+            ? ReadParameterOverrides(args)
+            : resumeManifest?.ParameterOverrides ?? new SortedDictionary<string, double>(StringComparer.Ordinal);
+        var artifactDirectory = ReadValue(args, "--artifact-dir");
+        if (artifactDirectory is null)
+        {
+            artifactDirectory = resumeManifestPath is null
+                ? Path.Combine(root, ".build", "balance", "strategy-search", frontier[0].Strategy.ArtifactId)
+                : Path.Combine(Path.GetDirectoryName(resumeManifestPath)!, $"resume-{startingRound:D3}");
+        }
+        else if (!Path.IsPathRooted(artifactDirectory))
+            artifactDirectory = Path.Combine(root, artifactDirectory);
+
+        var forcedBuildText = ReadValue(args, "--force-build");
+        var forcedBuild = ParseForcedBuild(forcedBuildText, content);
+        var storedSimulation = resumeManifest?.SimulationSettings;
+        var forcedTowerId = forcedBuild?.TowerId ?? (forcedBuildText is null ? storedSimulation?.ForcedTowerId : null);
+        var forcedDoctrineId = forcedBuild?.DoctrineId ?? (forcedBuildText is null ? storedSimulation?.ForcedDoctrineId : null);
+        var forcedSpecializationId = forcedBuild?.SpecializationId ??
+                                     (forcedBuildText is null ? storedSimulation?.ForcedSpecializationId : null);
+        var result = CampaignStrategyOptimizer.Search(
+            content,
+            frontier,
+            new SimulationOptions
+            {
+                Strategy = frontier[0].Strategy.DefaultStrategy,
+                StepSeconds = ParseFloat(args, "--step-seconds", storedSimulation?.StepSeconds ?? 0.05f, 0.01f, 0.1f),
+                MaximumSimulatedSeconds = ParseFloat(args, "--maximum-seconds",
+                    storedSimulation?.MaximumSimulatedSeconds ?? 3600, 1, 86_400),
+                ForcedTowerId = forcedTowerId,
+                ForcedDoctrineId = forcedDoctrineId,
+                ForcedSpecializationId = forcedSpecializationId,
+                UseProtocols = (storedSimulation?.UseProtocols ?? true) && !HasFlag(args, "--no-protocols"),
+                UseApexUpgrades = (storedSimulation?.UseApexUpgrades ?? true) && !HasFlag(args, "--no-apex"),
+                UseCounterSupport = (storedSimulation?.UseCounterSupport ?? true) &&
+                                    !HasFlag(args, "--no-counter-support") && !HasFlag(args, "--no-counter-pressure"),
+                UseCounterAttackers = (storedSimulation?.UseCounterAttackers ?? true) &&
+                                      !HasFlag(args, "--no-counter-attackers") && !HasFlag(args, "--no-counter-pressure"),
+                HoldBuild = (storedSimulation?.HoldBuild ?? false) || HasFlag(args, "--hold-build"),
+                HoldFootprint = (storedSimulation?.HoldFootprint ?? false) || HasFlag(args, "--hold-footprint")
+            },
+            new CampaignSearchOptions
+            {
+                BaseSeed = baseSeedValue,
+                BeamWidth = beamWidth,
+                CandidateCount = candidateCount,
+                MaximumWave = maximumWave,
+                BroadeningRounds = broadeningRounds,
+                StartingBroadeningRound = startingRound,
+                PolicyId = ReadValue(args, "--policy-id") ?? resumeManifest?.PolicyId ?? "experienced-search",
+                BundleIds = bundleIds,
+                ParameterOverrides = parameterOverrides,
+                ArtifactDirectory = artifactDirectory
+            },
+            preferredPlan);
+
+        foreach (var attempt in result.WaveAttempts)
+            Console.WriteLine(
+                $"Wave {attempt.Wave,2} round {attempt.BroadeningRound,3}: candidates {attempt.CandidateCount,3}, " +
+                $"evaluations {attempt.Evaluations,4}, successes {attempt.SuccessfulEvaluations,3}, " +
+                $"retained {attempt.RetainedStates,2}, failures {attempt.Failures,3}.");
+        Console.WriteLine(
+            $"Strategy search {result.Status}: completed wave {result.LastCompletedWave}, " +
+            $"evaluations {result.TotalEvaluations}, resumable states {result.ResumeFrontier.Count}.");
+        PrintExactFailure(result.BestFailure);
+        Console.WriteLine($"Campaign search manifest: {Path.Combine(Path.GetFullPath(artifactDirectory), "campaign-search.json")}");
+        if (result.Manifest.FinalStrategyPath is { } finalStrategyPath)
+            Console.WriteLine($"Strategy artifact: {Path.Combine(Path.GetFullPath(artifactDirectory), finalStrategyPath)}");
+        return result.Status is CampaignSearchStatus.CampaignCompleted or CampaignSearchStatus.WaveLimitReached ? 0 : 2;
+    }
+
+    private static void PrintExactFailure(CheckpointWaveFailure? failure)
+    {
+        if (failure is null) return;
+        Console.WriteLine($"Best failed wave {failure.WavePlan.Wave}, seed {failure.WavePlan.DecisionSeed}: {failure.Result}.");
+        if (failure.FailureMargin is not { } margin)
+        {
+            Console.WriteLine("No normalized failure margin was available.");
+            return;
+        }
+        Console.WriteLine(
+            $"Live {margin.LiveEnemyCount}: health {margin.LiveHealth:0.###}, shield {margin.LiveShield:0.###}, " +
+            $"armor-adjusted {margin.LiveArmorAdjustedDurability:0.###}; queued {margin.QueuedEnemyCount}: " +
+            $"health {margin.QueuedHealth:0.###}, shield {margin.QueuedShield:0.###}, " +
+            $"armor-adjusted {margin.QueuedArmorAdjustedDurability:0.###}.");
+        Console.WriteLine(
+            $"Total armor-adjusted {margin.TotalArmorAdjustedDurability:0.###}/{margin.WaveArmorAdjustedDurability:0.###} " +
+            $"({margin.RemainingArmorAdjustedDurabilityFraction:P3}); enemies {margin.TotalEnemyCount}/{margin.WaveEnemyCount} " +
+            $"({margin.RemainingEnemyFraction:P3}); furthest progress {margin.FurthestProgress:P3}.");
+        foreach (var enemy in failure.RemainingEnemies)
+            Console.WriteLine(
+                $"  LIVE {enemy.Count} {enemy.Rank} {enemy.DisplayName} {enemy.SignalRole}: " +
+                $"health {enemy.CurrentHealth:0.###}, shield {enemy.Shield:0.###}, " +
+                $"armor-adjusted {enemy.ArmorAdjustedDurability:0.###}, progress {enemy.FurthestProgress:P3}");
+        foreach (var enemy in failure.QueuedEnemies)
+            Console.WriteLine(
+                $"  QUEUED {enemy.Count} {enemy.Rank} {enemy.DisplayName} {enemy.SignalRole}: " +
+                $"health {enemy.CurrentHealth:0.###}, shield {enemy.Shield:0.###}, " +
+                $"armor-adjusted {enemy.ArmorAdjustedDurability:0.###}");
     }
 
     internal static int ResolveMaximumWave(string[] args, int campaignWaveCount)
@@ -655,6 +843,69 @@ internal static class SimulationCli
         }
         return null;
     }
+
+    private static bool HasFlag(string[] args, string name) =>
+        args.Any(arg => arg.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+    private static int ParseInt(string[] args, string name, int fallback, int minimum, int maximum)
+    {
+        var value = ReadValue(args, name);
+        if (value is null) return fallback;
+        if (!int.TryParse(value, out var parsed) || parsed < minimum || parsed > maximum)
+            throw new ArgumentException($"{name} must be an integer from {minimum} through {maximum}.");
+        return parsed;
+    }
+
+    private static float ParseFloat(string[] args, string name, float fallback, float minimum, float maximum)
+    {
+        var value = ReadValue(args, name);
+        if (value is null) return fallback;
+        if (!float.TryParse(value, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var parsed) ||
+            !float.IsFinite(parsed) || parsed < minimum || parsed > maximum)
+            throw new ArgumentException($"{name} must be a number from {minimum} through {maximum}.");
+        return parsed;
+    }
+
+    private static AutoPlayerStrategy ParseStrategy(string? value, AutoPlayerStrategy fallback)
+    {
+        if (value is null) return fallback;
+        if (!Enum.TryParse<AutoPlayerStrategy>(value, true, out var strategy))
+            throw new ArgumentException($"Unknown strategy '{value}'.");
+        return strategy;
+    }
+
+    private static IReadOnlyList<string> SplitList(string? value) => string.IsNullOrWhiteSpace(value)
+        ? Array.Empty<string>()
+        : value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static IReadOnlyDictionary<string, double> ReadParameterOverrides(string[] args)
+    {
+        var parameters = new SortedDictionary<string, double>(StringComparer.Ordinal);
+        for (var index = 0; index < args.Length; index++)
+        {
+            string? assignment = null;
+            if (args[index].StartsWith("--parameter=", StringComparison.OrdinalIgnoreCase))
+                assignment = args[index]["--parameter=".Length..];
+            else if (args[index].Equals("--parameter", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+                assignment = args[++index];
+            if (assignment is null) continue;
+            var separator = assignment.IndexOf('=');
+            if (separator <= 0 || separator == assignment.Length - 1 ||
+                !double.TryParse(assignment[(separator + 1)..], System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var parsed) || !double.IsFinite(parsed))
+                throw new ArgumentException("--parameter must use name=value with a finite numeric value.");
+            var name = assignment[..separator];
+            if (!CampaignWavePlanGenerator.SupportedParameterNames.Contains(name))
+                throw new ArgumentException($"Unsupported WavePlan parameter '{name}'.");
+            parameters[name] = parsed;
+        }
+        return parameters;
+    }
+
+    private static bool HasParameterArguments(string[] args) => args.Any(arg =>
+        arg.Equals("--parameter", StringComparison.OrdinalIgnoreCase) ||
+        arg.StartsWith("--parameter=", StringComparison.OrdinalIgnoreCase));
 
     private static SaveGameData ReadSaveFile(string path, GameContent content)
     {
