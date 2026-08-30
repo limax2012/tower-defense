@@ -68,6 +68,7 @@ public sealed class TowerSaveData
     public TargetMode TargetMode { get; set; }
     public int InvestedCredits { get; set; }
     public float OverdriveRemaining { get; set; }
+    public float ApexProtocolCooldownRemaining { get; set; }
     public float LifetimeDamage { get; set; }
     public int LifetimeKills { get; set; }
     public float LifetimeSupportDamageEquivalent { get; set; }

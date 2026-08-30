@@ -1268,7 +1268,7 @@ public sealed class UIManager
                  _upgradeButton.Contains(point))
         {
             _hoveredUpgradePreview = apexPreview.ApexPreviewLevel;
-            _hoveredUpgradePreviewLabel = $"PREVIEW APEX  {apexPreview.ApexUpgradeCost}";
+            _hoveredUpgradePreviewLabel = $"PREVIEW APEX  {apexPreview.ApexUpgradeCost}  |  SELF-AUTO";
         }
         _hoveredTacticalPlacement = session.IsSandbox ? TacticalPlacementKind.None :
             _emergencyButton.Contains(point) ? TacticalPlacementKind.PulsePlate :
@@ -1742,6 +1742,7 @@ public sealed class UIManager
     {
         if (!session.ProtocolsEnabled) return;
         if (session.SelectedTower is not { } tower) return;
+        if (tower.IsApex) return;
         if (sink is null)
         {
             session.TryToggleAutoProtocol(tower.Id, playerId);
@@ -2419,22 +2420,40 @@ public sealed class UIManager
         DrawButton(batch, p, _generatorButton, generatorLabel, generatorReady, ColorPalette.Green, hotkey: "G");
 
         var selected = session.SelectedTower;
-        var activeOverdrive = session.Towers.FirstOrDefault(x => x.IsOverdriven);
-        var overdriveReady = session.ProtocolsEnabled && selected is not null && session.OverdriveCooldownRemaining <= 0 && !selected.IsOverdriven;
-        var overdriveLabel = !session.ProtocolsEnabled ? "PROTOCOLS | DIRECTIVE OFF" :
-            activeOverdrive is not null ? $"{activeOverdrive.Protocol.DisplayName.ToUpperInvariant()} {activeOverdrive.OverdriveRemaining:0.0}s" :
-            session.OverdriveCooldownRemaining > 0 ? $"PROTOCOL | {session.OverdriveCooldownRemaining:0.0}s" :
-            selected is null ? "PROTOCOL | SELECT" :
-            selected.Protocol.DisplayName.ToUpperInvariant();
+        var activeOverdrives = session.Towers.Where(tower => tower.IsOverdriven).OrderBy(tower => tower.Id).ToArray();
+        var selectedApexCooldown = selected?.ApexProtocolCooldownRemaining ?? 0;
+        var overdriveReady = session.ProtocolsEnabled && selected is not null &&
+            session.OverdriveCooldownRemaining <= 0 && !selected.IsOverdriven && selectedApexCooldown <= 0;
+        var overdriveLabel = !session.ProtocolsEnabled
+            ? selected is { IsApex: true }
+                ? selected.IsOverdriven
+                    ? $"{selected.Protocol.DisplayName.ToUpperInvariant()} {selected.OverdriveRemaining:0.0}s"
+                    : selectedApexCooldown > 0
+                        ? $"APEX AUTO | {selectedApexCooldown:0.0}s"
+                        : "APEX AUTO | READY"
+                : "PROTOCOLS | DIRECTIVE OFF"
+            : selected is { IsApex: true } && selected.IsOverdriven
+                ? $"{selected.Protocol.DisplayName.ToUpperInvariant()} {selected.OverdriveRemaining:0.0}s"
+            : selected is { IsApex: true } && selectedApexCooldown > 0
+                    ? $"APEX AUTO | {selectedApexCooldown:0.0}s"
+                    : overdriveReady && selected is not null && activeOverdrives.Length > 0
+                        ? $"{selected.Protocol.DisplayName.ToUpperInvariant()} | {activeOverdrives.Length} AUTO"
+                    : activeOverdrives.Length > 1
+                        ? $"{activeOverdrives.Length} PROTOCOLS ACTIVE"
+                        : activeOverdrives.Length == 1
+                            ? $"{activeOverdrives[0].Protocol.DisplayName.ToUpperInvariant()} {activeOverdrives[0].OverdriveRemaining:0.0}s"
+                            : session.OverdriveCooldownRemaining > 0
+                                ? $"PROTOCOL | {session.OverdriveCooldownRemaining:0.0}s"
+                                : selected is null ? "PROTOCOL | SELECT" : selected.Protocol.DisplayName.ToUpperInvariant();
         DrawButton(batch, p, _overdriveButton, overdriveLabel, overdriveReady, ColorPalette.Coral, hotkey: "E");
         var armedAutoTower = session.Towers.FirstOrDefault(tower => tower.Id == session.AutoOverdriveTowerId);
         var autoActive = session.ProtocolsEnabled && selected is not null && armedAutoTower == selected;
-        var autoLabel = !session.ProtocolsEnabled ? "OFF" : autoActive ? "ON" :
+        var autoLabel = selected is { IsApex: true } ? "SELF" : !session.ProtocolsEnabled ? "OFF" : autoActive ? "ON" :
             armedAutoTower is not null && selected is not null ? "MOVE" :
             armedAutoTower is not null ? "ARMED" : "ARM";
         DrawButton(batch, p, _autoProtocolButton, autoLabel,
-            session.ProtocolsEnabled && selected is not null,
-            ColorPalette.Auto, hotkey: "A");
+            selected is { IsApex: true } || session.ProtocolsEnabled && selected is not null,
+            ColorPalette.Auto, hotkey: selected is { IsApex: true } ? null : "A");
     }
 
     private void DrawSidebar(SpriteBatch batch, PrimitiveRenderer p, MinimalBastion.GameSession session)
@@ -4431,9 +4450,9 @@ public sealed class UIManager
             "A OR AUTO: ARM ONE TOWER FOR PRESSURE-AWARE USE",
             "AUTO RULES MATCH EACH ROLE: RANGE, AREA, GROUP, OR ALLIES",
             "ANY ENGAGED ELITE / BOSS TRIGGERS AUTO IMMEDIATELY",
-            "ANY ACTIVATION STARTS THE ONE SHARED COOLDOWN",
+            "MANUAL AND ARMED USE SHARE ONE SYSTEM COOLDOWN",
+            "APEX TOWERS SELF-ACTIVATE ON INDIVIDUAL COOLDOWNS",
             "EACH TOWER HAS UNIQUE STATS, BURST, OR STATUS",
-            "THE SIDEBAR SHOWS ACTIVE TIME AND COOLDOWN",
             "TOWER PAGES SHOW EACH EXACT EFFECT"
         ]));
         cards.Add(("BEACONS + SURGE NODES", ColorPalette.Gold, "circle", SupportReferenceLines()));

@@ -28,6 +28,7 @@ public static class HeadlessSimulation
     private static GameSession ConfigureSession(GameSession session, SimulationOptions options)
     {
         session.ConfigureCounterPressureSimulation(options.UseCounterSupport, options.UseCounterAttackers);
+        session.ConfigureApexProtocolSimulation(options.UseProtocols);
         return session;
     }
 
@@ -206,7 +207,7 @@ public static class HeadlessSimulation
                 GeneratorUpgrades = _generatorUpgrades,
                 GeneratedCharges = _generatedCharges,
                 Overdrives = _overdrives,
-                ProtocolsEnabled = options.UseProtocols && session.ProtocolsEnabled,
+                ProtocolsEnabled = options.UseProtocols && (session.ProtocolsEnabled || options.UseApexUpgrades),
                 ApexUpgradesEnabled = options.UseApexUpgrades
             };
         }

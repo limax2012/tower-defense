@@ -50,7 +50,7 @@
     "id": "no_reserves",
     "displayName": "Entrenched",
     "menuLabel": "Entrenched",
-    "description": "Full roster | no Plates, Forge, Protocols, or selling.",
+    "description": "Permanent towers | no devices, Protocol controls, or selling | Apex self-activates.",
     "startingCreditsMultiplier": 1.0,
     "tacticalSystemsEnabled": false,
     "protocolsEnabled": false,

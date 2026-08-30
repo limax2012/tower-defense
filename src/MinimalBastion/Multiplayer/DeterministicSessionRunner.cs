@@ -174,6 +174,7 @@ public static class SessionChecksum
             Add(ref hash, tower.SuppressionRemaining);
             Add(ref hash, tower.SuppressionLockoutRemaining);
             Add(ref hash, tower.OverdriveRemaining);
+            Add(ref hash, tower.ApexProtocolCooldownRemaining);
             Add(ref hash, (int)tower.TargetMode);
             Add(ref hash, tower.LifetimeDamage);
             Add(ref hash, tower.LifetimeKills);

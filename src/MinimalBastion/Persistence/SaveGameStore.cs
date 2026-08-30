@@ -298,7 +298,10 @@ public sealed class SaveSlotRepository
                 !IsNonnegativeFinite(tower.DisruptionLockoutRemaining) ||
                 !IsNonnegativeFinite(tower.SuppressionRemaining) ||
                 !IsNonnegativeFinite(tower.SuppressionLockoutRemaining) ||
-                !IsNonnegativeFinite(tower.OverdriveRemaining) || !IsNonnegativeFinite(tower.LifetimeDamage) ||
+                !IsNonnegativeFinite(tower.OverdriveRemaining) ||
+                !IsNonnegativeFinite(tower.ApexProtocolCooldownRemaining) ||
+                (!tower.IsApex && tower.ApexProtocolCooldownRemaining > 0) ||
+                !IsNonnegativeFinite(tower.LifetimeDamage) ||
                 tower.LifetimeKills < 0 || !IsNonnegativeFinite(tower.LifetimeSupportDamageEquivalent) ||
                 !IsNonnegativeFinite(tower.LifetimeExposeDamageEquivalent) ||
                 !IsNonnegativeFinite(tower.LifetimeArmorBreakDamageEquivalent) ||

@@ -7,7 +7,7 @@ Minimal Bastion is a colorful geometric tower-defense game built with C# and .NE
 - Four arenas with distinct route geometry, build areas, visual treatments, starting economies, and 30 authored waves each.
 - Easy, Medium, Hard, and Bastion difficulty profiles.
 - Standard, Signal Gauntlet, Core Six, and Entrenched directives, plus a solo Sandbox Lab.
-- Ten towers. Every tower has two tier-two doctrines, two compatible tier-three roles, a unique Protocol, and an Apex promotion.
+- Ten towers. Every tower has two tier-two doctrines, two compatible tier-three roles, a unique Protocol, and an Apex promotion with independent automatic Protocol activation.
 - Seven general targeting modes: First, Last, Strongest, Weakest, Nearest, Fastest, and Armored. Signal Gauntlet adds Support targeting for its signal enemies, and Sandbox exposes it for signal testing.
 - Pulse Plates, a three-level Charge Forge, Surge Nodes, automatic Protocol activation, and configurable wave auto-start.
 - One rolling autosave, expandable manual save slots, save duplication/deletion, recovery generations, run history, final-layout inspection, medals, achievements, and career records.
@@ -115,7 +115,7 @@ Tower statistics do not change with difficulty, wave number, map, or elapsed tim
 - **Standard** enables the complete roster and every tactical system.
 - **Signal Gauntlet** introduces Accelerator, Restorer, Bulwark, Jammer, and Disruptor signal enemies from the early campaign onward without bonus opening credits. Accelerators raise formation speed by 20%; Restorers repair 10% maximum health every 5 seconds; Bulwarks grant 10% maximum-health shielding every 5 seconds up to a 20% reserve; Jammers suppress every combat tower in their pulse radius; and Disruptors pause one high-investment tower in reach every 5 seconds. The Support targeting mode prioritizes signal enemies and otherwise selects the strongest available target.
 - **Core Six** restricts the roster to Needle Turret, Frost Spire, Shard Fan, Ember Coil, Breaker Cannon, and Signal Beacon with the standard opening economy.
-- **Entrenched** disables Pulse Plates, Charge Forge, Protocols, and selling without compensating credits.
+- **Entrenched** disables Pulse Plates, Charge Forge, manual and armed Protocol controls, and selling without compensating credits. Apex towers retain their permanent self-activating Protocol system.
 - **Sandbox Lab** provides unlimited resources and lives for controlled tower, upgrade, Protocol, status, enemy-rank, selectable signal-role, and authored-wave experiments. Replayed waves use the same deterministic signal-enemy assignments as Signal Gauntlet. Sandbox sessions do not create competitive saves or run-history records.
 
 ## Towers and tactical systems

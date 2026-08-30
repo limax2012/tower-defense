@@ -7,7 +7,7 @@ namespace MinimalBastion.Multiplayer;
 
 public sealed class CoOpStateSnapshot
 {
-    public const int CurrentSchemaVersion = 7;
+    public const int CurrentSchemaVersion = 8;
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public string RunId { get; set; } = "";
     public string MapId { get; set; } = "";

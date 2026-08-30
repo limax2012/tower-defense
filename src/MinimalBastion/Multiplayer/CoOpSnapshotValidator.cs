@@ -74,7 +74,10 @@ internal static class CoOpSnapshotValidator
                 !IsNonnegativeFinite(tower.DisruptionLockoutRemaining) ||
                 !IsNonnegativeFinite(tower.SuppressionRemaining) ||
                 !IsNonnegativeFinite(tower.SuppressionLockoutRemaining) ||
-                !IsNonnegativeFinite(tower.OverdriveRemaining) || !IsNonnegativeFinite(tower.LifetimeDamage) ||
+                !IsNonnegativeFinite(tower.OverdriveRemaining) ||
+                !IsNonnegativeFinite(tower.ApexProtocolCooldownRemaining) ||
+                (!tower.IsApex && tower.ApexProtocolCooldownRemaining > 0) ||
+                !IsNonnegativeFinite(tower.LifetimeDamage) ||
                 tower.LifetimeKills < 0 || !IsNonnegativeFinite(tower.LifetimeSupportDamageEquivalent) ||
                 !IsNonnegativeFinite(tower.LifetimeExposeDamageEquivalent) ||
                 !IsNonnegativeFinite(tower.LifetimeArmorBreakDamageEquivalent) ||
@@ -82,7 +85,8 @@ internal static class CoOpSnapshotValidator
                 !IsNonnegativeFinite(tower.LifetimeArmorBreakSeconds)))
             throw new InvalidDataException("Co-op snapshot tower state is structurally invalid.");
         if (towers.Any(tower => tower.Id >= snapshot.NextTowerId) ||
-            snapshot.AutoOverdriveTowerId != 0 && towers.All(tower => tower.Id != snapshot.AutoOverdriveTowerId))
+            snapshot.AutoOverdriveTowerId != 0 &&
+            towers.All(tower => tower.Id != snapshot.AutoOverdriveTowerId || tower.IsApex))
             throw new InvalidDataException("Co-op snapshot tower identity state is inconsistent.");
 
         ValidateCount(enemies.Count, MaximumEnemies, "enemy");

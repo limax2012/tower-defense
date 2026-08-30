@@ -42,6 +42,7 @@ public sealed class GameSession
     private int _sandboxQueuedEnemies;
     private bool _counterSupportSimulationEnabled = true;
     private bool _counterAttackersSimulationEnabled = true;
+    private bool _apexProtocolAutomationEnabled = true;
 
     public string RunId { get; private set; } = Guid.NewGuid().ToString("N");
     public GameContent Content => _content;
@@ -210,6 +211,7 @@ public sealed class GameSession
         _enemySystem.Update(deltaSeconds, this);
         _tacticalDefenseSystem.Update(deltaSeconds, this);
         TryActivateAutomaticProtocol();
+        TryActivateApexProtocols();
         _buffSystem.Update(Towers);
         _towerSystem.Update(deltaSeconds, this);
         Projectiles.Update(deltaSeconds, this);
@@ -755,6 +757,7 @@ public sealed class GameSession
         if (!tower.CanUpgrade && !apex) return false;
         var cost = apex ? tower.ApexUpgradeCost : tower.UpgradeCost;
         if (!Economy.TrySpend(cost) || !(apex ? tower.TryApexUpgrade() : tower.TryUpgrade())) return false;
+        if (apex && AutoOverdriveTowerId == tower.Id) AutoOverdriveTowerId = 0;
         TowerUpgraded?.Invoke(tower, cost);
         return true;
     }
@@ -807,10 +810,19 @@ public sealed class GameSession
     public bool TryOverdriveTower(int towerId, int requestingPlayerId = 1)
     {
         var tower = Towers.FirstOrDefault(x => x.Id == towerId);
-        if (!ProtocolsEnabled || requestingPlayerId is < 1 or > 2 || tower is null || tower.IsSandboxDisabled || tower.IsOverdriven || OverdriveCooldownRemaining > 0)
+        if (!ProtocolsEnabled || requestingPlayerId is < 1 or > 2 || tower is null ||
+            OverdriveCooldownRemaining > 0)
+            return false;
+        if (!ActivateProtocol(tower)) return false;
+        OverdriveCooldownRemaining = tower.Protocol.CooldownSeconds;
+        return true;
+    }
+
+    private bool ActivateProtocol(TowerInstance tower)
+    {
+        if (tower.IsSandboxDisabled || tower.IsOverdriven || tower.ApexProtocolCooldownRemaining > 0)
             return false;
         tower.ActivateOverdrive();
-        OverdriveCooldownRemaining = tower.Protocol.CooldownSeconds;
         ApplyProtocolActivation(tower);
         if (tower.Protocol.BurstRadius > 0 &&
             (tower.Protocol.BurstDamage > 0 || !string.IsNullOrWhiteSpace(tower.Protocol.BurstStatus)))
@@ -833,7 +845,8 @@ public sealed class GameSession
             AutoOverdriveTowerId = 0;
             return true;
         }
-        if (Towers.All(x => x.Id != towerId || x.IsSandboxDisabled)) return false;
+        var tower = Towers.FirstOrDefault(candidate => candidate.Id == towerId);
+        if (tower is null || tower.IsSandboxDisabled || tower.IsApex) return false;
         AutoOverdriveTowerId = towerId;
         return true;
     }
@@ -847,7 +860,7 @@ public sealed class GameSession
         }
         if (AutoOverdriveTowerId <= 0 || OverdriveCooldownRemaining > 0 || Enemies.Count == 0) return;
         var tower = Towers.FirstOrDefault(x => x.Id == AutoOverdriveTowerId);
-        if (tower is null || tower.IsSandboxDisabled)
+        if (tower is null || tower.IsSandboxDisabled || tower.IsApex)
         {
             AutoOverdriveTowerId = 0;
             return;
@@ -855,6 +868,18 @@ public sealed class GameSession
 
         if (!ShouldActivateAutomaticProtocol(tower)) return;
         TryOverdriveTower(tower.Id);
+    }
+
+    private void TryActivateApexProtocols()
+    {
+        if (!_apexProtocolAutomationEnabled || Enemies.Count == 0) return;
+        var ready = Towers
+            .Where(tower => tower.IsApex && !tower.IsSandboxDisabled && !tower.IsOverdriven &&
+                tower.ApexProtocolCooldownRemaining <= 0)
+            .OrderBy(tower => tower.Id)
+            .Where(ShouldActivateAutomaticProtocol)
+            .ToArray();
+        foreach (var tower in ready) ActivateProtocol(tower);
     }
 
     private bool ShouldActivateAutomaticProtocol(TowerInstance tower)
@@ -1306,6 +1331,9 @@ public sealed class GameSession
         _counterAttackersSimulationEnabled = attackersEnabled;
     }
 
+    internal void ConfigureApexProtocolSimulation(bool enabled) =>
+        _apexProtocolAutomationEnabled = enabled;
+
     private bool IsCounterRoleEnabled(EnemySignalRole role) => role switch
     {
         EnemySignalRole.Accelerator or EnemySignalRole.Restorer or EnemySignalRole.Bulwark => CounterSupportEnabled,
@@ -1611,7 +1639,8 @@ public sealed class GameSession
         session.Waves.RestoreCoOpState(data.Waves);
         session.Speed = data.Speed >= 1.5f ? 2f : 1f;
         session.OverdriveCooldownRemaining = session.ProtocolsEnabled ? MathF.Max(0, data.OverdriveCooldownRemaining) : 0;
-        session.AutoOverdriveTowerId = session.ProtocolsEnabled && data.Towers.Any(tower => tower.Id == data.AutoOverdriveTowerId)
+        session.AutoOverdriveTowerId = session.ProtocolsEnabled && data.Towers.Any(tower =>
+            tower.Id == data.AutoOverdriveTowerId && !tower.IsApex)
             ? data.AutoOverdriveTowerId
             : 0;
         session.EmergencyInventory = Math.Max(0, data.EmergencyInventory);
@@ -1625,7 +1654,7 @@ public sealed class GameSession
                 throw new InvalidDataException($"Network tower '{savedTower.DefinitionId}' has impossible investment state.");
             var tower = TowerInstance.RestoreCoOpState(savedTower, definition);
             session.NormalizeTargetMode(tower);
-            if (!session.ProtocolsEnabled) tower.ClearOverdrive();
+            if (!session.ProtocolsEnabled && !tower.IsApex) tower.ClearOverdrive();
             session.Towers.Add(tower);
         }
 
@@ -1685,7 +1714,8 @@ public sealed class GameSession
         session.Waves.RestoreSaveData(NormalizeCampaignWaveState(data.Waves, session.TotalWaves));
         session.Speed = data.Speed >= 1.5f ? 2f : 1f;
         session.OverdriveCooldownRemaining = session.ProtocolsEnabled ? MathF.Max(0, data.OverdriveCooldownRemaining) : 0;
-        session.AutoOverdriveTowerId = session.ProtocolsEnabled && data.Towers.Any(tower => tower.Id == data.AutoOverdriveTowerId)
+        session.AutoOverdriveTowerId = session.ProtocolsEnabled && data.Towers.Any(tower =>
+            tower.Id == data.AutoOverdriveTowerId && !tower.IsApex)
             ? data.AutoOverdriveTowerId
             : 0;
         session.EmergencyInventory = Math.Max(0, data.EmergencyInventory);
@@ -1699,7 +1729,7 @@ public sealed class GameSession
                 throw new InvalidDataException($"Saved tower '{savedTower.DefinitionId}' has impossible investment state.");
             var tower = TowerInstance.RestoreSaveData(savedTower, definition);
             session.NormalizeTargetMode(tower);
-            if (!session.ProtocolsEnabled) tower.ClearOverdrive();
+            if (!session.ProtocolsEnabled && !tower.IsApex) tower.ClearOverdrive();
             session.Towers.Add(tower);
         }
         ValidateRestoredTacticalState(session, data.PulsePlates, data.Generator);

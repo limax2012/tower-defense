@@ -195,6 +195,7 @@ public sealed record RunHistoryLayoutSnapshot
             // arbitrary fire/recoil phase from the terminal simulation tick.
             saved.CooldownRemaining = 0;
             saved.OverdriveRemaining = 0;
+            saved.ApexProtocolCooldownRemaining = 0;
             saved.DisruptionRemaining = 0;
             saved.DisruptionLockoutRemaining = 0;
             saved.SuppressionRemaining = 0;
@@ -227,6 +228,7 @@ public sealed record RunHistoryLayoutSnapshot
         TargetMode = tower.TargetMode,
         InvestedCredits = tower.InvestedCredits,
         OverdriveRemaining = tower.OverdriveRemaining,
+        ApexProtocolCooldownRemaining = tower.ApexProtocolCooldownRemaining,
         LifetimeDamage = tower.LifetimeDamage,
         LifetimeKills = tower.LifetimeKills,
         LifetimeSupportDamageEquivalent = tower.LifetimeSupportDamageEquivalent,
@@ -462,7 +464,8 @@ public sealed class RunHistoryRepository
         (tower.DoctrineId is null || IsValidLabel(tower.DoctrineId)) &&
         (tower.SpecializationId is null || IsValidLabel(tower.SpecializationId)) &&
         Enum.IsDefined(tower.TargetMode) && tower.InvestedCredits >= 0 &&
-        AreFiniteNonnegative(tower.CooldownRemaining, tower.OverdriveRemaining, tower.LifetimeDamage,
+        AreFiniteNonnegative(tower.CooldownRemaining, tower.OverdriveRemaining,
+            tower.ApexProtocolCooldownRemaining, tower.LifetimeDamage,
             tower.LifetimeSupportDamageEquivalent, tower.LifetimeExposeDamageEquivalent,
             tower.LifetimeArmorBreakDamageEquivalent, tower.LifetimeControlSeconds,
             tower.LifetimeExposeSeconds, tower.LifetimeArmorBreakSeconds) && tower.LifetimeKills >= 0;

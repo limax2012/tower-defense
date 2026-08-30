@@ -354,6 +354,21 @@ internal static class Program
         Check.True(content.Towers.Values.All(x => x.Tier2Doctrines.Count == 2), "every tower has two tier two doctrines");
         Check.True(content.Towers.Values.All(x => x.Apex is { UpgradeCost: > 0 }),
             "every tower has an authored Apex upgrade");
+        var apexCosts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["needle_turret"] = 400,
+            ["shard_fan"] = 650,
+            ["watchtower"] = 850,
+            ["frost_spire"] = 650,
+            ["ember_coil"] = 900,
+            ["breaker_cannon"] = 1100,
+            ["arc_relay"] = 1450,
+            ["siege_mortar"] = 1600,
+            ["prism_beam"] = 2000,
+            ["signal_beacon"] = 1250
+        };
+        Check.True(apexCosts.All(pair => content.Towers[pair.Key].Apex!.UpgradeCost == pair.Value),
+            "Apex prices support final-act promotion without replacing their tower-type cost hierarchy");
         Check.True(content.Towers.Values.All(tower => tower.Tier2Doctrines.Any(x => x.AttackSpeedMultiplier > 1 || x.UtilityMultiplier > 1) &&
                                                      tower.Tier2Doctrines.Any(x => x.DamageMultiplier > 1 || x.RangeMultiplier > 1)),
             "doctrines offer distinct tempo/utility and power/reach tradeoffs");
@@ -5671,6 +5686,16 @@ internal static class Program
             ProjectileSpeedMultiplier = 1.10f,
             UtilityMultiplier = 1.12f
         };
+        seed.Content.Towers["tower"].Protocol = new TowerProtocolDefinition
+        {
+            DisplayName = "Apex Cycle",
+            Summary = "Test Apex protocol",
+            DurationSeconds = 4,
+            CooldownSeconds = 10,
+            AttackSpeedBonus = 0.5f,
+            AutoTriggerCount = 1
+        };
+        seed.Content.Towers["tower"].Specializations.Single(choice => choice.Id == "alpha").Level.Range = 240;
         seed.Content.Challenges["no_reserves"] = new ChallengeDefinition
         {
             Id = "no_reserves",
@@ -5678,6 +5703,14 @@ internal static class Program
             TacticalSystemsEnabled = false,
             ProtocolsEnabled = false,
             SellingEnabled = false
+        };
+        seed.Content.Challenges["standard"] = new ChallengeDefinition
+        {
+            Id = "standard",
+            DisplayName = "Standard",
+            TacticalSystemsEnabled = true,
+            ProtocolsEnabled = true,
+            SellingEnabled = true
         };
         var fundamentals = new GameSession(seed.Content, challengeId: "no_reserves");
         var save = fundamentals.CaptureSaveGame();
@@ -5727,13 +5760,75 @@ internal static class Program
         Check.True(!TowerInfo.ProgressionLabel(tower).StartsWith("APEX", StringComparison.Ordinal),
             "Apex status does not displace the authored progression path");
 
+        session.SpawnEnemy("enemy", 1, 1);
+        session.Update(0.1f);
+        Check.True(tower.IsOverdriven, "Apex self-activates its Protocol under the authored trigger condition");
+        Check.Nearly(0, session.OverdriveCooldownRemaining,
+            "Apex self-activation does not consume the shared Protocol cooldown");
+        Check.True(tower.ApexProtocolCooldownRemaining > tower.OverdriveRemaining,
+            "Apex maintains an individual cooldown beyond its active window");
+        Check.Equal(1, session.Statistics.ProtocolActivations,
+            "Apex self-activation participates in Protocol telemetry");
+        session.Enemies.Clear();
+        session.Projectiles.Clear();
+
         var restored = GameSession.RestoreSaveGame(seed.Content, session.CaptureSaveGame());
         Check.True(restored.Towers.Single().IsApex, "checkpoint preserves Apex progression");
         Check.Nearly(tower.Level.Damage, restored.Towers.Single().Level.Damage, "checkpoint restores Apex stats");
+        Check.Nearly(tower.ApexProtocolCooldownRemaining,
+            restored.Towers.Single().ApexProtocolCooldownRemaining,
+            "checkpoint preserves the individual Apex Protocol cooldown");
+        Check.True(restored.Towers.Single().IsOverdriven,
+            "Entrenched checkpoints preserve autonomous Apex Protocol activity");
         var peer = GameSession.RestoreCoOpState(seed.Content, session.CaptureCoOpState(41, 0, false), 2);
         Check.True(peer.Towers.Single().IsApex, "co-op resynchronization preserves Apex progression");
+        Check.Nearly(tower.ApexProtocolCooldownRemaining, peer.Towers.Single().ApexProtocolCooldownRemaining,
+            "co-op resynchronization preserves the individual Apex Protocol cooldown");
         Check.Equal(SessionChecksum.Compute(session, 41), SessionChecksum.Compute(peer, 41),
             "Apex progression participates in deterministic co-op state");
+
+        var standardSave = new GameSession(seed.Content).CaptureSaveGame();
+        standardSave.Economy.Credits = 10_000;
+        standardSave.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 1;
+        var standard = GameSession.RestoreSaveGame(seed.Content, standardSave);
+        Check.True(standard.TryPlaceTower("tower", new Vector2(50, 200)),
+            "place standard Apex automation fixture");
+        var standardApex = standard.Towers.Single();
+        Check.True(standard.TryUpgradeTower(standardApex.Id) &&
+                   standard.TrySpecializeTower(standardApex.Id, "alpha"),
+            "complete standard Apex automation fixture");
+        Check.True(standard.TryToggleAutoProtocol(standardApex.Id),
+            "ordinary tier-three tower can occupy the shared automatic slot");
+        Check.True(standard.TryUpgradeTower(standardApex.Id), "promote armed tower to Apex");
+        Check.Equal(0, standard.AutoOverdriveTowerId,
+            "Apex promotion releases the redundant shared automatic slot");
+        Check.True(standard.TryPlaceTower("tower", new Vector2(100, 200)),
+            "place ordinary shared-auto fixture");
+        var sharedAuto = standard.Towers.Single(candidate => candidate.Id != standardApex.Id);
+        Check.True(standard.TryToggleAutoProtocol(sharedAuto.Id), "arm a separate ordinary tower");
+        Check.True(!standard.TryToggleAutoProtocol(standardApex.Id),
+            "Apex towers cannot waste the shared automatic slot");
+        Check.Equal(sharedAuto.Id, standard.AutoOverdriveTowerId,
+            "rejected Apex arming leaves the ordinary shared-auto selection intact");
+        Check.True(standard.TryOverdriveTower(sharedAuto.Id), "start the shared Protocol cooldown");
+        standard.SpawnEnemy("enemy", 1, 1);
+        standard.Update(0.1f);
+        Check.True(standardApex.IsOverdriven,
+            "Apex self-activation remains available while the shared Protocol is active and cooling down");
+        Check.Equal(sharedAuto.Id, standard.AutoOverdriveTowerId,
+            "Apex self-activation does not replace the manually armed tower");
+        Check.Equal(2, standard.Statistics.ProtocolActivations,
+            "shared and independent Apex activations are both recorded");
+        standard.Enemies.Clear();
+        standard.Projectiles.Clear();
+        for (var index = 0; index < 41; index++) standard.Update(0.1f);
+        Check.True(!standardApex.IsOverdriven && standardApex.ApexProtocolCooldownRemaining > 0,
+            "Apex active duration ends before its individual cooldown");
+        Check.True(!standard.TryOverdriveTower(standardApex.Id),
+            "manual activation cannot bypass an Apex tower's individual cooldown");
+        for (var index = 0; index < 60; index++) standard.Update(0.1f);
+        Check.True(standard.TryOverdriveTower(standardApex.Id),
+            "an Apex tower can still be activated manually after both cooldowns are ready");
     }
 
     private static void TowerOverdrive()

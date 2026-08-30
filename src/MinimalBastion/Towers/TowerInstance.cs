@@ -37,6 +37,7 @@ public sealed class TowerInstance
     public float DeployAnimationRemaining { get; private set; } = DeployAnimationDuration;
     public float RecoilAnimationRemaining { get; private set; }
     public float OverdriveRemaining { get; private set; }
+    public float ApexProtocolCooldownRemaining { get; private set; }
     public float LifetimeDamage { get; private set; }
     public int LifetimeKills { get; private set; }
     public float LifetimeSupportDamageEquivalent { get; private set; }
@@ -149,6 +150,7 @@ public sealed class TowerInstance
         DeployAnimationRemaining = MathF.Max(0, DeployAnimationRemaining - deltaSeconds);
         RecoilAnimationRemaining = MathF.Max(0, RecoilAnimationRemaining - deltaSeconds);
         OverdriveRemaining = MathF.Max(0, OverdriveRemaining - deltaSeconds);
+        ApexProtocolCooldownRemaining = MathF.Max(0, ApexProtocolCooldownRemaining - deltaSeconds);
         DisruptionRemaining = MathF.Max(0, DisruptionRemaining - deltaSeconds);
         DisruptionLockoutRemaining = MathF.Max(0, DisruptionLockoutRemaining - deltaSeconds);
         SuppressionRemaining = MathF.Max(0, SuppressionRemaining - deltaSeconds);
@@ -156,7 +158,11 @@ public sealed class TowerInstance
     }
 
     public void OnFired() => RecoilAnimationRemaining = RecoilAnimationDuration;
-    public void ActivateOverdrive() => OverdriveRemaining = Protocol.DurationSeconds;
+    public void ActivateOverdrive()
+    {
+        OverdriveRemaining = Protocol.DurationSeconds;
+        if (IsApex) ApexProtocolCooldownRemaining = Protocol.CooldownSeconds;
+    }
     public bool ApplyDisruption(float durationSeconds, float recoverySeconds)
     {
         if (durationSeconds <= 0 || DisruptionLockoutRemaining > 0 || SuppressionLockoutRemaining > 0) return false;
@@ -180,19 +186,25 @@ public sealed class TowerInstance
         SuppressionRemaining = 0;
         SuppressionLockoutRemaining = 0;
     }
-    internal void ClearOverdrive() => OverdriveRemaining = 0;
+    internal void ClearOverdrive()
+    {
+        OverdriveRemaining = 0;
+        ApexProtocolCooldownRemaining = 0;
+    }
 
     internal void ToggleSandboxDisabled()
     {
         IsSandboxDisabled = !IsSandboxDisabled;
         CooldownRemaining = 0;
         OverdriveRemaining = 0;
+        ApexProtocolCooldownRemaining = 0;
     }
 
     internal void ResetSandboxTelemetry()
     {
         CooldownRemaining = 0;
         OverdriveRemaining = 0;
+        ApexProtocolCooldownRemaining = 0;
         LifetimeDamage = 0;
         LifetimeKills = 0;
         LifetimeSupportDamageEquivalent = 0;
@@ -245,6 +257,7 @@ public sealed class TowerInstance
         TargetMode = TargetMode,
         InvestedCredits = InvestedCredits,
         OverdriveRemaining = OverdriveRemaining,
+        ApexProtocolCooldownRemaining = ApexProtocolCooldownRemaining,
         LifetimeDamage = LifetimeDamage,
         LifetimeKills = LifetimeKills,
         LifetimeSupportDamageEquivalent = LifetimeSupportDamageEquivalent,
@@ -289,6 +302,7 @@ public sealed class TowerInstance
             DeployAnimationRemaining = 0,
             RecoilAnimationRemaining = 0,
             OverdriveRemaining = MathF.Max(0, data.OverdriveRemaining),
+            ApexProtocolCooldownRemaining = data.IsApex ? MathF.Max(0, data.ApexProtocolCooldownRemaining) : 0,
             LifetimeDamage = MetricMath.Normalize(data.LifetimeDamage),
             LifetimeKills = Math.Max(0, data.LifetimeKills),
             LifetimeSupportDamageEquivalent = MetricMath.Normalize(data.LifetimeSupportDamageEquivalent),

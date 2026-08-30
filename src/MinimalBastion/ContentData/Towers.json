@@ -3,7 +3,7 @@
     "id": "needle_turret", "displayName": "Needle Turret", "role": "Generalist", "behavior": "single_projectile", "purchaseCost": 90, "defaultTargetMode": "First",
     "visual": { "shape": "square", "primary": "#2C7AE7", "accent": "#173F68", "radius": 18, "marks": 1, "ring": true },
     "protocol": { "displayName": "Rapid Cycle", "summary": "Doubles fire rate for six seconds", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 1.0, "autoTriggerMode": "coverage", "autoTriggerCount": 4 },
-    "apex": { "upgradeCost": 800, "damageMultiplier": 1.28, "attackSpeedMultiplier": 1.22, "rangeMultiplier": 1.06, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.12 },
+    "apex": { "upgradeCost": 400, "damageMultiplier": 1.28, "attackSpeedMultiplier": 1.22, "rangeMultiplier": 1.06, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.12 },
     "tier2Doctrines": [
       { "id": "needle_cycler", "displayName": "Quick Feed", "shortLabel": "QUICK", "summary": "Favors fire rate over shot damage", "upgradeCost": 45, "damageMultiplier": 0.92, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.0, "utilityMultiplier": 1.0 },
       { "id": "needle_calibrator", "displayName": "Precision Feed", "shortLabel": "PRECISION", "summary": "Favors shot damage and range over fire rate", "upgradeCost": 45, "damageMultiplier": 1.10, "attackSpeedMultiplier": 0.91, "rangeMultiplier": 1.06, "utilityMultiplier": 1.03 }
@@ -28,7 +28,7 @@
     "id": "shard_fan", "displayName": "Shard Fan", "role": "Anti-swarm", "behavior": "pellet_burst", "purchaseCost": 150, "defaultTargetMode": "First",
     "visual": { "shape": "triangle", "primary": "#E58A32", "accent": "#7B480F", "radius": 18, "marks": 1, "ring": true },
     "protocol": { "displayName": "Razorstorm", "summary": "Fires a free fan, then boosts shard rate and damage", "durationSeconds": 5, "cooldownSeconds": 18, "attackSpeedBonus": 0.75, "damageBonus": 0.2, "fireOnActivation": true, "autoTriggerMode": "coverage", "autoTriggerCount": 5 },
-    "apex": { "upgradeCost": 1100, "damageMultiplier": 1.25, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.15 },
+    "apex": { "upgradeCost": 650, "damageMultiplier": 1.25, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.15 },
     "tier2Doctrines": [
       { "id": "shard_scatter", "displayName": "Wide Scatter", "shortLabel": "WIDE", "summary": "Favors shard count and wider spread", "upgradeCost": 90, "damageMultiplier": 0.90, "attackSpeedMultiplier": 0.94, "rangeMultiplier": 0.96, "utilityMultiplier": 0.92, "pelletCountBonus": 1 },
       { "id": "shard_temper", "displayName": "Focused Shards", "shortLabel": "FOCUS", "summary": "Favors damage, range, and armor pierce", "upgradeCost": 90, "damageMultiplier": 1.05, "attackSpeedMultiplier": 0.94, "rangeMultiplier": 1.04, "utilityMultiplier": 1.08 }
@@ -53,7 +53,7 @@
     "id": "watchtower", "displayName": "Watchtower", "role": "Long range", "behavior": "single_projectile", "purchaseCost": 190, "defaultTargetMode": "Strongest",
     "visual": { "shape": "square", "primary": "#7C53DA", "accent": "#39245F", "radius": 20, "marks": 1, "ring": true },
     "protocol": { "displayName": "Dead Reckoning", "summary": "Extends reach and marks priority threats", "durationSeconds": 6.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.15, "damageBonus": 0.5, "rangeBonus": 0.2, "armorPierceBonus": 3, "autoTriggerMode": "coverage", "autoTriggerCount": 2, "burstRadius": 220, "burstStatus": "Exposed", "burstStatusMagnitude": 0.18, "burstStatusDuration": 3.5 },
-    "apex": { "upgradeCost": 1400, "damageMultiplier": 1.35, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.10, "utilityMultiplier": 1.10 },
+    "apex": { "upgradeCost": 850, "damageMultiplier": 1.35, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.10, "utilityMultiplier": 1.10 },
     "tier2Doctrines": [
       { "id": "watch_spotter", "displayName": "Tracking Optics", "shortLabel": "TRACKING", "summary": "Favors range and fire rate", "upgradeCost": 120, "damageMultiplier": 0.88, "attackSpeedMultiplier": 1.10, "rangeMultiplier": 1.12, "utilityMultiplier": 0.96 },
       { "id": "watch_heavy_optics", "displayName": "Heavy Shot", "shortLabel": "HEAVY", "summary": "Favors shot damage over range and fire rate", "upgradeCost": 120, "damageMultiplier": 1.05, "attackSpeedMultiplier": 0.96, "rangeMultiplier": 0.98, "utilityMultiplier": 1.08 }
@@ -78,7 +78,7 @@
     "id": "frost_spire", "displayName": "Frost Spire", "role": "Control", "behavior": "slow_projectile", "purchaseCost": 140, "defaultTargetMode": "Fastest",
     "visual": { "shape": "diamond", "primary": "#2192AA", "accent": "#18586B", "radius": 18, "marks": 1, "ring": true },
     "protocol": { "displayName": "Flash Freeze", "summary": "Freezes its field, then widens control", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.45, "rangeBonus": 0.15, "autoTriggerMode": "protocol_area", "autoTriggerCount": 4, "burstRadius": 170, "burstDamage": 8, "burstStatus": "Slow", "burstStatusMagnitude": 0.5, "burstStatusDuration": 2.5 },
-    "apex": { "upgradeCost": 1050, "damageMultiplier": 1.20, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.12, "utilityMultiplier": 1.18 },
+    "apex": { "upgradeCost": 650, "damageMultiplier": 1.20, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.12, "utilityMultiplier": 1.18 },
     "tier2Doctrines": [
       { "id": "frost_deep_chill", "displayName": "Deep Chill", "shortLabel": "CHILL", "summary": "Favors slow strength and duration", "upgradeCost": 85, "damageMultiplier": 0.80, "attackSpeedMultiplier": 0.95, "rangeMultiplier": 1.0, "utilityMultiplier": 1.18 },
       { "id": "frost_ice_needle", "displayName": "Frost Bolt", "shortLabel": "BOLT", "summary": "Favors direct damage over slow strength", "upgradeCost": 85, "damageMultiplier": 1.35, "attackSpeedMultiplier": 1.05, "rangeMultiplier": 1.02, "utilityMultiplier": 0.75 }
@@ -103,7 +103,7 @@
     "id": "ember_coil", "displayName": "Ember Coil", "role": "Damage over time", "behavior": "burn_projectile", "purchaseCost": 220, "defaultTargetMode": "Strongest",
     "visual": { "shape": "hexagon", "primary": "#EC5062", "accent": "#6B2631", "radius": 19, "marks": 1, "ring": true },
     "protocol": { "displayName": "Flashpoint", "summary": "Ignites nearby enemies and boosts burn output", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.45, "damageBonus": 0.3, "autoTriggerMode": "protocol_area", "autoTriggerCount": 4, "burstRadius": 175, "burstDamage": 12, "burstStatus": "Burn", "burstStatusMagnitude": 10, "burstStatusDuration": 4 },
-    "apex": { "upgradeCost": 1450, "damageMultiplier": 1.25, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.12, "utilityMultiplier": 1.15 },
+    "apex": { "upgradeCost": 900, "damageMultiplier": 1.25, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.12, "utilityMultiplier": 1.15 },
     "tier2Doctrines": [
       { "id": "ember_kindling", "displayName": "Quick Kindling", "shortLabel": "KINDLING", "summary": "Favors fire rate and burn duration", "upgradeCost": 120, "damageMultiplier": 0.82, "attackSpeedMultiplier": 1.08, "rangeMultiplier": 1.0, "utilityMultiplier": 1.18 },
       { "id": "ember_hot_core", "displayName": "Intense Flame", "shortLabel": "INTENSE", "summary": "Favors direct damage, burn damage, and range", "upgradeCost": 120, "damageMultiplier": 1.08, "attackSpeedMultiplier": 0.92, "rangeMultiplier": 1.05, "utilityMultiplier": 0.90 }
@@ -128,7 +128,7 @@
     "id": "breaker_cannon", "displayName": "Breaker Cannon", "role": "Armor counter", "behavior": "armor_projectile", "purchaseCost": 250, "defaultTargetMode": "Armored",
     "visual": { "shape": "square", "primary": "#E8B637", "accent": "#70561A", "radius": 21, "marks": 1, "ring": true },
     "protocol": { "displayName": "Breach Order", "summary": "Amplifies shells and fractures nearby armor", "durationSeconds": 5.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.25, "damageBonus": 0.55, "armorPierceBonus": 4, "autoTriggerMode": "priority_targets", "autoTriggerCount": 2, "burstRadius": 185, "burstDamage": 20, "burstStatus": "ArmorBreak", "burstStatusMagnitude": 4, "burstStatusDuration": 5 },
-    "apex": { "upgradeCost": 1700, "damageMultiplier": 1.30, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.15 },
+    "apex": { "upgradeCost": 1100, "damageMultiplier": 1.30, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.15 },
     "tier2Doctrines": [
       { "id": "breaker_repeater", "displayName": "Rapid Breech", "shortLabel": "RAPID", "summary": "Favors fire rate for frequent armor hits", "upgradeCost": 150, "damageMultiplier": 0.82, "attackSpeedMultiplier": 1.16, "rangeMultiplier": 0.97, "utilityMultiplier": 0.94 },
       { "id": "breaker_bored", "displayName": "Heavy Barrel", "shortLabel": "BARREL", "summary": "Favors damage, armor pierce, and range", "upgradeCost": 150, "damageMultiplier": 1.05, "attackSpeedMultiplier": 0.93, "rangeMultiplier": 1.05, "utilityMultiplier": 1.12 }
@@ -153,7 +153,7 @@
     "id": "arc_relay", "displayName": "Arc Relay", "role": "Chain damage", "behavior": "chain", "purchaseCost": 320, "defaultTargetMode": "First",
     "visual": { "shape": "circle", "primary": "#2AC275", "accent": "#176442", "radius": 20, "marks": 1, "ring": true },
     "protocol": { "displayName": "Stormcall", "summary": "Discharges a stun pulse and accelerates arcs", "durationSeconds": 5.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.6, "damageBonus": 0.2, "autoTriggerMode": "protocol_area", "autoTriggerCount": 4, "burstRadius": 180, "burstDamage": 18, "burstStatus": "Stun", "burstStatusMagnitude": 1, "burstStatusDuration": 0.55 },
-    "apex": { "upgradeCost": 2000, "damageMultiplier": 1.24, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.0, "utilityMultiplier": 1.12 },
+    "apex": { "upgradeCost": 1450, "damageMultiplier": 1.24, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.0, "utilityMultiplier": 1.12 },
     "tier2Doctrines": [
       { "id": "arc_fork", "displayName": "Forked Arcs", "shortLabel": "FORK", "summary": "Adds two chain arcs for dense groups", "upgradeCost": 220, "damageMultiplier": 0.82, "attackSpeedMultiplier": 1.06, "rangeMultiplier": 0.98, "utilityMultiplier": 0.96, "chainCountBonus": 1 },
       { "id": "arc_capacitor", "displayName": "Charged Arc", "shortLabel": "CHARGE", "summary": "Favors damage and longer chain reach", "upgradeCost": 220, "damageMultiplier": 1.07, "attackSpeedMultiplier": 0.92, "rangeMultiplier": 1.04, "utilityMultiplier": 1.12 }
@@ -178,7 +178,7 @@
     "id": "siege_mortar", "displayName": "Siege Mortar", "role": "Area damage", "behavior": "splash_projectile", "purchaseCost": 360, "defaultTargetMode": "First",
     "visual": { "shape": "circle", "primary": "#384E65", "accent": "#EC5062", "radius": 23, "marks": 1, "ring": true },
     "protocol": { "displayName": "Fire Mission", "summary": "Calls a sustained high-tempo bombardment", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.5, "damageBonus": 0.2, "rangeBonus": 0.1, "autoTriggerMode": "dense_cluster", "autoTriggerCount": 5 },
-    "apex": { "upgradeCost": 2200, "damageMultiplier": 1.25, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.06 },
+    "apex": { "upgradeCost": 1600, "damageMultiplier": 1.25, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.06 },
     "tier2Doctrines": [
       { "id": "mortar_loader", "displayName": "Quick Loader", "shortLabel": "LOADER", "summary": "Faster fire with less range and splash area", "upgradeCost": 240, "damageMultiplier": 0.80, "attackSpeedMultiplier": 1.28, "rangeMultiplier": 0.93, "utilityMultiplier": 0.82 },
       { "id": "mortar_survey", "displayName": "Rangefinder", "shortLabel": "RANGE", "summary": "More damage, range, and splash area", "upgradeCost": 240, "damageMultiplier": 1.08, "attackSpeedMultiplier": 0.91, "rangeMultiplier": 1.10, "utilityMultiplier": 1.12 }
@@ -203,7 +203,7 @@
     "id": "prism_beam", "displayName": "Prism Beam", "role": "Focused damage", "behavior": "beam", "purchaseCost": 450, "defaultTargetMode": "Strongest",
     "visual": { "shape": "diamond", "primary": "#E04BC5", "accent": "#6A1B63", "radius": 21, "marks": 1, "ring": true },
     "protocol": { "displayName": "Phase Burn", "summary": "Overclocks the beam and exposes its field", "durationSeconds": 5, "cooldownSeconds": 18, "attackSpeedBonus": 0.85, "damageBonus": 0.15, "autoTriggerMode": "protocol_area", "autoTriggerCount": 3, "burstRadius": 205, "burstStatus": "Exposed", "burstStatusMagnitude": 0.15, "burstStatusDuration": 3 },
-    "apex": { "upgradeCost": 2600, "damageMultiplier": 1.25, "attackSpeedMultiplier": 1.16, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.0, "utilityMultiplier": 1.12 },
+    "apex": { "upgradeCost": 2000, "damageMultiplier": 1.25, "attackSpeedMultiplier": 1.16, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.0, "utilityMultiplier": 1.12 },
     "tier2Doctrines": [
       { "id": "prism_frequency", "displayName": "Rapid Beam", "shortLabel": "RAPID", "summary": "Faster beam with shorter Expose duration", "upgradeCost": 300, "damageMultiplier": 0.90, "attackSpeedMultiplier": 1.20, "rangeMultiplier": 0.94, "utilityMultiplier": 0.86 },
       { "id": "prism_aperture", "displayName": "Amplified Beam", "shortLabel": "AMPLIFY", "summary": "More damage, range, and Expose strength", "upgradeCost": 300, "damageMultiplier": 1.12, "attackSpeedMultiplier": 0.88, "rangeMultiplier": 1.08, "utilityMultiplier": 1.12 }
@@ -228,7 +228,7 @@
     "id": "signal_beacon", "displayName": "Signal Beacon", "role": "Support aura", "behavior": "aura", "purchaseCost": 300, "defaultTargetMode": "First",
     "visual": { "shape": "circle", "primary": "#F6E58D", "accent": "#B7791F", "radius": 19, "marks": 1, "ring": true },
     "protocol": { "displayName": "Network Surge", "summary": "Temporarily expands and strengthens its aura", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0, "auraAttackSpeedBonus": 0.22, "auraRangeBonus": 0.2, "autoTriggerMode": "engaged_recipients", "autoTriggerCount": 2, "autoTriggerTargetCount": 6 },
-    "apex": { "upgradeCost": 1800, "damageMultiplier": 1.0, "attackSpeedMultiplier": 1.0, "rangeMultiplier": 1.12, "projectileSpeedMultiplier": 1.0, "utilityMultiplier": 1.18 },
+    "apex": { "upgradeCost": 1250, "damageMultiplier": 1.0, "attackSpeedMultiplier": 1.0, "rangeMultiplier": 1.12, "projectileSpeedMultiplier": 1.0, "utilityMultiplier": 1.18 },
     "tier2Doctrines": [
       { "id": "beacon_amplifier", "displayName": "Field Amplifier", "shortLabel": "AMPLIFIER", "summary": "Stronger bonuses in the same-sized field", "upgradeCost": 180, "damageMultiplier": 1.0, "attackSpeedMultiplier": 1.0, "rangeMultiplier": 0.88, "utilityMultiplier": 1.12 },
       { "id": "beacon_repeater", "displayName": "Expanded Field", "shortLabel": "EXPAND", "summary": "Favors field size over bonus strength", "upgradeCost": 180, "damageMultiplier": 1.0, "attackSpeedMultiplier": 1.0, "rangeMultiplier": 1.16, "utilityMultiplier": 0.86 }
