@@ -2252,12 +2252,12 @@ public sealed class UIManager
             if (previewWave is not null)
             {
                 var intel = WaveIntel.Analyze(previewWave, session.Content.Enemies);
-                var threatState = session.Waves.IsActive ? "ACTIVE" : "NEXT";
-                DrawFittedText(batch,
-                    $"{threatState} | {intel.ScalingSummary(session.Difficulty.EnemyHealthMultiplier, session.Difficulty.EnemySpeedMultiplier)}",
+                var threatState = session.Waves.IsActive ? "ACTIVE WAVE" : "NEXT WAVE";
+                DrawFittedText(batch, threatState,
                     new Vector2(HudThreatBounds.X, 8), ColorPalette.Gold, 0.56f, HudThreatBounds.Width);
-                DrawFittedText(batch, $"~{intel.ApproximateCount} CONTACTS",
-                    new Vector2(HudThreatBounds.X, 27), ColorPalette.Paper, 0.68f, HudThreatBounds.Width);
+                DrawFittedText(batch,
+                    intel.ScalingSummary(session.Difficulty.EnemyHealthMultiplier, session.Difficulty.EnemySpeedMultiplier),
+                    new Vector2(HudThreatBounds.X, 27), ColorPalette.Paper, 0.56f, HudThreatBounds.Width);
             }
         }
 
