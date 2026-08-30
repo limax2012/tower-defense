@@ -654,6 +654,23 @@ internal static class Program
             "mature Gauntlet rotation includes a jammer on Surge Divide wave fourteen");
         Check.Equal(3, surgeWave14Signals.Count(role => role == EnemySignalRole.Bulwark),
             "mature Gauntlet rotation does not turn every eligible ordinary group into a bulwark");
+        foreach (var mapId in content.Maps.Keys)
+        {
+            var mapSession = new GameSession(content, mapId, "bastion", "close_quarters");
+            var wave20 = mapSession.Waves.GetAuthoredWave(20)!;
+            var wave20Signals = wave20.Groups.Select((group, groupIndex) =>
+                    mapSession.ResolveEnemySignalRole(wave20, groupIndex, (group.Count - 1) / 2, group))
+                .Where(role => role != EnemySignalRole.None)
+                .ToArray();
+            Check.Equal(3, wave20Signals.Length,
+                $"Gauntlet wave twenty uses a focused three-carrier formation on {mapId}");
+            Check.Equal(1, wave20Signals.Count(role => role == EnemySignalRole.Restorer),
+                $"Gauntlet wave twenty includes one Restorer on {mapId}");
+            Check.Equal(1, wave20Signals.Count(role => role == EnemySignalRole.Jammer),
+                $"Gauntlet wave twenty includes one Jammer on {mapId}");
+            Check.Equal(1, wave20Signals.Count(role => role == EnemySignalRole.Disruptor),
+                $"Gauntlet wave twenty preserves the boss Disruptor on {mapId}");
+        }
         var matureRoles = Enum.GetValues<EnemySignalRole>().Where(role => role is not
             (EnemySignalRole.None or EnemySignalRole.Disruptor));
         foreach (var mapId in content.Maps.Keys)
