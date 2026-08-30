@@ -3,7 +3,6 @@
   "id": "relay_divide",
   "displayName": "Surge Divide",
   "description": "Static energy trenches divide tight platforms and nine powerful Surge Nodes.",
-  "challengeRating": 4,
   "logicalSize": { "width": 960, "height": 720 },
   "background": { "base": "#12343A", "accent": "#28565D", "motif": "surge_field" },
   "pathVisual": { "style": "surge", "base": "#294657", "accent": "#E3B23D", "secondary": "#218FA5" },

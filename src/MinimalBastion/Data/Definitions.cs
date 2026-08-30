@@ -434,7 +434,6 @@ public sealed class MapDefinition
     public string Id { get; set; } = "";
     public string DisplayName { get; set; } = "";
     public string Description { get; set; } = "A balanced tactical arena.";
-    public int ChallengeRating { get; set; } = 2;
     public LogicalSizeData LogicalSize { get; set; } = new();
     public BackgroundData Background { get; set; } = new();
     public PathVisualData PathVisual { get; set; } = new();

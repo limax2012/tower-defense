@@ -3,7 +3,6 @@
   "id": "crosswind_basin",
   "displayName": "Crosswind Basin",
   "description": "A runner-heavy earth trail folds through a deep green basin.",
-  "challengeRating": 3,
   "logicalSize": { "width": 960, "height": 720 },
   "background": { "base": "#24392D", "accent": "#486747", "motif": "meadow" },
   "pathVisual": { "style": "trail", "base": "#735A43", "accent": "#9D7950", "secondary": "#35523B" },

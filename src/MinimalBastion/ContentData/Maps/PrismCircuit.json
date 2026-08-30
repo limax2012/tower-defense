@@ -3,7 +3,6 @@
   "id": "prism_circuit",
   "displayName": "Prism Circuit",
   "description": "A refracted light ribbon crosses isolated crystal platforms and three Surge Nodes.",
-  "challengeRating": 3,
   "logicalSize": { "width": 960, "height": 720 },
   "background": { "base": "#242A43", "accent": "#465174", "motif": "crystal_field" },
   "pathVisual": { "style": "prism", "base": "#342F58", "accent": "#7457C8", "secondary": "#2CA6B8" },

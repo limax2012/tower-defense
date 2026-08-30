@@ -3,7 +3,6 @@
   "id": "foundry_loop",
   "displayName": "Foundry Loop",
   "description": "A dormant smelter reroutes intruders through its still-hot transfer channel and open steel workyards.",
-  "challengeRating": 2,
   "logicalSize": { "width": 960, "height": 720 },
   "background": { "base": "#182B32", "accent": "#3A4A50", "motif": "foundry_floor" },
   "pathVisual": { "style": "foundry", "base": "#465463", "accent": "#D98C32", "secondary": "#293640" },

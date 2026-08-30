@@ -1293,11 +1293,9 @@ internal static class Program
         Check.Equal("foundry_loop", mapUi.SelectedMapId, "arena selector starts on Foundry");
         mapUi.PrepareGameSetup(false);
         mapUi.HandleGameSetup(WorldInput(new Vector2(500, 150)) with { LeftPressed = true });
-        Check.Equal("crosswind_basin", mapUi.SelectedMapId, "arena selector advances by challenge rating");
+        Check.Equal("crosswind_basin", mapUi.SelectedMapId, "arena selector follows the authored order");
         Check.Equal(3, prism.PowerNodes.Count, "Prism has a restrained node roster");
         Check.Equal("prism_waves", prism.WaveSet, "Prism has its own campaign");
-        Check.True(prism.ChallengeRating > content.Maps["foundry_loop"].ChallengeRating, "Prism challenge is above Foundry");
-        Check.True(relay.ChallengeRating > prism.ChallengeRating, "Surge remains the hardest authored arena");
         Check.Equal("surge_waves", relay.WaveSet, "surge map has its own campaign");
         Check.True(content.WaveSets[relay.WaveSet].Waves[1].Groups.Any(x => x.EnemyId == "t2_runner"),
             "surge campaign introduces runners earlier than Foundry");

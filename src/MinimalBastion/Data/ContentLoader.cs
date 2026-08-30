@@ -235,8 +235,7 @@ public static class DataValidator
             Vector2.DistanceSquared(map.Spawn.ToVector2(), map.Path[0].ToVector2()) > 1f ||
             Vector2.DistanceSquared(map.Goal.ToVector2(), map.Path[^1].ToVector2()) > 1f)
             throw new InvalidDataException($"Invalid route geometry in map: {map.Id}");
-        if (map.ChallengeRating is < 1 or > 5 ||
-            !map.PathVisual.Style.Equals("road", StringComparison.OrdinalIgnoreCase) &&
+        if (!map.PathVisual.Style.Equals("road", StringComparison.OrdinalIgnoreCase) &&
             !map.PathVisual.Style.Equals("conduit", StringComparison.OrdinalIgnoreCase) &&
             !map.PathVisual.Style.Equals("channel", StringComparison.OrdinalIgnoreCase) &&
             !map.PathVisual.Style.Equals("foundry", StringComparison.OrdinalIgnoreCase) &&

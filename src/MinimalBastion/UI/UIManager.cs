@@ -106,7 +106,7 @@ public sealed class UIManager
     private TowerLevelDefinition? _hoveredUpgradePreview;
     private string? _hoveredUpgradePreviewLabel;
     private PowerNodeData? _hoveredPowerNode;
-    private readonly List<(string Id, string Name, int PowerNodes, int Challenge, int StartingCredits, string Description, string PathStyle,
+    private readonly List<(string Id, string Name, int PowerNodes, int StartingCredits, string Description, string PathStyle,
         CampaignIntelInfo Campaign, IReadOnlyList<Vector2> Path, Color PathBase, Color PathAccent)> _maps = new();
     private readonly List<DifficultyDefinition> _difficulties = new();
     private readonly List<ChallengeDefinition> _challenges = new();
@@ -192,7 +192,7 @@ public sealed class UIManager
     private IReadOnlyList<TowerDefinition> _libraryTowers = Array.Empty<TowerDefinition>();
     private IReadOnlyList<EnemyDefinition> _allLibraryEnemies = Array.Empty<EnemyDefinition>();
     private IReadOnlyList<ThreatLibraryEntry> _libraryThreats = Array.Empty<ThreatLibraryEntry>();
-    private IReadOnlyList<(string Id, string Name, int PowerNodes, int Challenge, int StartingCredits, string Description, string PathStyle,
+    private IReadOnlyList<(string Id, string Name, int PowerNodes, int StartingCredits, string Description, string PathStyle,
         CampaignIntelInfo Campaign, IReadOnlyList<Vector2> Path, Color PathBase, Color PathAccent)> _libraryMaps = [];
     private IReadOnlyList<DifficultyDefinition> _libraryDifficulties = Array.Empty<DifficultyDefinition>();
     private IReadOnlyList<ChallengeDefinition> _libraryChallenges = Array.Empty<ChallengeDefinition>();
@@ -523,15 +523,14 @@ public sealed class UIManager
     {
         var mapDefinitions = maps.ToArray();
         _maps.Clear();
-        _maps.AddRange(mapDefinitions.OrderBy(x => x.Id.Equals("foundry_loop", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
-            .ThenBy(x => x.ChallengeRating)
+        _maps.AddRange(mapDefinitions.OrderBy(x => MapSelectionOrder(x.Id))
             .ThenBy(x => x.DisplayName)
             .Select(x =>
             {
                 var campaign = new CampaignIntelInfo(0, 0, 0, "STANDARD", 1, 0);
                 if (waveSets is not null && enemies is not null && waveSets.TryGetValue(x.WaveSet, out var waveSet))
                     campaign = WaveIntel.AnalyzeCampaign(waveSet, enemies);
-                return (x.Id, x.DisplayName, x.PowerNodes.Count, x.ChallengeRating, x.StartingCredits, x.Description, x.PathVisual.Style,
+                return (x.Id, x.DisplayName, x.PowerNodes.Count, x.StartingCredits, x.Description, x.PathVisual.Style,
                     campaign, (IReadOnlyList<Vector2>)x.Path.Select(point => point.ToVector2()).ToArray(),
                     x.PathVisual.BaseColor, x.PathVisual.AccentColor);
             }));
@@ -4185,9 +4184,9 @@ public sealed class UIManager
             p.DrawRect(batch, row, selected ? accent : ColorPalette.CardOutline, selected ? 2 : 1);
             p.DrawShape(batch, new Vector2(row.X + 31, row.Y + 31), 15,
                 MapLibraryShape(map.PathStyle),
-                accent, ColorPalette.Ink, Math.Max(1, map.Challenge - 1), false);
+                accent, ColorPalette.Ink, 1, false);
             DrawFittedText(batch, map.Name, new Vector2(row.X + 58, row.Y + 14), ColorPalette.Ink, 0.62f, 160);
-            DrawFittedText(batch, $"THREAT {map.Challenge}/5  |  BASE {map.StartingCredits}",
+            DrawFittedText(batch, $"{SurgeNodeCountLabel(map.PowerNodes)}  |  BASE {map.StartingCredits}",
                 new Vector2(row.X + 58, row.Y + 39), ColorPalette.Muted, 0.43f, row.Width - 72);
             DrawFittedText(batch, MapPathLabel(map.PathStyle),
                 new Vector2(row.X + 58, row.Y + 57), LibraryAccentText(accent,
@@ -4214,7 +4213,7 @@ public sealed class UIManager
 
         var mapAccent = MapLibraryAccent(selectedMap.PathStyle);
         DrawText(batch, selectedMap.Name.ToUpperInvariant(), new Vector2(detailPanel.X + 18, detailPanel.Y + 16), ColorPalette.Ink, 0.96f);
-        DrawTextRight(batch, $"THREAT {selectedMap.Challenge}/5  |  {selectedMap.PowerNodes} SURGE NODES  |  BASE {selectedMap.StartingCredits}",
+        DrawTextRight(batch, $"{SurgeNodeCountLabel(selectedMap.PowerNodes)}  |  BASE {selectedMap.StartingCredits}",
             new Vector2(detailPanel.Right - 18, detailPanel.Y + 21), LibraryAccentText(mapAccent, ColorPalette.Panel), 0.50f);
         DrawFittedText(batch, selectedMap.Description, new Vector2(detailPanel.X + 18, detailPanel.Y + 48), ColorPalette.Muted, 0.48f, detailPanel.Width - 238);
         var visibleWaveCount = Math.Min(GameConstants.CampaignWaveCount, waves.Count);
@@ -4601,6 +4600,22 @@ public sealed class UIManager
         "channel" => "CHANNEL",
         "conduit" => "CONDUIT",
         _ => "ROAD"
+    };
+
+    private static int MapSelectionOrder(string mapId) => mapId.ToLowerInvariant() switch
+    {
+        "foundry_loop" => 0,
+        "crosswind_basin" => 1,
+        "prism_circuit" => 2,
+        "relay_divide" => 3,
+        _ => int.MaxValue
+    };
+
+    private static string SurgeNodeCountLabel(int count) => count switch
+    {
+        0 => "NO SURGE NODES",
+        1 => "1 SURGE NODE",
+        _ => $"{count} SURGE NODES"
     };
 
     private static Color CampaignWaveAccent(CampaignWaveReference wave) => wave.Threats.Contains("BOSS", StringComparison.OrdinalIgnoreCase)
