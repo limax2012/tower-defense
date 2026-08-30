@@ -149,7 +149,7 @@ The Charge Forge costs 300 credits and creates stored Plates only while a wave i
 - `A` arms or disarms automatic Protocol use.
 - `U` and `I` choose the upper/first and lower/second upgrade paths.
 - `X` applies an eligible Apex promotion.
-- `T` opens the targeting menu without changing the current mode until a replacement is chosen.
+- `T` opens the targeting menu without changing the current mode; press its displayed `1`-`8` hotkey or click a replacement to apply it.
 - `Delete` sells the selected tower or Forge where selling is permitted.
 - `D` enables or disables a selected tower in Sandbox.
 - `Space` starts/readies a wave. `S` toggles 1x/2x speed.

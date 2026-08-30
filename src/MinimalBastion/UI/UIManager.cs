@@ -1223,6 +1223,16 @@ public sealed class UIManager
             CloseTargetPicker();
             return UiAction.None;
         }
+        if (_targetPickerOpen && input.TowerHotkey > 0)
+        {
+            var modes = session.AvailableTargetModes;
+            if (input.TowerHotkey <= modes.Count)
+            {
+                RequestTargetMode(session, modes[input.TowerHotkey - 1], commandSink, playerId);
+                CloseTargetPicker();
+            }
+            return UiAction.None;
+        }
         _hoveredTowerCardId = _towerCards.FirstOrDefault(x => x.Value.Contains(point)).Key;
         _hoveredPowerNode = session.Map.Definition.PowerNodes.FirstOrDefault(node =>
             Vector2.DistanceSquared(node.Position.ToVector2(), input.MousePosition) <= node.Radius * node.Radius);
@@ -2865,7 +2875,7 @@ public sealed class UIManager
             _targetModeButtons[mode] = bounds;
             var fill = mode == tower.TargetMode ? ColorPalette.Gold : ColorPalette.Cyan;
             DrawButton(batch, p, bounds, mode.ToString().ToUpperInvariant(), enabled, fill,
-                ContrastAwareButtonTextColor(fill));
+                ContrastAwareButtonTextColor(fill), (index + 1).ToString());
         }
     }
 
@@ -4426,7 +4436,7 @@ public sealed class UIManager
                 "ESC/P: PAUSE    TAB: CO-OP LIBRARY",
                 "LEFT/RIGHT: LIBRARY PAGE    MIDDLE: PING",
                 "1-0: SELECT    U/I: UPGRADE CHOICES",
-                "X: APEX    T: TARGET    DELETE: SELL",
+                "X: APEX    T THEN 1-8: TARGET    DELETE: SELL",
                 "Q: PLATE    G: FORGE    E: PROTOCOL    A: AUTO",
                 "SANDBOX [ ]: ENEMY    G/K/H/J: GROUP/RANK/HP/SIGNAL",
                 "SANDBOX F/R/C/D: SPAWN/RESET/CLEAR/TOGGLE"

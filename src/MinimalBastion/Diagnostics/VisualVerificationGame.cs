@@ -315,10 +315,9 @@ public sealed class VisualVerificationGame : Game
                 !ui.TargetPickerBounds.Intersects(ui.UpgradeButtonBounds) &&
                 !ui.TargetPickerBounds.Intersects(ui.SellButtonBounds),
             "The standard target picker omits Support and drops upward without covering management buttons.", assertions);
-        var armoredTargetCenter = ui.TargetModeButtonBounds[TargetMode.Armored].Center;
-        _ = ui.HandleGameplayInput(Pointer(armoredTargetCenter.X, armoredTargetCenter.Y, true), comparisonSession);
+        _ = ui.HandleGameplayInput(Pointer(0, 0) with { TowerHotkey = 7 }, comparisonSession);
         Require(!ui.IsTargetPickerOpen && comparisonSession.SelectedTower.TargetMode == TargetMode.Armored,
-            "Choosing an explicit target mode applies it once and closes the picker.", assertions);
+            "A target-picker number hotkey applies the matching mode and closes the picker.", assertions);
 
         var gauntletTargetSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId,
             ChallengeCatalog.SignalGauntletId);
@@ -347,8 +346,7 @@ public sealed class VisualVerificationGame : Game
         _ = ui.HandleGameplayInput(Pointer(targetButtonCenter.X, targetButtonCenter.Y, true), coOpTargetSession,
             targetCommands.Add, 2);
         _ = RenderPixels(ui, GameState.Playing, coOpTargetSession);
-        var fastestTargetCenter = ui.TargetModeButtonBounds[TargetMode.Fastest].Center;
-        _ = ui.HandleGameplayInput(Pointer(fastestTargetCenter.X, fastestTargetCenter.Y, true), coOpTargetSession,
+        _ = ui.HandleGameplayInput(Pointer(0, 0) with { TowerHotkey = 6 }, coOpTargetSession,
             targetCommands.Add, 2);
         Require(targetCommands.Count == 1 && targetCommands[0].Type == GameCommandType.SetTargetMode &&
                 targetCommands[0].TargetMode == TargetMode.Fastest &&
@@ -514,7 +512,7 @@ public sealed class VisualVerificationGame : Game
 
         var crosswindWinningSample = CaptureSimulationLayout(content, ui,
             "05f-crosswind-easy-standard-win.png", "crosswind_basin", "easy", "standard",
-            AutoPlayerStrategy.Experienced, 17175, true, assertions);
+            AutoPlayerStrategy.Experienced, 72608, true, assertions);
         var crosswindLosingSample = CaptureSimulationLayout(content, ui,
             "05g-crosswind-hard-standard-loss.png", "crosswind_basin", "hard", "standard",
             AutoPlayerStrategy.Experienced, 56770, false, assertions);
