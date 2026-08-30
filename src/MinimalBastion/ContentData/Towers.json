@@ -159,8 +159,8 @@
       { "id": "arc_capacitor", "displayName": "Charged Arc", "shortLabel": "CHARGE", "summary": "Favors damage and longer chain reach", "upgradeCost": 220, "damageMultiplier": 1.07, "attackSpeedMultiplier": 0.92, "rangeMultiplier": 1.04, "utilityMultiplier": 1.12 }
     ],
     "levels": [
-      { "range": 155, "damage": 19, "attacksPerSecond": 0.68, "chainCount": 2, "chainDamage": 14, "chainRange": 95, "upgradeCost": 220 },
-      { "range": 165, "damage": 28, "attacksPerSecond": 0.74, "chainCount": 3, "chainDamage": 19, "chainRange": 105, "upgradeCost": 330 },
+      { "range": 155, "damage": 19, "attacksPerSecond": 0.68, "chainCount": 2, "chainDamage": 16, "chainRange": 95, "upgradeCost": 220 },
+      { "range": 165, "damage": 28, "attacksPerSecond": 0.74, "chainCount": 3, "chainDamage": 21, "chainRange": 105, "upgradeCost": 330 },
       { "range": 175, "damage": 40, "attacksPerSecond": 0.80, "chainCount": 4, "chainDamage": 28, "chainRange": 115, "stunDuration": 0.4, "upgradeCost": null }
     ],
     "specializations": [

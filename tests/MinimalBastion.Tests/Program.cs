@@ -4499,7 +4499,7 @@ internal static class Program
                 .Contains("for 2.5s", StringComparison.Ordinal),
             "Ember Intel includes burn duration rather than a qualitative recommendation");
         Check.True(TowerInfo.Special(content.Towers["arc_relay"], content.Towers["arc_relay"].Levels[0])
-                .Contains("2 arcs at 14", StringComparison.Ordinal),
+                .Contains("2 arcs at 16", StringComparison.Ordinal),
             "Arc Intel exposes arc count and secondary damage");
         Check.True(TowerInfo.Special(content.Towers["siege_mortar"], content.Towers["siege_mortar"].Levels[0])
                 .Contains("Predictive impact", StringComparison.Ordinal),
