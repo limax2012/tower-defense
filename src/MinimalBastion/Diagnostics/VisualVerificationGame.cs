@@ -884,7 +884,10 @@ public sealed class VisualVerificationGame : Game
         endlessSave.Waves.EndlessModeEnabled = true;
         endlessSave.Economy.Lives = 0;
         var endlessResult = GameSession.RestoreSaveGame(content, endlessSave);
+        ui.PrepareResultScreen(endlessResult.CurrentWave);
         scenes.Add(Capture("15-endless-exact-wave.png", ui, GameState.Defeat, endlessResult));
+        Require(ui.HandleResultInput(Pointer(551, 603, leftPressed: true), false) == UiAction.RetryWave,
+            "Defeat results expose the matching pre-wave autosave as a direct Retry Wave action.", assertions);
 
         HideAndDisableActivation();
         Require(!IsVerifierForeground(), "The visual verifier never owns foreground input focus.", assertions);

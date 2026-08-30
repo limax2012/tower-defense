@@ -2062,7 +2062,7 @@ internal static class Program
     {
         var ui = new UIManager(null!);
         Check.Equal(UiAction.ViewField,
-            ui.HandleResultInput(WorldInput(new Vector2(399, 603)) with { LeftPressed = true }, false),
+            ui.HandleResultInput(WorldInput(new Vector2(375, 603)) with { LeftPressed = true }, false),
             "defeat results expose the field-inspection action");
         Check.Equal(UiAction.ContinueEndless,
             ui.HandleResultInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, true),
@@ -2071,10 +2071,13 @@ internal static class Program
             ui.HandleResultInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, false),
             "defeat Enter opens read-only field inspection");
         Check.Equal(UiAction.None,
-            ui.HandleResultInput(WorldInput(new Vector2(621, 603)) with { LeftPressed = true }, false),
+            ui.HandleResultInput(WorldInput(new Vector2(551, 603)) with { LeftPressed = true }, false),
+            "retry stays disabled without a matching pre-wave autosave");
+        Check.Equal(UiAction.None,
+            ui.HandleResultInput(WorldInput(new Vector2(727, 603)) with { LeftPressed = true }, false),
             "first result restart click arms confirmation");
         Check.Equal(UiAction.Restart,
-            ui.HandleResultInput(WorldInput(new Vector2(621, 603)) with { LeftPressed = true }, false),
+            ui.HandleResultInput(WorldInput(new Vector2(727, 603)) with { LeftPressed = true }, false),
             "second result restart click confirms the reset");
         var keyboardResults = new UIManager(null!);
         keyboardResults.HandleResultInput(WorldInput(Vector2.Zero) with { NavigateRightPressed = true }, false);
@@ -2088,9 +2091,35 @@ internal static class Program
         Check.Equal(UiAction.ViewField,
             keyboardResults.HandleResultInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, false),
             "a later result screen safely resets focus to its primary action");
+        var retryResults = new UIManager(null!);
+        retryResults.PrepareResultScreen(20, retryContinuesSolo: true);
+        Check.Equal(UiAction.RetryWave,
+            retryResults.HandleResultInput(WorldInput(new Vector2(551, 603)) with { LeftPressed = true }, false),
+            "a matching autosave enables direct retry from the defeat screen");
+        retryResults.PrepareResultScreen(20);
+        retryResults.HandleResultInput(WorldInput(Vector2.Zero) with { NavigateRightPressed = true }, false);
+        Check.Equal(UiAction.RetryWave,
+            retryResults.HandleResultInput(WorldInput(Vector2.Zero) with { EnterPressed = true }, false),
+            "keyboard navigation reaches retry without changing the current result first");
         Check.Equal(UiAction.ViewResults,
             ui.HandleDefeatFieldInput(WorldInput(Vector2.Zero) with { EscapePressed = true }),
             "inspection escape returns to results");
+
+        var defeated = SessionWithWaves(2);
+        var checkpoint = defeated.CaptureSaveGame();
+        Check.True(defeated.StartNextWave(), "retry policy test starts its first wave");
+        defeated.Economy.LoseLives(defeated.Economy.Lives);
+        defeated.Update(0);
+        Check.True(defeated.IsDefeat && defeated.CurrentWave == 1, "retry policy test reaches a first-wave defeat");
+        Check.True(SaveGameStore.IsRetryCheckpointFor(checkpoint, defeated),
+            "the exact checkpoint immediately before the failed wave is eligible");
+        checkpoint.Waves.CurrentWaveNumber = defeated.CurrentWave;
+        Check.True(!SaveGameStore.IsRetryCheckpointFor(checkpoint, defeated),
+            "a checkpoint from the failed wave is not mistaken for its pre-wave state");
+        checkpoint.Waves.CurrentWaveNumber = defeated.CurrentWave - 1;
+        checkpoint.RunId = Guid.NewGuid().ToString("N");
+        Check.True(!SaveGameStore.IsRetryCheckpointFor(checkpoint, defeated),
+            "an autosave belonging to another run cannot replace the failed defense");
 
         var session = Session();
         Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)), "inspection tower placement");

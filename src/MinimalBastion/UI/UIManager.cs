@@ -43,6 +43,7 @@ public enum UiAction
     DeleteRunHistory,
     CloseRunHistory,
     Restart,
+    RetryWave,
     ContinueEndless,
     ViewField,
     ViewResults,
@@ -145,6 +146,8 @@ public sealed class UIManager
     private int _saveSlotPage;
     private bool _saveSlotDeleteArmed;
     private bool _restartArmed;
+    private int? _retryCheckpointWave;
+    private bool _retryContinuesSolo;
     private IReadOnlyList<RunHistoryEntry> _runHistory = Array.Empty<RunHistoryEntry>();
     private string? _selectedRunHistoryId;
     private int _runHistoryPage;
@@ -260,6 +263,10 @@ public sealed class UIManager
     private readonly Rectangle _resultContinueButton = new(296, 580, 206, 46);
     private readonly Rectangle _resultRestartButton = new(518, 580, 206, 46);
     private readonly Rectangle _resultMenuButton = new(740, 580, 206, 46);
+    private readonly Rectangle _defeatFieldButton = new(296, 580, 158, 46);
+    private readonly Rectangle _defeatRetryButton = new(472, 580, 158, 46);
+    private readonly Rectangle _defeatRestartButton = new(648, 580, 158, 46);
+    private readonly Rectangle _defeatMenuButton = new(824, 580, 158, 46);
     private readonly Rectangle _fieldResultsButton = new(630, 9, 176, 38);
     private readonly Rectangle _coOpPausedBanner = new(350, 68, 260, 26);
     private readonly Rectangle _windowModeButton = new(350, 202, 580, 54);
@@ -343,10 +350,12 @@ public sealed class UIManager
         _towerLibraryOpen = false;
     }
 
-    public void PrepareResultScreen()
+    public void PrepareResultScreen(int? retryCheckpointWave = null, bool retryContinuesSolo = false)
     {
         _resultMenuSelection = 0;
         _restartArmed = false;
+        _retryCheckpointWave = retryCheckpointWave;
+        _retryContinuesSolo = retryCheckpointWave.HasValue && retryContinuesSolo;
     }
 
     public void CloseGameplayOverlay() => _towerLibraryOpen = false;
@@ -2017,24 +2026,37 @@ public sealed class UIManager
         {
             _restartArmed = false;
             var reverse = input.NavigateLeftPressed || input.NavigateUpPressed;
-            _resultMenuSelection = (_resultMenuSelection + (reverse ? -1 : 1) + 3) % 3;
+            MoveResultSelection(victory, reverse ? -1 : 1);
             return UiAction.None;
         }
         if (input.EnterPressed) return ActivateResultSelection(victory);
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
-        for (var selection = 0; selection < 3; selection++)
+        var optionCount = victory ? 3 : 4;
+        for (var selection = 0; selection < optionCount; selection++)
         {
-            if (!ResultOptionRectangle(selection).Contains(point)) continue;
+            if (!ResultOptionRectangle(selection, victory).Contains(point)) continue;
+            if (!ResultOptionEnabled(selection, victory)) return UiAction.None;
             _resultMenuSelection = selection;
             return ActivateResultSelection(victory);
         }
         return UiAction.None;
     }
 
+    private void MoveResultSelection(bool victory, int delta)
+    {
+        var optionCount = victory ? 3 : 4;
+        for (var attempts = 0; attempts < optionCount; attempts++)
+        {
+            _resultMenuSelection = (_resultMenuSelection + delta + optionCount) % optionCount;
+            if (ResultOptionEnabled(_resultMenuSelection, victory)) return;
+        }
+    }
+
     private UiAction ActivateResultSelection(bool victory)
     {
-        if (_resultMenuSelection == 1)
+        var restartSelection = victory ? 1 : 2;
+        if (_resultMenuSelection == restartSelection)
         {
             if (_restartArmed)
             {
@@ -2045,16 +2067,34 @@ public sealed class UIManager
             return UiAction.None;
         }
         _restartArmed = false;
-        return _resultMenuSelection == 0
-            ? victory ? UiAction.ContinueEndless : UiAction.ViewField
-            : UiAction.MainMenu;
+        if (victory)
+            return _resultMenuSelection == 0 ? UiAction.ContinueEndless : UiAction.MainMenu;
+        return _resultMenuSelection switch
+        {
+            0 => UiAction.ViewField,
+            1 when _retryCheckpointWave.HasValue => UiAction.RetryWave,
+            3 => UiAction.MainMenu,
+            _ => UiAction.None
+        };
     }
 
-    private Rectangle ResultOptionRectangle(int selection) => selection switch
+    private bool ResultOptionEnabled(int selection, bool victory) =>
+        victory || selection != 1 || _retryCheckpointWave.HasValue;
+
+    private Rectangle ResultOptionRectangle(int selection, bool victory) => victory
+        ? selection switch
+        {
+            0 => _resultContinueButton,
+            1 => _resultRestartButton,
+            2 => _resultMenuButton,
+            _ => Rectangle.Empty
+        }
+        : selection switch
     {
-        0 => _resultContinueButton,
-        1 => _resultRestartButton,
-        2 => _resultMenuButton,
+        0 => _defeatFieldButton,
+        1 => _defeatRetryButton,
+        2 => _defeatRestartButton,
+        3 => _defeatMenuButton,
         _ => Rectangle.Empty
     };
 
@@ -3835,15 +3875,27 @@ public sealed class UIManager
         }
         else
         {
-            DrawButton(batch, p, _resultContinueButton, "VIEW FIELD", true, ColorPalette.Cyan);
-            DrawButton(batch, p, _resultRestartButton,
-                _restartArmed ? "CONFIRM RESTART" : session.IsCoOp ? "RESTART CO-OP" : "RESTART", true,
+            DrawButton(batch, p, _defeatFieldButton, "VIEW FIELD", true, ColorPalette.Cyan);
+            DrawButton(batch, p, _defeatRetryButton, "RETRY WAVE", _retryCheckpointWave.HasValue, ColorPalette.Green);
+            DrawButton(batch, p, _defeatRestartButton,
+                _restartArmed ? "CONFIRM RESTART" : session.IsCoOp ? "RESTART CO-OP" : "RESTART RUN", true,
                 _restartArmed ? ColorPalette.Coral : ColorPalette.Cobalt);
-            DrawButton(batch, p, _resultMenuButton, "MAIN MENU", true, ColorPalette.Violet);
+            DrawButton(batch, p, _defeatMenuButton, "MAIN MENU", true, ColorPalette.Violet);
         }
         if (_restartArmed)
             DrawFittedCenteredText(batch, RestartPreservationLabel, new Vector2(640, 562), ColorPalette.Coral, 0.42f, 620);
-        var focus = ResultOptionRectangle(Math.Clamp(_resultMenuSelection, 0, 2));
+        else if (!victory)
+        {
+            var retryStatus = _retryCheckpointWave.HasValue
+                ? _retryContinuesSolo
+                    ? $"RETRY WAVE {_retryCheckpointWave}  |  CO-OP CHECKPOINT CONTINUES SOLO"
+                    : $"RETRY WAVE {_retryCheckpointWave}  |  RESTORES THE PRE-WAVE AUTOSAVE"
+                : "NO PRE-WAVE AUTOSAVE FOR THIS RUN";
+            DrawFittedCenteredText(batch, retryStatus, new Vector2(640, 562),
+                _retryCheckpointWave.HasValue ? ColorPalette.GreenText : ColorPalette.Muted, 0.42f, 650);
+        }
+        var optionCount = victory ? 3 : 4;
+        var focus = ResultOptionRectangle(Math.Clamp(_resultMenuSelection, 0, optionCount - 1), victory);
         focus.Inflate(3, 3);
         p.DrawRect(batch, focus, ColorPalette.Ink, 2);
     }

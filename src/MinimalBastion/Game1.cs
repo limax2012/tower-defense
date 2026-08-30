@@ -322,7 +322,7 @@ public sealed class Game1 : Game
         }
         if (WithUiAudio(_ui.HandleDefeatFieldInput(input)) == UiAction.ViewResults)
         {
-            _ui.PrepareResultScreen();
+            PrepareTerminalResultScreen();
             _state = GameState.Defeat;
             return;
         }
@@ -379,12 +379,12 @@ public sealed class Game1 : Game
         }
         if (_session.IsVictory)
         {
-            _ui.PrepareResultScreen();
+            PrepareTerminalResultScreen();
             _state = GameState.Victory;
         }
         else if (_session.IsDefeat)
         {
-            _ui.PrepareResultScreen();
+            PrepareTerminalResultScreen();
             _state = GameState.Defeat;
         }
         else if ((_networkRunner is null || _isNetworkHost) && _session.CanSaveCheckpoint && _session.CurrentWave > 0 && _session.CurrentWave != _lastAutosaveAttemptedWave)
@@ -1128,7 +1128,7 @@ public sealed class Game1 : Game
     private void ResumeNetworkSessionState()
     {
         if (_session is null) return;
-        if (_session.IsVictory || _session.IsDefeat) _ui.PrepareResultScreen();
+        if (_session.IsVictory || _session.IsDefeat) PrepareTerminalResultScreen();
         _state = _session.IsVictory ? GameState.Victory : _session.IsDefeat ? GameState.Defeat : GameState.Playing;
     }
 
@@ -1271,8 +1271,67 @@ public sealed class Game1 : Game
             case UiAction.ViewField:
                 if (_session?.IsDefeat == true) _state = GameState.DefeatField;
                 break;
+            case UiAction.RetryWave: RetryWave(); break;
             case UiAction.Restart: Restart(); break;
             case UiAction.MainMenu: BeginMainMenuTransition(); break;
+        }
+    }
+
+    private void PrepareTerminalResultScreen()
+    {
+        if (_session?.IsDefeat == true && TryReadRetryCheckpoint(out var checkpoint))
+        {
+            _ui.PrepareResultScreen(_session.CurrentWave, checkpoint.IsCoOp);
+            return;
+        }
+        _ui.PrepareResultScreen();
+    }
+
+    private bool TryReadRetryCheckpoint(out SaveGameData checkpoint)
+    {
+        checkpoint = null!;
+        if (_session is null) return false;
+        try
+        {
+            var candidate = SaveGameStore.LoadData(SaveSlotRepository.AutosaveSlot);
+            if (!SaveGameStore.IsRetryCheckpointFor(candidate, _session)) return false;
+            checkpoint = candidate;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void RetryWave()
+    {
+        if (_session is null || !TryReadRetryCheckpoint(out var checkpoint))
+        {
+            PrepareTerminalResultScreen();
+            return;
+        }
+
+        try
+        {
+            var restored = GameSession.RestoreSaveGame(_content, checkpoint);
+            var preserveMusic = _session is not null;
+            CleanupNetwork(preserveMusic);
+            var resumedFromCoOp = restored.IsCoOp;
+            restored.ConfigureSolo();
+            AssignSession(restored, preserveMusic);
+            _activeSaveSlot = null;
+            _lastAutosaveAttemptedWave = restored.CurrentWave;
+            _ui.SetSaveState(true, resumedFromCoOp
+                ? $"Retrying wave {restored.CurrentWave + 1} solo from the co-op autosave."
+                : $"Retrying wave {restored.CurrentWave + 1} from the autosave.");
+            _state = GameState.Playing;
+            PlatformServices.RuntimeStageSetter?.Invoke("gameplay");
+        }
+        catch (Exception exception)
+        {
+            _ui.SetSaveState(SaveSlotsExistSafely(), $"Retry failed: {exception.GetBaseException().Message}");
+            PrepareTerminalResultScreen();
         }
     }
 

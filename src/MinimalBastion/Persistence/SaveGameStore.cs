@@ -397,6 +397,19 @@ public static class SaveGameStore
     }
     public static GameSession Load(GameContent content, int slot = 1) => DefaultRepository.Load(content, slot);
     public static SaveGameData LoadData(int slot) => DefaultRepository.LoadData(slot);
+    public static bool IsRetryCheckpointFor(SaveGameData checkpoint, GameSession session)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(session);
+        return session.IsDefeat && !session.IsSandbox && session.CurrentWave > 0 && checkpoint.Waves is not null &&
+            !string.IsNullOrWhiteSpace(checkpoint.RunId) &&
+            string.Equals(checkpoint.RunId, session.RunId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(checkpoint.MapId, session.Map.Definition.Id, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(checkpoint.DifficultyId, session.DifficultyId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(checkpoint.ChallengeId, session.ChallengeId, StringComparison.OrdinalIgnoreCase) &&
+            checkpoint.Waves.CurrentWaveNumber == session.CurrentWave - 1;
+    }
+
     public static int Duplicate(int sourceSlot)
     {
         var slot = DefaultRepository.Duplicate(sourceSlot);
