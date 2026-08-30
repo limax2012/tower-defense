@@ -4050,6 +4050,17 @@ internal static class Program
             Check.True(WaveDurability(waves[GameConstants.CampaignWaveCount - 1], content.Enemies) >= firstActFinal * 2.30f,
                 $"{map.Id} final capstone substantially exceeds the wave-20 boss");
         }
+
+        var surgeFinale = content.WaveSets[content.Maps["relay_divide"].WaveSet].Waves.Skip(25).Take(5).ToArray();
+        for (var index = 1; index < surgeFinale.Length; index++)
+        {
+            Check.Nearly(0.325f, surgeFinale[index].HealthMultiplier - surgeFinale[index - 1].HealthMultiplier,
+                $"Surge Divide wave {surgeFinale[index].Number} follows the even final health curve");
+            var durabilityGrowth = WaveDurability(surgeFinale[index], content.Enemies) /
+                                   WaveDurability(surgeFinale[index - 1], content.Enemies);
+            Check.True(durabilityGrowth is >= 1.10f and <= 1.20f,
+                $"Surge Divide wave {surgeFinale[index].Number} keeps final durability growth gradual");
+        }
     }
 
     private static float WaveDurability(
