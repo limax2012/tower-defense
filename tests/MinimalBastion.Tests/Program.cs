@@ -1725,12 +1725,13 @@ internal static class Program
 
     private static void LateCampaignIncomeSteps()
     {
-        Check.Nearly(1f, EconomyService.CalculateIncomeMultiplier(15), "wave 15 preserves authored rewards");
-        Check.Nearly(0.5f, EconomyService.CalculateIncomeMultiplier(16), "wave 16 starts half rewards");
+        Check.Nearly(1f, EconomyService.CalculateIncomeMultiplier(14), "wave 14 preserves authored rewards");
+        Check.Nearly(0.5f, EconomyService.CalculateIncomeMultiplier(15), "wave 15 starts half rewards");
         Check.Nearly(0.5f, EconomyService.CalculateIncomeMultiplier(24), "wave 24 remains at half rewards");
         Check.Nearly(0.25f, EconomyService.CalculateIncomeMultiplier(25), "wave 25 starts quarter rewards");
         Check.Nearly(0.25f, EconomyService.CalculateIncomeMultiplier(100), "Endless retains quarter rewards");
-        Check.Equal(190, EconomyService.CalculateWaveReward(15), "wave 15 completion reward");
+        Check.Equal(180, EconomyService.CalculateWaveReward(14), "wave 14 completion reward");
+        Check.Equal(95, EconomyService.CalculateWaveReward(15), "wave 15 completion reward");
         Check.Equal(100, EconomyService.CalculateWaveReward(16), "wave 16 completion reward");
         Check.Equal(140, EconomyService.CalculateWaveReward(24), "wave 24 completion reward");
         Check.Equal(73, EconomyService.CalculateWaveReward(25), "wave 25 completion reward");

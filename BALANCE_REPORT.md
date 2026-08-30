@@ -32,12 +32,12 @@ The current full validation sweep used two seeds for every arena/directive combi
 
 | Difficulty | Wins | Runs | Completion | Average wave | Average lives |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Easy | 6 | 32 | 18.8% | 26.2 | 3.4 |
-| Medium | 1 | 32 | 3.1% | 20.5 | 0.3 |
-| Hard | 0 | 32 | 0.0% | 15.9 | 0.0 |
-| Bastion | 0 | 32 | 0.0% | 11.4 | 0.0 |
+| Easy | 3 | 32 | 9.4% | 25.2 | 1.8 |
+| Medium | 1 | 32 | 3.1% | 20.1 | 0.3 |
+| Hard | 0 | 32 | 0.0% | 15.8 | 0.0 |
+| Bastion | 0 | 32 | 0.0% | 11.3 | 0.0 |
 
-These bands keep the ladder strictly ordered for the deterministic agent across the complete 30-wave campaign. The staged late-income reductions sharply reduce clears after wave 15: Easy still reaches the finale most consistently, while the small Medium, Hard, and Bastion samples are now predominantly progression measurements rather than completion estimates. Bastion remains deliberately aspirational: one leak ends the run, and no run in this fixed-seed sweep was flawless. These percentages are not forecasts of literal human win rates: a person can adapt across attempts, interpret spatial patterns, preserve a reserve for the final act, and deliberately reproduce a successful layout in ways the agent cannot.
+These bands keep the ladder strictly ordered for the deterministic agent across the complete 30-wave campaign. The staged late-income reductions sharply reduce clears from wave 15 onward: Easy still reaches the finale most consistently, while the small Medium, Hard, and Bastion samples are now predominantly progression measurements rather than completion estimates. Bastion remains deliberately aspirational: one leak ends the run, and no run in this fixed-seed sweep was flawless. These percentages are not forecasts of literal human win rates: a person can adapt across attempts, interpret spatial patterns, preserve a reserve for the final act, and deliberately reproduce a successful layout in ways the agent cannot.
 
 ## Arena findings
 
@@ -64,7 +64,7 @@ No map geometry change is justified by these aggregate percentages alone.
 Directive comparisons use Experienced-agent matrices at the 30-wave target. No restricted directive receives compensating opening credits.
 
 - **Standard** is the complete strategic baseline.
-- **Signal Gauntlet** changes priority and defensive reliability through signal enemies and disruption. Accelerator grants 20% speed, Restorer repairs 10% maximum health every 5 seconds, Bulwark grants a 10% shield every 5 seconds up to a 20% reserve, and Jammer suppresses every combat tower in its pulse radius. Disruptor is the precision counterpart: every 5 seconds it directly pauses one high-investment tower, with modest rank-based pause and reach increases. The current 32-run cross-difficulty sample produced no clears and averaged wave 14.9; the Experienced agent uses Support targeting on appropriate towers.
+- **Signal Gauntlet** changes priority and defensive reliability through signal enemies and disruption. Accelerator grants 20% speed, Restorer repairs 10% maximum health every 5 seconds, Bulwark grants a 10% shield every 5 seconds up to a 20% reserve, and Jammer suppresses every combat tower in its pulse radius. Disruptor is the precision counterpart: every 5 seconds it directly pauses one high-investment tower, with modest rank-based pause and reach increases. The current 32-run cross-difficulty sample produced no clears and averaged wave 14.5; the Experienced agent uses Support targeting on appropriate towers.
 - **Core Six** is a thematic roster puzzle, not an assertion that every restricted roster must be numerically harder than Standard. Its available towers form a strong economical progression, so it no longer receives bonus opening credits.
 - **Entrenched** removes correction and temporary rescue. Its lower Hard completion is consistent with permanent placement mistakes and no Protocol/Plate fallback.
 
@@ -85,7 +85,7 @@ The detailed use case for every tower and branch is documented in [STRATEGY_GUID
 
 ## Economy and progression
 
-Kill bounties retain full value through wave 10 and begin their standard taper afterward. Kill and completion rewards retain their authored value through wave 15, are halved for waves 16–24, and are quartered from wave 25 onward. Early-call rewards remain separate, and tower prices and combat statistics do not inflate with wave number.
+Kill bounties retain full value through wave 10 and begin their standard taper afterward. Kill and completion rewards retain their authored value through wave 14, are halved for waves 15–24, and are quartered from wave 25 onward. Early-call rewards remain separate, and tower prices and combat statistics do not inflate with wave number.
 
 The staged reductions prevent dense late compositions and boss waves from producing disproportionate windfalls while preserving the opening exactly. Wave 21 sustains wave-20 durability and the following waves continue upward instead of resetting beneath the defense that cleared the boss. Generated Endless begins after wave 30 and retains quarter rewards.
 

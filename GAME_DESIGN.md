@@ -51,7 +51,7 @@ Competitive directives use the selected difficulty's opening economy without com
 - A Charge Forge exchanges a large permanent investment and remote build freedom for recurring stored Plates during active waves.
 - Apex promotions provide a compact late-game credit sink beginning with the final campaign act.
 
-The economy is intentionally tight during campaign openings. Rewards retain their authored value through wave 15, are halved for waves 16–24, and are quartered from wave 25 onward. The ordinary kill-bounty taper still begins after wave 10. Waves 21–30 sustain the wave-20 pressure baseline and use Apex and completed coverage as compact late investments. Endless health growth eventually outpaces a static defense.
+The economy is intentionally tight during campaign openings. Rewards retain their authored value through wave 14, are halved for waves 15–24, and are quartered from wave 25 onward. The ordinary kill-bounty taper still begins after wave 10. Waves 21–30 sustain the wave-20 pressure baseline and use Apex and completed coverage as compact late investments. Endless health growth eventually outpaces a static defense.
 
 ## Tower progression
 

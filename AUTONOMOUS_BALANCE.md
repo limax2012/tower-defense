@@ -102,10 +102,10 @@ The latest complete validation sweep used two seeds for all four arenas and all 
 
 | Difficulty | Completion | Average wave | Average lives |
 | --- | ---: | ---: | ---: |
-| Easy | 18.8% | 26.2 | 3.4 |
-| Medium | 3.1% | 20.5 | 0.3 |
-| Hard | 0.0% | 15.9 | 0.0 |
-| Bastion | 0.0% | 11.4 | 0.0 |
+| Easy | 9.4% | 25.2 | 1.8 |
+| Medium | 3.1% | 20.1 | 0.3 |
+| Hard | 0.0% | 15.8 | 0.0 |
+| Bastion | 0.0% | 11.3 | 0.0 |
 
 Every profile uses wave 30 as the campaign success target and enables Apex at wave 21. Bastion is the no-breach profile; its zero in this limited deterministic sample identifies an aspirational ceiling, not proof that human completion is impossible. See [BALANCE_REPORT.md](BALANCE_REPORT.md) for map/directive splits and interpretation.
 
