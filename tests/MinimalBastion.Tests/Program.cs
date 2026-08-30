@@ -326,7 +326,7 @@ internal static class Program
             content.Challenges.Where(pair => !pair.Key.Equals("no_reserves", StringComparison.OrdinalIgnoreCase))
                 .All(pair => pair.Value.ProtocolsEnabled),
             "Entrenched is the only Protocol-free directive");
-        Check.Equal(2185, content.Waves.Waves.Take(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Sum(x => x.Count), "enemy count in the complete campaign");
+        Check.Equal(2158, content.Waves.Waves.Take(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Sum(x => x.Count), "enemy count in the complete campaign");
         Check.True(content.Waves.Waves.SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase)) >= 5, "elite encounter groups");
         Check.Equal(2, content.Waves.Waves.Take(GameConstants.CampaignWaveCount).SelectMany(x => x.Groups).Count(x => x.Rank.Equals("Boss", StringComparison.OrdinalIgnoreCase)), "campaign boss groups");
         Check.True(content.Towers.Values.Select(x => x.Visual.Primary).Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 8, "tower palette");
@@ -1246,7 +1246,7 @@ internal static class Program
         Check.True(Vector2.Distance(crosswindCrossfirePoint, new Vector2(130, 320)) > crosswindShardRange,
             "Crosswind's base Shard Fan commits to one lane until its reach improves");
         var crosswindIntel = WaveIntel.AnalyzeCampaign(content.WaveSets[crosswind.WaveSet], content.Enemies);
-        Check.Equal(2192, crosswindIntel.TotalContacts, "Crosswind campaign intel counts the authored roster");
+        Check.Equal(2173, crosswindIntel.TotalContacts, "Crosswind campaign intel counts the authored roster");
         Check.Equal(139, crosswindIntel.PeakContacts, "Crosswind campaign intel identifies peak density");
         Check.True(crosswindIntel.OpeningThreats.Contains("FAST", StringComparison.Ordinal) && crosswindIntel.BossWave == 30,
             "Crosswind campaign intel exposes its opening identity and boss timing");
@@ -3959,6 +3959,15 @@ internal static class Program
         foreach (var map in content.Maps.Values)
         {
             var waves = content.WaveSets[map.WaveSet].Waves;
+            var openingFinale = waves.Skip(18).Take(4).Select(wave => WaveDurability(wave, content.Enemies)).ToArray();
+            for (var index = 1; index < openingFinale.Length; index++)
+            {
+                Check.True(openingFinale[index] >= openingFinale[index - 1] * 1.08f,
+                    $"{map.Id} waves 19-22 maintain deliberate durability growth");
+                Check.True(openingFinale[index] <= openingFinale[index - 1] * 1.20f,
+                    $"{map.Id} waves 19-22 avoid an inherited finale spike");
+            }
+
             var firstActFinal = WaveDurability(waves[GameConstants.ApexUnlockWave - 2], content.Enemies);
             var previous = firstActFinal;
             foreach (var wave in waves.Skip(GameConstants.ApexUnlockWave - 1))
