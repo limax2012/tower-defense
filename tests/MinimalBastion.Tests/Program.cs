@@ -3724,6 +3724,42 @@ internal static class Program
             "short diagnostic runs do not masquerade as campaign or endless clears");
         Check.True(first.Overdrives > 0 && first.ProtocolsEnabled, "default simulation exercises Protocol activations");
 
+        var layoutSession = Session();
+        Check.True(layoutSession.TryPlaceTower("tower", new Vector2(50, 90)),
+            "place final-layout telemetry fixture");
+        var layoutSave = layoutSession.CaptureSaveGame();
+        var savedTower = layoutSave.Towers.Single();
+        savedTower.TargetMode = TargetMode.Armored;
+        savedTower.InvestedCredits = 410;
+        savedTower.LifetimeDamage = 1200;
+        savedTower.LifetimeKills = 17;
+        savedTower.LifetimeSupportDamageEquivalent = 80;
+        savedTower.LifetimeExposeDamageEquivalent = 60;
+        savedTower.LifetimeArmorBreakDamageEquivalent = 40;
+        savedTower.LifetimeControlSeconds = 12;
+        savedTower.LifetimeExposeSeconds = 8;
+        savedTower.LifetimeArmorBreakSeconds = 4;
+        var layoutResult = HeadlessSimulation.Run(layoutSession.Content, layoutSave, new SimulationOptions
+        {
+            MaximumWave = 0,
+            MaximumSimulatedSeconds = 1
+        });
+        var placement = layoutResult.FinalTowers.Single();
+        Check.Equal(TargetMode.Armored, placement.TargetMode, "final tower targeting telemetry");
+        Check.Equal(410, placement.InvestedCredits, "final tower investment telemetry");
+        Check.Nearly(1200, placement.LifetimeDamage, "final tower lifetime damage telemetry");
+        Check.Equal(17, placement.LifetimeKills, "final tower lifetime kill telemetry");
+        Check.Nearly(80, placement.LifetimeSupportDamageEquivalent, "final tower lifetime support telemetry");
+        Check.Nearly(60, placement.LifetimeExposeDamageEquivalent, "final tower lifetime expose telemetry");
+        Check.Nearly(40, placement.LifetimeArmorBreakDamageEquivalent,
+            "final tower lifetime armor-break telemetry");
+        Check.Nearly(12, placement.LifetimeControlSeconds, "final tower lifetime control telemetry");
+        Check.Nearly(8, placement.LifetimeExposeSeconds, "final tower lifetime expose-duration telemetry");
+        Check.Nearly(4, placement.LifetimeArmorBreakSeconds,
+            "final tower lifetime armor-break-duration telemetry");
+        Check.Nearly(1380, placement.LifetimeContributionDamage,
+            "final tower combines per-instance damage and assist contribution");
+
         var noProtocols = MinimalBastion.Simulation.HeadlessSimulation.Run(content, new MinimalBastion.Simulation.SimulationOptions
         {
             Strategy = options.Strategy,
@@ -3753,6 +3789,54 @@ internal static class Program
         Check.True(unattendedDefeat.RemainingEnemies.All(enemy => enemy.CurrentHealth > 0 &&
                                                                 enemy.MaxHealth >= enemy.CurrentHealth),
             "simulation defeat telemetry records the health of every surviving group");
+
+        var exactDefeatOptions = new MinimalBastion.Simulation.SimulationOptions
+        {
+            Strategy = AutoPlayerStrategy.Adaptive,
+            Seed = 9191,
+            DifficultyId = "bastion",
+            ChallengeId = "close_quarters",
+            StepSeconds = 0.1f,
+            MaximumWave = 3,
+            MaximumSimulatedSeconds = 10,
+            HoldFootprint = true
+        };
+        var exactDefeat = HeadlessSimulation.Run(DefeatTelemetryContent(content), exactDefeatOptions);
+        var exactRepeat = HeadlessSimulation.Run(DefeatTelemetryContent(content), exactDefeatOptions);
+        Check.Equal("Defeat", exactDefeat.Result, "controlled telemetry fixture reaches defeat");
+        Check.Equal(0, exactDefeat.EmergencyDeployments,
+            "headless player does not take a tactical action after the update that sets defeat");
+        Check.Equal(3, exactDefeat.QueuedEnemiesRemaining,
+            "queued-enemy count is derived from the complete queued composition");
+        Check.Equal(3, exactDefeat.QueuedEnemies.Sum(enemy => enemy.Count),
+            "queued composition accounts for every pending spawn");
+        Check.Equal(2, exactDefeat.QueuedEnemies.Single(enemy => enemy.SignalRole == "None").Count,
+            "queued composition retains ordinary pending enemies");
+        Check.Equal(1, exactDefeat.QueuedEnemies.Single(enemy => enemy.SignalRole == "Restorer").Count,
+            "queued composition retains the deterministic pending Signal carrier");
+        Check.True(exactDefeat.QueuedEnemies.All(enemy => enemy.EnemyId == "armored" &&
+                                                        enemy.DisplayName == "armored" &&
+                                                        enemy.Rank == "Standard"),
+            "queued composition retains enemy identity, display name, and rank");
+        Check.Nearly(672, exactDefeat.QueuedHealth, "queued composition retains scaled health");
+        Check.Nearly(60, exactDefeat.QueuedShield, "queued composition retains shields");
+        Check.Nearly(866.4f, exactDefeat.QueuedArmorAdjustedDurability,
+            "queued composition retains armor-adjusted durability");
+        var failure = exactDefeat.FailureMargin ??
+            throw new InvalidOperationException("Defeat did not produce a normalized failure margin.");
+        Check.Equal(1, failure.LiveEnemyCount, "failure margin live count");
+        Check.Equal(3, failure.QueuedEnemyCount, "failure margin queued count");
+        Check.Nearly(444, failure.LiveArmorAdjustedDurability, "failure margin live durability");
+        Check.Nearly(866.4f, failure.QueuedArmorAdjustedDurability, "failure margin queued durability");
+        Check.True(failure.FurthestProgress is > 0.97f and < 0.995f,
+            "failure margin retains furthest unresolved path progress");
+        Check.Nearly(0.8f, failure.RemainingEnemyFraction, "failure margin normalizes unresolved count");
+        Check.Nearly(1310.4f / 1754.4f, failure.RemainingArmorAdjustedDurabilityFraction,
+            "failure margin normalizes unresolved armor-adjusted durability");
+        Check.True(exactDefeat.QueuedEnemies.SequenceEqual(exactRepeat.QueuedEnemies) &&
+                   exactDefeat.RemainingEnemies.SequenceEqual(exactRepeat.RemainingEnemies) &&
+                   exactDefeat.FailureMargin == exactRepeat.FailureMargin,
+            "failure telemetry is deterministic for a fixed seed and checkpoint state");
     }
 
     private static void SimulationFootprintHold()
@@ -6110,6 +6194,76 @@ internal static class Program
             Check.Nearly(expectedPierce, projectile.Payload.ArmorPierce,
                 "Razorstorm volley uses current build armor pierce");
         }
+    }
+
+    private static GameContent DefeatTelemetryContent(GameContent authored)
+    {
+        var map = new MapDefinition
+        {
+            Id = "telemetry_test",
+            DisplayName = "Telemetry Test",
+            Path = [Point(0, 200), Point(300, 200)],
+            PathWidth = 56,
+            BuildableRegions = [new RectangleData { X = 40, Y = 300, Width = 220, Height = 120 }],
+            StartingCredits = 300,
+            Background = new BackgroundData()
+        };
+        var fast = Enemy("fast", 100, 300, 0, 0, 0);
+        var armored = Enemy("armored", 100, 10, 0, 5, 20);
+        return new GameContent
+        {
+            Towers = authored.Towers,
+            Enemies = new Dictionary<string, EnemyDefinition>
+            {
+                [fast.Id] = fast,
+                [armored.Id] = armored
+            },
+            Map = map,
+            Waves = new WaveSetDefinition
+            {
+                Waves =
+                [
+                    new WaveDefinition
+                    {
+                        Number = 3,
+                        Archetype = "Telemetry",
+                        HealthMultiplier = 2,
+                        SpeedMultiplier = 1,
+                        Groups =
+                        [
+                            new WaveGroupDefinition { EnemyId = fast.Id, Rank = "Elite", Count = 2, SpawnInterval = 0 },
+                            new WaveGroupDefinition { EnemyId = armored.Id, Count = 3, SpawnInterval = 1, DelayBefore = 5 }
+                        ]
+                    }
+                ]
+            },
+            Difficulties = new Dictionary<string, DifficultyDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["bastion"] = new DifficultyDefinition
+                {
+                    Id = "bastion",
+                    DisplayName = "Bastion",
+                    EnemyHealthMultiplier = 1.12f,
+                    EnemySpeedMultiplier = 1.02f,
+                    StartingCreditsMultiplier = 1,
+                    StartingLives = 1
+                }
+            },
+            Challenges = new Dictionary<string, ChallengeDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["close_quarters"] = new ChallengeDefinition
+                {
+                    Id = "close_quarters",
+                    DisplayName = "Signal Gauntlet",
+                    StartingCreditsMultiplier = 1,
+                    TacticalSystemsEnabled = true,
+                    ProtocolsEnabled = true,
+                    SellingEnabled = true,
+                    CounterPressureEnabled = true
+                }
+            },
+            Tactics = authored.Tactics
+        };
     }
 
     private static GameSession Session()

@@ -63,7 +63,7 @@ public static class HeadlessSimulation
             elapsed += step;
             reactionTimer += step;
 
-            if (session.Waves.IsActive && reactionTimer >= 1f)
+            if (!session.IsDefeat && session.Waves.IsActive && reactionTimer >= 1f)
             {
                 player.ReactDuringWave(session);
                 reactionTimer = 0f;
@@ -159,6 +159,8 @@ public static class HeadlessSimulation
 
         public SimulationRunResult Build(GameSession session, SimulationOptions options, float elapsed, string result)
         {
+            var remainingEnemies = CaptureRemainingEnemies(session);
+            var queuedEnemies = CaptureQueuedEnemies(session);
             return new SimulationRunResult
             {
                 MapId = session.Map.Definition.Id,
@@ -185,8 +187,12 @@ public static class HeadlessSimulation
                 Towers = _towers.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
                 EnemyKills = _enemyKills.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
                 EnemyLeaks = _enemyLeaks.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
-                RemainingEnemies = CaptureRemainingEnemies(session),
-                QueuedEnemiesRemaining = session.Waves.QueuedEnemies,
+                RemainingEnemies = remainingEnemies,
+                QueuedEnemies = queuedEnemies,
+                QueuedEnemiesRemaining = queuedEnemies.Sum(enemy => enemy.Count),
+                FailureMargin = result == "Defeat"
+                    ? CaptureFailureMargin(session, remainingEnemies, queuedEnemies)
+                    : null,
                 Waves = _waves.ToArray(),
                 FinalTowers = session.Towers.OrderBy(tower => tower.Id).Select(tower => new SimulationTowerPlacement(
                     tower.Id,
@@ -197,6 +203,16 @@ public static class HeadlessSimulation
                     tower.DoctrineId,
                     tower.SpecializationId,
                     tower.IsApex,
+                    tower.TargetMode,
+                    tower.InvestedCredits,
+                    tower.LifetimeDamage,
+                    tower.LifetimeKills,
+                    tower.LifetimeSupportDamageEquivalent,
+                    tower.LifetimeExposeDamageEquivalent,
+                    tower.LifetimeArmorBreakDamageEquivalent,
+                    tower.LifetimeControlSeconds,
+                    tower.LifetimeExposeSeconds,
+                    tower.LifetimeArmorBreakSeconds,
                     session.Map.Definition.PowerNodes.FirstOrDefault(node =>
                         Vector2.DistanceSquared(tower.Position, node.Position.ToVector2()) <= node.Radius * node.Radius)?.Id)).ToArray(),
                 EmergencyDeployments = _emergencyDeployments,
@@ -233,11 +249,84 @@ public static class HeadlessSimulation
                     FiniteSum(group.Select(enemy => enemy.Health)),
                     FiniteSum(group.Select(enemy => enemy.MaxHealth)),
                     FiniteSum(group.Select(enemy => enemy.Shield)),
+                    FiniteSum(group.Select(enemy => ArmorAdjustedDurability(
+                        enemy.Health, enemy.Shield, enemy.BaseArmor))),
                     group.Max(enemy => enemy.PathProgress)))
                 .OrderByDescending(group => group.CurrentHealth + group.Shield)
                 .ThenByDescending(group => group.Count)
                 .ThenBy(group => group.DisplayName)
                 .ToArray();
+
+        private static IReadOnlyList<SimulationRemainingEnemy> CaptureQueuedEnemies(GameSession session)
+        {
+            if (session.Waves.ActiveWave is not { } activeWave)
+                return Array.Empty<SimulationRemainingEnemy>();
+
+            var healthMultiplier = activeWave.HealthMultiplier * session.Difficulty.EnemyHealthMultiplier;
+            var speedMultiplier = activeWave.SpeedMultiplier * session.Difficulty.EnemySpeedMultiplier;
+            return session.Waves.CaptureQueuedEnemies(session)
+                .Select(group =>
+                {
+                    var definition = session.Content.Enemies[group.EnemyId];
+                    var enemy = new EnemyInstance(
+                        0,
+                        definition,
+                        session.Map.Path,
+                        healthMultiplier,
+                        speedMultiplier,
+                        group.Rank,
+                        signalRole: group.SignalRole);
+                    return new SimulationRemainingEnemy(
+                        group.EnemyId,
+                        enemy.DisplayName,
+                        enemy.Rank.ToString(),
+                        enemy.SignalRole.ToString(),
+                        group.Count,
+                        FiniteProduct(enemy.MaxHealth, group.Count),
+                        FiniteProduct(enemy.MaxHealth, group.Count),
+                        FiniteProduct(enemy.Shield, group.Count),
+                        FiniteProduct(ArmorAdjustedDurability(
+                            enemy.MaxHealth, enemy.Shield, enemy.BaseArmor), group.Count),
+                        0);
+                })
+                .ToArray();
+        }
+
+        private static SimulationFailureMargin CaptureFailureMargin(
+            GameSession session,
+            IReadOnlyList<SimulationRemainingEnemy> remainingEnemies,
+            IReadOnlyList<SimulationRemainingEnemy> queuedEnemies)
+        {
+            var pressure = session.Waves.ActiveWave is { } activeWave
+                ? WavePressureAnalysis.Analyze(
+                    activeWave,
+                    session.Content.Enemies,
+                    session.Difficulty.EnemyHealthMultiplier,
+                    session.Difficulty.EnemySpeedMultiplier)
+                : null;
+            return new SimulationFailureMargin(
+                session.CurrentWave,
+                remainingEnemies.Sum(enemy => enemy.Count),
+                queuedEnemies.Sum(enemy => enemy.Count),
+                FiniteSum(remainingEnemies.Select(enemy => enemy.CurrentHealth)),
+                FiniteSum(remainingEnemies.Select(enemy => enemy.Shield)),
+                FiniteSum(remainingEnemies.Select(enemy => enemy.ArmorAdjustedDurability)),
+                FiniteSum(queuedEnemies.Select(enemy => enemy.CurrentHealth)),
+                FiniteSum(queuedEnemies.Select(enemy => enemy.Shield)),
+                FiniteSum(queuedEnemies.Select(enemy => enemy.ArmorAdjustedDurability)),
+                remainingEnemies.Count == 0 ? 0 : remainingEnemies.Max(enemy => enemy.FurthestProgress),
+                pressure?.EnemyCount ?? 0,
+                pressure?.ArmorAdjustedDemand ?? 0);
+        }
+
+        private static float ArmorAdjustedDurability(float health, float shield, float armor) =>
+            MathF.Max(0, shield) + MathF.Max(0, health) * WavePressureAnalysis.ReferenceHitDamage /
+            MathF.Max(1f, WavePressureAnalysis.ReferenceHitDamage - MathF.Max(0, armor));
+
+        private static float FiniteProduct(float value, int count) =>
+            !float.IsFinite(value) || value <= 0 || count <= 0
+                ? 0
+                : (float)Math.Min(float.MaxValue, (double)value * count);
 
         private static float FiniteSum(IEnumerable<float> values)
         {

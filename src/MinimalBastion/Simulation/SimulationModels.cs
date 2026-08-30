@@ -74,10 +74,16 @@ public sealed class SimulationRunResult
     public required IReadOnlyDictionary<string, int> EnemyKills { get; init; }
     public required IReadOnlyDictionary<string, int> EnemyLeaks { get; init; }
     public IReadOnlyList<SimulationRemainingEnemy> RemainingEnemies { get; init; } = Array.Empty<SimulationRemainingEnemy>();
+    public IReadOnlyList<SimulationRemainingEnemy> QueuedEnemies { get; init; } = Array.Empty<SimulationRemainingEnemy>();
     public int QueuedEnemiesRemaining { get; init; }
     public float RemainingHealth => RemainingEnemies.Sum(enemy => enemy.CurrentHealth);
     public float RemainingShield => RemainingEnemies.Sum(enemy => enemy.Shield);
+    public float RemainingArmorAdjustedDurability => RemainingEnemies.Sum(enemy => enemy.ArmorAdjustedDurability);
+    public float QueuedHealth => QueuedEnemies.Sum(enemy => enemy.CurrentHealth);
+    public float QueuedShield => QueuedEnemies.Sum(enemy => enemy.Shield);
+    public float QueuedArmorAdjustedDurability => QueuedEnemies.Sum(enemy => enemy.ArmorAdjustedDurability);
     public int RemainingEnemyCount => RemainingEnemies.Sum(enemy => enemy.Count);
+    public SimulationFailureMargin? FailureMargin { get; init; }
     public required IReadOnlyList<WaveRunMetrics> Waves { get; init; }
     public IReadOnlyList<SimulationTowerPlacement> FinalTowers { get; init; } = Array.Empty<SimulationTowerPlacement>();
     public int EmergencyDeployments { get; init; }
@@ -105,7 +111,22 @@ public sealed record SimulationTowerPlacement(
     string? DoctrineId,
     string? SpecializationId,
     bool IsApex,
-    string? PowerNodeId);
+    TargetMode TargetMode,
+    int InvestedCredits,
+    float LifetimeDamage,
+    int LifetimeKills,
+    float LifetimeSupportDamageEquivalent,
+    float LifetimeExposeDamageEquivalent,
+    float LifetimeArmorBreakDamageEquivalent,
+    float LifetimeControlSeconds,
+    float LifetimeExposeSeconds,
+    float LifetimeArmorBreakSeconds,
+    string? PowerNodeId)
+{
+    public float LifetimeContributionDamage => LifetimeDamage + LifetimeSupportDamageEquivalent +
+        LifetimeExposeDamageEquivalent + LifetimeArmorBreakDamageEquivalent;
+    public float LifetimeContributionPerCredit => InvestedCredits <= 0 ? 0 : LifetimeContributionDamage / InvestedCredits;
+}
 
 public sealed record SimulationRemainingEnemy(
     string EnemyId,
@@ -116,7 +137,33 @@ public sealed record SimulationRemainingEnemy(
     float CurrentHealth,
     float MaxHealth,
     float Shield,
+    float ArmorAdjustedDurability,
     float FurthestProgress);
+
+public sealed record SimulationFailureMargin(
+    int Wave,
+    int LiveEnemyCount,
+    int QueuedEnemyCount,
+    float LiveHealth,
+    float LiveShield,
+    float LiveArmorAdjustedDurability,
+    float QueuedHealth,
+    float QueuedShield,
+    float QueuedArmorAdjustedDurability,
+    float FurthestProgress,
+    int WaveEnemyCount,
+    float WaveArmorAdjustedDurability)
+{
+    public int TotalEnemyCount => LiveEnemyCount + QueuedEnemyCount;
+    public float LiveDurability => LiveHealth + LiveShield;
+    public float QueuedDurability => QueuedHealth + QueuedShield;
+    public float TotalDurability => LiveDurability + QueuedDurability;
+    public float TotalArmorAdjustedDurability => LiveArmorAdjustedDurability + QueuedArmorAdjustedDurability;
+    public float RemainingEnemyFraction => WaveEnemyCount <= 0 ? 0 : TotalEnemyCount / (float)WaveEnemyCount;
+    public float RemainingArmorAdjustedDurabilityFraction => WaveArmorAdjustedDurability <= 0
+        ? 0
+        : TotalArmorAdjustedDurability / WaveArmorAdjustedDurability;
+}
 
 public sealed class TowerRunMetrics
 {

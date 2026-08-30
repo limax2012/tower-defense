@@ -1,9 +1,16 @@
 using MinimalBastion.Data;
 using MinimalBastion.Core;
+using MinimalBastion.Enemies;
 using MinimalBastion.Persistence;
 using MinimalBastion.Multiplayer;
 
 namespace MinimalBastion.Waves;
+
+public sealed record QueuedEnemyGroup(
+    string EnemyId,
+    string Rank,
+    EnemySignalRole SignalRole,
+    int Count);
 
 public sealed class WaveManager
 {
@@ -122,6 +129,41 @@ public sealed class WaveManager
     }
 
     public int EstimateRemainingIncludingLive(int liveCount) => QueuedEnemies + liveCount;
+
+    public IReadOnlyList<QueuedEnemyGroup> CaptureQueuedEnemies(MinimalBastion.GameSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        if (_activeDefinition is null || _groupIndex >= _activeDefinition.Groups.Count)
+            return Array.Empty<QueuedEnemyGroup>();
+
+        var order = new List<(string EnemyId, string Rank, EnemySignalRole SignalRole)>();
+        var counts = new Dictionary<(string EnemyId, string Rank, EnemySignalRole SignalRole), int>();
+        for (var groupIndex = _groupIndex; groupIndex < _activeDefinition.Groups.Count; groupIndex++)
+        {
+            var group = _activeDefinition.Groups[groupIndex];
+            var firstQueued = groupIndex == _groupIndex ? _spawnedInGroup : 0;
+            var rank = Enum.TryParse<EnemyRank>(group.Rank, true, out var parsedRank)
+                ? parsedRank.ToString()
+                : EnemyRank.Standard.ToString();
+            for (var spawnedInGroup = firstQueued; spawnedInGroup < group.Count; spawnedInGroup++)
+            {
+                var key = (
+                    group.EnemyId,
+                    rank,
+                    session.ResolveEnemySignalRole(_activeDefinition, groupIndex, spawnedInGroup, group));
+                if (!counts.TryGetValue(key, out var count)) order.Add(key);
+                counts[key] = count + 1;
+            }
+        }
+
+        return order
+            .Select(enemy => new QueuedEnemyGroup(
+                enemy.EnemyId,
+                enemy.Rank,
+                enemy.SignalRole,
+                counts[enemy]))
+            .ToArray();
+    }
 
     public WaveSaveData CaptureSaveData()
     {
