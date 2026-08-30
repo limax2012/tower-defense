@@ -6,9 +6,9 @@ The difficulty ladder applies progressively tighter numerical pressure to the sa
 
 | Difficulty | Enemy health | Enemy speed | Opening credits | Lives | Required authored waves |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Easy | 90% | 98% | 112.5% | 20 | 30 |
+| Easy | 94% | 99% | 100% | 20 | 30 |
 | Medium | 100% | 100% | 100% | 12 | 30 |
-| Hard | 108% | 101% | 100% | 6 | 30 |
+| Hard | 106% | 101% | 100% | 6 | 30 |
 | Bastion | 112% | 102% | 100% | 1 | 30 |
 
 All profiles require the final ten authored waves. Wave 21 unlocks Apex, and waves 21–30 test reinvestment, branch completion, coverage saturation, and the wave-30 boss after the opening has been solved. Hard combines elevated combat pressure with limited recovery from leaks, while Bastion adds the highest pressure profile and ends on any breach.
@@ -32,9 +32,9 @@ The current full validation sweep used ten seeds for every arena/directive combi
 
 | Difficulty | Wins | Runs | Completion | Average wave | Average lives |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Easy | 22 | 160 | 13.8% | 26.4 | 2.1 |
+| Easy | 21 | 160 | 13.1% | 25.4 | 2.2 |
 | Medium | 10 | 160 | 6.2% | 21.0 | 0.6 |
-| Hard | 1 | 160 | 0.6% | 16.6 | 0.0 |
+| Hard | 4 | 160 | 2.5% | 17.5 | 0.1 |
 | Bastion | 0 | 160 | 0.0% | 10.6 | 0.0 |
 
 These bands keep the ladder strictly ordered for the deterministic agent across the complete 30-wave campaign. The staged late-income reductions sharply reduce clears from wave 15 onward: Easy still reaches the finale most consistently, while the small Medium, Hard, and Bastion samples are now predominantly progression measurements rather than completion estimates. Bastion remains deliberately aspirational: one leak ends the run, and no run in this fixed-seed sweep was flawless. These percentages are not forecasts of literal human win rates: a person can adapt across attempts, interpret spatial patterns, preserve a reserve for the final act, and deliberately reproduce a successful layout in ways the agent cannot.
@@ -46,8 +46,8 @@ The same sweep exposes a major limitation in the Experienced policy at Bastion:
 | Arena | Hard clears | Bastion clears |
 | --- | ---: | ---: |
 | Foundry Loop | 0/40 | 0/40 |
-| Crosswind Basin | 0/40 | 0/40 |
-| Prism Circuit | 1/40 | 0/40 |
+| Crosswind Basin | 1/40 | 0/40 |
+| Prism Circuit | 3/40 | 0/40 |
 | Surge Divide | 0/40 | 0/40 |
 
 Prism remains overrepresented and Surge underrepresented in bot clears. Human evidence is materially better on Surge: informed players discovered the intended plan—early node use, Fastest Frost control, Arc group damage, and timely armor/shield counters—and cleared it after limited iteration. That does not prove Surge is easy; it means a bot zero remains a lower-bound warning rather than evidence of impossibility.
@@ -64,7 +64,7 @@ No map geometry change is justified by these aggregate percentages alone.
 Directive comparisons use Experienced-agent matrices at the 30-wave target. No restricted directive receives compensating opening credits.
 
 - **Standard** is the complete strategic baseline.
-- **Signal Gauntlet** changes priority and defensive reliability through signal enemies and disruption. Accelerator grants 20% speed, Restorer repairs 10% maximum health every 5 seconds, Bulwark grants a 10% shield every 5 seconds up to a 20% reserve, and Jammer suppresses every combat tower in its pulse radius. Disruptor is the precision counterpart: every 5 seconds it directly pauses one high-investment tower, with modest rank-based pause and reach increases. Wave 20 uses one ordinary Restorer and one Jammer around the boss Disruptor so the milestone emphasizes its boss mechanic instead of stacking the full alternating carrier schedule. The current 160-run cross-difficulty sample produced one clear and averaged wave 14.6; the Experienced agent uses Support targeting on appropriate towers.
+- **Signal Gauntlet** changes priority and defensive reliability through signal enemies and disruption. Accelerator grants 20% speed, Restorer repairs 10% maximum health every 5 seconds, Bulwark grants a 10% shield every 5 seconds up to a 20% reserve, and Jammer suppresses every combat tower in its pulse radius. Disruptor is the precision counterpart: every 5 seconds it directly pauses one high-investment tower in reach, with modest rank-based pause and reach increases. Wave 20 uses one ordinary Restorer and one Jammer around the boss Disruptor so the milestone emphasizes its boss mechanic instead of stacking the full alternating carrier schedule. The current 160-run cross-difficulty sample produced two Easy clears and averaged wave 13.9; the Experienced agent uses Support targeting on appropriate towers.
 - **Core Six** is a thematic roster puzzle, not an assertion that every restricted roster must be numerically harder than Standard. Its available towers form a strong economical progression, so it no longer receives bonus opening credits.
 - **Entrenched** removes correction and temporary rescue. Its lower Hard completion is consistent with permanent placement mistakes and no Protocol/Plate fallback.
 

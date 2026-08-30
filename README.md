@@ -103,9 +103,9 @@ Surge Nodes grant focused attack-rate, range, damage, or armor-piercing bonuses.
 
 | Difficulty | Enemy health | Enemy speed | Starting credits | Lives | Campaign waves |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Easy | 90% | 98% | 112.5% | 20 | 30 |
+| Easy | 94% | 99% | 100% | 20 | 30 |
 | Medium | 100% | 100% | 100% | 12 | 30 |
-| Hard | 108% | 101% | 100% | 6 | 30 |
+| Hard | 106% | 101% | 100% | 6 | 30 |
 | Bastion | 112% | 102% | 100% | 1 | 30 |
 
 Tower statistics do not change with difficulty, wave number, map, or elapsed time.

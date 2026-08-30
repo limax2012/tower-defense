@@ -426,7 +426,7 @@ internal static class Program
         Check.Equal(6, hard.Economy.StartingLives, "hard starting lives");
         Check.Equal(400, normal.Economy.Credits, "medium starting credits");
         Check.Equal(12, normal.Economy.StartingLives, "medium starting lives");
-        Check.Equal(450, easy.Economy.Credits, "easy starting credit allowance");
+        Check.Equal(400, easy.Economy.Credits, "easy preserves the authored starting economy");
         Check.Equal(20, easy.Economy.StartingLives, "easy starting lives");
         Check.Equal(400, bastion.Economy.Credits, "bastion preserves the uncompromised starting economy");
         Check.Equal(1, bastion.Economy.StartingLives, "bastion ends on the first breach");
@@ -440,9 +440,17 @@ internal static class Program
             "setup intel includes the final campaign act and capstone boss");
         Check.Nearly(1.12f, bastion.Difficulty.EnemyHealthMultiplier, "bastion health pressure");
         Check.Nearly(1.02f, bastion.Difficulty.EnemySpeedMultiplier, "bastion speed pressure");
-        Check.Nearly(1.08f, hard.Difficulty.EnemyHealthMultiplier, "hard health pressure");
+        Check.Nearly(1.06f, hard.Difficulty.EnemyHealthMultiplier, "hard health pressure");
         Check.Nearly(1.01f, hard.Difficulty.EnemySpeedMultiplier, "hard speed pressure");
-        Check.True(hard.Difficulty.ModifierSummary.Contains("ENEMY HP 108%") &&
+        Check.Nearly(0.94f, easy.Difficulty.EnemyHealthMultiplier, "easy health pressure");
+        Check.Nearly(0.99f, easy.Difficulty.EnemySpeedMultiplier, "easy speed pressure");
+        Check.Nearly(1f, easy.Difficulty.StartingCreditsMultiplier, "easy uses the authored starting economy");
+        Check.True(easy.Difficulty.ModifierSummary.Contains("ENEMY HP 94%") &&
+            easy.Difficulty.ModifierSummary.Contains("SPEED 99%") &&
+            easy.Difficulty.ModifierSummary.Contains("START CREDITS 100%") &&
+            easy.Difficulty.ModifierSummary.EndsWith("20 LIVES | 30 WAVES"),
+            "easy selector exposes its lower combat-pressure profile");
+        Check.True(hard.Difficulty.ModifierSummary.Contains("ENEMY HP 106%") &&
             hard.Difficulty.ModifierSummary.Contains("SPEED 101%") &&
             hard.Difficulty.ModifierSummary.EndsWith("6 LIVES | 30 WAVES"),
             "hard selector exposes a distinct pressure profile below bastion");
@@ -462,9 +470,12 @@ internal static class Program
 
         hard.SpawnEnemy("t1_crawler", 1, 1);
         normal.SpawnEnemy("t1_crawler", 1, 1);
-        Check.Nearly(75.6f, hard.Enemies[0].MaxHealth, "hard applies its enemy health profile");
+        easy.SpawnEnemy("t1_crawler", 1, 1);
+        Check.Nearly(74.2f, hard.Enemies[0].MaxHealth, "hard applies its enemy health profile");
         Check.Nearly(70, normal.Enemies[0].MaxHealth, "medium keeps authored enemy health");
         Check.Nearly(70, normal.Enemies[0].CurrentSpeed, "medium keeps authored enemy speed");
+        Check.Nearly(65.8f, easy.Enemies[0].MaxHealth, "easy applies its enemy health profile");
+        Check.Nearly(69.3f, easy.Enemies[0].CurrentSpeed, "easy applies its enemy speed profile");
 
         var normalPersist = new GameSession(content, "foundry_loop", "normal");
         var normalSave = normalPersist.CaptureSaveGame();

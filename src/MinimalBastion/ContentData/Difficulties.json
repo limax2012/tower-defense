@@ -2,10 +2,10 @@
   {
     "id": "easy",
     "displayName": "Easy",
-    "description": "Enemy health 90% | speed 98% | starting credits 113%.",
-    "enemyHealthMultiplier": 0.90,
-    "enemySpeedMultiplier": 0.98,
-    "startingCreditsMultiplier": 1.125,
+    "description": "Enemy health 94% | speed 99%.",
+    "enemyHealthMultiplier": 0.94,
+    "enemySpeedMultiplier": 0.99,
+    "startingCreditsMultiplier": 1.0,
     "startingLives": 20,
     "accent": "#2AC275"
   },
@@ -22,8 +22,8 @@
   {
     "id": "hard",
     "displayName": "Hard",
-    "description": "Enemy health 108% | speed 101%.",
-    "enemyHealthMultiplier": 1.08,
+    "description": "Enemy health 106% | speed 101%.",
+    "enemyHealthMultiplier": 1.06,
     "enemySpeedMultiplier": 1.01,
     "startingCreditsMultiplier": 1.0,
     "startingLives": 6,

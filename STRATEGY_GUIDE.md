@@ -125,10 +125,10 @@ The lower starting economy assumes early node use. Large nodes can geometrically
 
 ## Difficulty and directive expectations
 
-- **Easy:** 90% enemy health, 98% speed, 112.5% starting credits, 20 lives, and a 30-wave campaign.
+- **Easy:** 94% enemy health, 99% speed, standard starting credits, 20 lives, and a 30-wave campaign.
 - **Medium:** authored health, speed, and economy with 12 lives and a 30-wave campaign.
-- **Hard:** 112% health, 102% speed, six lives, and a 30-wave campaign.
-- **Bastion:** Hard combat scaling, one life, and the same complete 30-wave campaign. Any breach ends the run.
+- **Hard:** 106% health, 101% speed, six lives, and a 30-wave campaign.
+- **Bastion:** 112% health, 102% speed, one life, and the same complete 30-wave campaign. Any breach ends the run.
 
 Standard tests the complete toolset. Signal Gauntlet adds support carriers and tower disruption. Core Six is a roster puzzle rather than a universal numerical handicap. Entrenched tests permanent planning by removing tactical reserves, Protocols, selling, and the Forge.
 
