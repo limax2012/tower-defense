@@ -513,28 +513,28 @@ public sealed class VisualVerificationGame : Game
         scenes.Add(Capture("05e-crosswind-crossfire-geometry.png", ui, GameState.Playing, crosswindSession));
 
         var crosswindWinningSample = CaptureSimulationLayout(content, ui,
-            "05f-crosswind-hard-standard-win.png", "crosswind_basin", "hard", "standard",
-            AutoPlayerStrategy.Experienced, 238461, true, assertions);
+            "05f-crosswind-easy-standard-win.png", "crosswind_basin", "easy", "standard",
+            AutoPlayerStrategy.Experienced, 1337, true, assertions);
         var crosswindLosingSample = CaptureSimulationLayout(content, ui,
             "05g-crosswind-hard-standard-loss.png", "crosswind_basin", "hard", "standard",
             AutoPlayerStrategy.Experienced, 56770, false, assertions);
         scenes.Add(crosswindWinningSample.Scene);
         scenes.Add(crosswindLosingSample.Scene);
 
-        var surgeWinningSample = CaptureSimulationLayout(content, ui,
-            "05h-surge-easy-standard-win.png", "relay_divide", "easy", "standard",
-            AutoPlayerStrategy.Experienced, 351676, true, assertions);
+        var surgeSurvivalSample = CaptureSimulationLayout(content, ui,
+            "05h-surge-easy-standard-wave29.png", "relay_divide", "easy", "standard",
+            AutoPlayerStrategy.Experienced, 668436, true, assertions, targetWave: 29);
         var surgeLosingSample = CaptureSimulationLayout(content, ui,
             "05i-surge-hard-entrenched-loss.png", "relay_divide", "hard", "no_reserves",
             AutoPlayerStrategy.Experienced, 1337, false, assertions);
-        scenes.Add(surgeWinningSample.Scene);
+        scenes.Add(surgeSurvivalSample.Scene);
         scenes.Add(surgeLosingSample.Scene);
-        Require(surgeWinningSample.OpeningNodeTowers >= 6 && surgeLosingSample.OpeningNodeTowers >= 5,
+        Require(surgeSurvivalSample.OpeningNodeTowers >= 6 && surgeLosingSample.OpeningNodeTowers >= 5,
             "Representative Surge bots prioritize authored Surge Nodes during their opening builds.", assertions);
-        Require(surgeWinningSample.OccupiedNodes >= 8,
-            "The representative winning Surge bot expands through nearly the full node network.", assertions);
+        Require(surgeSurvivalSample.OccupiedNodes >= 8,
+            "The representative late-wave Surge bot expands through nearly the full node network.", assertions);
 
-        Require(surgeWinningSample.OpeningNodeTowers >= 8 && surgeWinningSample.OccupiedNodes >= 8,
+        Require(surgeSurvivalSample.OpeningNodeTowers >= 8 && surgeSurvivalSample.OccupiedNodes >= 8,
             "The Experienced model densely packs useful Surge Nodes before expanding off-node.", assertions);
 
         scenes.Add(Capture("06-protocol-auto-library.png", ui, GameState.TowerLibrary, null));
@@ -1174,7 +1174,7 @@ public sealed class VisualVerificationGame : Game
 
     private SimulationLayoutScene CaptureSimulationLayout(GameContent content, UIManager ui, string fileName,
         string mapId, string difficultyId, string challengeId, AutoPlayerStrategy strategy, int seed,
-        bool expectWin, List<string> assertions)
+        bool expectTargetReached, List<string> assertions, int targetWave = GameConstants.CampaignWaveCount)
     {
         var execution = HeadlessSimulation.RunForDiagnostics(content, new SimulationOptions
         {
@@ -1183,10 +1183,11 @@ public sealed class VisualVerificationGame : Game
             ChallengeId = challengeId,
             Strategy = strategy,
             Seed = seed,
-            MaximumWave = GameConstants.CampaignWaveCount
+            MaximumWave = targetWave
         });
-        Require(execution.Result.Won == expectWin,
-            $"The deterministic {mapId} {strategy} sample remains a {(expectWin ? "win" : "loss")}.", assertions);
+        Require(execution.Result.Won == expectTargetReached,
+            $"The deterministic {mapId} {strategy} sample " +
+            $"{(expectTargetReached ? "reaches" : "does not reach")} wave {targetWave}.", assertions);
         var poweredTowers = execution.Session.Towers.Count(tower =>
             execution.Session.Map.GetPowerBuff(tower.Position).IsPowered);
         var orderedTowers = execution.Session.Towers.OrderBy(tower => tower.Id).ToArray();

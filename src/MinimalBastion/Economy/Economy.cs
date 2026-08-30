@@ -73,9 +73,6 @@ public sealed class Economy
             MidpointRounding.AwayFromZero));
     }
 
-    public static float EffectiveKillRewardMultiplier(int waveNumber) =>
-        CalculateKillRewardMultiplier(waveNumber) * CalculateIncomeMultiplier(waveNumber);
-
     public void AwardWave(int waveNumber)
     {
         var amount = CalculateWaveReward(waveNumber);

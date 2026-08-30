@@ -1728,9 +1728,6 @@ public sealed class GameSession
         return session;
     }
 
-    public float EffectiveKillRewardMultiplier(WaveDefinition wave) =>
-        EconomyService.EffectiveKillRewardMultiplier(wave.Number);
-
     public void AwardWaveCompletion(WaveDefinition wave)
     {
         Economy.AwardWave(wave.Number);
