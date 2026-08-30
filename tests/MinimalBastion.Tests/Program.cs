@@ -440,6 +440,12 @@ internal static class Program
             "setup intel includes the final campaign act and capstone boss");
         Check.Nearly(1.12f, bastion.Difficulty.EnemyHealthMultiplier, "bastion health pressure");
         Check.Nearly(1.02f, bastion.Difficulty.EnemySpeedMultiplier, "bastion speed pressure");
+        Check.Nearly(1.08f, hard.Difficulty.EnemyHealthMultiplier, "hard health pressure");
+        Check.Nearly(1.01f, hard.Difficulty.EnemySpeedMultiplier, "hard speed pressure");
+        Check.True(hard.Difficulty.ModifierSummary.Contains("ENEMY HP 108%") &&
+            hard.Difficulty.ModifierSummary.Contains("SPEED 101%") &&
+            hard.Difficulty.ModifierSummary.EndsWith("6 LIVES | 30 WAVES"),
+            "hard selector exposes a distinct pressure profile below bastion");
         Check.True(bastion.Difficulty.ModifierSummary.Contains("ENEMY HP 112%") &&
             bastion.Difficulty.ModifierSummary.Contains("SPEED 102%") &&
             bastion.Difficulty.ModifierSummary.EndsWith("1 LIFE | 30 WAVES"),
@@ -456,7 +462,7 @@ internal static class Program
 
         hard.SpawnEnemy("t1_crawler", 1, 1);
         normal.SpawnEnemy("t1_crawler", 1, 1);
-        Check.Nearly(78.4f, hard.Enemies[0].MaxHealth, "hard applies its enemy health profile");
+        Check.Nearly(75.6f, hard.Enemies[0].MaxHealth, "hard applies its enemy health profile");
         Check.Nearly(70, normal.Enemies[0].MaxHealth, "medium keeps authored enemy health");
         Check.Nearly(70, normal.Enemies[0].CurrentSpeed, "medium keeps authored enemy speed");
 
