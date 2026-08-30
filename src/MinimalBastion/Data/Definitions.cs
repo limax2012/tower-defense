@@ -203,6 +203,7 @@ public sealed class TowerProtocolDefinition
     public string AutoTriggerMode { get; set; } = ProtocolAutoTriggerModes.Coverage;
     public int AutoTriggerCount { get; set; } = 4;
     public int AutoTriggerTargetCount { get; set; }
+    public bool FireOnActivation { get; set; }
     public float BurstRadius { get; set; }
     public float BurstDamage { get; set; }
     public string BurstStatus { get; set; } = "";

@@ -113,6 +113,7 @@ internal static class Program
             ("endless Apex upgrades", EndlessApexUpgrades),
             ("tower overdrive", TowerOverdrive),
             ("authored tower protocols", AuthoredTowerProtocols),
+            ("Shard Fan activation volley", ShardFanActivationVolley),
             ("emergency pulse plates", EmergencyPulsePlates),
             ("charge forge production", ChargeForgeProduction),
             ("checkpoint round trip", CheckpointRoundTrip),
@@ -370,6 +371,9 @@ internal static class Program
             "Watchtower retains a distinct range advantage");
         Check.True(shard.Levels.All(level => level.ArmorPierce > 0),
             "Shard Fan retains a short-range payoff into mixed armored crowds");
+        Check.True(shard.Protocol.FireOnActivation && shard.Protocol.BurstDamage == 0 && shard.Protocol.BurstRadius == 0 &&
+                   ProtocolAutoTriggerModes.Normalize(shard.Protocol.AutoTriggerMode) == ProtocolAutoTriggerModes.Coverage,
+            "Shard Fan Protocol uses its scalable fan attack and waits for targets in firing range");
 
         var frost = content.Towers["frost_spire"];
         var permafrost = frost.Specializations.Single(x => x.Id == "permafrost").Level;
@@ -4663,6 +4667,10 @@ internal static class Program
         Check.True(breakerLiveProtocol.Contains("PULSE 20 / AREA 185", StringComparison.Ordinal) &&
             breakerLiveProtocol.Contains("BREAK 4/5s", StringComparison.Ordinal),
             "live Protocol Intel prioritizes the immediate area payload and status");
+        var shardProtocol = TowerInfo.ProtocolLibrarySummary(content.Towers["shard_fan"]);
+        Check.True(shardProtocol.Contains("FREE VOLLEY", StringComparison.Ordinal) &&
+                   !shardProtocol.Contains("PULSE", StringComparison.Ordinal),
+            "Shard Fan Protocol Intel describes its build-scaled opening volley");
         Check.True(TowerInfo.ProtocolEffectSummary(content.Towers["needle_turret"].Protocol, false)
                 .StartsWith("WHEN ACTIVE", StringComparison.Ordinal),
             "ready Protocol Intel identifies its boost as conditional rather than currently applied");
@@ -5902,6 +5910,44 @@ internal static class Program
         }
 
         Check.Equal(10, verified, "every authored tower Protocol is mechanically verified");
+    }
+
+    private static void ShardFanActivationVolley()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var authored = new ContentLoader(root).Load();
+        var fixture = Session();
+        var content = new GameContent
+        {
+            Towers = authored.Towers,
+            Enemies = fixture.Content.Enemies,
+            Map = fixture.Content.Map,
+            Waves = fixture.Content.Waves,
+            Tactics = authored.Tactics
+        };
+        var session = new GameSession(content);
+        var definition = authored.Towers["shard_fan"];
+        var tower = new TowerInstance(1, definition, new Vector2(50, 90));
+        Check.True(tower.TryChooseDoctrine("shard_temper") && tower.TrySpecialize("lance_fan") && tower.TryApexUpgrade(),
+            "create an Apex Piercing Fan Protocol fixture");
+        session.Towers.Add(tower);
+        session.SpawnEnemy("enemy", 1, 1);
+        session.Enemies.Single().UpdateMovement(5, session.Map.Path);
+        tower.CooldownRemaining = 0.37f;
+
+        Check.True(session.TryOverdriveTower(tower.Id), "activate Razorstorm");
+        Check.Equal(tower.Level.PelletCount, session.Projectiles.Projectiles.Count,
+            "Razorstorm fires the current build's complete fan");
+        Check.Nearly(0.37f, tower.CooldownRemaining, "Razorstorm volley does not delay the next scheduled attack");
+        var expectedDamage = session.GetEffectiveDamage(tower, tower.Level.Damage);
+        var expectedPierce = session.GetEffectiveArmorPierce(tower, tower.Level.ArmorPierce);
+        foreach (var projectile in session.Projectiles.Projectiles)
+        {
+            Check.Nearly(expectedDamage, projectile.Payload.Damage,
+                "Razorstorm volley uses current build and active Protocol damage");
+            Check.Nearly(expectedPierce, projectile.Payload.ArmorPierce,
+                "Razorstorm volley uses current build armor pierce");
+        }
     }
 
     private static GameSession Session()

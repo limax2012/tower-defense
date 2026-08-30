@@ -811,7 +811,7 @@ public sealed class GameSession
             return false;
         tower.ActivateOverdrive();
         OverdriveCooldownRemaining = tower.Protocol.CooldownSeconds;
-        ApplyProtocolBurst(tower);
+        ApplyProtocolActivation(tower);
         if (tower.Protocol.BurstRadius > 0 &&
             (tower.Protocol.BurstDamage > 0 || !string.IsNullOrWhiteSpace(tower.Protocol.BurstStatus)))
         {
@@ -943,9 +943,11 @@ public sealed class GameSession
             Vector2.DistanceSquared(supportTower.Position, recipient.Position) <= auraRangeSquared).ToArray();
     }
 
-    private void ApplyProtocolBurst(TowerInstance tower)
+    private void ApplyProtocolActivation(TowerInstance tower)
     {
         var protocol = tower.Protocol;
+        if (protocol.FireOnActivation)
+            _towerSystem.TryFireImmediate(tower, this);
         if (protocol.BurstRadius <= 0 || (protocol.BurstDamage <= 0 && string.IsNullOrWhiteSpace(protocol.BurstStatus))) return;
         StatusType? statusType = Enum.TryParse<StatusType>(protocol.BurstStatus, true, out var parsedStatus) ? parsedStatus : null;
         foreach (var enemy in Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped &&

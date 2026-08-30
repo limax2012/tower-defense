@@ -19,14 +19,23 @@ public sealed class TowerSystem
             tower.CooldownRemaining -= deltaSeconds;
             if (tower.IsDisrupted) continue;
             if (tower.CooldownRemaining > 0) continue;
-            var target = _targetSelector.Select(tower.Position, session.GetEffectiveRange(tower), tower.TargetMode, session.Enemies);
-            if (target is null) continue;
-            if (!_behaviors.TryGetValue(tower.Definition.Behavior, out var behavior))
-                _behaviors[tower.Definition.Behavior] = behavior = TowerBehaviorRegistry.Create(tower.Definition.Behavior);
-            behavior.Attack(new TowerInstanceContext { Tower = tower, Target = target, Session = session });
-            tower.OnFired();
+            if (!TryFire(tower, session)) continue;
             var attacksPerSecond = session.GetEffectiveAttacksPerSecond(tower);
             tower.CooldownRemaining = attacksPerSecond <= 0 ? 0.5f : 1f / attacksPerSecond;
         }
+    }
+
+    public bool TryFireImmediate(TowerInstance tower, MinimalBastion.GameSession session) =>
+        !tower.IsSandboxDisabled && !tower.IsSupport && TryFire(tower, session);
+
+    private bool TryFire(TowerInstance tower, MinimalBastion.GameSession session)
+    {
+        var target = _targetSelector.Select(tower.Position, session.GetEffectiveRange(tower), tower.TargetMode, session.Enemies);
+        if (target is null) return false;
+        if (!_behaviors.TryGetValue(tower.Definition.Behavior, out var behavior))
+            _behaviors[tower.Definition.Behavior] = behavior = TowerBehaviorRegistry.Create(tower.Definition.Behavior);
+        behavior.Attack(new TowerInstanceContext { Tower = tower, Target = target, Session = session });
+        tower.OnFired();
+        return true;
     }
 }

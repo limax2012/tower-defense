@@ -198,6 +198,7 @@ public static class TowerInfo
     private static List<string> ProtocolBonusItems(TowerProtocolDefinition protocol)
     {
         var bonuses = new List<string>();
+        if (protocol.FireOnActivation) bonuses.Add("FREE VOLLEY");
         if (protocol.AttackSpeedBonus > 0) bonuses.Add($"RATE +{protocol.AttackSpeedBonus:P0}");
         if (protocol.DamageBonus > 0) bonuses.Add($"DAMAGE +{protocol.DamageBonus:P0}");
         if (protocol.RangeBonus > 0) bonuses.Add($"RANGE +{protocol.RangeBonus:P0}");

@@ -290,6 +290,7 @@ public static class DataValidator
                 protocol.RangeBonus < 0 || protocol.ArmorPierceBonus < 0 || protocol.AuraAttackSpeedBonus < 0 ||
                 protocol.AuraRangeBonus < 0 || protocol.BurstRadius < 0 || protocol.BurstDamage < 0 ||
                 protocol.BurstStatusMagnitude < 0 || protocol.BurstStatusDuration < 0 ||
+                (protocol.FireOnActivation && tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase)) ||
                 (ProtocolAutoTriggerModes.Normalize(protocol.AutoTriggerMode) == ProtocolAutoTriggerModes.ProtocolArea && protocol.BurstRadius <= 0) ||
                 (ProtocolAutoTriggerModes.Normalize(protocol.AutoTriggerMode) == ProtocolAutoTriggerModes.EngagedRecipients &&
                  !tower.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase)) ||

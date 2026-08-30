@@ -27,7 +27,7 @@
   {
     "id": "shard_fan", "displayName": "Shard Fan", "role": "Anti-swarm", "behavior": "pellet_burst", "purchaseCost": 150, "defaultTargetMode": "First",
     "visual": { "shape": "triangle", "primary": "#E58A32", "accent": "#7B480F", "radius": 18, "marks": 1, "ring": true },
-    "protocol": { "displayName": "Razorstorm", "summary": "Accelerates and hardens every shard", "durationSeconds": 5, "cooldownSeconds": 18, "attackSpeedBonus": 0.75, "damageBonus": 0.2, "autoTriggerMode": "protocol_area", "autoTriggerCount": 5, "burstRadius": 135, "burstDamage": 16 },
+    "protocol": { "displayName": "Razorstorm", "summary": "Fires a free fan, then boosts shard rate and damage", "durationSeconds": 5, "cooldownSeconds": 18, "attackSpeedBonus": 0.75, "damageBonus": 0.2, "fireOnActivation": true, "autoTriggerMode": "coverage", "autoTriggerCount": 5 },
     "apex": { "upgradeCost": 1100, "damageMultiplier": 1.25, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.15 },
     "tier2Doctrines": [
       { "id": "shard_scatter", "displayName": "Wide Scatter", "shortLabel": "WIDE", "summary": "Favors shard count and wider spread", "upgradeCost": 90, "damageMultiplier": 0.90, "attackSpeedMultiplier": 0.94, "rangeMultiplier": 0.96, "utilityMultiplier": 0.92, "pelletCountBonus": 1 },
