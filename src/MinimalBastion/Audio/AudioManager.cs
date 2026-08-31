@@ -193,7 +193,7 @@ public sealed class AudioManager : IDisposable
     {
         if (_killCooldown > 0) return;
         _killCooldown = 0.055f;
-        Play(Cue.Kill, 0.28f);
+        Play(Cue.Kill, 0.24f);
     }
 
     private void PlayLeak(bool defeat)
