@@ -12,3 +12,59 @@
 /importer:FontDescriptionImporter
 /processor:FontDescriptionProcessor
 /build:Fonts/Interface.spritefont
+
+#begin ../../MinimalBastion/Content/Audio/MainMenuLoop.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:../../MinimalBastion/Content/Audio/MainMenuLoop.wav;Audio/MainMenuLoop.wav
+
+#begin ../../MinimalBastion/Content/Audio/Music/BassyRollIn.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MinimalBastion/Content/Audio/Music/BassyRollIn.ogg;Audio/Music/BassyRollIn.ogg
+
+#begin ../../MinimalBastion/Content/Audio/Music/ChillStroll.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MinimalBastion/Content/Audio/Music/ChillStroll.ogg;Audio/Music/ChillStroll.ogg
+
+#begin ../../MinimalBastion/Content/Audio/Music/FocusedDanceParty.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MinimalBastion/Content/Audio/Music/FocusedDanceParty.ogg;Audio/Music/FocusedDanceParty.ogg
+
+#begin ../../MinimalBastion/Content/Audio/Music/IcyInvestigation.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MinimalBastion/Content/Audio/Music/IcyInvestigation.ogg;Audio/Music/IcyInvestigation.ogg
+
+#begin ../../MinimalBastion/Content/Audio/Music/KickbackHall.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MinimalBastion/Content/Audio/Music/KickbackHall.ogg;Audio/Music/KickbackHall.ogg
+
+#begin ../../MinimalBastion/Content/Audio/Music/MildlyUpbeatArpeggios.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MinimalBastion/Content/Audio/Music/MildlyUpbeatArpeggios.ogg;Audio/Music/MildlyUpbeatArpeggios.ogg
+
+#begin ../../MinimalBastion/Content/Audio/Music/NightclubHalo.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MinimalBastion/Content/Audio/Music/NightclubHalo.ogg;Audio/Music/NightclubHalo.ogg
+
+#begin ../../MinimalBastion/Content/Audio/Music/QuietInvestigation.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MinimalBastion/Content/Audio/Music/QuietInvestigation.ogg;Audio/Music/QuietInvestigation.ogg
+
+#begin ../../MinimalBastion/Content/Audio/Music/SneakFocusMission.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MinimalBastion/Content/Audio/Music/SneakFocusMission.ogg;Audio/Music/SneakFocusMission.ogg
+
+#begin ../../MinimalBastion/Content/Audio/Music/XylophoneBallad.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MinimalBastion/Content/Audio/Music/XylophoneBallad.ogg;Audio/Music/XylophoneBallad.ogg

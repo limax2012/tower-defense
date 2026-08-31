@@ -17,6 +17,20 @@ $dotnet = if (Test-Path -LiteralPath $localDotnet) { $localDotnet } else { (Get-
 . (Join-Path $PSScriptRoot "release-version.ps1")
 $version = Get-MinimalBastionVersion -Repository $repository
 $archivePath = Join-Path $releasesRoot "MinimalBastion-$version-Browser.zip"
+$requiredContent = @(
+    "Content\Fonts\Interface.xnb",
+    "Content\Audio\MainMenuLoop.xnb",
+    "Content\Audio\Music\BassyRollIn.xnb",
+    "Content\Audio\Music\ChillStroll.xnb",
+    "Content\Audio\Music\FocusedDanceParty.xnb",
+    "Content\Audio\Music\IcyInvestigation.xnb",
+    "Content\Audio\Music\KickbackHall.xnb",
+    "Content\Audio\Music\MildlyUpbeatArpeggios.xnb",
+    "Content\Audio\Music\NightclubHalo.xnb",
+    "Content\Audio\Music\QuietInvestigation.xnb",
+    "Content\Audio\Music\SneakFocusMission.xnb",
+    "Content\Audio\Music\XylophoneBallad.xnb"
+)
 
 New-Item -ItemType Directory -Path $releasesRoot -Force | Out-Null
 foreach ($target in @($publishRoot, $siteRoot)) {
@@ -36,6 +50,11 @@ if ($LASTEXITCODE -ne 0) { throw "Browser publish failed with exit code $LASTEXI
 $publishedSite = Join-Path $publishRoot "wwwroot"
 if (-not (Test-Path -LiteralPath (Join-Path $publishedSite "index.html"))) {
     throw "Browser publish did not produce wwwroot\index.html."
+}
+foreach ($contentPath in $requiredContent) {
+    if (-not (Test-Path -LiteralPath (Join-Path $publishedSite $contentPath) -PathType Leaf)) {
+        throw "Browser publish is missing required content: $contentPath"
+    }
 }
 
 New-Item -ItemType Directory -Path $siteRoot -Force | Out-Null
@@ -66,6 +85,12 @@ $archiveCheck = [System.IO.Compression.ZipFile]::OpenRead($archivePath)
 try {
     if ($null -eq $archiveCheck.GetEntry("index.html")) {
         throw "Browser archive does not contain index.html at its root."
+    }
+    foreach ($contentPath in $requiredContent) {
+        $archiveContentPath = $contentPath.Replace('\', '/')
+        if ($null -eq $archiveCheck.GetEntry($archiveContentPath)) {
+            throw "Browser archive is missing required content: $archiveContentPath"
+        }
     }
     if ($archiveCheck.Entries.FullName.Where({ $_.Contains('\') }, 'First').Count -ne 0) {
         throw "Browser archive contains non-portable path separators."
