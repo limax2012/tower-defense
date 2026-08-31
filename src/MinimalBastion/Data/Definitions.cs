@@ -15,6 +15,19 @@ public sealed class GameContent
     public Dictionary<string, DifficultyDefinition> Difficulties { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, ChallengeDefinition> Challenges { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public TacticsDefinition Tactics { get; init; } = new();
+    public ReleaseNotesCatalog ReleaseNotes { get; init; } = new();
+}
+
+public sealed class ReleaseNotesCatalog
+{
+    public List<ReleaseNoteDefinition> Releases { get; set; } = new();
+    public ReleaseNoteDefinition? Latest => Releases.FirstOrDefault();
+}
+
+public sealed class ReleaseNoteDefinition
+{
+    public string Version { get; set; } = "";
+    public List<string> Changes { get; set; } = new();
 }
 
 public sealed class DifficultyDefinition

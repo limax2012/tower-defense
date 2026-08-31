@@ -44,7 +44,7 @@ dotnet restore MinimalBastion.sln -r win-x64 --disable-build-servers
 powershell -ExecutionPolicy Bypass -File scripts\publish-windows.ps1
 ```
 
-The published application is `.build\releases\windows\MinimalBastion.exe`, and the distributable archive is `.build\releases\MinimalBastion-Windows.zip`.
+The published application is `.build\releases\windows\MinimalBastion.exe`, and the distributable archive is `.build\releases\MinimalBastion-0.1.0-Windows.zip`.
 
 ### Browser build
 
@@ -76,13 +76,15 @@ Create a static browser package with:
 powershell -ExecutionPolicy Bypass -File scripts\publish-browser.ps1
 ```
 
-The script writes the static site to `.build\releases\browser` and creates `.build\releases\MinimalBastion-Browser.zip`. The archive has `index.html` at its root and can be uploaded as an HTML game to a static host such as itch.io. Browser saves, records, and settings are retained in browser storage for the site origin and are separate from the Windows files under `%LocalAppData%`. They persist across ordinary browser sessions, but do not transfer between browsers, devices, or different host origins and are removed when that site's stored data is cleared.
+The script writes the static site to `.build\releases\browser` and creates `.build\releases\MinimalBastion-0.1.0-Browser.zip`. The archive has `index.html` at its root and can be uploaded as an HTML game to a static host such as itch.io. Browser saves, records, and settings are retained in browser storage for the site origin and are separate from the Windows files under `%LocalAppData%`. They persist across ordinary browser sessions, but do not transfer between browsers, devices, or different host origins and are removed when that site's stored data is cleared.
 
 Build both release packages with:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\publish-releases.ps1
 ```
+
+The combined release script also creates matching release notes and SHA-256 checksums under `.build\releases`.
 
 The browser build contains the complete solo campaign, Endless, Sandbox, persistence, library, records, audio, settings, and fullscreen flow. Online co-op remains a Windows feature.
 
@@ -216,6 +218,7 @@ Reports are written under `.build\balance`. Filters include strategy, seed, run 
 
 ## Documentation
 
+- [CHANGELOG.md](CHANGELOG.md): concise player-facing release notes.
 - [GAME_DESIGN.md](GAME_DESIGN.md): current player-facing rules, progression, and design goals.
 - [TOWER_DEFENSE_DESIGN.md](TOWER_DEFENSE_DESIGN.md): current technical architecture and runtime invariants.
 - [AUTONOMOUS_BALANCE.md](AUTONOMOUS_BALANCE.md): simulation harness, commands, metrics, and measured baselines.

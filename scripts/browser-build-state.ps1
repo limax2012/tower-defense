@@ -19,8 +19,10 @@ function Get-BrowserBuildFingerprint {
         (Join-Path $Repository "Directory.Packages.props"),
         (Join-Path $Repository "global.json"),
         (Join-Path $Repository "NuGet.config"),
+        (Join-Path $Repository "CHANGELOG.md"),
         (Join-Path $Repository "scripts\browser-build-state.ps1"),
-        (Join-Path $Repository "scripts\publish-browser.ps1")
+        (Join-Path $Repository "scripts\publish-browser.ps1"),
+        (Join-Path $Repository "scripts\release-version.ps1")
     )) {
         if (Test-Path -LiteralPath $buildInput -PathType Leaf) {
             $files += Get-Item -LiteralPath $buildInput

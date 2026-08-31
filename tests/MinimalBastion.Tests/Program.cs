@@ -46,6 +46,7 @@ internal static class Program
         var tests = new (string Name, Action Test)[]
         {
             ("content counts", ContentCounts),
+            ("release identity and notes", ReleaseIdentityAndNotes),
             ("high-resolution viewport", HighResolutionViewport),
             ("persistent display and audio settings", PersistentUserSettings),
             ("gameplay music shuffle bag", GameplayMusicShuffleBag),
@@ -446,6 +447,30 @@ internal static class Program
         Check.True(beacon.Specializations.Any(x => x.Level.AuraAttackSpeedBonus >= 0.45f) &&
             beacon.Specializations.Any(x => x.Level.AuraRangeBonus >= 0.35f),
             "Beacon branches separate tempo from reach");
+    }
+
+    private static void ReleaseIdentityAndNotes()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var content = new ContentLoader(root).Load();
+        Check.Equal("0.1.0", BuildInfo.Version, "formal release version");
+        Check.True(content.ReleaseNotes.Latest is not null, "release notes contain a current entry");
+        Check.Equal(BuildInfo.Version, content.ReleaseNotes.Latest!.Version,
+            "release notes match the compiled build version");
+        Check.True(content.ReleaseNotes.Latest.Changes.SequenceEqual([
+                "Rebalanced campaigns and added music."
+            ], StringComparer.Ordinal),
+            "release notes preserve the approved player-facing changelog");
+
+        var ui = new UIManager(null!);
+        ui.ConfigureReleaseNotes(content.ReleaseNotes);
+        var bounds = ui.MainMenuReleaseNotesBounds;
+        Check.Equal(UiAction.ReleaseNotes,
+            ui.HandleMainMenu(WorldInput(new Vector2(bounds.Center.X, bounds.Center.Y)) with { LeftPressed = true }),
+            "title-screen version opens release notes");
+        Check.Equal(UiAction.MainMenu,
+            ui.HandleReleaseNotes(WorldInput(Vector2.Zero) with { EscapePressed = true }),
+            "release notes return to the title screen");
     }
 
     private static void DifficultyProfilesAndPersistence()

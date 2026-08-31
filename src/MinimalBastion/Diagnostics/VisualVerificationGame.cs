@@ -109,6 +109,14 @@ public sealed class VisualVerificationGame : Game
             "Main-menu battles resolve real enemy deaths through normal combat logic.", assertions);
         Require(ui.MainMenuBattleEscapes > 0,
             "Main-menu battles allow surviving enemies to reach the end of their paths.", assertions);
+        Require(ui.HandleMainMenu(Pointer(
+                    ui.MainMenuReleaseNotesBounds.Center.X,
+                    ui.MainMenuReleaseNotesBounds.Center.Y,
+                    leftPressed: true)) == UiAction.ReleaseNotes,
+            "The title-screen version opens the current release notes.", assertions);
+        scenes.Add(Capture("00a-release-notes.png", ui, GameState.ReleaseNotes, null));
+        Require(ui.HandleReleaseNotes(Pointer(0, 0) with { EscapePressed = true }) == UiAction.MainMenu,
+            "Release notes return to the title screen with Escape.", assertions);
         Require(ui.HandleMainMenu(Pointer(640, 440, leftPressed: true)) == UiAction.CoOp,
             "Online Co-op opens the connection screen without visiting setup.", assertions);
 
@@ -512,7 +520,7 @@ public sealed class VisualVerificationGame : Game
 
         var crosswindWinningSample = CaptureSimulationLayout(content, ui,
             "05f-crosswind-easy-standard-win.png", "crosswind_basin", "easy", "standard",
-            AutoPlayerStrategy.Experienced, 128041, true, assertions);
+            AutoPlayerStrategy.Control, 128041, true, assertions);
         var crosswindLosingSample = CaptureSimulationLayout(content, ui,
             "05g-crosswind-hard-standard-loss.png", "crosswind_basin", "hard", "standard",
             AutoPlayerStrategy.Experienced, 56770, false, assertions);
@@ -949,6 +957,7 @@ public sealed class VisualVerificationGame : Game
 
     private static void ConfigureUi(UIManager ui, GameContent content)
     {
+        ui.ConfigureReleaseNotes(content.ReleaseNotes);
         ui.ConfigureMaps(content.Maps.Values, content.WaveSets, content.Enemies);
         ui.ConfigureDifficulties(content.Difficulties.Values);
         ui.ConfigureChallenges(content.Challenges.Values);

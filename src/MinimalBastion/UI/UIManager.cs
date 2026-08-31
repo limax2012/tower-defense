@@ -20,6 +20,7 @@ public enum UiAction
     OpenSoloSetup,
     OpenCoOpSetup,
     Play,
+    ReleaseNotes,
     TowerLibrary,
     Settings,
     PreviewSettings,
@@ -163,6 +164,7 @@ public sealed class UIManager
     private bool _towerLibraryOpen;
     private float _visualTimeSeconds;
     private MainMenuBattleScene? _mainMenuBattleScene;
+    private ReleaseNotesCatalog _releaseNotes = new();
 
     public int RemoteCoOpSelectedTowerId => _remoteCoOpSelectedTowerId;
     internal bool IsTargetPickerOpen => _targetPickerOpen;
@@ -173,6 +175,7 @@ public sealed class UIManager
     internal int CareerMedalPage => _careerMedalPage;
     internal int CareerAchievementPage => _careerAchievementPage;
     internal IReadOnlyDictionary<TargetMode, Rectangle> TargetModeButtonBounds => _targetModeButtons;
+    internal Rectangle MainMenuReleaseNotesBounds => _mainMenuReleaseNotesButton;
     private UserSettings _settings = new();
     private string _settingsStatus = "";
     private bool _setupForCoOp;
@@ -205,6 +208,8 @@ public sealed class UIManager
     private readonly Rectangle _mainMenuLibraryButton = new(490, PlatformCapabilities.OnlineCoOp ? 520 : PlatformCapabilities.ExitCommand ? 495 : 520, 300, 42);
     private readonly Rectangle _mainMenuSettingsButton = new(490, PlatformCapabilities.OnlineCoOp ? 570 : PlatformCapabilities.ExitCommand ? 545 : 570, 300, 42);
     private readonly Rectangle _quitButton = new(490, PlatformCapabilities.OnlineCoOp ? 620 : 595, 300, 42);
+    private readonly Rectangle _mainMenuReleaseNotesButton = new(530, 672, 220, 25);
+    private readonly Rectangle _releaseNotesBackButton = new(500, 520, 280, 46);
     private readonly Rectangle _setupConfirmButton = new(438, 586, 270, 46);
     private readonly Rectangle _setupBackButton = new(722, 586, 120, 46);
     private readonly Rectangle[] _saveSlotRows =
@@ -459,6 +464,9 @@ public sealed class UIManager
 
     public UIManager(SpriteFont font) => _font = font;
 
+    public void ConfigureReleaseNotes(ReleaseNotesCatalog releaseNotes) =>
+        _releaseNotes = releaseNotes ?? throw new ArgumentNullException(nameof(releaseNotes));
+
     public void SetSaveState(bool available, string? status = null)
     {
         _saveAvailable = available;
@@ -599,6 +607,7 @@ public sealed class UIManager
     {
         if (!input.LeftPressed) return UiAction.None;
         var point = input.MousePosition.ToPoint();
+        if (_mainMenuReleaseNotesButton.Contains(point)) return UiAction.ReleaseNotes;
         var optionCount = PlatformCapabilities.OnlineCoOp ? 6 : PlatformCapabilities.ExitCommand ? 5 : 4;
         for (var index = 0; index < optionCount; index++)
         {
@@ -606,6 +615,14 @@ public sealed class UIManager
             return ActivateMainMenuSelection(index);
         }
         return UiAction.None;
+    }
+
+    public UiAction HandleReleaseNotes(InputSnapshot input)
+    {
+        if (input.EscapePressed || input.PausePressed || input.RightPressed) return UiAction.MainMenu;
+        return input.LeftPressed && _releaseNotesBackButton.Contains(input.MousePosition.ToPoint())
+            ? UiAction.MainMenu
+            : UiAction.None;
     }
 
     private UiAction ActivateMainMenuSelection(int selection)
@@ -2132,6 +2149,11 @@ public sealed class UIManager
             DrawMainMenu(batch, p);
             return;
         }
+        if (state == GameState.ReleaseNotes)
+        {
+            DrawReleaseNotes(batch, p);
+            return;
+        }
         if (state == GameState.GameSetup)
         {
             DrawGameSetup(batch, p);
@@ -3203,6 +3225,41 @@ public sealed class UIManager
         DrawButton(batch, p, _mainMenuSettingsButton, "SETTINGS", true, ColorPalette.Orange, ColorPalette.Paper);
         if (PlatformCapabilities.ExitCommand)
             DrawButton(batch, p, _quitButton, "QUIT", true, ColorPalette.Coral);
+
+        p.FillRect(batch, _mainMenuReleaseNotesButton, ColorPalette.PanelAlt);
+        p.DrawRect(batch, _mainMenuReleaseNotesButton, ColorPalette.Cobalt, 1);
+        DrawText(batch, $"v{BuildInfo.Version}  |  WHAT'S NEW",
+            new Vector2(_mainMenuReleaseNotesButton.Center.X, _mainMenuReleaseNotesButton.Center.Y),
+            ColorPalette.Cobalt, 0.46f, true);
+    }
+
+    private void DrawReleaseNotes(SpriteBatch batch, PrimitiveRenderer p)
+    {
+        DrawMenuFrame(batch, p);
+        DrawText(batch, "WHAT'S NEW", new Vector2(640, 112), ColorPalette.Ink, 1.9f, true);
+
+        var release = _releaseNotes.Latest;
+        var panel = new Rectangle(300, 205, 680, 220);
+        p.FillRect(batch, panel, ColorPalette.PanelAlt);
+        p.DrawRect(batch, panel, ColorPalette.CardOutline, 1);
+        p.FillRect(batch, new Rectangle(panel.X, panel.Y, panel.Width, 5), ColorPalette.Cobalt);
+
+        var version = release?.Version ?? BuildInfo.Version;
+        DrawText(batch, $"VERSION {version}", new Vector2(panel.X + 28, panel.Y + 30),
+            ColorPalette.Cobalt, 0.76f);
+        p.Line(batch, new Vector2(panel.X + 28, panel.Y + 72),
+            new Vector2(panel.Right - 28, panel.Y + 72), ColorPalette.Divider, 1);
+
+        var changes = release?.Changes ?? [];
+        for (var index = 0; index < changes.Count; index++)
+        {
+            var y = panel.Y + 100 + index * 38;
+            p.FillRect(batch, new Rectangle(panel.X + 30, y + 6, 7, 7), ColorPalette.Gold);
+            DrawFittedText(batch, changes[index], new Vector2(panel.X + 52, y),
+                ColorPalette.Ink, 0.66f, panel.Width - 82);
+        }
+
+        DrawButton(batch, p, _releaseNotesBackButton, "BACK", true, ColorPalette.Violet);
     }
 
     private void DrawGameSetup(SpriteBatch batch, PrimitiveRenderer p)

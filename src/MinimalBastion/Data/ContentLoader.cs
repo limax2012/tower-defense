@@ -21,6 +21,7 @@ public sealed class ContentLoader
         var tactics = Read<TacticsDefinition>("Tactics.json");
         var difficulties = Read<List<DifficultyDefinition>>("Difficulties.json");
         var challenges = Read<List<ChallengeDefinition>>("Challenges.json");
+        var releaseNotes = Read<ReleaseNotesCatalog>("Releases.json");
         var maps = LoadMaps();
         var waveSets = LoadWaveSets();
         if (!maps.TryGetValue("foundry_loop", out var map)) throw new InvalidDataException("No foundry_loop map was found.");
@@ -36,6 +37,7 @@ public sealed class ContentLoader
         ValidateIndependentCampaigns(maps, waveSets);
         DataValidator.ValidateDifficulties(difficulties);
         DataValidator.ValidateChallenges(challenges, towers);
+        DataValidator.ValidateReleaseNotes(releaseNotes);
 
         return new GameContent
         {
@@ -47,7 +49,8 @@ public sealed class ContentLoader
             WaveSets = waveSets,
             Difficulties = difficulties.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase),
             Challenges = challenges.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase),
-            Tactics = tactics
+            Tactics = tactics,
+            ReleaseNotes = releaseNotes
         };
     }
 
@@ -168,6 +171,22 @@ public sealed class ContentLoader
 
 public static class DataValidator
 {
+    public static void ValidateReleaseNotes(ReleaseNotesCatalog releaseNotes)
+    {
+        if (releaseNotes.Releases.Count == 0 ||
+            releaseNotes.Releases.Any(release =>
+                !System.Version.TryParse(release.Version, out _) ||
+                release.Changes.Count == 0 ||
+                release.Changes.Any(string.IsNullOrWhiteSpace)) ||
+            releaseNotes.Releases.Select(release => release.Version)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count() != releaseNotes.Releases.Count)
+            throw new InvalidDataException("Release notes are invalid.");
+
+        if (!releaseNotes.Releases[0].Version.Equals(BuildInfo.Version, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException(
+                $"Latest release notes are {releaseNotes.Releases[0].Version}, but this build is {BuildInfo.Version}.");
+    }
+
     public static void ValidateChallenges(IReadOnlyList<ChallengeDefinition> challenges, IReadOnlyList<TowerDefinition> towers)
     {
         if (challenges.Count < 2) throw new InvalidDataException("At least two modes are required.");

@@ -6,10 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>MinimalBastion</AssemblyName>
     <RootNamespace>MinimalBastion</RootNamespace>
-    <Version>0.1.0-playtest</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
-    <InformationalVersion>0.1.0-playtest</InformationalVersion>
     <ApplicationIcon />
     <StartupObject>MinimalBastion.Program</StartupObject>
     <ApplicationManifest>app.manifest</ApplicationManifest>

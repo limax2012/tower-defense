@@ -9,12 +9,14 @@ $buildRoot = Join-Path $repository ".build"
 $releasesRoot = Join-Path $buildRoot "releases"
 $publishRoot = Join-Path $releasesRoot ".browser-publish"
 $siteRoot = Join-Path $releasesRoot "browser"
-$archivePath = Join-Path $releasesRoot "MinimalBastion-Browser.zip"
 $statePath = Join-Path $releasesRoot ".browser-build-state.json"
 $projectPath = Join-Path $repository "src\MinimalBastion.Web\MinimalBastion.Web.csproj"
 $localDotnet = Join-Path $repository ".dotnet\dotnet.exe"
 $dotnet = if (Test-Path -LiteralPath $localDotnet) { $localDotnet } else { (Get-Command dotnet).Source }
 . (Join-Path $PSScriptRoot "browser-build-state.ps1")
+. (Join-Path $PSScriptRoot "release-version.ps1")
+$version = Get-MinimalBastionVersion -Repository $repository
+$archivePath = Join-Path $releasesRoot "MinimalBastion-$version-Browser.zip"
 
 New-Item -ItemType Directory -Path $releasesRoot -Force | Out-Null
 foreach ($target in @($publishRoot, $siteRoot)) {
@@ -38,6 +40,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $publishedSite "index.html"))) {
 
 New-Item -ItemType Directory -Path $siteRoot -Force | Out-Null
 Copy-Item -Path (Join-Path $publishedSite "*") -Destination $siteRoot -Recurse -Force
+Copy-Item -LiteralPath (Join-Path $repository "CHANGELOG.md") -Destination (Join-Path $siteRoot "CHANGELOG.md") -Force
 
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem

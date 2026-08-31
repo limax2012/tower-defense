@@ -50,6 +50,7 @@ public static class GameConstants
 public enum GameState
 {
     MainMenu,
+    ReleaseNotes,
     GameSetup,
     LoadingTransition,
     TowerLibrary,

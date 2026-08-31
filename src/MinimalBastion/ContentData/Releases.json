@@ -1,0 +1,10 @@
+{
+  "releases": [
+    {
+      "version": "0.1.0",
+      "changes": [
+        "Rebalanced campaigns and added music."
+      ]
+    }
+  ]
+}

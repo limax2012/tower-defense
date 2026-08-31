@@ -178,6 +178,7 @@ public sealed class Game1 : Game
 #endif
             var font = Content.Load<SpriteFont>("Fonts/Interface");
             _ui = new UIManager(font);
+            _ui.ConfigureReleaseNotes(_content.ReleaseNotes);
             _ui.ConfigureMaps(_content.Maps.Values, _content.WaveSets, _content.Enemies);
             _ui.ConfigureDifficulties(_content.Difficulties.Values);
             _ui.ConfigureChallenges(_content.Challenges.Values);
@@ -242,6 +243,9 @@ public sealed class Game1 : Game
         {
             case GameState.MainMenu:
                 HandleMenuAction(WithUiAudio(_ui.HandleMainMenu(input)));
+                break;
+            case GameState.ReleaseNotes:
+                HandleMenuAction(WithUiAudio(_ui.HandleReleaseNotes(input)));
                 break;
             case GameState.GameSetup:
                 HandleMenuAction(WithUiAudio(_ui.HandleGameSetup(input)));
@@ -408,6 +412,7 @@ public sealed class Game1 : Game
             BeginDefenseLoading(_ui.SelectedMapId, _ui.SelectedDifficultyId, _ui.SelectedChallengeId);
         }
         else if (action == UiAction.HostCoOp) BeginHostingCoOp();
+        else if (action == UiAction.ReleaseNotes) _state = GameState.ReleaseNotes;
         else if (action == UiAction.TowerLibrary) _state = GameState.TowerLibrary;
         else if (action == UiAction.Settings)
         {
