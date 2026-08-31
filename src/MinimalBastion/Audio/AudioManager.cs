@@ -66,7 +66,7 @@ public sealed class AudioManager : IDisposable
             _sounds[Cue.Defeat] = CreateTwoNoteCue(392, 330, 0.30f);
             _sounds[Cue.UiConfirm] = CreateTone(410, 620, 0.075f, WaveShape.Sine);
             _sounds[Cue.UiBack] = CreateTone(430, 300, 0.075f, WaveShape.Triangle);
-            _sounds[Cue.UiDelete] = CreateTone(230, 150, 0.10f, WaveShape.Saw);
+            _sounds[Cue.UiDelete] = CreateTwoNoteCue(420, 500, 0.11f);
             CreateTowerImpactPalette();
             TryStartMusic("menu");
         }
@@ -180,7 +180,7 @@ public sealed class AudioManager : IDisposable
 
     public void PlayUiConfirm() => Play(Cue.UiConfirm, 0.42f);
     public void PlayUiBack() => Play(Cue.UiBack, 0.36f);
-    public void PlayUiDelete() => Play(Cue.UiDelete, 0.42f);
+    public void PlayUiDelete() => Play(Cue.UiDelete, 0.30f);
 
     public static float MusicActivityTarget(bool waveActive, int liveEnemyCount, bool bossPresent)
     {
