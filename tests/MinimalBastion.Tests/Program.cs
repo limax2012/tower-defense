@@ -129,6 +129,8 @@ internal static class Program
             ("deterministic checkpoint beam search", DeterministicCheckpointBeamSearch),
             ("deterministic campaign candidate family", DeterministicCampaignCandidateFamily),
             ("campaign failure ranking", CampaignFailureRanking),
+            ("campaign partial beam broadening", CampaignPartialBeamBroadening),
+            ("campaign full beam stops broadening", CampaignFullBeamStopsBroadening),
             ("multi-wave campaign search artifacts", MultiWaveCampaignSearchArtifacts),
             ("compact campaign search trace", CompactCampaignSearchTrace),
             ("campaign search retry frontier", CampaignSearchRetryFrontier),
@@ -4259,6 +4261,203 @@ internal static class Program
             "failure ranking is independent of candidate enumeration order");
     }
 
+    private static void CampaignPartialBeamBroadening()
+    {
+        var (result, evaluatorCalls, partialManifestPersisted) = RunCampaignBroadeningFixture(beamWidth: 4);
+
+        Check.Equal(2, evaluatorCalls, "a partial first-round beam continues into the configured broadening round");
+        Check.True(partialManifestPersisted,
+            "partial beam broadening persists its exact attempt, cursor, dedupe set, and prior frontier before continuing");
+        Check.Equal(2, result.WaveAttempts.Count, "partial beam broadening records both deterministic attempts");
+        Check.True(result.WaveAttempts[0] is
+                   { Evaluations: 2, SuccessfulEvaluations: 2, RetainedStates: 2, Failures: 0 } &&
+                   result.WaveAttempts[1] is
+                   { Evaluations: 4, SuccessfulEvaluations: 2, RetainedStates: 4, Failures: 2 },
+            "partial beam broadening preserves tranche-local outcomes and cumulative retained counts");
+        Check.True(result.TotalEvaluations == 6 && result.Manifest.TotalEvaluations == 6 &&
+                   result.Manifest.EvaluatedConfigurationFingerprints.Count == 6,
+            "partial beam broadening preserves exact aggregate evaluation accounting");
+        Check.True(result.BestFailure is { Result: "SyntheticBroadeningFailure" } &&
+                   result.Manifest.BestFailure is { Result: "SyntheticBroadeningFailure" },
+            "partial beam broadening retains the best failure from every evaluated tranche");
+        Check.True(result.ResumeFrontier.Count == 4 &&
+                   result.ResumeFrontier.Select(state => state.CheckpointFingerprint)
+                       .Distinct(StringComparer.Ordinal).Count() == 4,
+            "successes from both broadening rounds combine into one full distinct beam");
+        Check.True(result.ResumeFrontier.Count(state => state.Checkpoint.Economy.Credits is >= 10_100 and < 10_200) == 2 &&
+                   result.ResumeFrontier.Count(state => state.Checkpoint.Economy.Credits is >= 10_200 and < 10_300) == 2,
+            "the retained beam contains states contributed by each broadening round");
+    }
+
+    private static void CampaignFullBeamStopsBroadening()
+    {
+        var (result, evaluatorCalls, _) = RunCampaignBroadeningFixture(beamWidth: 2);
+
+        Check.Equal(1, evaluatorCalls, "a full first-round beam skips later configured broadening rounds");
+        Check.True(result.WaveAttempts.Count == 1 && result.TotalEvaluations == 2 &&
+                   result.WaveAttempts[0] is
+                   { Evaluations: 2, SuccessfulEvaluations: 2, RetainedStates: 2, Failures: 0 },
+            "full-beam early exit preserves exact attempt and evaluation accounting");
+        Check.Equal(2, result.ResumeFrontier.Count, "the full first-round beam advances unchanged");
+    }
+
+    private static (CampaignSearchRunResult Result, int EvaluatorCalls, bool PartialManifestPersisted)
+        RunCampaignBroadeningFixture(int beamWidth)
+    {
+        var session = SessionWithWaves(2);
+        var checkpoint = session.CaptureSaveGame();
+        var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        var plan = new StrategyPlan
+        {
+            ArtifactId = $"campaign-broadening-{beamWidth}",
+            MapId = checkpoint.MapId,
+            DifficultyId = checkpoint.DifficultyId,
+            ChallengeId = checkpoint.ChallengeId,
+            BaseSeed = 6100 + beamWidth,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive
+        };
+        var evaluatorCalls = 0;
+        var partialManifestPersisted = false;
+
+        CheckpointSearchResult EvaluateBroadening(
+            GameContent content,
+            IReadOnlyList<CheckpointSearchState> parents,
+            IReadOnlyList<WavePlan> candidates,
+            SimulationOptions options,
+            int requestedBeamWidth)
+        {
+            evaluatorCalls++;
+            if (evaluatorCalls == 2)
+            {
+                var persisted = CampaignSearchArtifactStore.LoadManifest(Path.Combine(directory, "campaign-search.json"));
+                partialManifestPersisted = persisted.LastCompletedWave == 0 &&
+                                           persisted.NextBroadeningRound == 1 &&
+                                           persisted.TotalEvaluations == 2 &&
+                                           persisted.WaveAttempts.Count == 1 &&
+                                           persisted.WaveAttempts[0] is
+                                           { Evaluations: 2, SuccessfulEvaluations: 2, RetainedStates: 2 } &&
+                                           persisted.EvaluatedConfigurationFingerprints.Count == 2 &&
+                                           persisted.FrontierArtifacts.Count == 1 &&
+                                           persisted.FrontierArtifacts[0].CheckpointPath.StartsWith(
+                                               "wave-00/resume/", StringComparison.Ordinal);
+            }
+            var orderedCandidates = candidates.OrderBy(candidate => candidate.StableKey, StringComparer.Ordinal).ToArray();
+            var targetWave = orderedCandidates[0].Wave;
+            var successes = new List<CheckpointWaveSuccess>();
+            var failures = new List<CheckpointWaveFailure>();
+            foreach (var parent in parents.OrderBy(state => state.CheckpointFingerprint, StringComparer.Ordinal))
+            {
+                for (var index = 0; index < orderedCandidates.Length; index++)
+                {
+                    var candidate = orderedCandidates[index];
+                    if (index >= 2)
+                    {
+                        failures.Add(new CheckpointWaveFailure
+                        {
+                            ParentCheckpointFingerprint = parent.CheckpointFingerprint,
+                            WavePlan = candidate,
+                            Result = "SyntheticBroadeningFailure",
+                            LivesRemaining = parent.Checkpoint.Economy.Lives,
+                            CreditsUnspent = parent.Checkpoint.Economy.Credits,
+                            RemainingEnemies = Array.Empty<SimulationRemainingEnemy>(),
+                            QueuedEnemies = Array.Empty<SimulationRemainingEnemy>()
+                        });
+                        continue;
+                    }
+
+                    var nextCheckpoint = JsonSerializer.Deserialize<SaveGameData>(
+                        JsonSerializer.Serialize(parent.Checkpoint)) ??
+                                         throw new InvalidOperationException("Broadening fixture checkpoint clone failed.");
+                    nextCheckpoint.Waves.CurrentWaveNumber = targetWave;
+                    nextCheckpoint.Economy.Credits = 10_000 + evaluatorCalls * 100 + index;
+                    var state = CheckpointSearchState.Create(
+                        content,
+                        parent.Strategy.Append(candidate),
+                        nextCheckpoint);
+                    successes.Add(new CheckpointWaveSuccess
+                    {
+                        ParentCheckpointFingerprint = parent.CheckpointFingerprint,
+                        WavePlan = candidate,
+                        Simulation = new SimulationRunResult
+                        {
+                            MapId = parent.Checkpoint.MapId,
+                            DifficultyId = parent.Checkpoint.DifficultyId,
+                            ChallengeId = parent.Checkpoint.ChallengeId,
+                            Strategy = options.Strategy,
+                            Seed = candidate.DecisionSeed,
+                            Result = "WaveLimit",
+                            WaveReached = targetWave,
+                            LivesRemaining = nextCheckpoint.Economy.Lives,
+                            Kills = 0,
+                            EscapedEnemies = 0,
+                            CreditsEarned = 0,
+                            CreditsSpent = 0,
+                            CreditsUnspent = nextCheckpoint.Economy.Credits,
+                            SaleCreditsRecovered = 0,
+                            SimulatedSeconds = 0,
+                            Towers = new Dictionary<string, TowerRunMetrics>(),
+                            EnemyKills = new Dictionary<string, int>(),
+                            EnemyLeaks = new Dictionary<string, int>(),
+                            Waves = Array.Empty<WaveRunMetrics>()
+                        },
+                        State = state
+                    });
+                }
+            }
+
+            return new CheckpointSearchResult
+            {
+                TargetWave = targetWave,
+                BeamWidth = requestedBeamWidth,
+                Evaluations = parents.Count * orderedCandidates.Length,
+                SuccessfulEvaluations = successes,
+                RetainedStates = CheckpointBeamOptimizer.RankStates(
+                    successes.Select(success => success.State),
+                    requestedBeamWidth),
+                CampaignCompletions = Array.Empty<CheckpointCampaignCompletion>(),
+                Failures = failures
+            };
+        }
+
+        try
+        {
+            var result = CampaignStrategyOptimizer.Search(
+                session.Content,
+                [CheckpointSearchState.Create(session.Content, plan, checkpoint)],
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = beamWidth,
+                    CandidateCount = 2,
+                    MaximumWave = 1,
+                    BroadeningRounds = 1,
+                    BacktrackDepth = 0,
+                    MaximumRecoveryAttempts = 0,
+                    ArtifactDirectory = directory
+                },
+                null,
+                EvaluateBroadening);
+            if (evaluatorCalls == 2)
+            {
+                var firstTrace = StrategyArtifactStore.LoadSearchResult(
+                    Path.Combine(directory, result.WaveAttempts[0].TracePath!), session.Content);
+                var secondTrace = StrategyArtifactStore.LoadSearchResult(
+                    Path.Combine(directory, result.WaveAttempts[1].TracePath!), session.Content);
+                Check.True(firstTrace is
+                           { Evaluations: 2, SuccessfulEvaluations.Count: 2, RetainedStates.Count: 2, Failures.Count: 0 } &&
+                           secondTrace is
+                           { Evaluations: 4, SuccessfulEvaluations.Count: 2, RetainedStates.Count: 2, Failures.Count: 2 },
+                    "broadening traces retain exact tranche-local outcomes while the manifest count is cumulative");
+            }
+            return (result, evaluatorCalls, partialManifestPersisted);
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
     private static void MultiWaveCampaignSearchArtifacts()
     {
         var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
@@ -4808,11 +5007,13 @@ internal static class Program
                     BeamWidth = 2,
                     CandidateCount = 2,
                     MaximumWave = 1,
-                    BroadeningRounds = 0,
+                    BroadeningRounds = 2,
                     ArtifactDirectory = directory
                 });
             Check.Equal(CampaignSearchStatus.CampaignCompleted, result.Status,
                 "campaign optimizer captures final-wave completion without an inter-wave checkpoint");
+            Check.Equal(1, result.WaveAttempts.Count,
+                "campaign completion returns before later configured broadening rounds");
             Check.Equal(1, result.LastCompletedWave, "completed campaign records its final wave");
             Check.True(result.CampaignCompletions.Count > 0 && result.ResumeFrontier.Count == 0,
                 "campaign completion is retained separately from resumable checkpoint states");

@@ -578,6 +578,7 @@ public static class CampaignStrategyOptimizer
             var startingRound = firstAttemptedWave ? searchOptions.StartingBroadeningRound : 0;
             firstAttemptedWave = false;
             var failures = new List<CheckpointWaveFailure>();
+            var successfulStates = new List<CheckpointSearchState>();
             var advanced = false;
 
             for (var offset = 0; offset <= searchOptions.BroadeningRounds; offset++)
@@ -600,6 +601,8 @@ public static class CampaignStrategyOptimizer
                     evaluator);
                 totalEvaluations += waveResult.Evaluations;
                 failures.AddRange(waveResult.Failures);
+                successfulStates.AddRange(waveResult.SuccessfulEvaluations.Select(success => success.State));
+                var retainedStates = RankDistinctStates(successfulStates, searchOptions.BeamWidth);
                 var tracePath = PersistSearchTrace(
                     content,
                     artifactRoot,
@@ -613,7 +616,7 @@ public static class CampaignStrategyOptimizer
                     candidates.Count,
                     waveResult.Evaluations,
                     waveResult.SuccessfulEvaluations.Count,
-                    waveResult.RetainedStates.Count,
+                    retainedStates.Count,
                     waveResult.CampaignCompletions.Count,
                     waveResult.Failures.Count,
                     tracePath,
@@ -656,13 +659,15 @@ public static class CampaignStrategyOptimizer
                     };
                 }
 
-                if (waveResult.RetainedStates.Count > 0)
+                var exhaustedBroadening = offset == searchOptions.BroadeningRounds;
+                if (retainedStates.Count > 0 &&
+                    (retainedStates.Count >= searchOptions.BeamWidth || exhaustedBroadening))
                 {
-                    frontier = waveResult.RetainedStates;
+                    frontier = retainedStates;
                     ArchiveRecoveryLayer(
                         recoveryLayers,
                         targetWave,
-                        waveResult.SuccessfulEvaluations.Select(success => success.State),
+                        successfulStates,
                         frontier);
                     frontierArtifacts = PersistFrontier(content, artifactRoot, $"wave-{targetWave:D2}/frontier", frontier);
                     manifest = manifest with
