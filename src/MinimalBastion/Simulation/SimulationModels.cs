@@ -86,10 +86,24 @@ public sealed class SimulationRunResult
     public float QueuedArmorAdjustedDurability => QueuedEnemies.Sum(enemy => enemy.ArmorAdjustedDurability);
     public int RemainingEnemyCount => RemainingEnemies.Sum(enemy => enemy.Count);
     public SimulationFailureMargin? FailureMargin { get; init; }
+    public IReadOnlyList<SimulationEscapedEnemy> FatalEscapedEnemies { get; init; } = Array.Empty<SimulationEscapedEnemy>();
     [JsonIgnore]
-    public SimulationEscapedEnemy? FatalEscapedEnemy => FailureMargin?.FatalEscapedEnemy;
+    public SimulationEscapedEnemy? FatalEscapedEnemy => FatalEscapedEnemies.FirstOrDefault() ?? FailureMargin?.FatalEscapedEnemy;
+    public int FatalEscapedEnemyCount => FatalEscapedEnemies.Count > 0
+        ? FatalEscapedEnemies.Count
+        : FatalEscapedEnemy is null ? 0 : 1;
+    public float FatalEscapedArmorAdjustedDurability => FatalEscapedEnemies.Count > 0
+        ? FatalEscapedEnemies.Sum(enemy => enemy.ArmorAdjustedDurability)
+        : FatalEscapedEnemy?.ArmorAdjustedDurability ?? 0;
+    public int UnresolvedEnemyCount => RemainingEnemyCount + QueuedEnemiesRemaining + FatalEscapedEnemyCount;
+    public float UnresolvedArmorAdjustedDurability => RemainingArmorAdjustedDurability +
+        QueuedArmorAdjustedDurability + FatalEscapedArmorAdjustedDurability;
     public required IReadOnlyList<WaveRunMetrics> Waves { get; init; }
     public IReadOnlyList<SimulationTowerPlacement> FinalTowers { get; init; } = Array.Empty<SimulationTowerPlacement>();
+    public IReadOnlyList<SimulationPulsePlateDeployment> PulsePlateDeployments { get; init; } =
+        Array.Empty<SimulationPulsePlateDeployment>();
+    public IReadOnlyList<SimulationProtocolActivation> ProtocolActivations { get; init; } =
+        Array.Empty<SimulationProtocolActivation>();
     public int EmergencyDeployments { get; init; }
     public int EmergencyDirectPurchases { get; init; }
     public int EmergencyTriggers { get; init; }
@@ -155,6 +169,46 @@ public sealed record SimulationEscapedEnemy(
     float ArmorAdjustedDurability,
     float Progress);
 
+public sealed record SimulationPulsePlateDeployment(
+    int Wave,
+    int PlateId,
+    float ElapsedSeconds,
+    float WaveElapsedSeconds,
+    bool DirectPurchase,
+    int Cost,
+    float PathProgress,
+    float X,
+    float Y,
+    float LeadProgress,
+    int LiveEnemyCount,
+    int QueuedEnemyCount,
+    int TriggerCount,
+    int HitCount,
+    int KillCount,
+    float Damage);
+
+public sealed record SimulationProtocolActivation(
+    int Wave,
+    float ElapsedSeconds,
+    float WaveElapsedSeconds,
+    int TowerId,
+    string TowerType,
+    bool IsApex,
+    bool IsAutonomous,
+    TargetMode TargetMode,
+    int LiveEnemyCount,
+    int QueuedEnemyCount,
+    float LeadProgress,
+    int EliteEnemyCount,
+    int BossEnemyCount,
+    int SignalEnemyCount,
+    float LiveArmorAdjustedDurability,
+    float RankedArmorAdjustedDurability,
+    IReadOnlyList<SimulationRemainingEnemy> LiveComposition)
+{
+    public int RankedEnemyCount => EliteEnemyCount + BossEnemyCount;
+}
+
 public sealed record SimulationFailureMargin(
     int Wave,
     int LiveEnemyCount,
@@ -170,15 +224,45 @@ public sealed record SimulationFailureMargin(
     float WaveArmorAdjustedDurability)
 {
     public SimulationEscapedEnemy? FatalEscapedEnemy { get; init; }
+    public int FatalFrameEscapedEnemyCount { get; init; }
+    public float FatalFrameEscapedHealth { get; init; }
+    public float FatalFrameEscapedShield { get; init; }
+    public float FatalFrameEscapedArmorAdjustedDurability { get; init; }
+    public float FatalFrameFurthestProgress { get; init; }
+    public int FatalEscapedEnemyCount => FatalFrameEscapedEnemyCount > 0
+        ? FatalFrameEscapedEnemyCount
+        : FatalEscapedEnemy is null ? 0 : 1;
+    public float FatalEscapedHealth => FatalFrameEscapedEnemyCount > 0
+        ? FatalFrameEscapedHealth
+        : FatalEscapedEnemy?.CurrentHealth ?? 0;
+    public float FatalEscapedShield => FatalFrameEscapedEnemyCount > 0
+        ? FatalFrameEscapedShield
+        : FatalEscapedEnemy?.Shield ?? 0;
+    public float FatalEscapedArmorAdjustedDurability => FatalFrameEscapedEnemyCount > 0
+        ? FatalFrameEscapedArmorAdjustedDurability
+        : FatalEscapedEnemy?.ArmorAdjustedDurability ?? 0;
+    public float FatalEscapedFurthestProgress => FatalFrameEscapedEnemyCount > 0
+        ? FatalFrameFurthestProgress
+        : FatalEscapedEnemy?.Progress ?? 0;
     public int TotalEnemyCount => LiveEnemyCount + QueuedEnemyCount;
     public float LiveDurability => LiveHealth + LiveShield;
     public float QueuedDurability => QueuedHealth + QueuedShield;
     public float TotalDurability => LiveDurability + QueuedDurability;
     public float TotalArmorAdjustedDurability => LiveArmorAdjustedDurability + QueuedArmorAdjustedDurability;
+    public int UnresolvedEnemyCount => TotalEnemyCount + FatalEscapedEnemyCount;
+    public float FatalEscapedDurability => FatalEscapedHealth + FatalEscapedShield;
+    public float UnresolvedDurability => TotalDurability + FatalEscapedDurability;
+    public float UnresolvedArmorAdjustedDurability => TotalArmorAdjustedDurability +
+        FatalEscapedArmorAdjustedDurability;
+    public float UnresolvedFurthestProgress => MathF.Max(FurthestProgress, FatalEscapedFurthestProgress);
     public float RemainingEnemyFraction => WaveEnemyCount <= 0 ? 0 : TotalEnemyCount / (float)WaveEnemyCount;
     public float RemainingArmorAdjustedDurabilityFraction => WaveArmorAdjustedDurability <= 0
         ? 0
         : TotalArmorAdjustedDurability / WaveArmorAdjustedDurability;
+    public float UnresolvedEnemyFraction => WaveEnemyCount <= 0 ? 0 : UnresolvedEnemyCount / (float)WaveEnemyCount;
+    public float UnresolvedArmorAdjustedDurabilityFraction => WaveArmorAdjustedDurability <= 0
+        ? 0
+        : UnresolvedArmorAdjustedDurability / WaveArmorAdjustedDurability;
 }
 
 public sealed class TowerRunMetrics

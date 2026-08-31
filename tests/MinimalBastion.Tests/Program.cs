@@ -19,6 +19,7 @@ using MinimalBastion.UI;
 using MinimalBastion.Waves;
 using Microsoft.Xna.Framework;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using EconomyService = MinimalBastion.Economy.Economy;
 
 namespace MinimalBastion.Tests;
@@ -127,10 +128,15 @@ internal static class Program
             ("single-wave checkpoint simulation", SingleWaveCheckpointSimulation),
             ("deterministic checkpoint beam search", DeterministicCheckpointBeamSearch),
             ("deterministic campaign candidate family", DeterministicCampaignCandidateFamily),
+            ("campaign failure ranking", CampaignFailureRanking),
             ("multi-wave campaign search artifacts", MultiWaveCampaignSearchArtifacts),
+            ("compact campaign search trace", CompactCampaignSearchTrace),
             ("campaign search retry frontier", CampaignSearchRetryFrontier),
+            ("campaign search backtrack recovery", CampaignSearchBacktrackRecovery),
             ("campaign search completion", CampaignSearchCompletion),
             ("headless simulation deterministic", HeadlessSimulationDeterministic),
+            ("pulse plate deployment telemetry", PulsePlateDeploymentTelemetry),
+            ("experienced sale limits", ExperiencedSaleLimits),
             ("simulation footprint hold", SimulationFootprintHold),
             ("forced build completion summary", ForcedBuildCompletionSummary),
             ("simulation campaign default", SimulationCampaignDefault)
@@ -3815,6 +3821,11 @@ internal static class Program
         Check.Equal(1, first.NextCheckpoint!.Waves.CurrentWaveNumber, "successful wave returns the next inter-wave checkpoint");
         Check.Equal(first.NextCheckpointFingerprint!, second.NextCheckpointFingerprint!,
             "fixed checkpoint and wave plan reproduce the same next state");
+        Check.Equal(first.Simulation.Overdrives, first.Simulation.ProtocolActivations.Count,
+            "single-wave reports retain every Protocol activation");
+        Check.True(JsonSerializer.Serialize(first.Simulation.ProtocolActivations) ==
+                   JsonSerializer.Serialize(second.Simulation.ProtocolActivations),
+            "single-wave reports reproduce their Protocol activation trace");
         Check.Throws<InvalidDataException>(() => HeadlessSimulation.RunWave(content, checkpoint, options,
             wavePlan with { Wave = 2 }), "single-wave simulation rejects a skipped campaign wave");
     }
@@ -3864,9 +3875,36 @@ internal static class Program
             var restoredSearch = StrategyArtifactStore.LoadSearchResult(searchPath, content);
             Check.Equal(first.Evaluations, restoredSearch.Evaluations,
                 "search artifact preserves its complete evaluation trace");
+            Check.True(restoredSearch.SuccessfulEvaluations.Count == first.SuccessfulEvaluations.Count &&
+                       restoredSearch.OmittedSuccessfulEvaluations == 0 &&
+                       restoredSearch.OmittedCampaignCompletions == 0 && restoredSearch.OmittedFailures == 0,
+                "generic search-result persistence preserves every trace without campaign compaction");
             Check.True(first.RetainedStates.Select(state => state.CheckpointFingerprint)
                            .SequenceEqual(restoredSearch.RetainedStates.Select(state => state.CheckpointFingerprint)),
                 "search artifact preserves its ranked checkpoint frontier");
+            var originalProtocolTraces = first.SuccessfulEvaluations
+                .OrderBy(success => success.WavePlan.StableKey, StringComparer.Ordinal)
+                .Select(success => JsonSerializer.Serialize(success.Simulation.ProtocolActivations))
+                .ToArray();
+            var restoredProtocolTraces = restoredSearch.SuccessfulEvaluations
+                .OrderBy(success => success.WavePlan.StableKey, StringComparer.Ordinal)
+                .Select(success => JsonSerializer.Serialize(success.Simulation.ProtocolActivations))
+                .ToArray();
+            Check.True(originalProtocolTraces.SequenceEqual(restoredProtocolTraces),
+                "search artifacts preserve deterministic per-wave Protocol activation traces");
+
+            var legacyPayload = JsonNode.Parse(File.ReadAllText(searchPath))?.AsObject() ??
+                                throw new InvalidOperationException("Search fixture JSON was empty.");
+            legacyPayload["schemaVersion"] = 1;
+            legacyPayload.Remove("omittedSuccessfulEvaluations");
+            legacyPayload.Remove("omittedCampaignCompletions");
+            legacyPayload.Remove("omittedFailures");
+            File.WriteAllText(searchPath, legacyPayload.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            var restoredLegacy = StrategyArtifactStore.LoadSearchResult(searchPath, content);
+            Check.True(restoredLegacy.SchemaVersion == 1 &&
+                       restoredLegacy.Evaluations == restoredLegacy.SuccessfulEvaluations.Count +
+                       restoredLegacy.CampaignCompletions.Count + restoredLegacy.Failures.Count,
+                "legacy full search traces load with zero implicit omissions");
         }
         finally
         {
@@ -3933,6 +3971,220 @@ internal static class Program
         Check.True(first.All(plan => plan.EconomyProfileId is "mature" or "apex" or "balanced" &&
                                      plan.PlacementProfileId is "nodes" or "precise" or "coverage"),
             "campaign candidates use the requested profile bundles");
+        Check.True(CampaignWavePlanGenerator.DefaultBundles
+                .Select(bundle => bundle.Parameters["apexCandidate"]).Distinct().Count() >= 6,
+            "campaign candidate bundles explore distinct ranked Apex choices");
+        Check.True(CampaignWavePlanGenerator.DefaultBundles.All(bundle =>
+                bundle.Parameters["protocolSupportBias"] is >= 0.7 and <= 2.4),
+            "campaign candidate bundles bound their Protocol support preference");
+        var plateClusterWeights = CampaignWavePlanGenerator.DefaultBundles
+            .Select(bundle => bundle.Parameters["plateClusterWeight"])
+            .OrderBy(value => value)
+            .ToArray();
+        var plateLeadWeights = CampaignWavePlanGenerator.DefaultBundles
+            .Select(bundle => bundle.Parameters["plateLeadWeight"])
+            .OrderBy(value => value)
+            .ToArray();
+        Check.True(plateClusterWeights.First() == 0 && plateClusterWeights.Last() == 4 &&
+                   plateClusterWeights.Distinct().Count() >= 6,
+            "campaign candidates span isolated-lead through cluster-heavy Plate placement");
+        Check.True(plateLeadWeights.First() < 1 && plateLeadWeights.Last() > 5 &&
+                   plateLeadWeights.Distinct().Count() >= 6,
+            "campaign candidates span cluster interception through aggressive Plate lead placement");
+        Check.True(CampaignWavePlanGenerator.SupportedParameterNames.IsSupersetOf(
+                [
+                    "signalSupportExitProgress", "signalSupportTier", "cleanupArmoredCount",
+                    "cleanupArmoredOffset", "cleanupSupportTier", "finalPlateReserve",
+                    "escapeFrostFirstCount", "frostEscapeProgress", "plateEscapeProgress", "plateSaleProgress",
+                    "plateSaleMaxLevel", "plateSaleMinimumDirectPurchases", "finalRoleFill",
+                    "openingSupportExitProgress", "openingSignalSupportTier"
+                ]),
+            "campaign search accepts every final-wave tactical parameter consumed by the player");
+        var signalExitProgress = CampaignWavePlanGenerator.DefaultBundles
+            .Select(bundle => bundle.Parameters["signalSupportExitProgress"])
+            .OrderBy(value => value)
+            .ToArray();
+        Check.True(signalExitProgress.First() == 0.5 && signalExitProgress.Last() == 0.98 &&
+                   signalExitProgress.Count(value => value is >= 0.68 and <= 0.82) >= 5,
+            "campaign candidates emphasize useful Signal support exits while retaining bounded extremes");
+        var signalSupportTiers = CampaignWavePlanGenerator.DefaultBundles
+            .Select(bundle => bundle.Parameters["signalSupportTier"])
+            .Distinct()
+            .OrderBy(value => value)
+            .ToArray();
+        Check.True(signalSupportTiers.SequenceEqual(Enumerable.Range(0, 7).Select(value => (double)value)),
+            "campaign candidates cover every discrete Signal support tier");
+        var cleanupArmoredCounts = CampaignWavePlanGenerator.DefaultBundles
+            .Select(bundle => bundle.Parameters["cleanupArmoredCount"])
+            .Distinct()
+            .OrderBy(value => value)
+            .ToArray();
+        Check.True(cleanupArmoredCounts.SequenceEqual(Enumerable.Range(0, 6).Select(value => (double)value)),
+            "campaign candidates cover every bounded armored-cleanup allocation");
+        var cleanupArmoredOffsets = CampaignWavePlanGenerator.DefaultBundles
+            .Select(bundle => bundle.Parameters["cleanupArmoredOffset"])
+            .Distinct()
+            .OrderBy(value => value)
+            .ToArray();
+        var cleanupSupportTiers = CampaignWavePlanGenerator.DefaultBundles
+            .Select(bundle => bundle.Parameters["cleanupSupportTier"])
+            .Distinct()
+            .OrderBy(value => value)
+            .ToArray();
+        Check.True(cleanupArmoredOffsets.SequenceEqual(Enumerable.Range(0, 5).Select(value => (double)value)) &&
+                   cleanupSupportTiers.SequenceEqual(Enumerable.Range(0, 7).Select(value => (double)value)),
+            "campaign candidates cover every armored offset and Signal cleanup-support tier");
+        var plateSaleMaxLevels = CampaignWavePlanGenerator.DefaultBundles
+            .Select(bundle => bundle.Parameters["plateSaleMaxLevel"])
+            .Distinct()
+            .OrderBy(value => value)
+            .ToArray();
+        var plateSaleMinimumDirectPurchases = CampaignWavePlanGenerator.DefaultBundles
+            .Select(bundle => bundle.Parameters["plateSaleMinimumDirectPurchases"])
+            .Distinct()
+            .OrderBy(value => value)
+            .ToArray();
+        Check.True(plateSaleMaxLevels.SequenceEqual(Enumerable.Range(0, 3).Select(value => (double)value)) &&
+                   plateSaleMinimumDirectPurchases.SequenceEqual(
+                       Enumerable.Range(0, 8).Select(value => (double)value)),
+            "campaign candidates cover every Plate sale tier and prior-purchase threshold");
+        var finalPlateReserves = CampaignWavePlanGenerator.DefaultBundles
+            .Select(bundle => bundle.Parameters["finalPlateReserve"])
+            .Distinct()
+            .OrderBy(value => value)
+            .ToArray();
+        Check.True(finalPlateReserves.SequenceEqual(new[] { 0d, 1d }),
+            "campaign candidates explore both final-wave Plate reserve policies");
+
+        static string ParameterKey(WavePlan plan) => string.Join('|',
+            plan.Parameters.OrderBy(parameter => parameter.Key, StringComparer.Ordinal)
+                .Select(parameter => $"{parameter.Key}={parameter.Value:R}"));
+
+        var diversityOptions = new CampaignSearchOptions
+        {
+            BaseSeed = options.BaseSeed,
+            CandidateCount = 128
+        };
+        var diverse = CampaignWavePlanGenerator.Generate(30, diversityOptions, 0, 128);
+        var diverseRepeat = CampaignWavePlanGenerator.Generate(30, diversityOptions, 0, 128);
+        Check.True(diverse.Select(candidate => candidate.StableKey)
+                .SequenceEqual(diverseRepeat.Select(candidate => candidate.StableKey)),
+            "large campaign candidate families are reproducible");
+        Check.Equal(128, diverse.Select(candidate => candidate.StableKey).Distinct(StringComparer.Ordinal).Count(),
+            "campaign mutation never emits duplicate stable candidates");
+        Check.True(diverse.Select(ParameterKey).Distinct(StringComparer.Ordinal).Count() >= 120,
+            "candidate diversity comes from policy combinations rather than decision seeds alone");
+        Check.True(diverse.Select(candidate => candidate.Parameters["apexCandidate"]).Distinct().OrderBy(value => value)
+                .SequenceEqual(Enumerable.Range(0, 16).Select(value => (double)value)),
+            "campaign mutation covers Apex ranks zero through fifteen");
+        Check.True(diverse.Any(candidate => candidate.Parameters["apexCandidate"] == 12),
+            "campaign mutation includes the human-reference Apex rank");
+        Check.True(diverse.Select(candidate => candidate.Parameters["signalSupportTier"]).Distinct().OrderBy(value => value)
+                       .SequenceEqual(Enumerable.Range(0, 7).Select(value => (double)value)) &&
+                   diverse.Select(candidate => candidate.Parameters["cleanupSupportTier"]).Distinct().OrderBy(value => value)
+                       .SequenceEqual(Enumerable.Range(0, 7).Select(value => (double)value)) &&
+                   diverse.Select(candidate => candidate.Parameters["cleanupArmoredCount"]).Distinct().OrderBy(value => value)
+                       .SequenceEqual(Enumerable.Range(0, 6).Select(value => (double)value)) &&
+                   diverse.Select(candidate => candidate.Parameters["cleanupArmoredOffset"]).Distinct().OrderBy(value => value)
+                       .SequenceEqual(Enumerable.Range(0, 5).Select(value => (double)value)),
+            "campaign mutation covers every support, cleanup allocation, and armored offset");
+        var mutatedExitProgress = diverse.Select(candidate => candidate.Parameters["signalSupportExitProgress"])
+            .Distinct().OrderBy(value => value).ToArray();
+        Check.True(mutatedExitProgress.SequenceEqual(new[]
+            { 0.5, 0.58, 0.62, 0.68, 0.72, 0.75, 0.78, 0.82, 0.9, 0.98 }),
+            "campaign mutation covers the practical Signal exit-progress domain");
+        Check.True(diverse.Select(candidate => candidate.Parameters["finalPlateReserve"]).Distinct().Count() == 2 &&
+                   diverse.Select(candidate => candidate.Parameters["plateClusterWeight"]).Distinct().Count() == 9 &&
+                   diverse.Select(candidate => candidate.Parameters["plateLeadWeight"]).Distinct().Count() == 10,
+            "campaign mutation independently covers reserve and Plate geometry domains");
+        Check.True(diverse.Select(candidate => candidate.Parameters["activePlateLimit"]).Distinct().Count() == 8 &&
+                   diverse.Select(candidate => candidate.Parameters["directPlateLimit"]).Distinct().Count() == 10 &&
+                   diverse.Select(candidate => candidate.Parameters["protocolMinimumEnemies"]).Distinct().Count() == 9 &&
+                   diverse.Select(candidate => candidate.Parameters["apexLimit"]).Distinct().Count() == 2 &&
+                   diverse.Select(candidate => candidate.Parameters["saleLimit"]).Distinct().Count() == 4,
+            "campaign mutation spans practical tactical and investment limits");
+        Check.True(diverse.Select(candidate => candidate.Parameters["escapeFrostFirstCount"]).Distinct()
+                       .OrderBy(value => value)
+                       .SequenceEqual(Enumerable.Range(0, 8).Select(value => (double)value)) &&
+                   diverse.Select(candidate => candidate.Parameters["frostEscapeProgress"]).Distinct().Count() == 8,
+            "campaign mutation spans every Frost escape allocation and threshold");
+        Check.True(diverse.Select(candidate => candidate.Parameters["plateEscapeProgress"]).Distinct().Count() == 7 &&
+                   diverse.Select(candidate => candidate.Parameters["plateSaleProgress"]).Distinct().Count() == 8 &&
+                   diverse.Select(candidate => candidate.Parameters["plateSaleMaxLevel"]).Distinct().OrderBy(value => value)
+                       .SequenceEqual(Enumerable.Range(0, 3).Select(value => (double)value)) &&
+                   diverse.Select(candidate => candidate.Parameters["plateSaleMinimumDirectPurchases"]).Distinct()
+                       .OrderBy(value => value)
+                       .SequenceEqual(Enumerable.Range(0, 8).Select(value => (double)value)),
+            "campaign mutation spans Plate interception, sale tiers, and prior-purchase thresholds");
+        Check.True(diverse.Select(candidate => candidate.Parameters["finalRoleFill"]).Distinct().Count() == 2 &&
+                   diverse.Select(candidate => candidate.Parameters["openingSupportExitProgress"]).Distinct().Count() == 5 &&
+                   diverse.Select(candidate => candidate.Parameters["openingSignalSupportTier"]).Distinct()
+                       .OrderBy(value => value)
+                       .SequenceEqual(Enumerable.Range(0, 7).Select(value => (double)value)),
+            "campaign mutation spans final role fill and opening Signal support policies");
+        var apexTwelve = diverse.Where(candidate => candidate.Parameters["apexCandidate"] == 12).ToArray();
+        Check.True(apexTwelve.Select(candidate => candidate.Parameters["signalSupportTier"]).Distinct().Count() >= 4 &&
+                   apexTwelve.Select(candidate => candidate.Parameters["plateClusterWeight"]).Distinct().Count() >= 4 &&
+                   apexTwelve.Select(candidate => candidate.Parameters["finalPlateReserve"]).Distinct().Count() == 2 &&
+                   apexTwelve.Select(candidate => candidate.Parameters["escapeFrostFirstCount"]).Distinct().Count() >= 4 &&
+                   apexTwelve.Select(candidate => candidate.Parameters["finalRoleFill"]).Distinct().Count() == 2 &&
+                   apexTwelve.Select(candidate => candidate.Parameters["cleanupArmoredOffset"]).Distinct().Count() >= 2 &&
+                   apexTwelve.Select(candidate => candidate.Parameters["cleanupSupportTier"]).Distinct().Count() >= 2 &&
+                   apexTwelve.Select(candidate => candidate.Parameters["plateSaleMaxLevel"]).Distinct().Count() >= 2 &&
+                   apexTwelve.Select(candidate => candidate.Parameters["plateSaleMinimumDirectPurchases"]).Distinct()
+                       .Count() >= 2,
+            "Apex rank does not lock support, cleanup, Plate, reserve, escape, and role-fill mutations together");
+        var profileKeys = CampaignWavePlanGenerator.DefaultBundles.Select(bundle =>
+                $"{bundle.EconomyProfileId}|{bundle.PlacementProfileId}|{bundle.TargetingProfileId}|{bundle.TacticalProfileId}")
+            .ToHashSet(StringComparer.Ordinal);
+        Check.True(diverse.All(candidate => profileKeys.Contains(
+                $"{candidate.EconomyProfileId}|{candidate.PlacementProfileId}|{candidate.TargetingProfileId}|{candidate.TacticalProfileId}")),
+            "campaign mutation preserves curated strategic profile bundles");
+
+        var overrideOptions = new CampaignSearchOptions
+        {
+            BaseSeed = options.BaseSeed,
+            ParameterOverrides = new SortedDictionary<string, double>(StringComparer.Ordinal)
+            {
+                ["apexCandidate"] = 12,
+                ["signalSupportTier"] = 6,
+                ["cleanupArmoredCount"] = 5,
+                ["cleanupArmoredOffset"] = 4,
+                ["cleanupSupportTier"] = 5,
+                ["signalSupportExitProgress"] = 0.81,
+                ["finalPlateReserve"] = 0,
+                ["plateClusterWeight"] = 3.25,
+                ["plateLeadWeight"] = 4.75,
+                ["plateProgressOffset"] = 0.07,
+                ["activePlateLimit"] = 10,
+                ["directPlateLimit"] = 10,
+                ["protocolMinimumEnemies"] = 2,
+                ["protocolSupportBias"] = 2.1,
+                ["apexWave"] = 25,
+                ["apexLimit"] = 2,
+                ["saleLimit"] = 3,
+                ["escapeFrostFirstCount"] = 7,
+                ["frostEscapeProgress"] = 0.91,
+                ["plateEscapeProgress"] = 0.93,
+                ["plateSaleProgress"] = 0.77,
+                ["plateSaleMaxLevel"] = 2,
+                ["plateSaleMinimumDirectPurchases"] = 7,
+                ["finalRoleFill"] = 0,
+                ["openingSupportExitProgress"] = 0.37,
+                ["openingSignalSupportTier"] = 6
+            }
+        };
+        var overridden = CampaignWavePlanGenerator.Generate(30, overrideOptions, 3, 32);
+        Check.True(overridden.All(candidate => overrideOptions.ParameterOverrides.All(parameter =>
+                candidate.Parameters[parameter.Key] == parameter.Value)),
+            "explicit parameter overrides dominate every deterministic mutation");
+
+        var apexTimings = diverse.Select(candidate => candidate.Parameters["apexWave"])
+            .Distinct()
+            .OrderBy(value => value)
+            .ToArray();
+        Check.True(apexTimings.SequenceEqual(new[] { 21d, 25d, 30d }),
+            "campaign mutation explores unlock, delayed, and final-wave Apex timing");
 
         var preferred = new WavePlan
         {
@@ -3951,6 +4203,60 @@ internal static class Program
         {
             ParameterOverrides = new Dictionary<string, double> { ["unknownPolicyKnob"] = 1 }
         }.Validate(), "campaign search rejects policy parameters that the player cannot consume");
+    }
+
+    private static void CampaignFailureRanking()
+    {
+        static CheckpointWaveFailure Failure(float progress, int decisionSeed) => new()
+        {
+            ParentCheckpointFingerprint = $"parent-{decisionSeed}",
+            WavePlan = new WavePlan
+            {
+                Wave = 27,
+                DecisionSeed = decisionSeed,
+                PolicyId = "failure-ranking-fixture"
+            },
+            Result = "Defeat",
+            LivesRemaining = 0,
+            CreditsUnspent = 0,
+            FailureMargin = new SimulationFailureMargin(
+                27,
+                1,
+                0,
+                100,
+                0,
+                100,
+                0,
+                0,
+                0,
+                progress,
+                10,
+                1000),
+            RemainingEnemies =
+            [
+                new SimulationRemainingEnemy(
+                    "ranking_enemy",
+                    "Ranking Enemy",
+                    "Standard",
+                    "None",
+                    1,
+                    100,
+                    100,
+                    0,
+                    100,
+                    progress)
+            ],
+            QueuedEnemies = Array.Empty<SimulationRemainingEnemy>()
+        };
+
+        var nearerExit = Failure(0.9f, 1);
+        var fartherFromExit = Failure(0.35f, 999);
+        var first = CampaignStrategyOptimizer.SelectBestFailure([nearerExit, fartherFromExit]);
+        var reversed = CampaignStrategyOptimizer.SelectBestFailure([fartherFromExit, nearerExit]);
+        Check.Equal(fartherFromExit.WavePlan.StableKey, first!.WavePlan.StableKey,
+            "equal unresolved pressure favors the threat farther from the exit");
+        Check.Equal(first.WavePlan.StableKey, reversed!.WavePlan.StableKey,
+            "failure ranking is independent of candidate enumeration order");
     }
 
     private static void MultiWaveCampaignSearchArtifacts()
@@ -4050,6 +4356,189 @@ internal static class Program
         }
     }
 
+    private static void CompactCampaignSearchTrace()
+    {
+        var session = SessionWithWaves(2);
+        var checkpoint = session.CaptureSaveGame();
+        var plan = new StrategyPlan
+        {
+            ArtifactId = "compact-campaign-trace-fixture",
+            MapId = checkpoint.MapId,
+            DifficultyId = checkpoint.DifficultyId,
+            ChallengeId = checkpoint.ChallengeId,
+            BaseSeed = 6127,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive
+        };
+        var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        CheckpointSearchResult? fullTrace = null;
+
+        CheckpointSearchResult EvaluateCompactTrace(
+            GameContent content,
+            IReadOnlyList<CheckpointSearchState> parents,
+            IReadOnlyList<WavePlan> candidates,
+            SimulationOptions options,
+            int beamWidth)
+        {
+            var parent = parents.Single();
+            var orderedCandidates = candidates.OrderBy(candidate => candidate.StableKey, StringComparer.Ordinal).ToArray();
+            var templateRun = HeadlessSimulation.RunWave(
+                content,
+                parent.Checkpoint,
+                options,
+                parent.Strategy,
+                orderedCandidates[0]);
+            var templateCheckpoint = templateRun.NextCheckpoint ??
+                                     throw new InvalidOperationException("Compact trace fixture wave did not advance.");
+            var successes = new List<CheckpointWaveSuccess>();
+            var failures = new List<CheckpointWaveFailure>();
+            for (var index = 0; index < orderedCandidates.Length; index++)
+            {
+                var candidate = orderedCandidates[index];
+                if (index < 4)
+                {
+                    var nextCheckpoint = JsonSerializer.Deserialize<SaveGameData>(
+                        JsonSerializer.Serialize(templateCheckpoint)) ??
+                                         throw new InvalidOperationException("Compact trace checkpoint clone failed.");
+                    nextCheckpoint.Economy.Credits += index * 11;
+                    var state = CheckpointSearchState.Create(
+                        content,
+                        parent.Strategy.Append(candidate),
+                        nextCheckpoint);
+                    successes.Add(new CheckpointWaveSuccess
+                    {
+                        ParentCheckpointFingerprint = parent.CheckpointFingerprint,
+                        WavePlan = candidate,
+                        Simulation = templateRun.Simulation,
+                        State = state
+                    });
+                    continue;
+                }
+
+                var failureOrdinal = index - 4;
+                var currentHealth = 100 + failureOrdinal;
+                var armorAdjustedDurability = currentHealth + 5;
+                var remaining = new SimulationRemainingEnemy(
+                    $"compact_enemy_{failureOrdinal}",
+                    "Compact Trace Enemy",
+                    "Elite",
+                    "Jammer",
+                    1,
+                    currentHealth,
+                    200,
+                    5,
+                    armorAdjustedDurability,
+                    0.42f);
+                IReadOnlyList<SimulationPulsePlateDeployment> plates = failureOrdinal == 0
+                    ? [new SimulationPulsePlateDeployment(
+                        1, 7, 8.5f, 8.5f, true, 60, 0.81f, 400, 200, 0.74f,
+                        3, 2, 2, 4, 1, 321)]
+                    : Array.Empty<SimulationPulsePlateDeployment>();
+                IReadOnlyList<SimulationProtocolActivation> protocols = failureOrdinal == 0
+                    ? [new SimulationProtocolActivation(
+                        1, 7.25f, 7.25f, 12, "tower", true, true, TargetMode.Armored,
+                        3, 2, 0.72f, 1, 0, 1, armorAdjustedDurability,
+                        armorAdjustedDurability, [remaining])]
+                    : Array.Empty<SimulationProtocolActivation>();
+                failures.Add(new CheckpointWaveFailure
+                {
+                    ParentCheckpointFingerprint = parent.CheckpointFingerprint,
+                    WavePlan = candidate,
+                    Result = "SyntheticCompactFailure",
+                    LivesRemaining = 0,
+                    CreditsUnspent = failureOrdinal,
+                    FailureMargin = new SimulationFailureMargin(
+                        1, 1, 0, currentHealth, 5, armorAdjustedDurability,
+                        0, 0, 0, 0.42f, 10, 1_000),
+                    RemainingEnemies = [remaining],
+                    QueuedEnemies = Array.Empty<SimulationRemainingEnemy>(),
+                    PulsePlateDeployments = plates,
+                    ProtocolActivations = protocols
+                });
+            }
+
+            fullTrace = new CheckpointSearchResult
+            {
+                TargetWave = 1,
+                BeamWidth = beamWidth,
+                Evaluations = orderedCandidates.Length,
+                SuccessfulEvaluations = successes,
+                RetainedStates = CheckpointBeamOptimizer.RankStates(
+                    successes.Select(success => success.State), beamWidth),
+                CampaignCompletions = Array.Empty<CheckpointCampaignCompletion>(),
+                Failures = failures
+            };
+            return fullTrace;
+        }
+
+        try
+        {
+            var result = CampaignStrategyOptimizer.Search(
+                session.Content,
+                [CheckpointSearchState.Create(session.Content, plan, checkpoint)],
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 2,
+                    CandidateCount = 32,
+                    MaximumWave = 1,
+                    BroadeningRounds = 0,
+                    ArtifactDirectory = directory
+                },
+                null,
+                EvaluateCompactTrace);
+            var tracePath = result.WaveAttempts.Single().TracePath ??
+                            throw new InvalidOperationException("Compact campaign trace path was not recorded.");
+            var compact = StrategyArtifactStore.LoadSearchResult(Path.Combine(directory, tracePath), session.Content);
+            Check.True(compact.Evaluations == 32 && compact.SuccessfulEvaluations.Count == 2 &&
+                       compact.OmittedSuccessfulEvaluations == 2 && compact.Failures.Count == 8 &&
+                       compact.OmittedFailures == 20 && compact.CampaignCompletions.Count == 0 &&
+                       compact.OmittedCampaignCompletions == 0,
+                "campaign persistence retains its beam successes and bounded best-failure set");
+            Check.True(compact.SuccessfulEvaluations.Count == compact.RetainedStates.Count &&
+                       compact.RetainedStates.All(state => compact.SuccessfulEvaluations.Any(success =>
+                           success.State.CheckpointFingerprint == state.CheckpointFingerprint &&
+                           success.WavePlan.StableKey == state.Strategy.Waves[^1].StableKey)),
+                "every retained beam state keeps its matching full success trace");
+            Check.Equal(compact.Evaluations,
+                compact.SuccessfulEvaluations.Count + compact.OmittedSuccessfulEvaluations +
+                compact.CampaignCompletions.Count + compact.OmittedCampaignCompletions +
+                compact.Failures.Count + compact.OmittedFailures,
+                "compact campaign trace counters reconcile to the exact evaluation total");
+            foreach (var success in compact.SuccessfulEvaluations)
+            {
+                var original = fullTrace!.SuccessfulEvaluations.Single(candidate =>
+                    candidate.State.CheckpointFingerprint == success.State.CheckpointFingerprint &&
+                    candidate.WavePlan.StableKey == success.WavePlan.StableKey);
+                Check.Equal(JsonSerializer.Serialize(original), JsonSerializer.Serialize(success),
+                    "beam-retained success keeps its full simulation and checkpoint data");
+            }
+
+            var bestFailure = CampaignStrategyOptimizer.SelectBestFailure(compact.Failures) ??
+                              throw new InvalidOperationException("Compact trace omitted every failure.");
+            var sourceBestFailure = CampaignStrategyOptimizer.SelectBestFailure(fullTrace!.Failures) ??
+                                    throw new InvalidOperationException("Full trace omitted every failure.");
+            Check.Equal(JsonSerializer.Serialize(sourceBestFailure), JsonSerializer.Serialize(bestFailure),
+                "compact campaign trace keeps the source best failure without reducing its telemetry");
+            Check.True(bestFailure.RemainingEnemies.Single().EnemyId == "compact_enemy_0" &&
+                       bestFailure.FailureMargin is { UnresolvedArmorAdjustedDurability: 105 },
+                "compact campaign trace retains the exact best-failure composition and margin");
+            var plate = bestFailure.PulsePlateDeployments.Single();
+            Check.True(plate.PlateId == 7 && plate.TriggerCount == 2 && plate.HitCount == 4 &&
+                       plate.KillCount == 1 && plate.Damage == 321,
+                "compact campaign trace retains best-failure Plate deployment impact");
+            var protocol = bestFailure.ProtocolActivations.Single();
+            Check.True(protocol.TowerId == 12 && protocol.IsApex && protocol.IsAutonomous &&
+                       protocol.TargetMode == TargetMode.Armored && protocol.LiveComposition.Single().EnemyId ==
+                       "compact_enemy_0",
+                "compact campaign trace retains best-failure Protocol pressure telemetry");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
     private static void CampaignSearchRetryFrontier()
     {
         var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
@@ -4103,6 +4592,190 @@ internal static class Program
             var restored = CampaignSearchArtifactStore.LoadFrontier(content, Path.Combine(directory, "campaign-search.json"));
             Check.Equal(result.ResumeFrontier[0].CheckpointFingerprint, restored.Single().CheckpointFingerprint,
                 "exhausted manifest restores the retained retry frontier");
+
+            var preferred = plan.Append(new WavePlan
+            {
+                Wave = 1,
+                DecisionSeed = 9001,
+                PolicyId = "persisted-retry"
+            });
+            var deduplicated = CampaignStrategyOptimizer.Search(content,
+                [CheckpointSearchState.Create(content, plan, checkpoint)],
+                new SimulationOptions
+                {
+                    HoldBuild = true,
+                    StepSeconds = 0.1f,
+                    MaximumSimulatedSeconds = 240
+                },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 1,
+                    CandidateCount = 2,
+                    MaximumWave = 1,
+                    BroadeningRounds = 1,
+                    BacktrackDepth = 0,
+                    MaximumRecoveryAttempts = 0,
+                    ArtifactDirectory = Path.Combine(directory, "deduplicated")
+                },
+                preferred);
+            Check.Equal(3, deduplicated.WaveAttempts[1].Evaluations,
+                "campaign broadening skips the preferred plan already evaluated in an earlier round");
+            Check.Equal(5, deduplicated.TotalEvaluations,
+                "campaign evaluation identities prevent repeated parent-plan simulations");
+            Check.Equal(5, deduplicated.Manifest.EvaluatedConfigurationFingerprints.Count,
+                "campaign manifest persists every unique evaluated configuration for resume");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    private static void CampaignSearchBacktrackRecovery()
+    {
+        var session = SessionWithWaves(3);
+        var checkpoint = session.CaptureSaveGame();
+        var plan = new StrategyPlan
+        {
+            ArtifactId = "campaign-recovery-fixture",
+            MapId = checkpoint.MapId,
+            DifficultyId = checkpoint.DifficultyId,
+            ChallengeId = checkpoint.ChallengeId,
+            BaseSeed = 7727,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive
+        };
+        var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        string? greedyWaveOneKey = null;
+
+        CheckpointSearchResult RecoverableDeadEnd(
+            GameContent content,
+            IReadOnlyList<CheckpointSearchState> parents,
+            IReadOnlyList<WavePlan> candidates,
+            SimulationOptions options,
+            int beamWidth)
+        {
+            var orderedCandidates = candidates.OrderBy(candidate => candidate.StableKey, StringComparer.Ordinal).ToArray();
+            var targetWave = orderedCandidates[0].Wave;
+            var successes = new List<CheckpointWaveSuccess>();
+            var failures = new List<CheckpointWaveFailure>();
+            foreach (var parent in parents.OrderBy(state => state.CheckpointFingerprint, StringComparer.Ordinal))
+            {
+                var followsGreedyPrefix = targetWave == 2 &&
+                                          parent.Strategy.FindWave(1)?.StableKey == greedyWaveOneKey;
+                if (followsGreedyPrefix)
+                {
+                    failures.AddRange(orderedCandidates.Select(candidate => new CheckpointWaveFailure
+                    {
+                        ParentCheckpointFingerprint = parent.CheckpointFingerprint,
+                        WavePlan = candidate,
+                        Result = "SyntheticDeadEnd",
+                        LivesRemaining = parent.Checkpoint.Economy.Lives,
+                        CreditsUnspent = parent.Checkpoint.Economy.Credits,
+                        RemainingEnemies = Array.Empty<SimulationRemainingEnemy>(),
+                        QueuedEnemies = Array.Empty<SimulationRemainingEnemy>()
+                    }));
+                    continue;
+                }
+
+                var templateRun = HeadlessSimulation.RunWave(
+                    content,
+                    parent.Checkpoint,
+                    options,
+                    parent.Strategy,
+                    orderedCandidates[0]);
+                var templateCheckpoint = templateRun.NextCheckpoint ??
+                                         throw new InvalidOperationException("Recovery fixture wave did not advance.");
+                if (targetWave == 1) greedyWaveOneKey ??= orderedCandidates[0].StableKey;
+                foreach (var candidate in orderedCandidates)
+                {
+                    var nextCheckpoint = JsonSerializer.Deserialize<SaveGameData>(
+                        JsonSerializer.Serialize(templateCheckpoint)) ??
+                                         throw new InvalidOperationException("Recovery fixture checkpoint clone failed.");
+                    if (targetWave == 1)
+                        nextCheckpoint.Economy.Credits = candidate.StableKey == greedyWaveOneKey ? 10_000 : 1;
+                    var state = CheckpointSearchState.Create(
+                        content,
+                        parent.Strategy.Append(candidate),
+                        nextCheckpoint);
+                    successes.Add(new CheckpointWaveSuccess
+                    {
+                        ParentCheckpointFingerprint = parent.CheckpointFingerprint,
+                        WavePlan = candidate,
+                        Simulation = templateRun.Simulation,
+                        State = state
+                    });
+                }
+            }
+
+            return new CheckpointSearchResult
+            {
+                TargetWave = targetWave,
+                BeamWidth = beamWidth,
+                Evaluations = parents.Count * orderedCandidates.Length,
+                SuccessfulEvaluations = successes,
+                RetainedStates = CheckpointBeamOptimizer.RankStates(
+                    successes.Select(success => success.State),
+                    beamWidth),
+                CampaignCompletions = Array.Empty<CheckpointCampaignCompletion>(),
+                Failures = failures
+            };
+        }
+
+        try
+        {
+            var result = CampaignStrategyOptimizer.Search(
+                session.Content,
+                [CheckpointSearchState.Create(session.Content, plan, checkpoint)],
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 1,
+                    CandidateCount = 2,
+                    MaximumWave = 2,
+                    BroadeningRounds = 0,
+                    BacktrackDepth = 1,
+                    MaximumRecoveryAttempts = 1,
+                    ArtifactDirectory = directory
+                },
+                null,
+                RecoverableDeadEnd);
+
+            Check.Equal(CampaignSearchStatus.WaveLimitReached, result.Status,
+                "campaign recovery escapes a greedy checkpoint dead end");
+            Check.Equal(3, result.WaveAttempts.Count,
+                "campaign recovery records the initial layer, dead end, and recovered retry");
+            Check.True(result.WaveAttempts[1].SuccessfulEvaluations == 0 &&
+                       result.WaveAttempts[2].SuccessfulEvaluations > 0,
+                "the recovered alternate succeeds only after the greedy frontier fails");
+            Check.Equal(1, result.Manifest.RecoveryAttempts.Count,
+                "campaign manifest records the bounded recovery attempt");
+            var recovery = result.Manifest.RecoveryAttempts.Single();
+            Check.True(recovery.BlockingWave == 2 && recovery.RecoveredWave == 1 && recovery.Depth == 1,
+                "campaign recovery identifies the exact blocking and restored layers");
+            var recoveredWaveOne = result.FinalStrategy!.FindWave(1) ??
+                                   throw new InvalidOperationException("Recovered strategy omitted wave 1.");
+            Check.True(recoveredWaveOne.StableKey != greedyWaveOneKey,
+                "the recovered strategy replaces the greedy first-wave decision");
+            Check.Equal(6, result.TotalEvaluations,
+                "campaign recovery evaluates each parent-plan configuration once");
+            Check.Equal(result.TotalEvaluations, result.Manifest.EvaluatedConfigurationFingerprints.Count,
+                "campaign manifest retains one identity for every unique evaluation");
+            Check.True(recovery.FrontierArtifacts.All(artifact =>
+                    File.Exists(Path.Combine(directory, artifact.CheckpointPath)) &&
+                    File.Exists(Path.Combine(directory, artifact.StrategyPath))),
+                "campaign recovery persists its alternate checkpoint frontier");
+
+            var manifestPath = Path.Combine(directory, "campaign-search.json");
+            var restoredManifest = CampaignSearchArtifactStore.LoadManifest(manifestPath);
+            var restoredFrontier = CampaignSearchArtifactStore.LoadFrontier(session.Content, manifestPath);
+            Check.Equal(1, restoredManifest.RecoveryAttempts.Count,
+                "campaign recovery history survives manifest round trip");
+            var restoredWaveOne = restoredFrontier.Single().Strategy.FindWave(1) ??
+                                  throw new InvalidOperationException("Restored strategy omitted wave 1.");
+            Check.True(restoredWaveOne.StableKey != greedyWaveOneKey,
+                "campaign resume restores the recovered strategy branch");
         }
         finally
         {
@@ -4148,6 +4821,23 @@ internal static class Program
             Check.True(result.Manifest.FinalStrategyPath is { } strategyPath &&
                        File.Exists(Path.Combine(directory, strategyPath)),
                 "campaign completion persists its final StrategyPlan artifact");
+            var tracePath = result.WaveAttempts.Single().TracePath ??
+                            throw new InvalidOperationException("Campaign completion trace was not recorded.");
+            var compactTrace = StrategyArtifactStore.LoadSearchResult(Path.Combine(directory, tracePath), session.Content);
+            Check.True(compactTrace.CampaignCompletions.Count == 1 &&
+                       compactTrace.OmittedCampaignCompletions == result.WaveAttempts.Single().CampaignCompletions - 1,
+                "campaign completion traces retain the winning run and count omitted alternatives");
+            var retainedCompletion = compactTrace.CampaignCompletions.Single();
+            var sourceCompletion = result.CampaignCompletions.Single(completion =>
+                completion.ParentCheckpointFingerprint == retainedCompletion.ParentCheckpointFingerprint &&
+                completion.WavePlan.StableKey == retainedCompletion.WavePlan.StableKey);
+            Check.Equal(JsonSerializer.Serialize(sourceCompletion), JsonSerializer.Serialize(retainedCompletion),
+                "compact campaign completion keeps the full winning simulation trace");
+            Check.Equal(compactTrace.Evaluations,
+                compactTrace.SuccessfulEvaluations.Count + compactTrace.OmittedSuccessfulEvaluations +
+                compactTrace.CampaignCompletions.Count + compactTrace.OmittedCampaignCompletions +
+                compactTrace.Failures.Count + compactTrace.OmittedFailures,
+                "compact completion trace counters reconcile to the exact evaluation total");
         }
         finally
         {
@@ -4183,6 +4873,39 @@ internal static class Program
         Check.True(!first.CampaignCleared && first.EndlessDepth == 0,
             "short diagnostic runs do not masquerade as campaign or endless clears");
         Check.True(first.Overdrives > 0 && first.ProtocolsEnabled, "default simulation exercises Protocol activations");
+        Check.Equal(first.Overdrives, first.ProtocolActivations.Count,
+            "Protocol trace accounts for every aggregate activation");
+        Check.True(first.ProtocolActivations.Any(activation => !activation.IsApex && !activation.IsAutonomous),
+            "headless player manual Protocols are distinguished from automation");
+        foreach (var activation in first.ProtocolActivations)
+        {
+            Check.Equal(activation.LiveEnemyCount,
+                activation.LiveComposition.Sum(enemy => enemy.Count),
+                "Protocol activation retains its complete live composition");
+            Check.Equal(activation.EliteEnemyCount,
+                activation.LiveComposition.Where(enemy => enemy.Rank == "Elite").Sum(enemy => enemy.Count),
+                "Protocol activation retains Elite pressure");
+            Check.Equal(activation.BossEnemyCount,
+                activation.LiveComposition.Where(enemy => enemy.Rank == "Boss").Sum(enemy => enemy.Count),
+                "Protocol activation retains boss pressure");
+            Check.Equal(activation.SignalEnemyCount,
+                activation.LiveComposition.Where(enemy => enemy.SignalRole != "None").Sum(enemy => enemy.Count),
+                "Protocol activation retains Signal pressure");
+            Check.Nearly(activation.LiveArmorAdjustedDurability,
+                activation.LiveComposition.Sum(enemy => enemy.ArmorAdjustedDurability),
+                "Protocol activation retains armor-adjusted live pressure");
+            Check.Nearly(activation.RankedArmorAdjustedDurability,
+                activation.LiveComposition.Where(enemy => enemy.Rank != "Standard")
+                    .Sum(enemy => enemy.ArmorAdjustedDurability),
+                "Protocol activation retains armor-adjusted ranked pressure");
+            Check.True(activation.Wave > 0 && activation.ElapsedSeconds >= activation.WaveElapsedSeconds &&
+                       activation.LeadProgress is >= 0 and <= 1 && activation.QueuedEnemyCount >= 0 &&
+                       !string.IsNullOrWhiteSpace(activation.TowerType),
+                "Protocol activation timing, targeting, and pressure fields are bounded");
+        }
+        Check.True(JsonSerializer.Serialize(first.ProtocolActivations) ==
+                   JsonSerializer.Serialize(second.ProtocolActivations),
+            "Protocol activation traces are deterministic for a fixed seed");
 
         var layoutSession = Session();
         Check.True(layoutSession.TryPlaceTower("tower", new Vector2(50, 90)),
@@ -4229,7 +4952,54 @@ internal static class Program
             UseProtocols = false
         });
         Check.Equal(0, noProtocols.Overdrives, "Protocol-disabled control group records no activations");
+        Check.Equal(0, noProtocols.ProtocolActivations.Count,
+            "Protocol-disabled control group records an empty activation trace");
         Check.True(!noProtocols.ProtocolsEnabled, "simulation report identifies Protocol-disabled control group");
+
+        var apexSession = SessionWithWave();
+        var apexDefinition = apexSession.Content.Towers["tower"];
+        apexDefinition.Apex = new TowerApexDefinition
+        {
+            UpgradeCost = 100,
+            DamageMultiplier = 1.2f,
+            AttackSpeedMultiplier = 1.2f,
+            RangeMultiplier = 1.1f
+        };
+        apexDefinition.Protocol = new TowerProtocolDefinition
+        {
+            DisplayName = "Apex telemetry",
+            DurationSeconds = 0.2f,
+            CooldownSeconds = 0.8f,
+            AttackSpeedBonus = 0.25f,
+            AutoTriggerCount = 1
+        };
+        Check.True(apexSession.TryPlaceTower("tower", new Vector2(50, 90)),
+            "place Apex Protocol telemetry tower");
+        var apexTower = apexSession.Towers.Single();
+        Check.True(apexTower.TryUpgrade() && apexTower.TrySpecialize("alpha") && apexTower.TryApexUpgrade(),
+            "construct Apex Protocol telemetry tower");
+        var apexCheckpoint = apexSession.CaptureSaveGame();
+        var apexOptions = new SimulationOptions
+        {
+            Strategy = AutoPlayerStrategy.Adaptive,
+            Seed = 7070,
+            MaximumWave = 1,
+            MaximumSimulatedSeconds = 120,
+            StepSeconds = 0.1f,
+            HoldFootprint = true
+        };
+        var apexFirst = HeadlessSimulation.Run(apexSession.Content, apexCheckpoint, apexOptions);
+        var apexRepeat = HeadlessSimulation.Run(apexSession.Content, apexCheckpoint, apexOptions);
+        Check.True(apexFirst.ProtocolActivations.Count > 0 &&
+                   apexFirst.ProtocolActivations.All(activation => activation.IsApex && activation.IsAutonomous),
+            "Apex Protocol events are identified as autonomous activations");
+        Check.True(apexFirst.ProtocolActivations.All(activation =>
+                activation.TowerId == apexTower.Id && activation.TowerType == apexDefinition.Id &&
+                activation.TargetMode == apexTower.TargetMode && activation.LiveEnemyCount > 0),
+            "Apex Protocol trace retains tower identity, targeting, and activation pressure");
+        Check.True(JsonSerializer.Serialize(apexFirst.ProtocolActivations) ==
+                   JsonSerializer.Serialize(apexRepeat.ProtocolActivations),
+            "autonomous Apex Protocol traces are deterministic");
 
         var unattendedDefeat = MinimalBastion.Simulation.HeadlessSimulation.Run(content,
             new MinimalBastion.Simulation.SimulationOptions
@@ -4303,6 +5073,7 @@ internal static class Program
         Check.Equal("Defeat", fatalEscape.Result, "fatal-escape fixture reaches defeat");
         Check.Equal(0, fatalEscape.RemainingEnemyCount, "fatal-escape fixture leaves no live pressure");
         Check.Equal(0, fatalEscape.QueuedEnemiesRemaining, "fatal-escape fixture leaves no queued pressure");
+        Check.Equal(3, fatalEscape.EscapedEnemies, "every enemy escaping in the fatal update is resolved");
         Check.True(fatalEscape.EmergencyDeployments == 0 && fatalEscape.CreditsSpent == 0 &&
                    fatalEscape.FinalTowers.Count == 0 && fatalEscape.Overdrives == 0,
             "fatal escape does not permit a post-defeat player action");
@@ -4312,10 +5083,17 @@ internal static class Program
             throw new InvalidOperationException("Fatal escape did not retain its escaped enemy.");
         Check.True(emptyFailure.LiveEnemyCount == 0 && emptyFailure.QueuedEnemyCount == 0 &&
                    emptyFailure.TotalEnemyCount == 0 && emptyFailure.FurthestProgress == 0,
-            "fatal enemy stays separate from live and queued failure pressure");
-        Check.Equal(1, emptyFailure.WaveEnemyCount, "completed fatal wave retains its pressure denominator");
-        Check.Equal("fatal", escapedEnemy.EnemyId, "fatal escape enemy identity");
-        Check.Equal("Elite fatal", escapedEnemy.DisplayName, "fatal escape display identity");
+            "fatal-frame escapes stay separate from live and queued failure pressure");
+        Check.Equal(3, fatalEscape.FatalEscapedEnemies.Count,
+            "fatal telemetry retains every same-update escaped enemy");
+        Check.True(fatalEscape.FatalEscapedEnemies.Select(enemy => enemy.EnemyId)
+                       .SequenceEqual(["fatal_a", "fatal_b", "fatal_c"]),
+            "fatal-frame enemy identities retain deterministic escape order");
+        Check.Equal(3, emptyFailure.FatalFrameEscapedEnemyCount,
+            "failure margin retains the fatal-frame escape count");
+        Check.Equal(3, emptyFailure.WaveEnemyCount, "completed fatal wave retains its pressure denominator");
+        Check.Equal("fatal_a", escapedEnemy.EnemyId, "fatal escape enemy identity");
+        Check.Equal("Elite fatal_a", escapedEnemy.DisplayName, "fatal escape display identity");
         Check.Equal("Elite", escapedEnemy.Rank, "fatal escape rank");
         Check.Equal("Disruptor", escapedEnemy.SignalRole, "fatal escape Signal role");
         Check.Nearly(414.4f, escapedEnemy.CurrentHealth, "fatal escape remaining health");
@@ -4324,12 +5102,24 @@ internal static class Program
         Check.Nearly(560.52f, escapedEnemy.ArmorAdjustedDurability,
             "fatal escape armor-adjusted durability");
         Check.Nearly(1, escapedEnemy.Progress, "fatal escape path progress");
-        Check.Nearly(escapedEnemy.ArmorAdjustedDurability, emptyFailure.WaveArmorAdjustedDurability,
+        Check.Nearly(escapedEnemy.ArmorAdjustedDurability * 3, emptyFailure.WaveArmorAdjustedDurability,
             "fatal escape failure margin retains the completed wave baseline");
         Check.True(emptyFailure.RemainingEnemyFraction == 0 &&
                    emptyFailure.RemainingArmorAdjustedDurabilityFraction == 0,
-            "zero unresolved pressure produces zero normalized failure margins");
-        Check.True(fatalEscape.FatalEscapedEnemy == fatalRepeat.FatalEscapedEnemy &&
+            "legacy remaining margins continue to describe only live and queued pressure");
+        Check.Equal(3, emptyFailure.UnresolvedEnemyCount, "unresolved count includes fatal-frame escapes");
+        Check.Nearly(escapedEnemy.ArmorAdjustedDurability * 3,
+            emptyFailure.UnresolvedArmorAdjustedDurability,
+            "unresolved durability includes every fatal-frame escape");
+        Check.Nearly(1, emptyFailure.UnresolvedEnemyFraction,
+            "unresolved count fraction includes fatal-frame escapes");
+        Check.Nearly(1, emptyFailure.UnresolvedArmorAdjustedDurabilityFraction,
+            "unresolved durability fraction includes fatal-frame escapes");
+        Check.True(fatalEscape.UnresolvedEnemyCount == 3 &&
+                   fatalEscape.UnresolvedArmorAdjustedDurability > 0,
+            "run-level unresolved pressure includes fatal-frame escapes");
+        Check.True(fatalEscape.FatalEscapedEnemies.SequenceEqual(fatalRepeat.FatalEscapedEnemies) &&
+                   fatalEscape.FatalEscapedEnemy == fatalRepeat.FatalEscapedEnemy &&
                    fatalEscape.FailureMargin == fatalRepeat.FailureMargin,
             "fatal escape telemetry is deterministic for a fixed seed and checkpoint state");
     }
@@ -4347,6 +5137,217 @@ internal static class Program
 
         Check.Equal(1, session.Towers.Count, "footprint hold does not add towers");
         Check.Equal(2, session.Towers[0].LevelIndex, "footprint hold still spends on permanent upgrades");
+    }
+
+    private static void ExperiencedSaleLimits()
+    {
+        static SimulationOptions Options(int saleLimit, bool useApexUpgrades = true) => new()
+        {
+            Strategy = AutoPlayerStrategy.Experienced,
+            Seed = 6161,
+            UseProtocols = false,
+            UseApexUpgrades = useApexUpgrades,
+            WavePlan = new WavePlan
+            {
+                Wave = GameConstants.CampaignWaveCount,
+                DecisionSeed = 6161,
+                Parameters = new SortedDictionary<string, double>(StringComparer.Ordinal)
+                {
+                    ["activePlateLimit"] = 1,
+                    ["apexCandidate"] = 0,
+                    ["apexLimit"] = 1,
+                    ["apexWave"] = GameConstants.CampaignWaveCount,
+                    ["directPlateLimit"] = 2,
+                    ["plateSaleProgress"] = 0.5,
+                    ["saleLimit"] = saleLimit
+                }
+            }
+        };
+
+        (GameSession Session, AutoPlayer Player, int ApexTowerId, int FrostTowerId, List<string> Trace) Prepare(
+            int saleLimit)
+        {
+            var session = SaleBehaviorCheckpointSession();
+            var apexTowerId = session.Towers.Single(tower => tower.Definition.Id == "apex_candidate").Id;
+            var frostTowerId = session.Towers.Single(tower => tower.Definition.Id == "frost_spire").Id;
+            var trace = new List<string>();
+            session.TowerSold += (tower, value) => trace.Add(
+                $"sell:{tower.Id}:{tower.Definition.Id}:{value}:{session.Economy.Credits}");
+            session.TowerUpgraded += (tower, cost) => trace.Add(
+                $"upgrade:{tower.Id}:{tower.Definition.Id}:{cost}:{tower.IsApex}:{session.Economy.Credits}");
+            var options = Options(saleLimit);
+            var player = new AutoPlayer(session, options.Strategy, options.Seed, options);
+            player.PrepareForWave(session);
+            return (session, player, apexTowerId, frostTowerId, trace);
+        }
+
+        static string Snapshot(GameSession session, IReadOnlyList<string> trace) => JsonSerializer.Serialize(new
+        {
+            Trace = trace,
+            session.Economy.Credits,
+            session.Economy.SaleCreditsRecovered,
+            session.EmergencyDirectPurchasesThisWave,
+            Towers = session.Towers.OrderBy(tower => tower.Id).Select(tower => new
+            {
+                tower.Id,
+                TowerType = tower.Definition.Id,
+                tower.LevelIndex,
+                tower.IsApex,
+                tower.InvestedCredits
+            }),
+            Plates = session.EmergencyDefenses.OrderBy(plate => plate.Id).Select(plate => new
+            {
+                plate.Id,
+                plate.ChargesRemaining,
+                plate.Position.X,
+                plate.Position.Y
+            })
+        });
+
+        var disabled = Prepare(0);
+        var disabledRepeat = Prepare(0);
+        Check.True(disabled.Session.Towers.Any(tower => tower.Id == disabled.FrostTowerId) &&
+                   !disabled.Session.Towers.Single(tower => tower.Id == disabled.ApexTowerId).IsApex,
+            "saleLimit zero preserves the checkpoint Frost and prevents Apex promotion");
+        Check.True(disabled.Trace.Count == 0 && disabled.Session.Economy.SaleCreditsRecovered == 0 &&
+                   disabled.Session.Economy.Credits == 40,
+            "saleLimit zero performs no sale or upgrade transaction");
+        Check.Equal(Snapshot(disabled.Session, disabled.Trace), Snapshot(disabledRepeat.Session, disabledRepeat.Trace),
+            "saleLimit zero preparation is deterministic");
+
+        var atomic = Prepare(1);
+        var atomicRepeat = Prepare(1);
+        Check.True(!atomic.Session.Towers.Any(tower => tower.Id == atomic.FrostTowerId) &&
+                   atomic.Session.Towers.Single(tower => tower.Id == atomic.ApexTowerId).IsApex,
+            "saleLimit one exchanges the checkpoint Frost for the planned Apex");
+        Check.True(atomic.Trace.SequenceEqual([
+                $"sell:{atomic.FrostTowerId}:frost_spire:60:100",
+                $"upgrade:{atomic.ApexTowerId}:apex_candidate:100:True:0"
+            ]),
+            "saleLimit one records one atomic sale followed immediately by Apex promotion");
+        Check.True(atomic.Session.Economy.SaleCreditsRecovered == 60 && atomic.Session.Economy.Credits == 0,
+            "atomic Apex funding spends the recovered sale credits exactly");
+        Check.Equal(Snapshot(atomic.Session, atomic.Trace), Snapshot(atomicRepeat.Session, atomicRepeat.Trace),
+            "saleLimit one preparation is deterministic");
+
+        (GameSession Session, int ReplacementId, List<string> Trace) AdvanceToPlatePressure(bool blockCapacity)
+        {
+            var prepared = Prepare(2);
+            prepared.Session.Economy.AddCredits(100);
+            Check.True(prepared.Session.TryPlaceTower("frost_spire", new Vector2(850, 620), selectPlaced: false),
+                "place deterministic post-Apex replacement");
+            var replacementId = prepared.Session.Towers.Max(tower => tower.Id);
+            prepared.Session.Economy.AddCredits(75);
+            if (blockCapacity)
+            {
+                prepared.Session.EmergencyDefenses.Add(new PulsePlateInstance(
+                    99,
+                    new Vector2(820, 30),
+                    prepared.Session.Content.Tactics.EmergencyDefense));
+            }
+
+            Check.True(prepared.Session.StartNextWave(), "start final-wave sale-capacity fixture");
+            for (var update = 0; update < 30; update++) prepared.Session.Update(0.1f);
+            var lead = prepared.Session.Enemies.Single(enemy => !enemy.IsDead && !enemy.HasEscaped);
+            var nextPlateCost = prepared.Session.CurrentEmergencyDirectPurchaseCost;
+            var requiredCredits = nextPlateCost + 75;
+            var replacement = prepared.Session.Towers.Single(tower => tower.Id == replacementId);
+            Check.True(lead.PathProgress >= 0.5f && prepared.Session.Economy.Credits >= nextPlateCost &&
+                       prepared.Session.Economy.Credits < requiredCredits &&
+                       prepared.Session.Economy.Credits + replacement.SellValue >= requiredCredits,
+                "replacement sale is otherwise eligible to fund the Plate reserve");
+            var reactionOptions = Options(2, useApexUpgrades: false);
+            var reactionPlayer = new AutoPlayer(prepared.Session, reactionOptions.Strategy,
+                reactionOptions.Seed, reactionOptions);
+            reactionPlayer.ReactDuringWave(prepared.Session);
+            return (prepared.Session, replacementId, prepared.Trace);
+        }
+
+        var blocked = AdvanceToPlatePressure(blockCapacity: true);
+        var blockedRepeat = AdvanceToPlatePressure(blockCapacity: true);
+        Check.True(blocked.Session.EmergencyDefenses.Count == 1 &&
+                   blocked.Session.Towers.Any(tower => tower.Id == blocked.ReplacementId),
+            "an active Plate at the configured capacity preserves the replacement tower");
+        Check.True(blocked.Trace.Count(entry => entry.StartsWith("sell:", StringComparison.Ordinal)) == 1 &&
+                   blocked.Session.Economy.SaleCreditsRecovered == 60 &&
+                   blocked.Session.EmergencyDirectPurchasesThisWave == 0,
+            "blocked Plate deployment does not consume the remaining sale allowance");
+        Check.Equal(Snapshot(blocked.Session, blocked.Trace), Snapshot(blockedRepeat.Session, blockedRepeat.Trace),
+            "capacity-blocked sale decisions are deterministic");
+
+        var open = AdvanceToPlatePressure(blockCapacity: false);
+        var openRepeat = AdvanceToPlatePressure(blockCapacity: false);
+        Check.True(open.Session.EmergencyDefenses.Count == 1 &&
+                   !open.Session.Towers.Any(tower => tower.Id == open.ReplacementId),
+            "an open Plate slot permits the eligible replacement sale and deployment");
+        Check.True(open.Trace.Count(entry => entry.StartsWith("sell:", StringComparison.Ordinal)) == 2 &&
+                   open.Session.Economy.SaleCreditsRecovered == 120 &&
+                   open.Session.EmergencyDirectPurchasesThisWave == 1,
+            "the open-capacity control proves the replacement can fund a direct Plate");
+        Check.Equal(Snapshot(open.Session, open.Trace), Snapshot(openRepeat.Session, openRepeat.Trace),
+            "open-capacity sale decisions are deterministic");
+    }
+
+    private static void PulsePlateDeploymentTelemetry()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
+        var authored = new ContentLoader(root).Load();
+        var content = DefeatTelemetryContent(authored);
+        var target = Enemy("plate_target", 1_000, 10, 0, 0, 0);
+        content.Enemies.Clear();
+        content.Enemies.Add(target.Id, target);
+        content.Waves.Waves =
+        [
+            new WaveDefinition
+            {
+                Number = 3,
+                Archetype = "Plate Telemetry",
+                Groups =
+                [
+                    new WaveGroupDefinition { EnemyId = target.Id, Count = 1, SpawnInterval = 0 }
+                ]
+            }
+        ];
+        content.Difficulties["bastion"].StartingLives = 2;
+
+        var checkpoint = new GameSession(content, content.Map.Id, "bastion", "close_quarters").CaptureSaveGame();
+        checkpoint.Economy.Lives = 1;
+        checkpoint.EmergencyInventory = 0;
+        var options = new SimulationOptions
+        {
+            Strategy = AutoPlayerStrategy.Adaptive,
+            Seed = 8080,
+            DifficultyId = "bastion",
+            ChallengeId = "close_quarters",
+            StepSeconds = 0.1f,
+            MaximumWave = 3,
+            MaximumSimulatedSeconds = 2.2f,
+            HoldFootprint = true
+        };
+        var first = HeadlessSimulation.Run(content, checkpoint, options);
+        var repeat = HeadlessSimulation.Run(content, checkpoint, options);
+        var deployment = first.PulsePlateDeployments.Single();
+
+        Check.Equal(3, deployment.Wave, "Plate deployment records its active wave");
+        Check.Equal(1, deployment.PlateId, "Plate deployment records its deterministic identity");
+        Check.True(deployment.ElapsedSeconds is >= 0.9f and <= 1.2f &&
+                   deployment.WaveElapsedSeconds == deployment.ElapsedSeconds,
+            "Plate deployment records run and wave elapsed time");
+        Check.True(deployment.DirectPurchase, "Plate deployment distinguishes a direct purchase");
+        Check.Equal(content.Tactics.EmergencyDefense.PurchaseCost, deployment.Cost,
+            "Plate deployment records the paid direct-purchase cost");
+        Check.True(deployment.PathProgress is > 0 and < 1 &&
+                   float.IsFinite(deployment.X) && float.IsFinite(deployment.Y),
+            "Plate deployment records its projected path position and coordinates");
+        Check.True(deployment.LeadProgress > 0 && deployment.LeadProgress < deployment.PathProgress,
+            "Plate deployment records lead-enemy progress at the decision point");
+        Check.True(deployment.LiveEnemyCount == 1 && deployment.QueuedEnemyCount == 0,
+            "Plate deployment records live and queued pressure at the decision point");
+        Check.True(deployment.TriggerCount == 0 && deployment.HitCount == 0 &&
+                   deployment.KillCount == 0 && deployment.Damage == 0,
+            "zero-impact Plate purchases remain explicit in deployment telemetry");
+        Check.True(first.PulsePlateDeployments.SequenceEqual(repeat.PulsePlateDeployments),
+            "Plate deployment telemetry is deterministic for a fixed checkpoint and seed");
     }
 
     private static void PlacementRules()
@@ -6764,9 +7765,13 @@ internal static class Program
     private static GameContent FatalEscapeTelemetryContent(GameContent authored)
     {
         var content = DefeatTelemetryContent(authored);
-        var fatal = Enemy("fatal", 100, 300, 0, 5, 20);
+        var fatalA = Enemy("fatal_a", 100, 280, 0, 5, 20);
+        var fatalB = Enemy("fatal_b", 100, 310, 0, 5, 20);
+        var fatalC = Enemy("fatal_c", 100, 350, 0, 5, 20);
         content.Enemies.Clear();
-        content.Enemies.Add(fatal.Id, fatal);
+        content.Enemies.Add(fatalA.Id, fatalA);
+        content.Enemies.Add(fatalB.Id, fatalB);
+        content.Enemies.Add(fatalC.Id, fatalC);
         content.Waves.Waves =
         [
             new WaveDefinition
@@ -6779,7 +7784,21 @@ internal static class Program
                 [
                     new WaveGroupDefinition
                     {
-                        EnemyId = fatal.Id,
+                        EnemyId = fatalA.Id,
+                        Rank = "Elite",
+                        Count = 1,
+                        SpawnInterval = 0
+                    },
+                    new WaveGroupDefinition
+                    {
+                        EnemyId = fatalB.Id,
+                        Rank = "Elite",
+                        Count = 1,
+                        SpawnInterval = 0
+                    },
+                    new WaveGroupDefinition
+                    {
+                        EnemyId = fatalC.Id,
                         Rank = "Elite",
                         Count = 1,
                         SpawnInterval = 0
@@ -6788,6 +7807,118 @@ internal static class Program
             }
         ];
         return content;
+    }
+
+    private static GameSession SaleBehaviorCheckpointSession()
+    {
+        static List<TowerLevelDefinition> Levels() =>
+        [
+            new TowerLevelDefinition { Range = 10, Damage = 1, AttacksPerSecond = 1, UpgradeCost = 10 },
+            new TowerLevelDefinition { Range = 10, Damage = 1, AttacksPerSecond = 1, UpgradeCost = 10 },
+            new TowerLevelDefinition { Range = 10, Damage = 1, AttacksPerSecond = 1 }
+        ];
+
+        var apexCandidate = new TowerDefinition
+        {
+            Id = "apex_candidate",
+            DisplayName = "Apex Candidate",
+            PurchaseCost = 100,
+            Levels = Levels(),
+            Specializations =
+            [
+                new TowerSpecializationDefinition
+                {
+                    Id = "alpha",
+                    DisplayName = "Alpha",
+                    ShortLabel = "ALPHA",
+                    Summary = "Apex fixture",
+                    UpgradeCost = 10,
+                    Level = new TowerLevelDefinition { Range = 10, Damage = 1, AttacksPerSecond = 1 }
+                }
+            ],
+            Apex = new TowerApexDefinition
+            {
+                UpgradeCost = 100,
+                DamageMultiplier = 1.2f,
+                AttackSpeedMultiplier = 1.2f,
+                RangeMultiplier = 1.1f
+            }
+        };
+        var frost = new TowerDefinition
+        {
+            Id = "frost_spire",
+            DisplayName = "Checkpoint Frost",
+            PurchaseCost = 100,
+            Levels = Levels()
+        };
+        var filler = new TowerDefinition
+        {
+            Id = "filler",
+            DisplayName = "Established Defense",
+            PurchaseCost = 100,
+            Levels = Levels()
+        };
+        var enemy = Enemy("sale_target", 1_000_000, 180, 0, 0, 0);
+        var content = new GameContent
+        {
+            Towers = new Dictionary<string, TowerDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                [apexCandidate.Id] = apexCandidate,
+                [frost.Id] = frost,
+                [filler.Id] = filler
+            },
+            Enemies = new Dictionary<string, EnemyDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                [enemy.Id] = enemy
+            },
+            Map = new MapDefinition
+            {
+                Id = "sale_behavior",
+                DisplayName = "Sale Behavior",
+                Path = [Point(0, 30), Point(900, 30)],
+                PathWidth = 56,
+                BuildableRegions = [new RectangleData { X = 20, Y = 110, Width = 900, Height = 570 }],
+                StartingCredits = 10_000,
+                StartingLives = 20,
+                Background = new BackgroundData()
+            },
+            Waves = new WaveSetDefinition
+            {
+                Waves = Enumerable.Range(1, GameConstants.CampaignWaveCount).Select(number => new WaveDefinition
+                {
+                    Number = number,
+                    Archetype = "Sale fixture",
+                    Groups = [new WaveGroupDefinition { EnemyId = enemy.Id, Count = 1, SpawnInterval = 0 }]
+                }).ToList()
+            }
+        };
+        var setup = new GameSession(content);
+        var positions = Enumerable.Range(0, 24)
+            .Select(index => new Vector2(60 + index % 8 * 105, 150 + index / 8 * 180))
+            .ToArray();
+        Check.True(setup.TryPlaceTower(apexCandidate.Id, positions[0], selectPlaced: false),
+            "place sale fixture Apex candidate");
+        var apexTower = setup.Towers.Single();
+        Check.True(apexTower.TryUpgrade() && apexTower.TrySpecialize("alpha"),
+            "prepare sale fixture Apex candidate");
+        Check.True(setup.TryPlaceTower(frost.Id, positions[1], selectPlaced: false),
+            "place sale fixture Frost");
+        foreach (var position in positions.Skip(2))
+        {
+            Check.True(setup.TryPlaceTower(filler.Id, position, selectPlaced: false),
+                "place established sale fixture tower");
+            var established = setup.Towers[^1];
+            Check.True(established.TryUpgrade() && established.TryUpgrade(),
+                "prepare established sale fixture tower");
+        }
+
+        var checkpoint = setup.CaptureSaveGame();
+        checkpoint.Waves.CurrentWaveNumber = GameConstants.CampaignWaveCount - 1;
+        checkpoint.Economy.Credits = 40;
+        checkpoint.Economy.Lives = 20;
+        checkpoint.EmergencyInventory = 0;
+        checkpoint.EmergencyDirectPurchasesThisWave = 0;
+        return GameSession.RestoreSaveGame(content, checkpoint);
     }
 
     private static GameSession Session()

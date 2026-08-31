@@ -468,7 +468,8 @@ public sealed class GameSession
         return PlacementFailure.None;
     }
 
-    public PlacementFailure ValidateTacticalPlacement(TacticalPlacementKind kind, Vector2 position)
+    public PlacementFailure ValidateTacticalPlacement(TacticalPlacementKind kind, Vector2 position,
+        bool ignoreAvailability = false)
     {
         if (!TacticalSystemsEnabled) return PlacementFailure.TacticalSystemsDisabled;
         if (kind == TacticalPlacementKind.PulsePlate)
@@ -476,7 +477,8 @@ public sealed class GameSession
             var definition = _content.Tactics.EmergencyDefense;
             if (_nextEmergencyDefenseId > GameConstants.MaximumPulsePlateId) return PlacementFailure.IdentityCapacityReached;
             if (EmergencyDefenses.Count >= definition.MaximumActive) return PlacementFailure.DefenseCapacityReached;
-            if (EmergencyInventory <= 0 && !CanDirectPurchaseEmergencyDefense) return PlacementFailure.NoDefenseAvailable;
+            if (!ignoreAvailability && EmergencyInventory <= 0 && !CanDirectPurchaseEmergencyDefense)
+                return PlacementFailure.NoDefenseAvailable;
             if (!IsBattlefieldPosition(position)) return PlacementFailure.MustBeOnPath;
             var projection = Map.Path.Project(position);
             if (projection.DistanceToPath > Map.Definition.PathWidth * 0.5f + definition.PlacementRoadTolerance)

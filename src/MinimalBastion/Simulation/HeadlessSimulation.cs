@@ -2,6 +2,7 @@ using MinimalBastion.Combat;
 using MinimalBastion.Enemies;
 using MinimalBastion.Core;
 using MinimalBastion.Persistence;
+using MinimalBastion.Tactics;
 using MinimalBastion.Towers;
 using Microsoft.Xna.Framework;
 
@@ -94,6 +95,7 @@ public static class HeadlessSimulation
 
         while (!session.IsDefeat && elapsed < options.MaximumSimulatedSeconds)
         {
+            telemetry.SetElapsed(elapsed);
             if (session.IsVictory)
             {
                 if (!options.ContinueEndless || options.MaximumWave <= session.TotalWaves || !session.BeginEndlessMode()) break;
@@ -110,8 +112,11 @@ public static class HeadlessSimulation
 
             wasWaveActive = session.Waves.IsActive;
             telemetry.SampleUtility(session, step * session.Speed);
+            telemetry.BeginUpdate(elapsed + step);
             session.Update(step);
             elapsed += step;
+            telemetry.SetElapsed(elapsed);
+            telemetry.CompleteUpdate(session);
             reactionTimer += step;
 
             if (!session.IsDefeat && session.Waves.IsActive && reactionTimer >= 1f)
@@ -137,9 +142,15 @@ public static class HeadlessSimulation
         private readonly Dictionary<string, int> _enemyKills = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, int> _enemyLeaks = new(StringComparer.OrdinalIgnoreCase);
         private readonly List<WaveRunMetrics> _waves = new();
+        private readonly List<SimulationEscapedEnemy> _escapedThisUpdate = new();
+        private IReadOnlyList<SimulationEscapedEnemy> _fatalFrameEscapedEnemies = Array.Empty<SimulationEscapedEnemy>();
+        private readonly List<PlateDeploymentAccumulator> _pulsePlateDeployments = new();
+        private readonly Dictionary<int, PlateDeploymentAccumulator> _pulsePlateById = new();
+        private readonly List<SimulationProtocolActivation> _protocolActivations = new();
         private WaveSnapshot? _activeWave;
         private WaveSnapshot? _lastWave;
-        private SimulationEscapedEnemy? _fatalEscapedEnemy;
+        private float _elapsed;
+        private bool _insideSessionUpdate;
         private int _emergencyDeployments;
         private int _emergencyDirectPurchases;
         private int _emergencyTriggers;
@@ -155,29 +166,34 @@ public static class HeadlessSimulation
         {
             session.TowerPlaced += OnTowerPlaced;
             session.TowerUpgraded += OnTowerUpgraded;
-            session.TowerOverdriven += tower =>
-            {
-                _overdrives++;
-                GetTower(tower.Definition.Id).Overdrives++;
-            };
+            session.TowerOverdriven += tower => OnTowerOverdriven(session, tower);
             session.TowerSold += OnTowerSold;
             session.EnemyKilled += OnEnemyKilled;
-            session.EnemyEscaped += enemy => OnEnemyEscaped(session, enemy);
+            session.EnemyEscaped += OnEnemyEscaped;
             session.DamageResolver.DamageApplied += report => OnDamage(session, report);
-            session.EmergencyDefenseDeployed += (_, purchased) =>
-            {
-                _emergencyDeployments++;
-                if (purchased) _emergencyDirectPurchases++;
-            };
-            session.EmergencyDefenseTriggered += (_, hits) =>
-            {
-                _emergencyTriggers++;
-                _emergencyHits += hits;
-            };
+            session.EmergencyDefenseDeployed += (plate, purchased) =>
+                OnEmergencyDefenseDeployed(session, plate, purchased);
+            session.EmergencyDefenseTriggered += OnEmergencyDefenseTriggered;
             session.GeneratorPlaced += _ => _generatorPurchases++;
             session.GeneratorUpgraded += (_, _) => _generatorUpgrades++;
             session.EmergencyChargeProduced += () => _generatedCharges++;
             foreach (var tower in session.Towers) TrackExistingTower(tower);
+        }
+
+        public void SetElapsed(float elapsed) => _elapsed = MathF.Max(0, elapsed);
+
+        public void BeginUpdate(float elapsed)
+        {
+            _elapsed = MathF.Max(0, elapsed);
+            _insideSessionUpdate = true;
+            _escapedThisUpdate.Clear();
+        }
+
+        public void CompleteUpdate(GameSession session)
+        {
+            if (session.IsDefeat && _escapedThisUpdate.Count > 0)
+                _fatalFrameEscapedEnemies = _escapedThisUpdate.ToArray();
+            _insideSessionUpdate = false;
         }
 
         public void BeginWave(GameSession session, float elapsed)
@@ -253,10 +269,18 @@ public static class HeadlessSimulation
                 RemainingEnemies = remainingEnemies,
                 QueuedEnemies = queuedEnemies,
                 QueuedEnemiesRemaining = queuedEnemies.Sum(enemy => enemy.Count),
+                FatalEscapedEnemies = _fatalFrameEscapedEnemies,
                 FailureMargin = result == "Defeat"
                     ? CaptureFailureMargin(session, remainingEnemies, queuedEnemies)
                     : null,
                 Waves = _waves.ToArray(),
+                PulsePlateDeployments = _pulsePlateDeployments
+                    .OrderBy(deployment => deployment.Wave)
+                    .ThenBy(deployment => deployment.ElapsedSeconds)
+                    .ThenBy(deployment => deployment.PlateId)
+                    .Select(deployment => deployment.Build())
+                    .ToArray(),
+                ProtocolActivations = _protocolActivations.ToArray(),
                 FinalTowers = session.Towers.OrderBy(tower => tower.Id).Select(tower => new SimulationTowerPlacement(
                     tower.Id,
                     tower.Definition.Id,
@@ -374,7 +398,15 @@ public static class HeadlessSimulation
                 _lastWave?.Wave == session.CurrentWave ? _lastWave.EnemyCount : 0,
                 _lastWave?.Wave == session.CurrentWave ? _lastWave.ArmorAdjustedDurability : 0)
             {
-                FatalEscapedEnemy = _fatalEscapedEnemy
+                FatalEscapedEnemy = _fatalFrameEscapedEnemies.FirstOrDefault(),
+                FatalFrameEscapedEnemyCount = _fatalFrameEscapedEnemies.Count,
+                FatalFrameEscapedHealth = FiniteSum(_fatalFrameEscapedEnemies.Select(enemy => enemy.CurrentHealth)),
+                FatalFrameEscapedShield = FiniteSum(_fatalFrameEscapedEnemies.Select(enemy => enemy.Shield)),
+                FatalFrameEscapedArmorAdjustedDurability = FiniteSum(
+                    _fatalFrameEscapedEnemies.Select(enemy => enemy.ArmorAdjustedDurability)),
+                FatalFrameFurthestProgress = _fatalFrameEscapedEnemies.Count == 0
+                    ? 0
+                    : _fatalFrameEscapedEnemies.Max(enemy => enemy.Progress)
             };
         }
 
@@ -478,12 +510,41 @@ public static class HeadlessSimulation
             metrics.CreditsRecovered += value;
         }
 
+        private void OnTowerOverdriven(GameSession session, TowerInstance tower)
+        {
+            _overdrives++;
+            GetTower(tower.Definition.Id).Overdrives++;
+            var liveInstances = session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped).ToArray();
+            var composition = CaptureRemainingEnemies(session);
+            var rankedComposition = composition.Where(enemy =>
+                !enemy.Rank.Equals(EnemyRank.Standard.ToString(), StringComparison.OrdinalIgnoreCase)).ToArray();
+            _protocolActivations.Add(new SimulationProtocolActivation(
+                session.CurrentWave,
+                _elapsed,
+                _activeWave is null ? 0 : MathF.Max(0, _elapsed - _activeWave.StartedAt),
+                tower.Id,
+                tower.Definition.Id,
+                tower.IsApex,
+                _insideSessionUpdate,
+                tower.TargetMode,
+                liveInstances.Length,
+                session.Waves.ActiveWave is null
+                    ? 0
+                    : session.Waves.CaptureQueuedEnemies(session).Sum(group => group.Count),
+                liveInstances.Length == 0 ? 0 : liveInstances.Max(enemy => enemy.PathProgress),
+                liveInstances.Count(enemy => enemy.Rank == EnemyRank.Elite),
+                liveInstances.Count(enemy => enemy.Rank == EnemyRank.Boss),
+                liveInstances.Count(enemy => enemy.SignalRole != EnemySignalRole.None),
+                FiniteSum(composition.Select(enemy => enemy.ArmorAdjustedDurability)),
+                FiniteSum(rankedComposition.Select(enemy => enemy.ArmorAdjustedDurability)),
+                composition));
+        }
+
         private void OnEnemyKilled(EnemyInstance enemy) => Increment(_enemyKills, EnemyKey(enemy));
-        private void OnEnemyEscaped(GameSession session, EnemyInstance enemy)
+        private void OnEnemyEscaped(EnemyInstance enemy)
         {
             Increment(_enemyLeaks, EnemyKey(enemy));
-            if (_fatalEscapedEnemy is not null || session.Economy.Lives > 0) return;
-            _fatalEscapedEnemy = new SimulationEscapedEnemy(
+            _escapedThisUpdate.Add(new SimulationEscapedEnemy(
                 enemy.Definition.Id,
                 enemy.DisplayName,
                 enemy.Rank.ToString(),
@@ -492,15 +553,68 @@ public static class HeadlessSimulation
                 FiniteProduct(enemy.MaxHealth, 1),
                 FiniteProduct(enemy.Shield, 1),
                 ArmorAdjustedDurability(enemy.Health, enemy.Shield, enemy.BaseArmor),
-                float.IsFinite(enemy.PathProgress) ? Math.Clamp(enemy.PathProgress, 0, 1) : 0);
+                float.IsFinite(enemy.PathProgress) ? Math.Clamp(enemy.PathProgress, 0, 1) : 0));
+        }
+
+        private void OnEmergencyDefenseDeployed(GameSession session, PulsePlateInstance plate, bool purchased)
+        {
+            _emergencyDeployments++;
+            if (purchased) _emergencyDirectPurchases++;
+            var actualCost = purchased
+                ? SaturatingPlateCost(plate.Definition.PurchaseCost, plate.Definition.DirectPurchaseCostIncrease,
+                    Math.Max(0, session.EmergencyDirectPurchasesThisWave - 1))
+                : 0;
+            var projection = session.Map.Path.Project(plate.Position);
+            var liveEnemies = session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped).ToArray();
+            var deployment = new PlateDeploymentAccumulator
+            {
+                Wave = session.Waves.IsActive ? session.CurrentWave : session.CurrentWave + 1,
+                PlateId = plate.Id,
+                ElapsedSeconds = _elapsed,
+                WaveElapsedSeconds = _activeWave is null ? 0 : MathF.Max(0, _elapsed - _activeWave.StartedAt),
+                DirectPurchase = purchased,
+                Cost = actualCost,
+                PathProgress = session.Map.Path.GetProgress(projection.DistanceAlongPath),
+                X = plate.Position.X,
+                Y = plate.Position.Y,
+                LeadProgress = liveEnemies.Length == 0 ? 0 : liveEnemies.Max(enemy => enemy.PathProgress),
+                LiveEnemyCount = liveEnemies.Length,
+                QueuedEnemyCount = session.Waves.ActiveWave is null
+                    ? 0
+                    : session.Waves.CaptureQueuedEnemies(session).Sum(group => group.Count)
+            };
+            _pulsePlateDeployments.Add(deployment);
+            _pulsePlateById[plate.Id] = deployment;
+        }
+
+        private void OnEmergencyDefenseTriggered(PulsePlateInstance plate, int hits)
+        {
+            _emergencyTriggers++;
+            _emergencyHits += hits;
+            if (!_pulsePlateById.TryGetValue(plate.Id, out var deployment)) return;
+            deployment.TriggerCount++;
+            deployment.HitCount += Math.Max(0, hits);
+        }
+
+        private static int SaturatingPlateCost(int baseCost, int increase, int purchaseIndex)
+        {
+            var cost = (long)Math.Max(0, baseCost) + (long)Math.Max(0, increase) * Math.Max(0, purchaseIndex);
+            return (int)Math.Min(int.MaxValue, cost);
         }
 
         private void OnDamage(GameSession session, DamageReport report)
         {
             if (report.SourceTowerId <= -100_000)
             {
-                _emergencyDamage += report.HealthDamage + report.ShieldDamage;
+                var damage = report.HealthDamage + report.ShieldDamage;
+                _emergencyDamage += damage;
                 if (report.Killed) _emergencyKills++;
+                var plateId = checked(-GameConstants.PulsePlateDamageSourceOffset - report.SourceTowerId);
+                if (_pulsePlateById.TryGetValue(plateId, out var deployment))
+                {
+                    deployment.Damage += damage;
+                    if (report.Killed) deployment.KillCount++;
+                }
                 return;
             }
             if (!_towerIdToDefinition.TryGetValue(report.SourceTowerId, out var towerId)) return;
@@ -566,5 +680,43 @@ public static class HeadlessSimulation
             string Archetype,
             int EnemyCount,
             float ArmorAdjustedDurability);
+
+        private sealed class PlateDeploymentAccumulator
+        {
+            public int Wave { get; init; }
+            public int PlateId { get; init; }
+            public float ElapsedSeconds { get; init; }
+            public float WaveElapsedSeconds { get; init; }
+            public bool DirectPurchase { get; init; }
+            public int Cost { get; init; }
+            public float PathProgress { get; init; }
+            public float X { get; init; }
+            public float Y { get; init; }
+            public float LeadProgress { get; init; }
+            public int LiveEnemyCount { get; init; }
+            public int QueuedEnemyCount { get; init; }
+            public int TriggerCount { get; set; }
+            public int HitCount { get; set; }
+            public int KillCount { get; set; }
+            public float Damage { get; set; }
+
+            public SimulationPulsePlateDeployment Build() => new(
+                Wave,
+                PlateId,
+                ElapsedSeconds,
+                WaveElapsedSeconds,
+                DirectPurchase,
+                Cost,
+                PathProgress,
+                X,
+                Y,
+                LeadProgress,
+                LiveEnemyCount,
+                QueuedEnemyCount,
+                TriggerCount,
+                HitCount,
+                KillCount,
+                Damage);
+        }
     }
 }

@@ -261,13 +261,22 @@ public static class StrategyArtifactStore
 
     private static void ValidateSearchResult(CheckpointSearchResult result, GameContent content)
     {
-        if (result.SchemaVersion != CheckpointSearchResult.CurrentSchemaVersion)
+        if (result.SchemaVersion is < 1 or > CheckpointSearchResult.CurrentSchemaVersion)
             throw new InvalidDataException($"Checkpoint search schema {result.SchemaVersion} is not supported.");
         if (result.TargetWave <= 0 || result.BeamWidth <= 0 || result.Evaluations < 0 ||
+            result.OmittedSuccessfulEvaluations < 0 || result.OmittedCampaignCompletions < 0 ||
+            result.OmittedFailures < 0 ||
             result.SuccessfulEvaluations is null || result.RetainedStates is null ||
             result.CampaignCompletions is null || result.Failures is null)
             throw new InvalidDataException("Checkpoint search artifact has invalid summary fields.");
-        if (result.Evaluations != result.SuccessfulEvaluations.Count + result.CampaignCompletions.Count + result.Failures.Count)
+        if (result.SchemaVersion == 1 &&
+            (result.OmittedSuccessfulEvaluations != 0 || result.OmittedCampaignCompletions != 0 ||
+             result.OmittedFailures != 0))
+            throw new InvalidDataException("Legacy checkpoint search artifacts cannot omit evaluation traces.");
+        var recordedEvaluations = (long)result.SuccessfulEvaluations.Count + result.OmittedSuccessfulEvaluations +
+                                  result.CampaignCompletions.Count + result.OmittedCampaignCompletions +
+                                  result.Failures.Count + result.OmittedFailures;
+        if (result.Evaluations != recordedEvaluations)
             throw new InvalidDataException("Checkpoint search artifact evaluation totals are inconsistent.");
         if (result.RetainedStates.Count > result.BeamWidth)
             throw new InvalidDataException("Checkpoint search artifact exceeds its recorded beam width.");
@@ -298,8 +307,9 @@ public static class StrategyArtifactStore
             if (failure.WavePlan.Wave != result.TargetWave)
                 throw new InvalidDataException("Checkpoint search failure does not match its target wave.");
             if (failure.FailureMargin is { } margin &&
-                margin.TotalEnemyCount != failure.RemainingEnemies.Sum(enemy => enemy.Count) +
-                                          failure.QueuedEnemies.Sum(enemy => enemy.Count))
+                (margin.TotalEnemyCount != failure.RemainingEnemies.Sum(enemy => enemy.Count) +
+                                           failure.QueuedEnemies.Sum(enemy => enemy.Count) ||
+                 margin.FatalFrameEscapedEnemyCount != failure.FatalEscapedEnemies.Count))
                 throw new InvalidDataException("Checkpoint search failure composition is inconsistent.");
         }
     }

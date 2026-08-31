@@ -66,6 +66,11 @@ public sealed class CheckpointWaveFailure
     public SimulationFailureMargin? FailureMargin { get; init; }
     public required IReadOnlyList<SimulationRemainingEnemy> RemainingEnemies { get; init; }
     public required IReadOnlyList<SimulationRemainingEnemy> QueuedEnemies { get; init; }
+    public IReadOnlyList<SimulationEscapedEnemy> FatalEscapedEnemies { get; init; } = Array.Empty<SimulationEscapedEnemy>();
+    public IReadOnlyList<SimulationPulsePlateDeployment> PulsePlateDeployments { get; init; } =
+        Array.Empty<SimulationPulsePlateDeployment>();
+    public IReadOnlyList<SimulationProtocolActivation> ProtocolActivations { get; init; } =
+        Array.Empty<SimulationProtocolActivation>();
 }
 
 public sealed class CheckpointCampaignCompletion
@@ -78,7 +83,7 @@ public sealed class CheckpointCampaignCompletion
 
 public sealed class CheckpointSearchResult
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public required int TargetWave { get; init; }
@@ -88,6 +93,9 @@ public sealed class CheckpointSearchResult
     public required IReadOnlyList<CheckpointSearchState> RetainedStates { get; init; }
     public required IReadOnlyList<CheckpointCampaignCompletion> CampaignCompletions { get; init; }
     public required IReadOnlyList<CheckpointWaveFailure> Failures { get; init; }
+    public int OmittedSuccessfulEvaluations { get; init; }
+    public int OmittedCampaignCompletions { get; init; }
+    public int OmittedFailures { get; init; }
 }
 
 public static class CheckpointBeamOptimizer
@@ -160,7 +168,10 @@ public static class CheckpointBeamOptimizer
                         CreditsUnspent = run.Simulation.CreditsUnspent,
                         FailureMargin = run.Simulation.FailureMargin,
                         RemainingEnemies = run.Simulation.RemainingEnemies,
-                        QueuedEnemies = run.Simulation.QueuedEnemies
+                        QueuedEnemies = run.Simulation.QueuedEnemies,
+                        FatalEscapedEnemies = run.Simulation.FatalEscapedEnemies,
+                        PulsePlateDeployments = run.Simulation.PulsePlateDeployments,
+                        ProtocolActivations = run.Simulation.ProtocolActivations
                     });
                 }
             }

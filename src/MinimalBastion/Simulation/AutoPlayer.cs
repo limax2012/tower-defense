@@ -1,5 +1,6 @@
 using MinimalBastion.Core;
 using MinimalBastion.Data;
+using MinimalBastion.Enemies;
 using MinimalBastion.Towers;
 using Microsoft.Xna.Framework;
 
@@ -17,7 +18,9 @@ public sealed class AutoPlayer
     private readonly bool _useApexUpgrades;
     private readonly bool _holdBuild;
     private readonly bool _holdFootprint;
-    private int _lastRebalanceWave = -1;
+    private readonly WavePlan? _wavePlan;
+    private int _salesWave = -1;
+    private int _salesThisWave;
     private int _directEmergencyPurchasesThisWave;
 
     public AutoPlayer(GameSession session, AutoPlayerStrategy strategy, int seed, SimulationOptions? options = null)
@@ -32,6 +35,7 @@ public sealed class AutoPlayer
         _useApexUpgrades = options?.UseApexUpgrades ?? true;
         _holdBuild = options?.HoldBuild ?? false;
         _holdFootprint = options?.HoldFootprint ?? false;
+        _wavePlan = options?.WavePlan;
     }
 
     public void PrepareForWave(GameSession session)
@@ -39,6 +43,8 @@ public sealed class AutoPlayer
         _directEmergencyPurchasesThisWave = 0;
         if (_holdBuild) return;
         var threat = ThreatProfile.From(session.Waves.NextWave, session.Content.Enemies);
+        if (_strategy == AutoPlayerStrategy.Experienced)
+            ConfigureExperiencedTargeting(session, threat, duringWave: false);
         if (!_holdFootprint)
         {
             TryRebalance(session, threat);
@@ -51,7 +57,11 @@ public sealed class AutoPlayer
     {
         if (_holdBuild) return;
         var threat = ThreatProfile.From(session.Waves.ActiveWave, session.Content.Enemies);
+        if (_strategy == AutoPlayerStrategy.Experienced)
+            ConfigureExperiencedTargeting(session, threat, duringWave: true);
         if (_useProtocols) TryUseOverdrive(session, threat);
+        if (_strategy == AutoPlayerStrategy.Experienced && ExperiencedPursuesApex(session))
+            TryRebalance(session, threat);
         TryUseEmergencyDefense(session);
         Spend(session, threat, duringWave: true, 2);
     }
@@ -61,6 +71,10 @@ public sealed class AutoPlayer
         for (var action = 0; action < actionLimit; action++)
         {
             var reserve = ReserveCredits(session, duringWave);
+            if (_strategy == AutoPlayerStrategy.Experienced && duringWave && IsFinalCampaignWave(session) &&
+                PlanParameter("finalPlateReserve", 1f, 0f, 1f) >= 0.5f &&
+                session.Towers.Any(tower => tower.IsApex) && session.EmergencyInventory <= 0)
+                reserve = Math.Max(reserve, session.CurrentEmergencyDirectPurchaseCost);
             var spendable = session.Economy.Credits - reserve;
             if (spendable < 50) return;
 
@@ -68,24 +82,41 @@ public sealed class AutoPlayer
             var combatTowerCount = session.Towers.Count(x => !x.IsSupport);
             if (!_holdFootprint && session.CurrentWave == 0 && combatTowerCount < foundation && TryBuyFoundation(session, threat, spendable))
                 continue;
-            if (!_holdFootprint && !session.IsFinalCampaignAct)
+
+            var awaitingExperiencedApex = _strategy == AutoPlayerStrategy.Experienced &&
+                                           ExperiencedPursuesApex(session) &&
+                                           session.Towers.Count(tower => tower.IsApex) < ExperiencedApexLimit();
+            if (awaitingExperiencedApex)
+            {
+                if (TryExperiencedLateInvestment(session, threat, spendable)) continue;
+                if (session.Towers.Any(session.CanApexUpgrade)) return;
+            }
+
+            if (_strategy == AutoPlayerStrategy.Experienced && !IsFinalCampaignWave(session) &&
+                TryExperiencedMilestoneUpgrade(session, threat, spendable))
+                continue;
+
+            if (!_holdFootprint && (!session.IsFinalCampaignAct || _strategy == AutoPlayerStrategy.Experienced))
             {
                 if (TryBuyStrategicPriority(session, threat, spendable, out var savingForPriority))
                     continue;
                 if (savingForPriority) return;
             }
 
-            if (_strategy == AutoPlayerStrategy.Experienced &&
-                TryExperiencedMilestoneUpgrade(session, threat, spendable))
-                continue;
-
-            var purchase = _holdFootprint ? null : BestPurchase(session, threat, spendable);
+            var suppressFinalFill = _strategy == AutoPlayerStrategy.Experienced && duringWave &&
+                                    IsFinalCampaignWave(session) && session.Towers.Any(tower => tower.IsApex) &&
+                                    PlanParameter("finalRoleFill", 1f, 0f, 1f) < 0.5f;
+            var purchase = _holdFootprint || suppressFinalFill ? null : BestPurchase(session, threat, spendable);
             var upgrade = BestUpgrade(session, threat, spendable);
-            var purchaseBias = combatTowerCount < DesiredTowerCount(session.CurrentWave + (duringWave ? 0 : 1))
+            var targetWave = ActiveOrNextWave(session);
+            var purchaseBias = combatTowerCount < DesiredTowerCount(targetWave)
                 ? 1.45f
-                : session.IsFinalCampaignAct ? 0.16f : 0.38f;
+                : IsFinalCampaignWave(session) ? 0.16f : 0.38f;
+            purchaseBias *= EconomyProfileMultiplier(purchasing: true);
+            purchaseBias *= PlanParameter("purchaseBias", 1f, 0.2f, 3f);
             var buyScore = purchase?.Score * purchaseBias ?? float.MinValue;
-            var upgradeScore = upgrade?.Score * UpgradeBias() ?? float.MinValue;
+            var upgradeScore = upgrade?.Score * UpgradeBias() * EconomyProfileMultiplier(purchasing: false) *
+                               PlanParameter("upgradeBias", 1f, 0.2f, 3f) ?? float.MinValue;
 
             if (buyScore <= 0 && upgradeScore <= 0) return;
             if (purchase is { } buy && buyScore >= upgradeScore)
@@ -102,7 +133,11 @@ public sealed class AutoPlayer
                     : up.SpecializationId is not null
                         ? session.TrySpecializeTower(up.Tower.Id, up.SpecializationId)
                         : session.TryUpgradeTower(up.Tower.Id);
-                if (upgraded) continue;
+                if (upgraded)
+                {
+                    ConfigureTargeting(session, up.Tower, threat);
+                    continue;
+                }
             }
             return;
         }
@@ -254,28 +289,15 @@ public sealed class AutoPlayer
         out bool savingForPriority)
     {
         savingForPriority = false;
-        var priorities = new List<(string Id, bool Urgent)>();
-
-        void Require(string id, bool condition, bool urgent = false)
+        foreach (var plan in ExperiencedRolePlan(wave))
         {
-            if (condition && session.IsTowerAvailable(id) && session.Towers.All(tower => tower.Definition.Id != id))
-                priorities.Add((id, urgent));
-        }
-
-        Require("frost_spire", wave >= 2 || threat.Fast >= 0.12f, threat.Fast >= 0.22f);
-        Require("shard_fan", wave >= 3, threat.Swarm >= 0.55f);
-        Require("breaker_cannon", wave >= 5, threat.Armored >= 0.15f || threat.HasBoss);
-        Require("arc_relay", wave >= 6, threat.Swarm >= 0.55f);
-        Require("prism_beam", wave >= 8, wave >= 9 || threat.Shielded >= 0.10f || threat.HasBoss);
-        Require("ember_coil", wave >= 8 && (threat.Durable > 0 || threat.HasElite || threat.HasBoss),
-            threat.Durable >= 0.15f);
-        Require("siege_mortar", wave >= 9 && threat.Swarm >= 0.38f, threat.Swarm >= 0.62f);
-        Require("watchtower", wave >= 10 && (threat.HasElite || threat.HasBoss || threat.Durable >= 0.12f),
-            threat.HasBoss);
-
-        foreach (var priority in priorities)
-        {
-            if (!session.Content.Towers.TryGetValue(priority.Id, out var definition)) continue;
+            var existingRole = session.Towers.Where(tower => tower.Definition.Id == plan.Id).ToArray();
+            if (session.Waves.IsActive && IsFinalCampaignWave(session) && session.Towers.Any(tower => tower.IsApex) &&
+                PlanParameter("finalRoleFill", 1f, 0f, 1f) < 0.5f && existingRole.Length < plan.Count)
+                continue;
+            if (!session.IsTowerAvailable(plan.Id) || existingRole.Length >= plan.Count ||
+                existingRole.Any(tower => tower.LevelIndex < 2) ||
+                !session.Content.Towers.TryGetValue(plan.Id, out var definition)) continue;
             if (definition.PurchaseCost <= spendable)
             {
                 var position = FindBestPosition(session, definition, threat);
@@ -286,9 +308,7 @@ public sealed class AutoPlayer
                 }
             }
 
-            // Preserve a counter reserve only when the incoming wave makes that
-            // missing role immediately important. Otherwise improve the existing grid.
-            if (priority.Urgent && session.Economy.Credits < definition.PurchaseCost)
+            if (plan.Urgent && session.Economy.Credits < definition.PurchaseCost)
             {
                 savingForPriority = true;
                 return false;
@@ -296,7 +316,9 @@ public sealed class AutoPlayer
         }
 
         var combatTowers = session.Towers.Count(tower => !tower.IsSupport);
-        var desiredBeacons = combatTowers >= 15 ? 2 : combatTowers >= 7 ? 1 : 0;
+        var desiredBeacons = Math.Min(
+            ExperiencedRoleCount("signal_beacon", wave),
+            combatTowers >= 15 ? 2 : combatTowers >= 7 ? 1 : 0);
         var beaconCount = session.Towers.Count(tower => tower.Definition.Id == "signal_beacon");
         if (beaconCount < desiredBeacons && session.IsTowerAvailable("signal_beacon") &&
             session.Content.Towers.TryGetValue("signal_beacon", out var beacon))
@@ -311,6 +333,48 @@ public sealed class AutoPlayer
 
         return false;
     }
+
+    private static IReadOnlyList<(string Id, int Count, bool Urgent)> ExperiencedRolePlan(int wave)
+    {
+        var order = wave switch
+        {
+            <= 10 => new[] { "shard_fan", "breaker_cannon", "ember_coil", "prism_beam", "needle_turret" },
+            <= 13 => new[] { "frost_spire", "needle_turret", "shard_fan", "breaker_cannon", "ember_coil", "prism_beam" },
+            <= 19 => new[] { "prism_beam", "frost_spire", "breaker_cannon", "ember_coil", "shard_fan", "siege_mortar", "needle_turret" },
+            _ => new[] { "prism_beam", "frost_spire", "breaker_cannon", "siege_mortar", "needle_turret", "ember_coil", "shard_fan" }
+        };
+        return order
+            .Select(id => (Id: id, Count: ExperiencedRoleCount(id, wave), Urgent: false))
+            .Where(plan => plan.Count > 0)
+            .ToArray();
+    }
+
+    private static int ExperiencedRoleCount(string towerId, int wave) => towerId switch
+    {
+        "needle_turret" => wave switch
+        {
+            >= 30 => 14,
+            >= 29 => 13,
+            >= 28 => 12,
+            >= 12 => 11,
+            >= 11 => 10,
+            >= 10 => 9,
+            >= 9 => 8,
+            >= 8 => 7,
+            >= 7 => 6,
+            >= 6 => 5,
+            >= 5 => 4,
+            _ => 3
+        },
+        "shard_fan" => wave >= 15 ? 2 : wave >= 3 ? 1 : 0,
+        "breaker_cannon" => wave >= 28 ? 5 : wave >= 25 ? 4 : wave >= 21 ? 3 : wave >= 16 ? 2 : wave >= 5 ? 1 : 0,
+        "ember_coil" => wave >= 17 ? 2 : wave >= 8 ? 1 : 0,
+        "frost_spire" => wave >= 28 ? 7 : wave >= 25 ? 6 : wave >= 23 ? 5 : wave >= 21 ? 4 : wave >= 19 ? 3 : wave >= 16 ? 2 : wave >= 12 ? 1 : 0,
+        "prism_beam" => wave >= 25 ? 5 : wave >= 22 ? 4 : wave >= 18 ? 3 : wave >= 15 ? 2 : wave >= 9 ? 1 : 0,
+        "siege_mortar" => wave >= 23 ? 3 : wave >= 21 ? 2 : wave >= 15 ? 1 : 0,
+        "signal_beacon" => wave >= 18 ? 2 : wave >= 12 ? 1 : 0,
+        _ => 0
+    };
 
     private static bool MustSaveForPool(GameSession session, IReadOnlyList<string> ids)
     {
@@ -348,6 +412,9 @@ public sealed class AutoPlayer
             if (definition.PurchaseCost > spendable) continue;
             if (definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) && session.Towers.Count(x => !x.IsSupport) < 4) continue;
             var existingCopies = session.Towers.Count(x => x.Definition.Id == definition.Id);
+            if (_strategy == AutoPlayerStrategy.Experienced && existingCopies > 0 &&
+                session.Towers.Any(tower => tower.Definition.Id == definition.Id && tower.LevelIndex < 2))
+                continue;
             var copyLimit = _strategy == AutoPlayerStrategy.Spam ? 30 : definition.Id switch
             {
                 "needle_turret" => 7,
@@ -414,6 +481,11 @@ public sealed class AutoPlayer
         UpgradeOption? best = null;
         foreach (var tower in session.Towers)
         {
+            if (_strategy == AutoPlayerStrategy.Experienced && IsFinalCampaignWave(session) &&
+                tower.Definition.Id == "needle_turret" && tower.LevelIndex < 2 &&
+                session.Towers.Count(candidate => candidate.Definition.Id == "needle_turret") >= 14 &&
+                session.Towers.Any(candidate => candidate.IsApex))
+                continue;
             var current = UpgradeValue(session, tower, tower.Level, threat);
             if (tower.RequiresDoctrine)
             {
@@ -423,6 +495,9 @@ public sealed class AutoPlayer
                 var doctrineCandidates = tower.Definition.Tier2Doctrines.Where(x => x.UpgradeCost <= spendable);
                 if (IsForcedTower(tower) && _forcedDoctrineId is not null)
                     doctrineCandidates = doctrineCandidates.Where(doctrine => doctrine.Id.Equals(_forcedDoctrineId, StringComparison.OrdinalIgnoreCase));
+                if (_strategy == AutoPlayerStrategy.Experienced &&
+                    ExperiencedPreferredDoctrine(session, tower) is { } preferredDoctrine)
+                    doctrineCandidates = doctrineCandidates.Where(doctrine => doctrine.Id == preferredDoctrine);
                 foreach (var doctrine in doctrineCandidates)
                 {
                     var next = tower.Definition.Levels[1].WithDoctrine(doctrine);
@@ -441,7 +516,10 @@ public sealed class AutoPlayer
                     // when their completed build fits the current threat profile.
                     var doctrineValue = immediateGainPerCredit * 0.72f + finalGainPerCredit * 0.28f;
                     var doctrineWeight = DoctrineWeight(doctrine, threat);
-                    var fit = doctrineValue * doctrineWeight;
+                    var diversity = _strategy == AutoPlayerStrategy.Experienced
+                        ? ExperiencedDoctrineDiversity(session, tower, doctrine.Id)
+                        : 1f;
+                    var fit = doctrineValue * doctrineWeight * diversity;
                     if (fit > selectedFit)
                     {
                         selectedFit = fit;
@@ -451,7 +529,7 @@ public sealed class AutoPlayer
                     // Branch foresight must not make the tower jump ahead of unrelated
                     // purchases. Retain the immediate-value upgrade cadence that the
                     // baseline balance matrix was tuned against.
-                    upgradePace = MathF.Max(upgradePace, immediateGainPerCredit * doctrineWeight);
+                    upgradePace = MathF.Max(upgradePace, immediateGainPerCredit * doctrineWeight * diversity);
                 }
                 if (selectedDoctrine is not null)
                     Consider(new UpgradeOption(tower, selectedDoctrine.Id, null,
@@ -463,16 +541,27 @@ public sealed class AutoPlayer
                 var specializationCandidates = tower.Definition.Specializations.Where(x => x.UpgradeCost <= spendable);
                 if (IsForcedTower(tower) && _forcedSpecializationId is not null)
                     specializationCandidates = specializationCandidates.Where(specialization => specialization.Id.Equals(_forcedSpecializationId, StringComparison.OrdinalIgnoreCase));
+                if (_strategy == AutoPlayerStrategy.Experienced &&
+                    ExperiencedPreferredSpecialization(session, tower) is { } preferredSpecialization)
+                    specializationCandidates = specializationCandidates.Where(specialization => specialization.Id == preferredSpecialization);
                 foreach (var specialization in specializationCandidates)
                 {
                     var next = UpgradeValue(session, tower, specialization.Level.WithDoctrine(tower.Doctrine), threat);
                     Consider(new UpgradeOption(tower, null, specialization.Id,
                         MathF.Max(0.01f, next - current) * StrategyWeight(tower.Definition.Id, threat) *
-                        SpecializationWeight(tower.Definition.Id, specialization.Id, threat) / specialization.UpgradeCost));
+                        SpecializationWeight(tower.Definition.Id, specialization.Id, threat) *
+                        (_strategy == AutoPlayerStrategy.Experienced
+                            ? ExperiencedSpecializationDiversity(session, tower, specialization.Id)
+                            : 1f) /
+                        specialization.UpgradeCost));
                 }
                 continue;
             }
-            if (_useApexUpgrades && session.CanApexUpgrade(tower) && tower.ApexUpgradeCost <= spendable)
+            var apexAllowed = _strategy != AutoPlayerStrategy.Experienced ||
+                              ExperiencedPursuesApex(session) &&
+                              session.Towers.Count(candidate => candidate.IsApex) < ExperiencedApexLimit();
+            if (_useApexUpgrades && apexAllowed && session.CanApexUpgrade(tower) &&
+                tower.ApexUpgradeCost <= spendable)
             {
                 var apexNext = UpgradeValue(session, tower, tower.ApexPreviewLevel, threat);
                 Consider(new UpgradeOption(tower, null, null,
@@ -528,23 +617,212 @@ public sealed class AutoPlayer
                 .ThenBy(candidate => candidate.Id)
                 .FirstOrDefault();
             if (tower is null) continue;
-            return TryUpgradeByFit(session, tower, threat, spendable);
+            var upgraded = TryUpgradeByFit(session, tower, threat, spendable);
+            if (upgraded) ConfigureTargeting(session, tower, threat);
+            return upgraded;
         }
 
         return false;
+    }
+
+    private bool TryExperiencedLateInvestment(GameSession session, ThreatProfile threat, int spendable)
+    {
+        if (!_useApexUpgrades || !ExperiencedPursuesApex(session)) return false;
+        var apexCount = session.Towers.Count(tower => tower.IsApex);
+        var apexLimit = ExperiencedApexLimit();
+        if (apexCount >= apexLimit) return false;
+        var candidate = ExperiencedApexCandidate(session, threat);
+        if (candidate is null || candidate.Value.Tower.ApexUpgradeCost > spendable ||
+            !session.TryUpgradeTower(candidate.Value.Tower.Id)) return false;
+        ConfigureTargeting(session, candidate.Value.Tower, threat);
+        return true;
+    }
+
+    private ApexInvestmentOption? ExperiencedApexCandidate(GameSession session, ThreatProfile threat)
+    {
+        var rankedCandidates = session.Towers
+            .Where(session.CanApexUpgrade)
+            .Select(tower => new
+            {
+                Tower = tower,
+                Score = (MathF.Max(0.01f,
+                             UpgradeValue(session, tower, tower.ApexPreviewLevel, threat) -
+                             UpgradeValue(session, tower, tower.Level, threat)) +
+                         ApexProtocolValue(session, tower, tower.ApexPreviewLevel, threat)) *
+                        StrategyWeight(tower.Definition.Id, threat) *
+                        (0.75f + MathF.Min(1.25f,
+                            PlacementScore(session, tower.Definition, tower.Position) / 18f)) *
+                         ExperiencedApexSupportMultiplier(session, tower) /
+                         Math.Max(1, tower.ApexUpgradeCost)
+            })
+            .OrderByDescending(choice => choice.Score)
+            .ThenBy(choice => choice.Tower.ApexUpgradeCost)
+            .ThenBy(choice => choice.Tower.Id)
+            .ToArray();
+        var apexCandidate = (int)PlanParameter("apexCandidate", 6, 0, 63);
+        var candidate = rankedCandidates.Length == 0
+            ? null
+            : rankedCandidates[Math.Min(apexCandidate, rankedCandidates.Length - 1)];
+        return candidate is null ? null : new ApexInvestmentOption(candidate.Tower, candidate.Score);
+    }
+
+    private static float ExperiencedApexSupportMultiplier(GameSession session, TowerInstance tower)
+    {
+        var attackSpeedBonus = 0f;
+        var rangeBonus = 0f;
+        foreach (var support in session.Towers.Where(candidate => candidate.IsSupport))
+        {
+            var auraRange = session.GetEffectiveAuraRange(support);
+            if (Vector2.DistanceSquared(tower.Position, support.Position) > auraRange * auraRange) continue;
+            attackSpeedBonus = MathF.Max(attackSpeedBonus, support.EffectiveAuraAttackSpeedBonus);
+            rangeBonus = MathF.Max(rangeBonus, support.EffectiveAuraTowerRangeBonus);
+        }
+        return 1f + attackSpeedBonus * 5f + rangeBonus * 2.2f;
+    }
+
+    private int ExperiencedApexLimit() => (int)PlanParameter("apexLimit",
+        _wavePlan is not null && PlanProfile(_wavePlan.EconomyProfileId, "apex") ? 2 : 1,
+        0, 4);
+
+    private static string? ExperiencedPreferredDoctrine(GameSession session, TowerInstance tower)
+    {
+        var completed = session.Towers.Count(candidate =>
+            candidate.Definition.Id == tower.Definition.Id && candidate.DoctrineId is not null);
+        return tower.Definition.Id switch
+        {
+            "needle_turret" when completed >= 11 => "needle_cycler",
+            "needle_turret" => session.Towers.Count(candidate => candidate.Definition.Id == tower.Definition.Id &&
+                                                       candidate.DoctrineId == "needle_cycler") <=
+                               session.Towers.Count(candidate => candidate.Definition.Id == tower.Definition.Id &&
+                                                       candidate.DoctrineId == "needle_calibrator")
+                ? "needle_cycler"
+                : "needle_calibrator",
+            "shard_fan" => "shard_scatter",
+            "breaker_cannon" => completed is 0 or 3 ? "breaker_bored" : "breaker_repeater",
+            "ember_coil" => completed == 0 ? "ember_hot_core" : "ember_kindling",
+            "frost_spire" => completed == 5 ? "frost_ice_needle" : "frost_deep_chill",
+            "prism_beam" => completed < 2 ? "prism_aperture" : "prism_frequency",
+            "siege_mortar" => "mortar_survey",
+            "signal_beacon" => completed == 0 ? "beacon_amplifier" : "beacon_repeater",
+            _ => null
+        };
+    }
+
+    private static string? ExperiencedPreferredSpecialization(GameSession session, TowerInstance tower)
+    {
+        var completed = session.Towers.Count(candidate =>
+            candidate.Definition.Id == tower.Definition.Id && candidate.SpecializationId is not null);
+        var preferred = tower.Definition.Id switch
+        {
+            "needle_turret" => completed == 0 ? "rapid_array" : "rail_pin",
+            "shard_fan" => "lance_fan",
+            "breaker_cannon" => completed == 3 ? "breach_round" : "shatter_shell",
+            "ember_coil" => completed == 0 ? "searing_brand" : "wildfire_matrix",
+            "frost_spire" => completed == 5 ? "hail_lancer" : "permafrost",
+            "prism_beam" => completed == 0 ? "core_lance" : "spectrum_split",
+            "siege_mortar" => completed == 2 ? "salvo_rack" : "quake_shell",
+            "signal_beacon" => completed == 0 ? "tempo_beacon" : "horizon_beacon",
+            _ => null
+        };
+        return preferred;
+    }
+
+    private static float ExperiencedDoctrineDiversity(
+        GameSession session,
+        TowerInstance tower,
+        string doctrineId)
+    {
+        var peers = session.Towers.Where(candidate =>
+            candidate.Definition.Id == tower.Definition.Id && candidate.Id != tower.Id).ToArray();
+        var same = peers.Count(candidate => candidate.DoctrineId == doctrineId);
+        var other = peers.Count(candidate => candidate.DoctrineId is not null && candidate.DoctrineId != doctrineId);
+        var diversity = MathHelper.Clamp((1f + other * 0.28f) / (1f + same * 0.38f), 0.55f, 1.55f);
+        var completed = session.Towers.Count(candidate =>
+            candidate.Definition.Id == tower.Definition.Id && candidate.DoctrineId is not null);
+        var chosen = session.Towers.Count(candidate =>
+            candidate.Definition.Id == tower.Definition.Id && candidate.DoctrineId == doctrineId);
+        var preference = (tower.Definition.Id, doctrineId) switch
+        {
+            ("shard_fan", "shard_scatter") => 2.2f,
+            ("shard_fan", _) => 0.55f,
+            ("frost_spire", "frost_ice_needle") => completed >= 5 && chosen == 0 ? 2.8f : 0.35f,
+            ("frost_spire", "frost_deep_chill") => completed < 5 ||
+                                                       session.Towers.Any(candidate => candidate.Definition.Id == tower.Definition.Id &&
+                                                           candidate.DoctrineId == "frost_ice_needle")
+                ? 1.8f
+                : 0.75f,
+            ("prism_beam", "prism_aperture") => chosen < 2 ? 1.9f : 0.45f,
+            ("prism_beam", "prism_frequency") => completed >= 2 ? 1.9f : 0.65f,
+            ("siege_mortar", "mortar_survey") => 2.2f,
+            ("siege_mortar", _) => 0.55f,
+            _ => 1f
+        };
+        return diversity * preference;
+    }
+
+    private static float ExperiencedSpecializationDiversity(
+        GameSession session,
+        TowerInstance tower,
+        string specializationId)
+    {
+        var peers = session.Towers.Where(candidate =>
+            candidate.Definition.Id == tower.Definition.Id && candidate.Id != tower.Id).ToArray();
+        var same = peers.Count(candidate => candidate.SpecializationId == specializationId);
+        var other = peers.Count(candidate => candidate.SpecializationId is not null &&
+                                             candidate.SpecializationId != specializationId);
+        var diversity = MathHelper.Clamp((1f + other * 0.20f) / (1f + same * 0.30f), 0.60f, 1.45f);
+        var completed = session.Towers.Count(candidate =>
+            candidate.Definition.Id == tower.Definition.Id && candidate.SpecializationId is not null);
+        var chosen = session.Towers.Count(candidate =>
+            candidate.Definition.Id == tower.Definition.Id && candidate.SpecializationId == specializationId);
+        var preference = (tower.Definition.Id, specializationId) switch
+        {
+            ("needle_turret", "rapid_array") => completed == 0 ? 3.0f : 0.22f,
+            ("needle_turret", "rail_pin") => completed == 0 ? 0.85f : 2.1f,
+            ("shard_fan", "lance_fan") => 2.8f,
+            ("shard_fan", _) => 0.45f,
+            ("breaker_cannon", "breach_round") => completed >= 3 && chosen == 0 ? 2.6f : 0.45f,
+            ("breaker_cannon", "shatter_shell") => completed < 3 ||
+                                                         session.Towers.Any(candidate => candidate.Definition.Id == tower.Definition.Id &&
+                                                             candidate.SpecializationId == "breach_round")
+                ? 2.0f
+                : 0.70f,
+            ("frost_spire", "hail_lancer") => completed >= 5 && chosen == 0 ? 2.8f : 0.30f,
+            ("frost_spire", "permafrost") => completed < 5 ||
+                                                  session.Towers.Any(candidate => candidate.Definition.Id == tower.Definition.Id &&
+                                                      candidate.SpecializationId == "hail_lancer")
+                ? 2.0f
+                : 0.65f,
+            ("prism_beam", "core_lance") => completed == 0 ? 2.6f : 0.35f,
+            ("prism_beam", "spectrum_split") => completed == 0 ? 0.80f : 2.2f,
+            ("siege_mortar", "quake_shell") => completed < 2 ? 2.4f : 0.65f,
+            ("siege_mortar", "salvo_rack") => completed >= 2 && chosen == 0 ? 2.5f : 0.55f,
+            ("signal_beacon", "tempo_beacon") => completed == 0 ? 2.4f : 0.75f,
+            ("signal_beacon", "horizon_beacon") => completed == 0 ? 0.65f : 2.2f,
+            _ => 1f
+        };
+        return diversity * preference;
     }
 
     private bool TryUpgradeByFit(GameSession session, TowerInstance tower, ThreatProfile threat, int spendable)
     {
         if (tower.RequiresDoctrine)
         {
-            var doctrine = tower.Definition.Tier2Doctrines
-                .Where(candidate => candidate.UpgradeCost <= spendable)
+            var doctrineCandidates = tower.Definition.Tier2Doctrines
+                .Where(candidate => candidate.UpgradeCost <= spendable);
+            if (_strategy == AutoPlayerStrategy.Experienced &&
+                ExperiencedPreferredDoctrine(session, tower) is { } preferredDoctrine)
+                doctrineCandidates = doctrineCandidates.Where(candidate => candidate.Id == preferredDoctrine);
+            var doctrine = doctrineCandidates
                 .Select(candidate => new
                 {
                     Definition = candidate,
                     Score = UpgradeValue(session, tower, tower.Definition.Levels[1].WithDoctrine(candidate), threat) *
-                            DoctrineWeight(candidate, threat) / Math.Max(1, candidate.UpgradeCost)
+                            DoctrineWeight(candidate, threat) *
+                            (_strategy == AutoPlayerStrategy.Experienced
+                                ? ExperiencedDoctrineDiversity(session, tower, candidate.Id)
+                                : 1f) /
+                            Math.Max(1, candidate.UpgradeCost)
                 })
                 .OrderByDescending(candidate => candidate.Score)
                 .ThenBy(candidate => candidate.Definition.Id)
@@ -554,13 +832,20 @@ public sealed class AutoPlayer
 
         if (tower.RequiresSpecialization)
         {
-            var specialization = tower.Definition.Specializations
-                .Where(candidate => candidate.UpgradeCost <= spendable)
+            var specializationCandidates = tower.Definition.Specializations
+                .Where(candidate => candidate.UpgradeCost <= spendable);
+            if (_strategy == AutoPlayerStrategy.Experienced &&
+                ExperiencedPreferredSpecialization(session, tower) is { } preferredSpecialization)
+                specializationCandidates = specializationCandidates.Where(candidate => candidate.Id == preferredSpecialization);
+            var specialization = specializationCandidates
                 .Select(candidate => new
                 {
                     Definition = candidate,
                     Score = UpgradeValue(session, tower, candidate.Level.WithDoctrine(tower.Doctrine), threat) *
-                            SpecializationWeight(tower.Definition.Id, candidate.Id, threat) /
+                            SpecializationWeight(tower.Definition.Id, candidate.Id, threat) *
+                            (_strategy == AutoPlayerStrategy.Experienced
+                                ? ExperiencedSpecializationDiversity(session, tower, candidate.Id)
+                                : 1f) /
                             Math.Max(1, candidate.UpgradeCost)
                 })
                 .OrderByDescending(candidate => candidate.Score)
@@ -683,11 +968,18 @@ public sealed class AutoPlayer
         if (eligible.Count == 0) return null;
         if (_strategy == AutoPlayerStrategy.Experienced)
         {
+            var candidateCount = _wavePlan?.PlacementProfileId.ToLowerInvariant() switch
+            {
+                "precise" => 1,
+                "explore" => 6,
+                "clusters" => 4,
+                _ => 3
+            };
             var nearBest = eligible
                 .OrderByDescending(candidate => candidate.Score)
                 .ThenBy(candidate => candidate.Position.Y)
                 .ThenBy(candidate => candidate.Position.X)
-                .Take(3)
+                .Take(candidateCount)
                 .ToArray();
             return nearBest[_random.Next(nearBest.Length)].Position;
         }
@@ -717,9 +1009,85 @@ public sealed class AutoPlayer
             score *= 1f + (attackFit + rangeFit + damageFit + pierceFit) * 3.15f;
         }
 
+        var coverageBalance = ExperiencedCoverageBalance(session, definition, position);
+        var coverageWeight = _wavePlan?.PlacementProfileId.ToLowerInvariant() switch
+        {
+            "coverage" => 1.25f,
+            "nodes" => 0.60f,
+            "clusters" => 0.45f,
+            _ => 1f
+        };
+        coverageWeight *= PlanParameter("coverageWeight", 1f, 0f, 4f);
+        var coverageFactor = 0.82f + coverageBalance * 0.38f;
+        score *= 1f + (coverageFactor - 1f) * coverageWeight;
+
+        var node = session.Map.Definition.PowerNodes.FirstOrDefault(candidate =>
+            Vector2.DistanceSquared(position, candidate.Position.ToVector2()) <= candidate.Radius * candidate.Radius);
+        var nodeWeight = _wavePlan?.PlacementProfileId.ToLowerInvariant() switch
+        {
+            "nodes" => 2.25f,
+            "clusters" => 0.60f,
+            _ => 1f
+        };
+        nodeWeight *= PlanParameter("nodeWeight", 1f, 0f, 4f);
+        if (node is not null)
+        {
+            var occupants = session.Towers.Count(tower =>
+                Vector2.DistanceSquared(tower.Position, node.Position.ToVector2()) <= node.Radius * node.Radius);
+            var nodeFactor = occupants switch
+            {
+                0 => 1.16f,
+                <= 3 => 1.08f,
+                _ => 0.90f
+            };
+            score *= MathF.Pow(nodeFactor, nodeWeight);
+        }
+        else
+        {
+            var nearbyCluster = session.Towers.Count(tower => !tower.IsSupport &&
+                Vector2.DistanceSquared(position, tower.Position) <= 135f * 135f);
+            var clusterWeight = PlanParameter("clusterWeight",
+                _wavePlan is not null && PlanProfile(_wavePlan.PlacementProfileId, "clusters") ? 2.4f : 1f,
+                0f, 4f);
+            score *= 1f + MathF.Min(0.20f, nearbyCluster * 0.012f * clusterWeight);
+        }
+
         var progress = PathProgressNear(session, position);
         score *= 1f + (1f - MathF.Abs(progress - 0.58f) * 2f) * 0.035f;
         return score;
+    }
+
+    private static float ExperiencedCoverageBalance(
+        GameSession session,
+        TowerDefinition definition,
+        Vector2 position)
+    {
+        var power = session.Map.GetPowerBuff(position);
+        var range = definition.Levels[0].Range * (1f + power.RangeBonus);
+        if (range <= 0) return 1f;
+
+        var coveredSamples = 0;
+        var marginalCoverage = 0f;
+        var rangeSquared = range * range;
+        for (var distance = 0f; distance <= session.Map.Path.TotalLength; distance += 32f)
+        {
+            var pathPoint = session.Map.Path.GetPosition(distance);
+            if (Vector2.DistanceSquared(position, pathPoint) > rangeSquared) continue;
+
+            coveredSamples++;
+            var existingCoverage = 0f;
+            foreach (var tower in session.Towers.Where(tower => !tower.IsSupport))
+            {
+                var existingRange = session.GetEffectiveRange(tower);
+                if (Vector2.DistanceSquared(tower.Position, pathPoint) > existingRange * existingRange) continue;
+                existingCoverage += 0.55f + MathF.Min(2.2f, tower.InvestedCredits / 420f);
+            }
+
+            marginalCoverage += 1f / (1f + existingCoverage * 0.32f);
+        }
+
+        if (coveredSamples == 0) return 0;
+        return marginalCoverage / coveredSamples;
     }
 
     private static float ExperiencedSupportPositionScore(GameSession session, TowerDefinition definition, Vector2 position)
@@ -762,20 +1130,8 @@ public sealed class AutoPlayer
         return value;
     }
 
-    private static int ExperiencedCopyLimit(string towerId, int wave) => towerId switch
-    {
-        "needle_turret" => wave < 8 ? 4 : wave < 15 ? 6 : 9,
-        "frost_spire" => 4,
-        "shard_fan" => 5,
-        "watchtower" => 5,
-        "ember_coil" => 5,
-        "breaker_cannon" => 6,
-        "arc_relay" => 6,
-        "siege_mortar" => 5,
-        "prism_beam" => 5,
-        "signal_beacon" => 3,
-        _ => 6
-    };
+    private static int ExperiencedCopyLimit(string towerId, int wave) =>
+        ExperiencedRoleCount(towerId, wave);
 
     private static float ExperiencedRepetitionPenalty(string towerId) => towerId switch
     {
@@ -1063,16 +1419,8 @@ public sealed class AutoPlayer
     {
         if (_strategy == AutoPlayerStrategy.Experienced)
         {
-            var experiencedMode = tower.Definition.Id switch
-            {
-                "frost_spire" => TargetMode.Fastest,
-                "breaker_cannon" => session.SupportTargetingEnabled ? TargetMode.Support : TargetMode.Armored,
-                "watchtower" or "prism_beam" => session.SupportTargetingEnabled ? TargetMode.Support : TargetMode.Strongest,
-                "siege_mortar" => session.SupportTargetingEnabled ? TargetMode.Support : TargetMode.First,
-                "ember_coil" => TargetMode.Strongest,
-                _ => TargetMode.First
-            };
-            session.TrySetTargetMode(tower.Id, experiencedMode);
+            session.TrySetTargetMode(tower.Id,
+                ExperiencedTargetMode(session, tower, threat, duringWave: false));
             return;
         }
 
@@ -1086,16 +1434,272 @@ public sealed class AutoPlayer
         session.TrySetTargetMode(tower.Id, mode);
     }
 
+    private void ConfigureExperiencedTargeting(
+        GameSession session,
+        ThreatProfile threat,
+        bool duringWave)
+    {
+        foreach (var tower in session.Towers.Where(tower => !tower.IsSupport).OrderBy(tower => tower.Id))
+            session.TrySetTargetMode(tower.Id,
+                ExperiencedTargetMode(session, tower, threat, duringWave));
+    }
+
+    private TargetMode ExperiencedTargetMode(
+        GameSession session,
+        TowerInstance tower,
+        ThreatProfile threat,
+        bool duringWave)
+    {
+        var peers = session.Towers.Where(candidate => candidate.Definition.Id == tower.Definition.Id)
+            .OrderBy(candidate => candidate.Id)
+            .ToArray();
+        var index = Array.IndexOf(peers, tower);
+        var live = duringWave
+            ? session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped).ToArray()
+            : Array.Empty<EnemyInstance>();
+        var signalPresent = session.SupportTargetingEnabled &&
+                            (!duringWave || live.Any(enemy => enemy.SignalRole != EnemySignalRole.None));
+        var cleanup = duringWave && live.Length > 0 && session.Waves.QueuedEnemies == 0 &&
+                      live.Max(enemy => enemy.PathProgress) >= 0.72f;
+        var wave = Math.Max(1,
+            session.Waves.ActiveWave?.Number ?? session.Waves.NextWave?.Number ?? session.CurrentWave + 1);
+
+        if (cleanup && wave < 28) return TargetMode.First;
+
+        if (_wavePlan is not null && !PlanProfile(_wavePlan.TargetingProfileId, "split"))
+        {
+            if (PlanProfile(_wavePlan.TargetingProfileId, "first"))
+            {
+                if (tower.Definition.Id == "frost_spire") return TargetMode.Fastest;
+                if (signalPresent && tower.Definition.Id == "needle_turret" && index == 0)
+                    return TargetMode.Support;
+                if (signalPresent && tower.Definition.Id == "siege_mortar" && index == peers.Length - 1)
+                    return TargetMode.Support;
+                return TargetMode.First;
+            }
+
+            if (PlanProfile(_wavePlan.TargetingProfileId, "support"))
+            {
+                if (tower.Definition.Id == "frost_spire") return TargetMode.Fastest;
+                if (!signalPresent) return TargetMode.First;
+                return tower.Definition.Id switch
+                {
+                    "breaker_cannon" or "prism_beam" => index % 2 == 1 ? TargetMode.Support : TargetMode.First,
+                    "ember_coil" => index == peers.Length - 1 ? TargetMode.Support : TargetMode.First,
+                    "needle_turret" => index % 5 == 0 ? TargetMode.Support : TargetMode.First,
+                    "siege_mortar" => index == peers.Length - 1 ? TargetMode.Support : TargetMode.First,
+                    _ => TargetMode.First
+                };
+            }
+
+            if (PlanProfile(_wavePlan.TargetingProfileId, "armored"))
+            {
+                if (tower.Definition.Id == "frost_spire") return TargetMode.Fastest;
+                return tower.Definition.Id switch
+                {
+                    "breaker_cannon" => TargetMode.Armored,
+                    "prism_beam" or "ember_coil" => TargetMode.Strongest,
+                    "needle_turret" when signalPresent && index == 0 => TargetMode.Support,
+                    "needle_turret" when tower.SpecializationId == "rail_pin" && index % 3 == 1 => TargetMode.Armored,
+                    _ => TargetMode.First
+                };
+            }
+
+            if (PlanProfile(_wavePlan.TargetingProfileId, "strongest"))
+            {
+                if (tower.Definition.Id == "frost_spire") return TargetMode.Fastest;
+                return tower.Definition.Id switch
+                {
+                    "breaker_cannon" => TargetMode.Armored,
+                    "prism_beam" or "ember_coil" or "siege_mortar" => TargetMode.Strongest,
+                    "needle_turret" when signalPresent && index == 0 => TargetMode.Support,
+                    _ => TargetMode.First
+                };
+            }
+        }
+
+        if (wave >= 30)
+        {
+            var signalSupportCleanup = duringWave && live.Length > 0 && session.Waves.QueuedEnemies == 0 &&
+                                       live.Max(enemy => enemy.PathProgress) >=
+                                       PlanParameter("signalSupportExitProgress", 0.72f, 0.5f, 0.98f);
+            if (signalPresent && (!duringWave || !signalSupportCleanup))
+            {
+                var supportTier = (int)PlanParameter("signalSupportTier", 2f, 0f, 6f);
+                var openingSupportExit = PlanParameter("openingSupportExitProgress", 0f, 0f, 0.6f);
+                if (!duringWave || live.Max(enemy => enemy.PathProgress) < openingSupportExit)
+                    supportTier = Math.Max(supportTier,
+                        (int)PlanParameter("openingSignalSupportTier", supportTier, 0f, 6f));
+                if (tower.Definition.Id == "frost_spire") return TargetMode.Fastest;
+                return tower.Definition.Id switch
+                {
+                    "breaker_cannon" when supportTier >= 5 && index is 0 or 2 => TargetMode.Support,
+                    "breaker_cannon" when supportTier >= 1 && index == 0 => TargetMode.Support,
+                    "prism_beam" when supportTier >= 6 && index is 0 or 2 => TargetMode.Support,
+                    "prism_beam" when supportTier >= 2 && index == 0 => TargetMode.Support,
+                    "ember_coil" when supportTier >= 4 && index == 0 => TargetMode.Support,
+                    "needle_turret" when index == Math.Min(1, peers.Length - 1) ||
+                                                supportTier >= 3 && index == Math.Min(8, peers.Length - 1) =>
+                        TargetMode.Support,
+                    "siege_mortar" => index == peers.Length - 1 ? TargetMode.Support : TargetMode.First,
+                    _ => TargetMode.First
+                };
+            }
+
+            var cleanupArmoredCount = (int)PlanParameter("cleanupArmoredCount", 1f, 0f, 5f);
+            if (tower.Definition.Id == "frost_spire")
+            {
+                var escapeProgress = PlanParameter("frostEscapeProgress", 0.86f, 0.65f, 0.98f);
+                var escapeCount = (int)PlanParameter("escapeFrostFirstCount", 1f, 0f, 7f);
+                var leadEnemy = live.OrderByDescending(enemy => enemy.PathProgress).ThenBy(enemy => enemy.Id)
+                    .FirstOrDefault();
+                if (leadEnemy is not null && leadEnemy.PathProgress >= escapeProgress && escapeCount > 0)
+                {
+                    var escapeFrost = peers.OrderBy(candidate =>
+                            Vector2.DistanceSquared(candidate.Position, leadEnemy.Position))
+                        .ThenBy(candidate => candidate.Id)
+                        .Take(escapeCount);
+                    return escapeFrost.Contains(tower) ? TargetMode.First : TargetMode.Fastest;
+                }
+                return index == 2 ? TargetMode.First : TargetMode.Fastest;
+            }
+            var cleanupSupportTier = signalPresent
+                ? (int)PlanParameter("cleanupSupportTier", 0f, 0f, 6f)
+                : 0;
+            var cleanupArmoredOffset = (int)PlanParameter("cleanupArmoredOffset", 0f, 0f, 4f);
+            return tower.Definition.Id switch
+            {
+                "breaker_cannon" when cleanupSupportTier >= 5 && index == 2 => TargetMode.Support,
+                "breaker_cannon" when cleanupSupportTier >= 1 && index == 0 => TargetMode.Support,
+                "prism_beam" when cleanupSupportTier >= 6 && index == 2 => TargetMode.Support,
+                "prism_beam" when cleanupSupportTier >= 2 && index == 0 => TargetMode.Support,
+                "ember_coil" when cleanupSupportTier >= 4 && index == 0 => TargetMode.Support,
+                "needle_turret" when cleanupSupportTier >= 3 && index == Math.Min(8, peers.Length - 1) =>
+                    TargetMode.Support,
+                "breaker_cannon" when Enumerable.Range(0, cleanupArmoredCount)
+                    .Any(slot => (slot + cleanupArmoredOffset) % Math.Max(1, peers.Length) == index) =>
+                    TargetMode.Armored,
+                "needle_turret" when signalPresent && index == Math.Min(1, peers.Length - 1) => TargetMode.Support,
+                "siege_mortar" when signalPresent && index == peers.Length - 1 => TargetMode.Support,
+                _ => TargetMode.First
+            };
+        }
+
+        if (wave >= 28)
+        {
+            if (tower.Definition.Id == "frost_spire") return TargetMode.Fastest;
+            if (!signalPresent) return TargetMode.First;
+            return tower.Definition.Id switch
+            {
+                "breaker_cannon" => index is 0 or 2 or 3 ? TargetMode.Support : TargetMode.First,
+                "ember_coil" => index == 0 ? TargetMode.Support : TargetMode.First,
+                "needle_turret" => index == 1 || index == Math.Min(8, peers.Length - 1) ? TargetMode.Support : TargetMode.First,
+                "prism_beam" => index is 0 or 2 or 3 ? TargetMode.Support : TargetMode.First,
+                "siege_mortar" => index == peers.Length - 1 ? TargetMode.Support : TargetMode.First,
+                _ => TargetMode.First
+            };
+        }
+
+        if (tower.Definition.Id == "frost_spire") return TargetMode.Fastest;
+
+        return tower.Definition.Id switch
+        {
+            "breaker_cannon" => TargetMode.Armored,
+            "watchtower" => signalPresent && index % 3 == 2 ? TargetMode.Support : TargetMode.Strongest,
+            "prism_beam" => signalPresent && index % 2 == 1 ? TargetMode.Support : TargetMode.Strongest,
+            "siege_mortar" => signalPresent && index % 2 == 1 ? TargetMode.Support : TargetMode.First,
+            "ember_coil" => signalPresent && index % 2 == 1
+                ? TargetMode.Support
+                : tower.SpecializationId == "searing_brand" || threat.HasBoss
+                    ? TargetMode.Strongest
+                    : TargetMode.First,
+            "needle_turret" => signalPresent && index == 0
+                ? TargetMode.Support
+                : tower.SpecializationId == "rail_pin" && index % 3 == 1
+                    ? TargetMode.Armored
+                    : TargetMode.First,
+            "arc_relay" => signalPresent && index % 3 == 2 ? TargetMode.Support : TargetMode.First,
+            _ => TargetMode.First
+        };
+    }
+
     private void TryRebalance(GameSession session, ThreatProfile threat)
     {
-        if (_strategy != AutoPlayerStrategy.Adaptive || session.CurrentWave < 9 || _lastRebalanceWave == session.CurrentWave) return;
+        ResetSalesForWave(session);
+        if (_strategy == AutoPlayerStrategy.Experienced)
+        {
+            var saleLimit = (int)PlanParameter("saleLimit", 1, 0, 4);
+            if (_salesThisWave >= saleLimit) return;
+            if (!ExperiencedPursuesApex(session) || session.CurrentWave < 20 ||
+                session.Towers.Count < 24 || !session.SellingEnabled) return;
+            var needsApex = session.Towers.Count(tower => tower.IsApex) < ExperiencedApexLimit();
+            if (!needsApex) return;
+            var apexCandidate = ExperiencedApexCandidate(session, threat);
+            var selectedApexCost = apexCandidate?.Tower.ApexUpgradeCost ?? int.MaxValue;
+            if (selectedApexCost == int.MaxValue || session.Economy.Credits >= selectedApexCost) return;
+            var weakest = ExperiencedWeakestSaleCandidate(session, selectedApexCost);
+            if (weakest is null || !session.TrySellTower(weakest.Id)) return;
+            _salesThisWave++;
+            if (session.TryUpgradeTower(apexCandidate!.Value.Tower.Id))
+                ConfigureTargeting(session, apexCandidate.Value.Tower, threat);
+            return;
+        }
+
+        if (_salesThisWave > 0) return;
+        if (_strategy != AutoPlayerStrategy.Adaptive || session.CurrentWave < 9) return;
         TowerInstance? mismatch = null;
         if (threat.Armored > 0.55f)
             mismatch = session.Towers.FirstOrDefault(x => x.LevelIndex == 0 && x.Definition.Id == "shard_fan");
         else if (threat.Swarm > 0.65f)
             mismatch = session.Towers.FirstOrDefault(x => x.LevelIndex == 0 && x.Definition.Id == "breaker_cannon");
         if (mismatch is null || session.Towers.Count <= 6) return;
-        if (session.TrySellTower(mismatch.Id)) _lastRebalanceWave = session.CurrentWave;
+        if (session.TrySellTower(mismatch.Id)) _salesThisWave++;
+    }
+
+    private void ResetSalesForWave(GameSession session)
+    {
+        var decisionWave = ActiveOrNextWave(session);
+        if (_salesWave == decisionWave) return;
+        _salesWave = decisionWave;
+        _salesThisWave = 0;
+    }
+
+    private TowerInstance? ExperiencedWeakestSaleCandidate(GameSession session, int requiredCredits,
+        int maximumLevelIndex = 1) => session.Towers
+        .Where(tower => !tower.IsSupport && !tower.IsApex && tower.LevelIndex <= maximumLevelIndex)
+        .Where(tower => session.Economy.Credits + tower.SellValue >= requiredCredits)
+        .Select(tower => new
+        {
+            Tower = tower,
+            Impact = tower.LifetimeDamage + tower.LifetimeSupportDamageEquivalent +
+                     tower.LifetimeExposeDamageEquivalent + tower.LifetimeArmorBreakDamageEquivalent +
+                     tower.LifetimeControlSeconds * 3f,
+            Coverage = PlacementScore(session, tower.Definition, tower.Position)
+        })
+        .OrderBy(choice => choice.Impact / Math.Max(1, choice.Tower.InvestedCredits))
+        .ThenBy(choice => choice.Coverage)
+        .ThenBy(choice => choice.Tower.Id)
+        .Select(choice => choice.Tower)
+        .FirstOrDefault();
+
+    private bool TrySellForEmergencyDefense(GameSession session, float leadProgress, int requiredCredits)
+    {
+        ResetSalesForWave(session);
+        var saleLimit = (int)PlanParameter("saleLimit", 1, 0, 4);
+        var minimumDirectPurchases = (int)PlanParameter("plateSaleMinimumDirectPurchases", 0f, 0f, 16f);
+        if (_strategy != AutoPlayerStrategy.Experienced || _salesThisWave >= saleLimit ||
+            !session.Waves.IsActive || !IsFinalCampaignWave(session) || !session.SellingEnabled ||
+            !session.Towers.Any(tower => tower.IsApex) || session.Economy.Credits >= requiredCredits ||
+            _directEmergencyPurchasesThisWave < minimumDirectPurchases ||
+            leadProgress < PlanParameter("plateSaleProgress", 0.78f, 0.5f, 0.98f))
+            return false;
+
+        var maximumLevelIndex = (int)PlanParameter("plateSaleMaxLevel", 1f, 0f, 2f);
+        var weakest = ExperiencedWeakestSaleCandidate(session, requiredCredits, maximumLevelIndex);
+        if (weakest is null) return false;
+        if (!session.TrySellTower(weakest.Id)) return false;
+        _salesThisWave++;
+        return true;
     }
 
     private int ReserveCredits(GameSession session, bool duringWave)
@@ -1110,11 +1714,30 @@ public sealed class AutoPlayer
                 ? session.Content.Tactics.Generator.PurchaseCost
                 : 70,
             AutoPlayerStrategy.Aggressive or AutoPlayerStrategy.Spam => 0,
-            AutoPlayerStrategy.Experienced => 35,
+            AutoPlayerStrategy.Experienced => ExperiencedPursuesApex(session)
+                ? duringWave ? 0 : 220
+                : session.CurrentWave >= 10 ? 75 : 35,
             _ => 25
         };
         if (duringWave && session.Economy.Lives < session.Economy.StartingLives * 0.6f) return 0;
-        return baseReserve;
+        if (_wavePlan is not null)
+        {
+            baseReserve = _wavePlan.EconomyProfileId.ToLowerInvariant() switch
+            {
+                "invest" => (int)MathF.Round(baseReserve * 0.55f),
+                "mature" => (int)MathF.Round(baseReserve * 0.85f),
+                "apex" => (int)MathF.Round(baseReserve * 1.45f),
+                "reserve" => baseReserve + 110,
+                _ => baseReserve
+            };
+            if (duringWave && PlanProfile(_wavePlan.TacticalProfileId, "plates"))
+                baseReserve = (int)MathF.Round(baseReserve * 0.35f);
+            baseReserve = (int)MathF.Round(baseReserve * PlanParameter("reserveMultiplier", 1f, 0f, 4f));
+            if (_wavePlan.Parameters.TryGetValue("reserveCredits", out var reserveCredits) &&
+                double.IsFinite(reserveCredits))
+                baseReserve = (int)Math.Round(Math.Clamp(reserveCredits, 0, 2_000));
+        }
+        return Math.Max(0, baseReserve);
     }
 
     private int FoundationSize() => _strategy switch
@@ -1130,9 +1753,32 @@ public sealed class AutoPlayer
         AutoPlayerStrategy.UpgradeFocused => 3 + wave / 4,
         AutoPlayerStrategy.Economy => 3 + wave / 3,
         AutoPlayerStrategy.Synergy => 4 + wave * 3 / 4,
-        AutoPlayerStrategy.Experienced => 4 + wave,
+        AutoPlayerStrategy.Experienced => ExperiencedCombatTowerCount(wave),
         _ => 3 + wave / 2
     };
+
+    private static int ActiveOrNextWave(GameSession session) => Math.Max(1,
+        session.Waves.ActiveWave?.Number ?? session.Waves.NextWave?.Number ?? session.CurrentWave + 1);
+
+    private static bool IsFinalCampaignWave(GameSession session) =>
+        !session.IsEndlessMode && ActiveOrNextWave(session) >= session.TotalWaves;
+
+    private bool ExperiencedPursuesApex(GameSession session)
+    {
+        if (!_useApexUpgrades || !session.IsFinalCampaignAct) return false;
+        var apexWave = (int)PlanParameter("apexWave", GameConstants.CampaignWaveCount,
+            GameConstants.ApexUnlockWave, GameConstants.CampaignWaveCount);
+        return ActiveOrNextWave(session) >= apexWave;
+    }
+
+    private static int ExperiencedCombatTowerCount(int wave) =>
+        ExperiencedRoleCount("needle_turret", wave) +
+        ExperiencedRoleCount("shard_fan", wave) +
+        ExperiencedRoleCount("breaker_cannon", wave) +
+        ExperiencedRoleCount("ember_coil", wave) +
+        ExperiencedRoleCount("frost_spire", wave) +
+        ExperiencedRoleCount("prism_beam", wave) +
+        ExperiencedRoleCount("siege_mortar", wave);
 
     private void ManageGenerator(GameSession session)
     {
@@ -1144,7 +1790,7 @@ public sealed class AutoPlayer
             {
                 AutoPlayerStrategy.Tactical => nextWave >= 5,
                 AutoPlayerStrategy.Economy => nextWave >= 7,
-                AutoPlayerStrategy.Experienced => nextWave >= 15,
+                AutoPlayerStrategy.Experienced => false,
                 _ => false
             };
             var requiredCombatTowers = _strategy switch
@@ -1180,55 +1826,236 @@ public sealed class AutoPlayer
         var lead = session.Enemies.Where(x => !x.IsDead && !x.HasEscaped).OrderByDescending(x => x.PathProgress).FirstOrDefault();
         if (lead is null) return;
         var tactical = _strategy == AutoPlayerStrategy.Tactical;
-        var urgent = lead.PathProgress >= 0.82f || session.Economy.Lives <= session.Economy.StartingLives / 2;
+        var experienced = _strategy == AutoPlayerStrategy.Experienced;
+        if (experienced && ExperiencedPursuesApex(session) &&
+            session.Towers.Count(tower => tower.IsApex) < ExperiencedApexLimit() &&
+            session.Towers.Any(session.CanApexUpgrade))
+            return;
+        var liveEnemies = session.Enemies.Count(enemy => !enemy.IsDead && !enemy.HasEscaped);
+        var rankedPressure = session.Enemies.Any(enemy => !enemy.IsDead && !enemy.HasEscaped &&
+            enemy.Rank is EnemyRank.Elite or EnemyRank.Boss);
+        var plateProgressOffset = PlanParameter("plateProgressOffset",
+            _wavePlan?.TacticalProfileId.ToLowerInvariant() switch
+            {
+                "plates" => -0.08f,
+                "conserve" => 0.10f,
+                _ => 0f
+            }, -0.25f, 0.25f);
+        var experiencedPressure = experienced && (session.CurrentWave switch
+        {
+            < 9 => lead.PathProgress >= 0.82f + plateProgressOffset,
+            < 11 => lead.PathProgress >= 0.74f + plateProgressOffset,
+            < 15 => lead.PathProgress >= 0.62f + plateProgressOffset ||
+                    liveEnemies >= 12 && lead.PathProgress >= 0.54f + plateProgressOffset ||
+                    rankedPressure && lead.PathProgress >= 0.50f + plateProgressOffset,
+            _ => lead.PathProgress >= 0.58f + plateProgressOffset ||
+                 liveEnemies >= 10 && lead.PathProgress >= 0.46f + plateProgressOffset ||
+                 rankedPressure && lead.PathProgress >= 0.42f + plateProgressOffset
+        });
+        var urgent = experiencedPressure || lead.PathProgress >= 0.82f ||
+                     session.Economy.Lives <= session.Economy.StartingLives / 2;
         if (!urgent && !(tactical && session.Enemies.Count >= 7 && lead.PathProgress >= 0.55f)) return;
-        var activeLimit = tactical ? 3 : 1;
+        var activeLimit = tactical ? 3 : experienced ? session.IsFinalCampaignAct ? 6 : 3 : 1;
+        if (experienced && _wavePlan is not null)
+        {
+            if (PlanProfile(_wavePlan.TacticalProfileId, "plates")) activeLimit += 2;
+            if (PlanProfile(_wavePlan.TacticalProfileId, "conserve")) activeLimit = Math.Max(1, activeLimit - 1);
+            activeLimit = (int)PlanParameter("activePlateLimit", activeLimit, 0, 12);
+        }
         if (session.EmergencyDefenses.Count >= activeLimit) return;
+        var directPurchase = session.EmergencyInventory <= 0;
+        var requiredCredits = 0;
         if (session.EmergencyInventory <= 0)
         {
-            var directLimit = 2;
-            var directPurchaseAllowed = session.Economy.Lives <= session.Economy.StartingLives / 2;
+            var directLimit = experienced
+                ? session.IsFinalCampaignAct ? 10 : session.CurrentWave < 9 ? 0 : session.CurrentWave < 11 ? 1 : 4
+                : 2;
+            if (experienced && _wavePlan is not null)
+            {
+                if (PlanProfile(_wavePlan.TacticalProfileId, "plates")) directLimit += 2;
+                if (PlanProfile(_wavePlan.TacticalProfileId, "conserve")) directLimit = Math.Max(0, directLimit - 2);
+                directLimit = (int)PlanParameter("directPlateLimit", directLimit, 0, 16);
+            }
+            var directPurchaseAllowed = experienced ||
+                                        session.Economy.Lives <= session.Economy.StartingLives / 2;
             if (_directEmergencyPurchasesThisWave >= directLimit) return;
-            if (!directPurchaseAllowed || session.Economy.Credits < session.CurrentEmergencyDirectPurchaseCost + ReserveCredits(session, true)) return;
+            var reserve = experienced && lead.PathProgress >= 0.76f ? 0 : ReserveCredits(session, true);
+            if (!directPurchaseAllowed) return;
+            requiredCredits = session.CurrentEmergencyDirectPurchaseCost + reserve;
         }
 
-        var total = session.Map.Path.TotalLength;
-        var leadDistance = lead.DistanceAlongPath;
-        var candidateDistances = new[]
-        {
-            MathF.Min(total - 85, leadDistance + 38),
-            MathF.Min(total - 85, leadDistance + 90),
-            total * 0.88f,
-            total * 0.74f,
-            total * 0.60f
-        };
-        var directPurchase = session.EmergencyInventory <= 0;
-        foreach (var distance in candidateDistances)
-        {
-            if (!session.TryDeployEmergencyDefense(session.Map.Path.GetPosition(MathF.Max(85, distance)))) continue;
-            if (directPurchase) _directEmergencyPurchasesThisWave++;
-            return;
-        }
+        var position = FindBestEmergencyDefensePosition(session);
+        if (position is null) return;
+        if (directPurchase && session.Economy.Credits < requiredCredits &&
+            !TrySellForEmergencyDefense(session, lead.PathProgress, requiredCredits)) return;
+        if (directPurchase && session.Economy.Credits < requiredCredits) return;
+        if (!session.TryDeployEmergencyDefense(position.Value)) return;
+        if (directPurchase) _directEmergencyPurchasesThisWave++;
     }
 
-    private static void TryUseOverdrive(GameSession session, ThreatProfile threat)
+    private Vector2? FindBestEmergencyDefensePosition(GameSession session)
+    {
+        var definition = session.Content.Tactics.EmergencyDefense;
+        var path = session.Map.Path;
+        var total = path.TotalLength;
+        var live = session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped)
+            .OrderByDescending(enemy => enemy.DistanceAlongPath)
+            .ThenBy(enemy => enemy.Id)
+            .ToArray();
+        if (live.Length == 0) return null;
+        var lead = live[0];
+        var lateCampaign = ActiveOrNextWave(session) >= 25;
+        var clusterWeight = PlanParameter("plateClusterWeight", lateCampaign ? 0.45f : 1f, 0f, 4f);
+        var leadWeight = PlanParameter("plateLeadWeight", lateCampaign ? 3f : 1f, 0f, 6f);
+
+        var distances = new HashSet<int>();
+        foreach (var enemy in live)
+        {
+            var armLead = MathF.Max(30f, enemy.CurrentSpeed * (definition.ArmTime + 0.35f));
+            distances.Add((int)MathF.Round(enemy.DistanceAlongPath + armLead));
+            distances.Add((int)MathF.Round(enemy.DistanceAlongPath + 72f));
+            distances.Add((int)MathF.Round(enemy.DistanceAlongPath + 128f));
+        }
+        foreach (var progress in new[] { 0.58f, 0.66f, 0.74f, 0.81f, 0.87f, 0.92f, 0.96f })
+            distances.Add((int)MathF.Round(total * progress));
+
+        var candidates = new List<(Vector2 Position, float Score, float Distance, bool StallsLead)>();
+        foreach (var rawDistance in distances.OrderBy(distance => distance))
+        {
+            var distance = Math.Clamp(rawDistance, 85f, total - 55f);
+            var position = path.GetPosition(distance);
+            if (session.ValidateTacticalPlacement(TacticalPlacementKind.PulsePlate, position,
+                    ignoreAvailability: true) != PlacementFailure.None)
+                continue;
+
+            var arrivals = live
+                .Where(enemy => enemy.CurrentSpeed > 0.01f && distance > enemy.DistanceAlongPath)
+                .Select(enemy => new
+                {
+                    Enemy = enemy,
+                    Eta = (distance - enemy.DistanceAlongPath) / enemy.CurrentSpeed
+                })
+                .Where(arrival => arrival.Eta >= definition.ArmTime + 0.05f)
+                .OrderBy(arrival => arrival.Eta)
+                .ThenBy(arrival => arrival.Enemy.Id)
+                .ToArray();
+            if (arrivals.Length == 0 && session.Waves.QueuedEnemies == 0) continue;
+
+            var triggerEta = arrivals.FirstOrDefault()?.Eta ?? 8f;
+            var predictedHits = 0;
+            var priorityValue = 0f;
+            foreach (var arrival in arrivals)
+            {
+                var predictedDistance = arrival.Enemy.DistanceAlongPath + arrival.Enemy.CurrentSpeed * triggerEta;
+                if (MathF.Abs(distance - predictedDistance) > definition.BlastRadius) continue;
+                predictedHits++;
+                priorityValue += arrival.Enemy.Rank == EnemyRank.Boss ? 5f :
+                    arrival.Enemy.Rank == EnemyRank.Elite ? 2.5f : 1f;
+                if (arrival.Enemy.SignalRole != EnemySignalRole.None) priorityValue += 1.2f;
+                priorityValue += MathF.Min(2f,
+                    (arrival.Enemy.Health + arrival.Enemy.Shield) / MathF.Max(1f, arrival.Enemy.MaxHealth));
+            }
+
+            var towerCoverage = 0f;
+            foreach (var tower in session.Towers.Where(tower => !tower.IsSupport))
+            {
+                var range = session.GetEffectiveRange(tower);
+                if (Vector2.DistanceSquared(tower.Position, position) > range * range) continue;
+                towerCoverage += 1f + MathF.Min(4f, tower.InvestedCredits / 260f);
+            }
+
+            var queuedValue = session.Waves.QueuedEnemies > 0 ? MathF.Min(8f, session.Waves.QueuedEnemies * 0.15f) : 0f;
+            var endpointRisk = distance / total > 0.92f ? 1.5f : 0f;
+            var leadArrival = arrivals.FirstOrDefault(arrival => arrival.Enemy.Id == lead.Id);
+            var leadStallValue = leadArrival is null
+                ? -4f
+                : 8f + lead.PathProgress * 10f +
+                  (lead.Rank == EnemyRank.Boss ? 8f : lead.Rank == EnemyRank.Elite ? 4f : 0f) +
+                  (lead.SignalRole == EnemySignalRole.None ? 0f : 2f);
+            var score = predictedHits * 7f * clusterWeight + priorityValue * 2.5f +
+                        towerCoverage * 0.65f + queuedValue + leadStallValue * leadWeight -
+                        triggerEta * 0.08f - endpointRisk;
+            candidates.Add((position, score, distance, leadArrival is not null));
+        }
+
+        IEnumerable<(Vector2 Position, float Score, float Distance, bool StallsLead)> ranked = candidates;
+        var escapeProgress = PlanParameter("plateEscapeProgress", 0.98f, 0.5f, 0.98f);
+        if (lead.PathProgress >= escapeProgress && candidates.Any(candidate => candidate.StallsLead))
+            ranked = candidates.Where(candidate => candidate.StallsLead);
+        return ranked.OrderByDescending(candidate => candidate.Score)
+            .ThenBy(candidate => candidate.Distance)
+            .Select(candidate => (Vector2?)candidate.Position)
+            .FirstOrDefault();
+    }
+
+    private void TryUseOverdrive(GameSession session, ThreatProfile threat)
     {
         if (!session.ProtocolsEnabled || session.OverdriveCooldownRemaining > 0 || session.Enemies.Count == 0) return;
-        var pressure = threat.HasBoss || threat.HasElite || session.Enemies.Count >= 5 ||
+        var liveEnemies = session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped).ToArray();
+        if (liveEnemies.Length == 0) return;
+        var minimumEnemies = (int)PlanParameter("protocolMinimumEnemies",
+            _wavePlan?.TacticalProfileId.ToLowerInvariant() switch
+            {
+                "protocols" => 2,
+                "conserve" => 8,
+                _ => 5
+            }, 1, 30);
+        var rankedPressure = liveEnemies.Any(enemy => enemy.Rank is EnemyRank.Elite or EnemyRank.Boss);
+        var pressure = rankedPressure || liveEnemies.Length >= minimumEnemies ||
                        session.Economy.Lives <= session.Economy.StartingLives * 0.6f;
         if (!pressure) return;
         var candidate = session.Towers
-            .Where(tower => !tower.IsOverdriven)
+            .Where(tower => !tower.IsOverdriven && !tower.IsApex)
             .Select(tower => new
             {
                 Tower = tower,
-                Targets = session.GetProtocolTargets(tower).Count
+                Targets = session.GetProtocolTargets(tower),
+                Protocol = tower.Protocol
             })
-            .Where(x => x.Targets > 0)
-            .OrderByDescending(x => x.Targets * 20 + x.Tower.InvestedCredits)
+            .Where(x => x.Targets.Count > 0)
+            .Select(choice => new
+            {
+                choice.Tower,
+                Score = (choice.Targets.Sum(enemy =>
+                            8f + enemy.PathProgress * 22f +
+                            (enemy.Health + enemy.Shield) / MathF.Max(1f, enemy.MaxHealth) * 12f +
+                            (enemy.SignalRole == EnemySignalRole.None ? 0f : 24f) +
+                            (enemy.Rank == EnemyRank.Boss ? 32f : enemy.Rank == EnemyRank.Elite ? 14f : 0f)) *
+                        (1f + choice.Protocol.AttackSpeedBonus + choice.Protocol.DamageBonus +
+                         choice.Protocol.AuraAttackSpeedBonus + choice.Protocol.AuraRangeBonus * 0.55f +
+                         choice.Protocol.RangeBonus * 0.35f) +
+                        ManualProtocolInvestmentValue(session, choice.Tower)) *
+                        (choice.Tower.IsSupport
+                            ? PlanParameter("protocolSupportBias",
+                                ActiveOrNextWave(session) >= 28 ? 2.4f : 1f, 0.25f, 6f)
+                            : 1f)
+            })
+            .OrderByDescending(choice => choice.Score)
             .ThenBy(x => x.Tower.Id)
             .FirstOrDefault();
         if (candidate is not null) session.TryOverdriveTower(candidate.Tower.Id);
+    }
+
+    private static float ManualProtocolInvestmentValue(GameSession session, TowerInstance tower)
+    {
+        if (!tower.IsSupport) return tower.InvestedCredits * 0.025f;
+
+        var auraRange = session.GetEffectiveAuraRange(tower);
+        var auraRangeSquared = auraRange * auraRange;
+        var value = 0f;
+        foreach (var recipient in session.Towers.Where(candidate => !candidate.IsSupport && !candidate.IsApex &&
+                     Vector2.DistanceSquared(candidate.Position, tower.Position) <= auraRangeSquared))
+        {
+            var level = recipient.Level;
+            var throughput = level.Damage * MathF.Max(0.25f, level.AttacksPerSecond) *
+                             Math.Max(1, level.PelletCount);
+            throughput += level.ChainDamage * level.ChainCount * level.AttacksPerSecond;
+            throughput += level.BurnDamagePerSecond;
+            value += recipient.InvestedCredits * 0.045f +
+                     throughput * (tower.Protocol.AuraAttackSpeedBonus +
+                                   tower.Protocol.AuraRangeBonus * 0.45f);
+        }
+        return value;
     }
 
     private float UpgradeBias() => _strategy switch
@@ -1240,6 +2067,29 @@ public sealed class AutoPlayer
         AutoPlayerStrategy.Experienced => 1.48f,
         _ => 1.12f
     };
+
+    private float EconomyProfileMultiplier(bool purchasing)
+    {
+        if (_wavePlan is null) return 1f;
+        return _wavePlan.EconomyProfileId.ToLowerInvariant() switch
+        {
+            "invest" => purchasing ? 1.18f : 0.92f,
+            "mature" => purchasing ? 0.72f : 1.30f,
+            "apex" => purchasing ? 0.55f : 1.12f,
+            "reserve" => purchasing ? 0.82f : 0.90f,
+            _ => 1f
+        };
+    }
+
+    private float PlanParameter(string name, float fallback, float minimum, float maximum)
+    {
+        if (_wavePlan?.Parameters.TryGetValue(name, out var value) != true || !double.IsFinite(value))
+            return fallback;
+        return Math.Clamp((float)value, minimum, maximum);
+    }
+
+    private bool PlanProfile(string value, string profile) =>
+        value.Equals(profile, StringComparison.OrdinalIgnoreCase);
 
     private static List<Vector2> BuildPlacementCandidates(GameSession session)
     {
@@ -1282,4 +2132,6 @@ public sealed class AutoPlayer
         }
         return points.Select(x => new Vector2(x.X, x.Y)).OrderBy(x => x.Y).ThenBy(x => x.X).ToList();
     }
+
+    private readonly record struct ApexInvestmentOption(TowerInstance Tower, float Score);
 }

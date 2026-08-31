@@ -167,9 +167,10 @@ internal static class SimulationCli
             $"{result.Simulation.Result}, lives {result.Simulation.LivesRemaining}, credits {result.Simulation.CreditsUnspent}");
         if (failure is not null)
             Console.WriteLine(
-                $"Remaining pressure: {failure.TotalEnemyCount} enemies, {failure.TotalArmorAdjustedDurability:0.##} " +
-                $"armor-adjusted durability ({failure.RemainingArmorAdjustedDurabilityFraction:P2}), " +
-                $"furthest progress {failure.FurthestProgress:P2}.");
+                $"Unresolved pressure: {failure.UnresolvedEnemyCount} enemies, " +
+                $"{failure.UnresolvedArmorAdjustedDurability:0.##} armor-adjusted durability " +
+                $"({failure.UnresolvedArmorAdjustedDurabilityFraction:P2}), " +
+                $"furthest progress {failure.UnresolvedFurthestProgress:P2}.");
 
         var root = FindProjectRoot();
         var output = ReadValue(args, "--output") ?? Path.Combine(root, ".build", "balance",
@@ -276,6 +277,10 @@ internal static class SimulationCli
         var candidateCount = ParseInt(args, "--candidates", resumeManifest?.CandidateCount ?? 6, 1, 128);
         var broadeningRounds = ParseInt(args, "--broaden-rounds", resumeManifest?.BroadeningRounds ?? 1, 0, 8);
         var startingRound = ParseInt(args, "--start-round", resumeManifest?.NextBroadeningRound ?? 0, 0, 1000);
+        var backtrackDepth = ParseInt(args, "--backtrack-depth", resumeManifest?.BacktrackDepth ?? 2,
+            0, GameConstants.CampaignWaveCount);
+        var recoveryAttempts = ParseInt(args, "--recovery-attempts",
+            resumeManifest?.MaximumRecoveryAttempts ?? 8, 0, 1000);
         var bundleText = ReadValue(args, "--bundles");
         var bundleIds = bundleText is null ? resumeManifest?.BundleIds ?? Array.Empty<string>() : SplitList(bundleText);
         var parameterOverrides = HasParameterArguments(args)
@@ -327,18 +332,31 @@ internal static class SimulationCli
                 MaximumWave = maximumWave,
                 BroadeningRounds = broadeningRounds,
                 StartingBroadeningRound = startingRound,
+                BacktrackDepth = backtrackDepth,
+                MaximumRecoveryAttempts = recoveryAttempts,
+                RecoveryAttemptOffset = resumeManifest is null
+                    ? 0
+                    : resumeManifest.RecoveryAttemptOffset + resumeManifest.RecoveryAttempts.Count,
                 PolicyId = ReadValue(args, "--policy-id") ?? resumeManifest?.PolicyId ?? "experienced-search",
                 BundleIds = bundleIds,
                 ParameterOverrides = parameterOverrides,
+                PreviouslyEvaluatedConfigurationFingerprints =
+                    resumeManifest?.EvaluatedConfigurationFingerprints ?? Array.Empty<string>(),
                 ArtifactDirectory = artifactDirectory
             },
             preferredPlan);
 
         foreach (var attempt in result.WaveAttempts)
             Console.WriteLine(
-                $"Wave {attempt.Wave,2} round {attempt.BroadeningRound,3}: candidates {attempt.CandidateCount,3}, " +
+                $"Wave {attempt.Wave,2} recovery {attempt.RecoveryAttempt,3} round {attempt.BroadeningRound,3}: " +
+                $"candidates {attempt.CandidateCount,3}, " +
                 $"evaluations {attempt.Evaluations,4}, successes {attempt.SuccessfulEvaluations,3}, " +
                 $"retained {attempt.RetainedStates,2}, failures {attempt.Failures,3}.");
+        foreach (var recovery in result.Manifest.RecoveryAttempts)
+            Console.WriteLine(
+                $"Recovery {recovery.Attempt}: wave {recovery.BlockingWave} dead end -> " +
+                $"wave {recovery.RecoveredWave} alternate frontier (depth {recovery.Depth}, " +
+                $"states {recovery.CheckpointFingerprints.Count}).");
         Console.WriteLine(
             $"Strategy search {result.Status}: completed wave {result.LastCompletedWave}, " +
             $"evaluations {result.TotalEvaluations}, resumable states {result.ResumeFrontier.Count}.");
@@ -364,9 +382,15 @@ internal static class SimulationCli
             $"health {margin.QueuedHealth:0.###}, shield {margin.QueuedShield:0.###}, " +
             $"armor-adjusted {margin.QueuedArmorAdjustedDurability:0.###}.");
         Console.WriteLine(
-            $"Total armor-adjusted {margin.TotalArmorAdjustedDurability:0.###}/{margin.WaveArmorAdjustedDurability:0.###} " +
-            $"({margin.RemainingArmorAdjustedDurabilityFraction:P3}); enemies {margin.TotalEnemyCount}/{margin.WaveEnemyCount} " +
-            $"({margin.RemainingEnemyFraction:P3}); furthest progress {margin.FurthestProgress:P3}.");
+            $"Fatal-frame escapes {margin.FatalEscapedEnemyCount}: health {margin.FatalEscapedHealth:0.###}, " +
+            $"shield {margin.FatalEscapedShield:0.###}, " +
+            $"armor-adjusted {margin.FatalEscapedArmorAdjustedDurability:0.###}.");
+        Console.WriteLine(
+            $"Unresolved armor-adjusted {margin.UnresolvedArmorAdjustedDurability:0.###}/" +
+            $"{margin.WaveArmorAdjustedDurability:0.###} " +
+            $"({margin.UnresolvedArmorAdjustedDurabilityFraction:P3}); enemies " +
+            $"{margin.UnresolvedEnemyCount}/{margin.WaveEnemyCount} ({margin.UnresolvedEnemyFraction:P3}); " +
+            $"furthest progress {margin.UnresolvedFurthestProgress:P3}.");
         foreach (var enemy in failure.RemainingEnemies)
             Console.WriteLine(
                 $"  LIVE {enemy.Count} {enemy.Rank} {enemy.DisplayName} {enemy.SignalRole}: " +
@@ -377,6 +401,32 @@ internal static class SimulationCli
                 $"  QUEUED {enemy.Count} {enemy.Rank} {enemy.DisplayName} {enemy.SignalRole}: " +
                 $"health {enemy.CurrentHealth:0.###}, shield {enemy.Shield:0.###}, " +
                 $"armor-adjusted {enemy.ArmorAdjustedDurability:0.###}");
+        foreach (var enemy in failure.FatalEscapedEnemies)
+            Console.WriteLine(
+                $"  FATAL-ESCAPE {enemy.Rank} {enemy.DisplayName} {enemy.SignalRole}: " +
+                $"health {enemy.CurrentHealth:0.###}/{enemy.MaxHealth:0.###}, shield {enemy.Shield:0.###}, " +
+                $"armor-adjusted {enemy.ArmorAdjustedDurability:0.###}, progress {enemy.Progress:P3}");
+        foreach (var deployment in failure.PulsePlateDeployments)
+            Console.WriteLine(
+                $"  PLATE #{deployment.PlateId} t={deployment.WaveElapsedSeconds:0.###}s " +
+                $"{(deployment.DirectPurchase ? $"direct {deployment.Cost}" : "stored")}: " +
+                $"path {deployment.PathProgress:P3}, lead {deployment.LeadProgress:P3}, " +
+                $"live {deployment.LiveEnemyCount}, queued {deployment.QueuedEnemyCount}, " +
+                $"triggers {deployment.TriggerCount}, hits {deployment.HitCount}, " +
+                $"kills {deployment.KillCount}, damage {deployment.Damage:0.###}");
+        foreach (var activation in failure.ProtocolActivations)
+        {
+            var source = activation.IsAutonomous
+                ? activation.IsApex ? "APEX-AUTO" : "AUTO"
+                : "MANUAL";
+            Console.WriteLine(
+                $"  PROTOCOL {source} tower #{activation.TowerId} {activation.TowerType} " +
+                $"target {activation.TargetMode} t={activation.WaveElapsedSeconds:0.###}s: " +
+                $"live {activation.LiveEnemyCount}, queued {activation.QueuedEnemyCount}, " +
+                $"lead {activation.LeadProgress:P3}, ranked {activation.RankedEnemyCount} " +
+                $"({activation.RankedArmorAdjustedDurability:0.###} AA), " +
+                $"signals {activation.SignalEnemyCount}");
+        }
     }
 
     internal static int ResolveMaximumWave(string[] args, int campaignWaveCount)
@@ -674,17 +724,36 @@ internal static class SimulationCli
                 $"Wave {waveGroup.Key,2}: {waveRuns.Length,3} defeats  " +
                 $"avg live {waveRuns.Average(run => run.RemainingEnemyCount),5:0.0}  " +
                 $"avg queued {waveRuns.Average(run => run.QueuedEnemiesRemaining),5:0.0}  " +
-                $"avg remaining durability {waveRuns.Average(run => run.RemainingHealth + run.RemainingShield),9:0}");
+                $"avg fatal {waveRuns.Average(run => run.FatalEscapedEnemyCount),5:0.0}  " +
+                $"avg unresolved AA {waveRuns.Average(run => run.UnresolvedArmorAdjustedDurability),9:0}  " +
+                $"avg fraction {waveRuns.Average(run =>
+                    run.FailureMargin?.UnresolvedArmorAdjustedDurabilityFraction ?? 0):P3}");
 
-            foreach (var enemyGroup in waveRuns.SelectMany(run => run.RemainingEnemies)
-                         .GroupBy(enemy => new { enemy.DisplayName, enemy.Rank, enemy.SignalRole })
-                         .OrderByDescending(group => group.Sum(enemy => enemy.CurrentHealth + enemy.Shield))
-                         .Take(4))
+            var composition = waveRuns.SelectMany(run =>
+                run.RemainingEnemies.Select(enemy => new FailureCompositionEntry(
+                    "LIVE", enemy.DisplayName, enemy.Rank, enemy.SignalRole, enemy.Count,
+                    enemy.CurrentHealth, enemy.MaxHealth, enemy.Shield, enemy.ArmorAdjustedDurability,
+                    enemy.FurthestProgress))
+                .Concat(run.QueuedEnemies.Select(enemy => new FailureCompositionEntry(
+                    "QUEUED", enemy.DisplayName, enemy.Rank, enemy.SignalRole, enemy.Count,
+                    enemy.CurrentHealth, enemy.MaxHealth, enemy.Shield, enemy.ArmorAdjustedDurability,
+                    enemy.FurthestProgress)))
+                .Concat(run.FatalEscapedEnemies.Select(enemy => new FailureCompositionEntry(
+                    "FATAL", enemy.DisplayName, enemy.Rank, enemy.SignalRole, 1,
+                    enemy.CurrentHealth, enemy.MaxHealth, enemy.Shield, enemy.ArmorAdjustedDurability,
+                    enemy.Progress))));
+            foreach (var enemyGroup in composition
+                         .GroupBy(enemy => new { enemy.State, enemy.DisplayName, enemy.Rank, enemy.SignalRole })
+                         .OrderByDescending(group => group.Sum(enemy => enemy.ArmorAdjustedDurability))
+                         .ThenBy(group => group.Key.State, StringComparer.Ordinal)
+                         .ThenBy(group => group.Key.DisplayName, StringComparer.Ordinal))
             {
                 var count = enemyGroup.Sum(enemy => enemy.Count);
                 var health = enemyGroup.Sum(enemy => enemy.CurrentHealth);
                 var maxHealth = enemyGroup.Sum(enemy => enemy.MaxHealth);
                 var shield = enemyGroup.Sum(enemy => enemy.Shield);
+                var armorAdjusted = enemyGroup.Sum(enemy => enemy.ArmorAdjustedDurability);
+                var furthestProgress = enemyGroup.Max(enemy => enemy.Progress);
                 var signal = enemyGroup.Key.SignalRole.Equals("None", StringComparison.OrdinalIgnoreCase)
                     ? ""
                     : $" {enemyGroup.Key.SignalRole}";
@@ -693,9 +762,10 @@ internal static class SimulationCli
                     ? ""
                     : $"{enemyGroup.Key.Rank} ";
                 Console.WriteLine(
-                    $"  {rank}{enemyGroup.Key.DisplayName}{signal}: " +
+                    $"  {enemyGroup.Key.State,-6} {rank}{enemyGroup.Key.DisplayName}{signal}: " +
                     $"avg count {count / (float)waveRuns.Length:0.0}, HP {(maxHealth <= 0 ? 0 : health / maxHealth):P0}, " +
-                    $"avg shield {shield / waveRuns.Length:0}");
+                    $"avg shield {shield / waveRuns.Length:0}, " +
+                    $"avg AA {armorAdjusted / waveRuns.Length:0}, furthest {furthestProgress:P1}");
             }
         }
     }
@@ -726,6 +796,18 @@ internal static class SimulationCli
         int Wins,
         int CompletedRuns,
         float AverageWave);
+
+    private sealed record FailureCompositionEntry(
+        string State,
+        string DisplayName,
+        string Rank,
+        string SignalRole,
+        int Count,
+        float CurrentHealth,
+        float MaxHealth,
+        float Shield,
+        float ArmorAdjustedDurability,
+        float Progress);
 
     private static void PrintTowerSummary(IEnumerable<SimulationRunResult> runs)
     {

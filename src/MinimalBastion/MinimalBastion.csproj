@@ -27,4 +27,8 @@
     <MonoGameContentReference Include="Content\Content.mgcb" />
     <None Update="ContentData\**\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MinimalBastion.Tests" />
+  </ItemGroup>
 </Project>
