@@ -50,6 +50,7 @@ internal static class Program
             ("high-resolution viewport", HighResolutionViewport),
             ("persistent display and audio settings", PersistentUserSettings),
             ("procedural audio mastering", ProceduralAudioMastering),
+            ("browser one-shot audio parameters", BrowserOneShotAudioParameters),
             ("gameplay music shuffle bag", GameplayMusicShuffleBag),
             ("complete tactical reference", CompleteTacticalReference),
             ("crash report fallback", CrashReportFallback),
@@ -1260,6 +1261,34 @@ internal static class Program
             "quiet frequent cues remain below the compressor threshold");
         Check.Nearly(0, AudioManager.MasteredOneShotGain(float.NaN, 1),
             "invalid source levels are muted safely");
+    }
+
+    private static void BrowserOneShotAudioParameters()
+    {
+        var previous = PlatformServices.ImmediateOneShotAudioParametersSetter;
+        try
+        {
+            var transitions = new List<bool>();
+            var played = false;
+            PlatformServices.ImmediateOneShotAudioParametersSetter = enabled => transitions.Add(enabled);
+            PlatformServices.PlayWithImmediateOneShotAudioParameters(() => played = true);
+            Check.True(played, "one-shot playback runs inside the browser parameter guard");
+            Check.Equal(2, transitions.Count, "one-shot playback brackets the browser gain update");
+            Check.True(transitions[0] && !transitions[1],
+                "browser gain updates enable immediate assignment only around one-shot playback");
+
+            played = false;
+            PlatformServices.ImmediateOneShotAudioParametersSetter = enabled =>
+            {
+                if (enabled) throw new InvalidOperationException("browser audio bridge unavailable");
+            };
+            PlatformServices.PlayWithImmediateOneShotAudioParameters(() => played = true);
+            Check.True(played, "one-shot playback remains available if the browser gain guard is unavailable");
+        }
+        finally
+        {
+            PlatformServices.ImmediateOneShotAudioParametersSetter = previous;
+        }
     }
 
     private static void TacticalColorPalette()

@@ -27,6 +27,8 @@ public partial class Index
         PlatformServices.LoadingTransitionSetter = (title, status) =>
             browser.InvokeVoid("minimalBastionLoading.begin", title, status);
         PlatformServices.LoadingTransitionCompleter = () => browser.InvokeVoid("minimalBastionLoading.complete");
+        PlatformServices.ImmediateOneShotAudioParametersSetter = enabled =>
+            browser.InvokeVoid("minimalBastion.audio.setImmediateParameters", enabled);
         PlatformServices.InputFocusReader = () => browser.Invoke<bool>("minimalBastion.hasInputFocus");
         PlatformServices.PointerStateReader = () => browser.Invoke<PlatformPointerState>("minimalBastion.pointer.read");
         PlatformServices.BrowserDisplayStateReader = () => _browserDisplayState;

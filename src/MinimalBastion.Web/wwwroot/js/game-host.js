@@ -14,6 +14,8 @@ window.minimalBastion = (() => {
     let runtimeStage = "browser startup";
     let fullscreenPending = false;
     let resizeObserver = null;
+    let immediateAudioParameterDepth = 0;
+    let immediateAudioParameterWrites = 0;
     const targetFrameTime = 1000 / 60;
     const maximumCanvasWidth = 2560;
     const maximumCanvasHeight = 1440;
@@ -28,6 +30,27 @@ window.minimalBastion = (() => {
         rightPressed: false,
         middlePressed: false
     };
+
+    const setTargetAtTime = window.nkAudioParam?.SetTargetAtTime;
+    if (typeof setTargetAtTime === "function") {
+        window.nkAudioParam.SetTargetAtTime = function (uid, module, data) {
+            if (immediateAudioParameterDepth <= 0)
+                return setTargetAtTime(uid, module, data);
+
+            const parameter = window.nkJSObject?.GetObject(uid);
+            if (!parameter)
+                return setTargetAtTime(uid, module, data);
+
+            const target = module.HEAPF32[(data + 0) >> 2];
+            const startTime = module.HEAPF32[(data + 4) >> 2];
+            if (!Number.isFinite(target) || startTime !== 0)
+                return setTargetAtTime(uid, module, data);
+
+            parameter.cancelScheduledValues(0);
+            parameter.value = target;
+            immediateAudioParameterWrites++;
+        };
+    }
 
     function updatePointerPosition(event) {
         const canvas = document.getElementById("theCanvas");
@@ -182,6 +205,7 @@ window.minimalBastion = (() => {
                 Math.max(1, document.getElementById("theCanvas")?.clientWidth || 1),
             devicePixelRatio: window.devicePixelRatio || 1,
             runtimeStage,
+            immediateAudioParameterWrites,
             lastError
         };
     }
@@ -223,6 +247,14 @@ window.minimalBastion = (() => {
                 clipboardText = text || "";
                 navigator.clipboard?.writeText(clipboardText).catch(() => {});
                 return true;
+            }
+        },
+        audio: {
+            setImmediateParameters(enabled) {
+                if (enabled)
+                    immediateAudioParameterDepth++;
+                else
+                    immediateAudioParameterDepth = Math.max(0, immediateAudioParameterDepth - 1);
             }
         },
         pointer: {

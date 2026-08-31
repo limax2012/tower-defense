@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Media;
+using MinimalBastion.Core;
 
 namespace MinimalBastion.Audio;
 
@@ -224,7 +225,11 @@ public sealed class AudioManager : IDisposable
     {
         if (_disposed || _sfxVolume <= 0 || !_sounds.TryGetValue(cue, out var sound)) return;
         var masteredGain = MasteredOneShotGain(sound.Peak, cueVolume);
-        try { sound.Effect.Play(Math.Clamp(_sfxVolume * masteredGain, 0, 1), Math.Clamp(pitch, -1, 1), 0); }
+        try
+        {
+            PlatformServices.PlayWithImmediateOneShotAudioParameters(() =>
+                sound.Effect.Play(Math.Clamp(_sfxVolume * masteredGain, 0, 1), Math.Clamp(pitch, -1, 1), 0));
+        }
         catch
         {
             // Audio is presentational only. A device disappearing mid-match must
@@ -262,7 +267,11 @@ public sealed class AudioManager : IDisposable
         var pressureMix = liveEnemies switch { > 80 => 0.42f, > 35 => 0.58f, > 12 => 0.74f, _ => 1f };
         var cueVolume = (supportCue ? 0.07f : 0.13f) * pressureMix;
         var masteredGain = MasteredOneShotGain(sound.Peak, cueVolume);
-        try { sound.Effect.Play(Math.Clamp(_sfxVolume * masteredGain, 0, 1), 0, 0); }
+        try
+        {
+            PlatformServices.PlayWithImmediateOneShotAudioParameters(() =>
+                sound.Effect.Play(Math.Clamp(_sfxVolume * masteredGain, 0, 1), 0, 0));
+        }
         catch { _sfxVolume = 0; }
     }
 

@@ -33,9 +33,46 @@ public static class PlatformServices
     public static Action<string>? RuntimeStageSetter { get; set; }
     public static Action<string, string>? LoadingTransitionSetter { get; set; }
     public static Action? LoadingTransitionCompleter { get; set; }
+    public static Action<bool>? ImmediateOneShotAudioParametersSetter { get; set; }
     public static Func<bool>? InputFocusReader { get; set; }
     public static Func<PlatformPointerState?>? PointerStateReader { get; set; }
     public static Func<PlatformBrowserDisplayState?>? BrowserDisplayStateReader { get; set; }
+
+    internal static void PlayWithImmediateOneShotAudioParameters(Action playback)
+    {
+        ArgumentNullException.ThrowIfNull(playback);
+        var setter = ImmediateOneShotAudioParametersSetter;
+        if (setter is null)
+        {
+            playback();
+            return;
+        }
+
+        var enabled = false;
+        try
+        {
+            try
+            {
+                setter(true);
+                enabled = true;
+            }
+            catch
+            {
+                playback();
+                return;
+            }
+
+            playback();
+        }
+        finally
+        {
+            if (enabled)
+            {
+                try { setter(false); }
+                catch { }
+            }
+        }
+    }
 
     public static string PersistentRootDirectory => Path.GetFullPath(Path.Combine(
 #if BLAZORGL
