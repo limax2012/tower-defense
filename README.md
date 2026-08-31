@@ -203,6 +203,12 @@ powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
 
 The script builds into `%TEMP%`, runs the deterministic regression executable, and invokes a hidden non-activating renderer under `.artifacts\verification\ui`. Visual verification uses the canonical 2560x1440 scene size and includes a 3840x2160 display-density smoke scene. It does not replace files used by a running game or send keyboard/mouse input. Use `-SkipVisuals` to omit rendering.
 
+Verify the mastered loudness, true-peak headroom, and dynamic range of every music asset with FFmpeg installed:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\verify-audio-mix.ps1
+```
+
 Representative headless commands:
 
 ```powershell

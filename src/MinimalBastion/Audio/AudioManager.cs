@@ -9,8 +9,11 @@ public sealed class AudioManager : IDisposable
     private const int SampleRate = 44100;
     private const float MusicSourceGain = 1.8f;
     private const float GameplayMusicGain = 1.35f;
-    private readonly Dictionary<Cue, SoundEffect> _sounds = new();
-    private readonly Dictionary<string, SoundEffect> _towerImpacts = new(StringComparer.OrdinalIgnoreCase);
+    internal const float OneShotCompressionThreshold = 0.18f;
+    internal const float OneShotCompressionRatio = 2.5f;
+    internal const float OneShotPeakLimit = 0.22f;
+    private readonly Dictionary<Cue, GeneratedOneShot> _sounds = new();
+    private readonly Dictionary<string, GeneratedOneShot> _towerImpacts = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, float> _towerImpactCooldowns = new(StringComparer.OrdinalIgnoreCase);
     private SoundEffect? _musicSound;
     private SoundEffectInstance? _musicInstance;
@@ -72,9 +75,9 @@ public sealed class AudioManager : IDisposable
         }
         catch
         {
-            foreach (var sound in _sounds.Values) sound.Dispose();
+            foreach (var sound in _sounds.Values) sound.Effect.Dispose();
             _sounds.Clear();
-            foreach (var sound in _towerImpacts.Values) sound.Dispose();
+            foreach (var sound in _towerImpacts.Values) sound.Effect.Dispose();
             _towerImpacts.Clear();
             throw;
         }
@@ -220,7 +223,8 @@ public sealed class AudioManager : IDisposable
     private void Play(Cue cue, float cueVolume, float pitch = 0)
     {
         if (_disposed || _sfxVolume <= 0 || !_sounds.TryGetValue(cue, out var sound)) return;
-        try { sound.Play(Math.Clamp(_sfxVolume * cueVolume, 0, 1), Math.Clamp(pitch, -1, 1), 0); }
+        var masteredGain = MasteredOneShotGain(sound.Peak, cueVolume);
+        try { sound.Effect.Play(Math.Clamp(_sfxVolume * masteredGain, 0, 1), Math.Clamp(pitch, -1, 1), 0); }
         catch
         {
             // Audio is presentational only. A device disappearing mid-match must
@@ -257,8 +261,26 @@ public sealed class AudioManager : IDisposable
         var liveEnemies = _attachedSession?.Enemies.Count(enemy => !enemy.IsDead && !enemy.HasEscaped) ?? 0;
         var pressureMix = liveEnemies switch { > 80 => 0.42f, > 35 => 0.58f, > 12 => 0.74f, _ => 1f };
         var cueVolume = (supportCue ? 0.07f : 0.13f) * pressureMix;
-        try { sound.Play(Math.Clamp(_sfxVolume * cueVolume, 0, 1), 0, 0); }
+        var masteredGain = MasteredOneShotGain(sound.Peak, cueVolume);
+        try { sound.Effect.Play(Math.Clamp(_sfxVolume * masteredGain, 0, 1), 0, 0); }
         catch { _sfxVolume = 0; }
+    }
+
+    internal static float MasteredOneShotGain(float sourcePeak, float requestedGain)
+    {
+        if (!float.IsFinite(sourcePeak) || sourcePeak <= 0 ||
+            !float.IsFinite(requestedGain) || requestedGain <= 0)
+            return 0;
+
+        var gain = Math.Clamp(requestedGain, 0, 1);
+        var outputPeak = sourcePeak * gain;
+        if (outputPeak > OneShotCompressionThreshold)
+        {
+            outputPeak = OneShotCompressionThreshold +
+                (outputPeak - OneShotCompressionThreshold) / OneShotCompressionRatio;
+        }
+        outputPeak = MathF.Min(outputPeak, OneShotPeakLimit);
+        return outputPeak / sourcePeak;
     }
 
     public static float CombatCueCooldown(string towerId) => towerId.ToLowerInvariant() switch
@@ -382,7 +404,7 @@ public sealed class AudioManager : IDisposable
         _ => 0
     };
 
-    private static SoundEffect CreateTone(float startFrequency, float endFrequency, float seconds, WaveShape shape)
+    private static GeneratedOneShot CreateTone(float startFrequency, float endFrequency, float seconds, WaveShape shape)
     {
         var count = Math.Max(1, (int)(SampleRate * seconds));
         var samples = new short[count];
@@ -401,10 +423,10 @@ public sealed class AudioManager : IDisposable
             };
             samples[index] = ToSample(wave * Envelope(t) * 0.34f);
         }
-        return CreateSoundEffect(samples);
+        return CreateGeneratedOneShot(samples);
     }
 
-    private static SoundEffect CreateChord(float firstFrequency, float secondFrequency, float seconds)
+    private static GeneratedOneShot CreateChord(float firstFrequency, float secondFrequency, float seconds)
     {
         var count = Math.Max(1, (int)(SampleRate * seconds));
         var samples = new short[count];
@@ -416,10 +438,10 @@ public sealed class AudioManager : IDisposable
                        MathF.Sin(MathHelper.TwoPi * secondFrequency * time) * 0.45f;
             samples[index] = ToSample(wave * Envelope(t) * 0.28f);
         }
-        return CreateSoundEffect(samples);
+        return CreateGeneratedOneShot(samples);
     }
 
-    private static SoundEffect CreateTriad(float firstFrequency, float secondFrequency, float thirdFrequency, float seconds)
+    private static GeneratedOneShot CreateTriad(float firstFrequency, float secondFrequency, float thirdFrequency, float seconds)
     {
         var count = Math.Max(1, (int)(SampleRate * seconds));
         var samples = new short[count];
@@ -432,10 +454,10 @@ public sealed class AudioManager : IDisposable
                        MathF.Sin(MathHelper.TwoPi * thirdFrequency * time) * 0.28f;
             samples[index] = ToSample(wave * Envelope(t) * 0.27f);
         }
-        return CreateSoundEffect(samples);
+        return CreateGeneratedOneShot(samples);
     }
 
-    private static SoundEffect CreateTwoNoteCue(float firstFrequency, float secondFrequency, float seconds)
+    private static GeneratedOneShot CreateTwoNoteCue(float firstFrequency, float secondFrequency, float seconds)
     {
         var count = Math.Max(2, (int)(SampleRate * seconds));
         var samples = new short[count];
@@ -452,10 +474,10 @@ public sealed class AudioManager : IDisposable
             var wave = MathF.Sin(MathHelper.TwoPi * frequency * time);
             samples[index] = ToSample(wave * envelope * envelope * 0.18f);
         }
-        return CreateSoundEffect(samples);
+        return CreateGeneratedOneShot(samples);
     }
 
-    private static SoundEffect CreateNoisePulse(float seconds)
+    private static GeneratedOneShot CreateNoisePulse(float seconds)
     {
         var count = Math.Max(1, (int)(SampleRate * seconds));
         var samples = new short[count];
@@ -469,10 +491,10 @@ public sealed class AudioManager : IDisposable
             var t = index / (float)Math.Max(1, count - 1);
             samples[index] = ToSample((noise * 0.38f + body * 0.62f) * Envelope(t) * 0.32f);
         }
-        return CreateSoundEffect(samples);
+        return CreateGeneratedOneShot(samples);
     }
 
-    private static SoundEffect CreateImpactPulse(float seconds, float bodyFrequency)
+    private static GeneratedOneShot CreateImpactPulse(float seconds, float bodyFrequency)
     {
         var count = Math.Max(1, (int)(SampleRate * seconds));
         var samples = new short[count];
@@ -486,7 +508,7 @@ public sealed class AudioManager : IDisposable
             var body = MathF.Sin(MathHelper.TwoPi * bodyFrequency * (1f - t * 0.18f) * time);
             samples[index] = ToSample((body * 0.76f + noise * 0.24f) * Envelope(t) * 0.28f);
         }
-        return CreateSoundEffect(samples);
+        return CreateGeneratedOneShot(samples);
     }
 
     private static SoundEffect CreateTacticalLoop(string themeId)
@@ -562,14 +584,21 @@ public sealed class AudioManager : IDisposable
         return SoundEffect.FromStream(stream);
     }
 
+    private static GeneratedOneShot CreateGeneratedOneShot(IReadOnlyList<short> samples)
+    {
+        var peak = 0;
+        foreach (var sample in samples) peak = Math.Max(peak, Math.Abs((int)sample));
+        return new GeneratedOneShot(CreateSoundEffect(samples), peak / (float)short.MaxValue);
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
         StopMusicPlayback();
-        foreach (var sound in _sounds.Values) sound.Dispose();
+        foreach (var sound in _sounds.Values) sound.Effect.Dispose();
         _sounds.Clear();
-        foreach (var sound in _towerImpacts.Values) sound.Dispose();
+        foreach (var sound in _towerImpacts.Values) sound.Effect.Dispose();
         _towerImpacts.Clear();
     }
 
@@ -602,6 +631,8 @@ public sealed class AudioManager : IDisposable
         Place, Upgrade, Sell, Protocol, Kill, Leak, WaveStart, WaveClear, Plate, Forge, BossPhase, Victory, Defeat,
         UiConfirm, UiBack, UiDelete
     }
+
+    private readonly record struct GeneratedOneShot(SoundEffect Effect, float Peak);
     private enum WaveShape { Sine, Triangle, Square, Saw }
 
     private sealed record MusicTheme(float[] Bass, float[] Melody, float[] Counter, float ClockSeconds,

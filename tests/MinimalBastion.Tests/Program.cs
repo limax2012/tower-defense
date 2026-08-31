@@ -49,6 +49,7 @@ internal static class Program
             ("release identity and notes", ReleaseIdentityAndNotes),
             ("high-resolution viewport", HighResolutionViewport),
             ("persistent display and audio settings", PersistentUserSettings),
+            ("procedural audio mastering", ProceduralAudioMastering),
             ("gameplay music shuffle bag", GameplayMusicShuffleBag),
             ("complete tactical reference", CompleteTacticalReference),
             ("crash report fallback", CrashReportFallback),
@@ -1237,6 +1238,28 @@ internal static class Program
         {
             if (Directory.Exists(directory)) Directory.Delete(directory, true);
         }
+    }
+
+    private static void ProceduralAudioMastering()
+    {
+        const float standardTonePeak = 0.34f;
+        var routineGain = AudioManager.MasteredOneShotGain(standardTonePeak, 0.72f);
+        var routinePeak = standardTonePeak * routineGain;
+        Check.True(routinePeak > AudioManager.OneShotCompressionThreshold,
+            "routine event cues remain present after mastering");
+        Check.True(routinePeak <= AudioManager.OneShotPeakLimit,
+            "routine event cues retain mix headroom");
+
+        var loudGain = AudioManager.MasteredOneShotGain(standardTonePeak, 1);
+        Check.Nearly(AudioManager.OneShotPeakLimit, standardTonePeak * loudGain,
+            "loud one-shot cues meet the shared peak ceiling");
+
+        const float killPeak = 0.211f;
+        const float killGain = 0.24f;
+        Check.Nearly(killGain, AudioManager.MasteredOneShotGain(killPeak, killGain),
+            "quiet frequent cues remain below the compressor threshold");
+        Check.Nearly(0, AudioManager.MasteredOneShotGain(float.NaN, 1),
+            "invalid source levels are muted safely");
     }
 
     private static void TacticalColorPalette()
