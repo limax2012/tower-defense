@@ -11,6 +11,9 @@ internal static class SimulationCli
 {
     public static int Run(GameContent content, string[] args, bool deep)
     {
+        if (args.Any(arg => arg.Equals("--replay-manifest", StringComparison.OrdinalIgnoreCase) ||
+                            arg.StartsWith("--replay-manifest=", StringComparison.OrdinalIgnoreCase)))
+            return RunStrategyReplay(content, args);
         if (args.Any(arg => arg.Equals("--optimize-strategy", StringComparison.OrdinalIgnoreCase)))
             return RunStrategyOptimization(content, args);
 
@@ -189,10 +192,95 @@ internal static class SimulationCli
                 throw new InvalidOperationException("The planned wave did not produce a resumable inter-wave checkpoint.");
             if (!Path.IsPathRooted(nextCheckpointPath)) nextCheckpointPath = Path.Combine(root, nextCheckpointPath);
             StrategyArtifactStore.SaveCheckpoint(nextCheckpointPath,
-                StrategyCheckpointArtifact.Create(strategyPlan.ArtifactId, result.NextCheckpoint), content);
+                StrategyCheckpointArtifact.Create(strategyPlan.ArtifactId, result.NextCheckpoint, content), content);
             Console.WriteLine($"Next strategy checkpoint: {nextCheckpointPath}");
         }
         return result.Succeeded ? 0 : 2;
+    }
+
+    private static int RunStrategyReplay(GameContent content, string[] args)
+    {
+        ValidateReplayArguments(args);
+        var manifestValue = ReadValue(args, "--replay-manifest") ??
+                            throw new ArgumentException("--replay-manifest requires a campaign-search.json path.");
+        var manifestPath = Path.GetFullPath(manifestValue);
+        var manifest = CampaignSearchArtifactStore.LoadManifest(manifestPath);
+        if (manifest.SchemaVersion != CampaignSearchManifest.CurrentSchemaVersion ||
+            manifest.SchemaVersion != 5)
+            throw new InvalidDataException("Fresh strategy replay requires a schema-v5 campaign manifest.");
+        if (manifest.Status != CampaignSearchStatus.CampaignCompleted)
+            throw new InvalidDataException("Fresh strategy replay requires a completed campaign search manifest.");
+
+        var plan = CampaignSearchArtifactStore.LoadFinalStrategy(content, manifestPath);
+        var envelope = StrategyReplayEnvelope.Create(
+            plan,
+            manifest.FinalStrategyFingerprint ??
+            throw new InvalidDataException("Completed campaign manifest is missing its final strategy fingerprint."),
+            manifest.BuildFingerprint ??
+            throw new InvalidDataException("Completed campaign manifest is missing its build fingerprint."),
+            manifest.SimulationSettings);
+        var result = HeadlessSimulation.ReplayStrategy(content, envelope);
+
+        Console.WriteLine(
+            $"Fresh replay {result.StrategyArtifactId}: {result.Result}, " +
+            $"completed {result.CompletedWaveCount}/{plan.Waves.Count} waves, " +
+            $"lives {result.FinalSimulation?.LivesRemaining ?? 0}.");
+        Console.WriteLine(
+            $"Provenance: plan {result.StrategyFingerprint}, build {result.ContentBuildFingerprint}, " +
+            $"replay {result.ReplayFingerprint}.");
+        foreach (var wave in result.WaveRuns)
+        {
+            var delta = wave.Deltas;
+            Console.WriteLine(
+                $"Wave {wave.WavePlan.Wave,2} seed {wave.WavePlan.DecisionSeed,10}: " +
+                $"{wave.Simulation.Result,-9} credits {delta.StartingCredits} +{delta.CreditsEarned} earned " +
+                $"+{delta.SaleCreditsRecovered} sales -{delta.CreditsSpent} spent = {delta.EndingCredits}; " +
+                $"kills {delta.Kills}, leaks {delta.Leaks}, early {delta.EarlyStartCreditsEarned}.");
+            Console.WriteLine(
+                $"  towers +{delta.TowerPurchases}/up {delta.TowerUpgrades}/apex {delta.ApexUpgrades}/" +
+                $"sold {delta.TowerSales}; plates {delta.PulsePlateDeployments} " +
+                $"({delta.EmergencyDirectPurchases} direct, {delta.EmergencyTriggers} triggers, " +
+                $"{delta.EmergencyDamage:0.###} damage); protocols {delta.ProtocolActivations}, " +
+                $"generators +{delta.GeneratorPurchases}/up {delta.GeneratorUpgrades}/charges {delta.GeneratedCharges}.");
+        }
+        PrintExactFailure(result.WaveRuns.LastOrDefault(wave => !wave.Succeeded));
+
+        var outputValue = ReadValue(args, "--output");
+        var output = outputValue is null
+            ? Path.Combine(Path.GetDirectoryName(manifestPath)!, "campaign-replay.json")
+            : Path.GetFullPath(outputValue);
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
+        jsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+        File.WriteAllText(output, JsonSerializer.Serialize(result, jsonOptions));
+        Console.WriteLine($"Fresh replay report: {output}");
+        return result.CampaignCleared ? 0 : 2;
+    }
+
+    private static void ValidateReplayArguments(string[] args)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; index < args.Length; index++)
+        {
+            var argument = args[index];
+            var separator = argument.IndexOf('=');
+            var name = separator < 0 ? argument : argument[..separator];
+            if (!name.Equals("--replay-manifest", StringComparison.OrdinalIgnoreCase) &&
+                !name.Equals("--output", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException(
+                    $"'{name}' cannot be combined with --replay-manifest; replay uses the recorded execution settings.");
+            if (!seen.Add(name))
+                throw new ArgumentException($"Replay option '{name}' can only be supplied once.");
+            if (separator >= 0)
+            {
+                if (separator == argument.Length - 1)
+                    throw new ArgumentException($"Replay option '{name}' requires a value.");
+                continue;
+            }
+            if (index + 1 >= args.Length || args[index + 1].StartsWith("--", StringComparison.Ordinal))
+                throw new ArgumentException($"Replay option '{name}' requires a value.");
+            index++;
+        }
     }
 
     private static int RunStrategyOptimization(GameContent content, string[] args)
@@ -209,6 +297,7 @@ internal static class SimulationCli
             throw new ArgumentException("--resume-checkpoint and --resume-plan must be supplied together.");
 
         CampaignSearchManifest? resumeManifest = null;
+        CampaignSearchResumeState? resumeState = null;
         StrategyPlan? preferredPlan = null;
         IReadOnlyList<CheckpointSearchState> frontier;
         if (resumeManifestPath is not null)
@@ -217,10 +306,14 @@ internal static class SimulationCli
             resumeManifest = CampaignSearchArtifactStore.LoadManifest(resumeManifestPath);
             if (resumeManifest.Status == CampaignSearchStatus.CampaignCompleted)
             {
+                var completedPlan = CampaignSearchArtifactStore.LoadFinalStrategy(content, resumeManifestPath);
+                ValidateResumeSelectors(content, args, resumeManifest.MapId, resumeManifest.DifficultyId,
+                    resumeManifest.ChallengeId, resumeManifest.BaseSeed, completedPlan.DefaultStrategy);
                 Console.WriteLine($"Campaign search '{resumeManifest.ArtifactId}' is already complete.");
                 return 0;
             }
-            frontier = CampaignSearchArtifactStore.LoadFrontier(content, resumeManifestPath);
+            resumeState = CampaignSearchArtifactStore.LoadResumeState(content, resumeManifestPath);
+            frontier = resumeState.Frontier;
             if (frontier.Count == 0)
                 throw new InvalidDataException("Resume manifest does not contain a usable frontier.");
             preferredPlan = frontier[0].Strategy;
@@ -266,10 +359,20 @@ internal static class SimulationCli
             frontier = [CheckpointSearchState.Create(content, preferredPlan, checkpoint)];
         }
 
+        if (resumeModes > 0)
+        {
+            var context = frontier[0].Strategy;
+            ValidateResumeSelectors(
+                content,
+                args,
+                resumeManifest?.MapId ?? context.MapId,
+                resumeManifest?.DifficultyId ?? context.DifficultyId,
+                resumeManifest?.ChallengeId ?? context.ChallengeId,
+                resumeManifest?.BaseSeed ?? context.BaseSeed,
+                resumeManifest?.DefaultStrategy ?? context.DefaultStrategy);
+        }
+
         var strategySeed = frontier[0].Strategy.BaseSeed;
-        if (ReadValue(args, "--seed") is { } requestedSeedText &&
-            (!int.TryParse(requestedSeedText, out var requestedSeed) || requestedSeed != strategySeed))
-            throw new ArgumentException("A resumed campaign search must retain its strategy seed.");
         var baseSeedValue = strategySeed;
         var maximumWaveDefault = resumeManifest?.MaximumWave ?? GameConstants.CampaignWaveCount;
         var maximumWave = ParseInt(args, "--max-wave", maximumWaveDefault, 1, int.MaxValue);
@@ -332,16 +435,23 @@ internal static class SimulationCli
                 MaximumWave = maximumWave,
                 BroadeningRounds = broadeningRounds,
                 StartingBroadeningRound = startingRound,
+                InProgressWave = resumeManifest is null
+                    ? 0
+                    : resumeManifest.InProgressWave != 0
+                        ? resumeManifest.InProgressWave
+                        : resumeManifest.SchemaVersion < 4 ? resumeManifest.PendingWave : 0,
                 BacktrackDepth = backtrackDepth,
                 MaximumRecoveryAttempts = recoveryAttempts,
-                RecoveryAttemptOffset = resumeManifest is null
-                    ? 0
-                    : resumeManifest.RecoveryAttemptOffset + resumeManifest.RecoveryAttempts.Count,
+                RecoveryAttemptOffset = resumeManifest?.RecoveryAttemptOffset ?? 0,
                 PolicyId = ReadValue(args, "--policy-id") ?? resumeManifest?.PolicyId ?? "experienced-search",
                 BundleIds = bundleIds,
                 ParameterOverrides = parameterOverrides,
                 PreviouslyEvaluatedConfigurationFingerprints =
+                    resumeState?.EvaluatedConfigurationFingerprints ??
                     resumeManifest?.EvaluatedConfigurationFingerprints ?? Array.Empty<string>(),
+                PendingFrontier = resumeState?.PendingFrontier ?? Array.Empty<CheckpointSearchState>(),
+                RecoveryArchive = resumeState?.RecoveryArchive ?? Array.Empty<CampaignRecoveryArchiveLayerState>(),
+                ResumeManifest = resumeManifest,
                 ArtifactDirectory = artifactDirectory
             },
             preferredPlan);
@@ -357,6 +467,16 @@ internal static class SimulationCli
                 $"Recovery {recovery.Attempt}: wave {recovery.BlockingWave} dead end -> " +
                 $"wave {recovery.RecoveredWave} alternate frontier (depth {recovery.Depth}, " +
                 $"states {recovery.CheckpointFingerprints.Count}).");
+        if (result.Manifest.PendingFrontierArtifacts.Count > 0)
+            Console.WriteLine(
+                $"Pending beam: wave {result.Manifest.PendingWave}, " +
+                $"states {result.Manifest.PendingFrontierArtifacts.Count}/{result.Manifest.BeamWidth}.");
+        var populatedArchiveLayers = result.Manifest.RecoveryArchive.Count(layer => layer.RemainingStateCount > 0);
+        Console.WriteLine(
+            $"Recovery archive: {result.Manifest.RecoveryArchive.Sum(layer => layer.RemainingStateCount)} states " +
+            $"across {populatedArchiveLayers} populated layers, " +
+            $"{result.Manifest.RecoveryArchive.Sum(layer => layer.DistinctDecisionCount)} decision variants, " +
+            $"{result.Manifest.RecoveryArchive.Sum(layer => layer.ExcludedStateCount)} excluded identities.");
         Console.WriteLine(
             $"Strategy search {result.Status}: completed wave {result.LastCompletedWave}, " +
             $"evaluations {result.TotalEvaluations}, resumable states {result.ResumeFrontier.Count}.");
@@ -365,6 +485,61 @@ internal static class SimulationCli
         if (result.Manifest.FinalStrategyPath is { } finalStrategyPath)
             Console.WriteLine($"Strategy artifact: {Path.Combine(Path.GetFullPath(artifactDirectory), finalStrategyPath)}");
         return result.Status is CampaignSearchStatus.CampaignCompleted or CampaignSearchStatus.WaveLimitReached ? 0 : 2;
+    }
+
+    private static void ValidateResumeSelectors(
+        GameContent content,
+        string[] args,
+        string mapId,
+        string difficultyId,
+        string challengeId,
+        int baseSeed,
+        AutoPlayerStrategy? strategy)
+    {
+        if (ReadValue(args, "--map") is { } requestedMap &&
+            !requestedMap.Equals(mapId, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"A resumed campaign search must retain map '{mapId}'.");
+        if (ReadValue(args, "--difficulty") is { } requestedDifficulty)
+        {
+            var resolved = ResolveDifficulties(requestedDifficulty, content);
+            if (resolved.Count != 1 || !resolved[0].Equals(difficultyId, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"A resumed campaign search must retain difficulty '{difficultyId}'.");
+        }
+        if (ReadValue(args, "--challenge") is { } requestedChallenge)
+        {
+            var resolved = ResolveChallenges(requestedChallenge, content);
+            if (resolved.Count != 1 || !resolved[0].Equals(challengeId, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"A resumed campaign search must retain challenge '{challengeId}'.");
+        }
+        if (ReadValue(args, "--seed") is { } requestedSeed &&
+            (!int.TryParse(requestedSeed, out var resolvedSeed) || resolvedSeed != baseSeed))
+            throw new ArgumentException($"A resumed campaign search must retain seed {baseSeed}.");
+        if (ReadValue(args, "--strategy") is { } requestedStrategy)
+        {
+            var resolved = ParseStrategy(requestedStrategy, AutoPlayerStrategy.Experienced);
+            if (strategy is null || resolved != strategy.Value)
+                throw new ArgumentException($"A resumed campaign search must retain strategy '{strategy}'.");
+        }
+    }
+
+    private static void PrintExactFailure(StrategyReplayWaveResult? failedWave)
+    {
+        if (failedWave is null) return;
+        var simulation = failedWave.Simulation;
+        PrintExactFailure(new CheckpointWaveFailure
+        {
+            ParentCheckpointFingerprint = "fresh-session",
+            WavePlan = failedWave.WavePlan,
+            Result = simulation.Result,
+            LivesRemaining = simulation.LivesRemaining,
+            CreditsUnspent = simulation.CreditsUnspent,
+            FailureMargin = simulation.FailureMargin,
+            RemainingEnemies = simulation.RemainingEnemies,
+            QueuedEnemies = simulation.QueuedEnemies,
+            FatalEscapedEnemies = simulation.FatalEscapedEnemies,
+            PulsePlateDeployments = simulation.PulsePlateDeployments,
+            ProtocolActivations = simulation.ProtocolActivations
+        });
     }
 
     private static void PrintExactFailure(CheckpointWaveFailure? failure)

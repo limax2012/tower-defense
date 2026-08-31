@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using MinimalBastion.Data;
+using MinimalBastion.Multiplayer;
 using MinimalBastion.Persistence;
 
 namespace MinimalBastion.Simulation;
@@ -152,19 +153,31 @@ public sealed record StrategyPlan
 
 public sealed record StrategyCheckpointArtifact
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public required string StrategyArtifactId { get; init; }
+    public required string BuildFingerprint { get; init; }
     public required string CheckpointFingerprint { get; init; }
     public required SaveGameData Checkpoint { get; init; }
 
-    public static StrategyCheckpointArtifact Create(string strategyArtifactId, SaveGameData checkpoint) => new()
+    public static StrategyCheckpointArtifact Create(
+        string strategyArtifactId,
+        SaveGameData checkpoint,
+        GameContent content) => Create(strategyArtifactId, checkpoint,
+            MinimalBastion.Multiplayer.BuildFingerprint.Compute(content));
+
+    public static StrategyCheckpointArtifact Create(
+        string strategyArtifactId,
+        SaveGameData checkpoint,
+        string buildFingerprint) => new()
     {
         StrategyArtifactId = strategyArtifactId,
+        BuildFingerprint = buildFingerprint,
         Checkpoint = checkpoint,
         CheckpointFingerprint = StrategyArtifactStore.Fingerprint(checkpoint)
     };
+
 }
 
 public static class StrategyArtifactStore
@@ -251,6 +264,10 @@ public static class StrategyArtifactStore
             throw new InvalidDataException("Strategy checkpoint artifact ID is invalid.");
         if (artifact.Checkpoint is null)
             throw new InvalidDataException("Strategy checkpoint payload is missing.");
+        var buildFingerprint = BuildFingerprint.Compute(content);
+        if (!BuildFingerprint.IsValid(artifact.BuildFingerprint) ||
+            !artifact.BuildFingerprint.Equals(buildFingerprint, StringComparison.Ordinal))
+            throw new InvalidDataException("Strategy checkpoint was produced by a different balance/build.");
         var restored = GameSession.RestoreSaveGame(content, artifact.Checkpoint);
         if (!restored.CanSaveCheckpoint)
             throw new InvalidDataException("Strategy checkpoints must describe an inter-wave campaign state.");
@@ -261,7 +278,7 @@ public static class StrategyArtifactStore
 
     private static void ValidateSearchResult(CheckpointSearchResult result, GameContent content)
     {
-        if (result.SchemaVersion is < 1 or > CheckpointSearchResult.CurrentSchemaVersion)
+        if (result.SchemaVersion != CheckpointSearchResult.CurrentSchemaVersion)
             throw new InvalidDataException($"Checkpoint search schema {result.SchemaVersion} is not supported.");
         if (result.TargetWave <= 0 || result.BeamWidth <= 0 || result.Evaluations < 0 ||
             result.OmittedSuccessfulEvaluations < 0 || result.OmittedCampaignCompletions < 0 ||
@@ -269,10 +286,6 @@ public static class StrategyArtifactStore
             result.SuccessfulEvaluations is null || result.RetainedStates is null ||
             result.CampaignCompletions is null || result.Failures is null)
             throw new InvalidDataException("Checkpoint search artifact has invalid summary fields.");
-        if (result.SchemaVersion == 1 &&
-            (result.OmittedSuccessfulEvaluations != 0 || result.OmittedCampaignCompletions != 0 ||
-             result.OmittedFailures != 0))
-            throw new InvalidDataException("Legacy checkpoint search artifacts cannot omit evaluation traces.");
         var recordedEvaluations = (long)result.SuccessfulEvaluations.Count + result.OmittedSuccessfulEvaluations +
                                   result.CampaignCompletions.Count + result.OmittedCampaignCompletions +
                                   result.Failures.Count + result.OmittedFailures;
@@ -288,10 +301,16 @@ public static class StrategyArtifactStore
                 throw new InvalidDataException("Checkpoint search state does not match its target wave.");
             state.Strategy.ValidatePrefixForCheckpoint(state.Checkpoint);
             var fingerprint = Fingerprint(state.Checkpoint);
+            var strategicFingerprint = CheckpointStrategicFingerprint.Compute(content, state.Checkpoint);
             if (!fingerprint.Equals(state.CheckpointFingerprint, StringComparison.Ordinal) ||
+                !CheckpointStrategicFingerprint.IsValid(state.StrategicFingerprint) ||
+                !strategicFingerprint.Equals(state.StrategicFingerprint, StringComparison.Ordinal) ||
                 CheckpointBeamOptimizer.Rank(content, state.Checkpoint) != state.Score)
                 throw new InvalidDataException("Checkpoint search state identity or score is invalid.");
         }
+        if (result.RetainedStates.Select(CheckpointBeamOptimizer.StrategicIdentity)
+                .Distinct(StringComparer.Ordinal).Count() != result.RetainedStates.Count)
+            throw new InvalidDataException("Checkpoint search retained states contain duplicate strategic identities.");
 
         foreach (var success in result.SuccessfulEvaluations)
             if (success.WavePlan.Wave != result.TargetWave || !success.Simulation.Won)

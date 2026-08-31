@@ -16,6 +16,18 @@ public sealed record CampaignCandidateBundle(
     string TacticalProfileId,
     IReadOnlyDictionary<string, double> Parameters);
 
+public sealed record CampaignRecoveryArchiveLayerState(
+    int CompletedWave,
+    IReadOnlyList<CheckpointSearchState> Alternatives,
+    IReadOnlyList<string> ExcludedStrategicFingerprints);
+
+public sealed record CampaignSearchResumeState(
+    CampaignSearchManifest Manifest,
+    IReadOnlyList<CheckpointSearchState> Frontier,
+    IReadOnlyList<CheckpointSearchState> PendingFrontier,
+    IReadOnlyList<CampaignRecoveryArchiveLayerState> RecoveryArchive,
+    IReadOnlyList<string> EvaluatedConfigurationFingerprints);
+
 public sealed class CampaignSearchOptions
 {
     public int BaseSeed { get; init; } = 1337;
@@ -24,6 +36,7 @@ public sealed class CampaignSearchOptions
     public int MaximumWave { get; init; } = GameConstants.CampaignWaveCount;
     public int BroadeningRounds { get; init; } = 1;
     public int StartingBroadeningRound { get; init; }
+    public int InProgressWave { get; init; }
     public int BacktrackDepth { get; init; } = 2;
     public int MaximumRecoveryAttempts { get; init; } = 8;
     public int RecoveryAttemptOffset { get; init; }
@@ -32,6 +45,10 @@ public sealed class CampaignSearchOptions
     public IReadOnlyDictionary<string, double> ParameterOverrides { get; init; } =
         new SortedDictionary<string, double>(StringComparer.Ordinal);
     public IReadOnlyList<string> PreviouslyEvaluatedConfigurationFingerprints { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<CheckpointSearchState> PendingFrontier { get; init; } = Array.Empty<CheckpointSearchState>();
+    public IReadOnlyList<CampaignRecoveryArchiveLayerState> RecoveryArchive { get; init; } =
+        Array.Empty<CampaignRecoveryArchiveLayerState>();
+    public CampaignSearchManifest? ResumeManifest { get; init; }
     public string? ArtifactDirectory { get; init; }
 
     public void Validate()
@@ -42,6 +59,7 @@ public sealed class CampaignSearchOptions
         if (BroadeningRounds is < 0 or > 8) throw new ArgumentOutOfRangeException(nameof(BroadeningRounds));
         if (StartingBroadeningRound is < 0 or > 1000)
             throw new ArgumentOutOfRangeException(nameof(StartingBroadeningRound));
+        if (InProgressWave < 0) throw new ArgumentOutOfRangeException(nameof(InProgressWave));
         if (BacktrackDepth is < 0 or > GameConstants.CampaignWaveCount)
             throw new ArgumentOutOfRangeException(nameof(BacktrackDepth));
         if (MaximumRecoveryAttempts is < 0 or > 1000)
@@ -50,17 +68,22 @@ public sealed class CampaignSearchOptions
             throw new ArgumentOutOfRangeException(nameof(RecoveryAttemptOffset));
         if (string.IsNullOrWhiteSpace(PolicyId) || PolicyId.Length > 128)
             throw new InvalidDataException("Campaign search policy ID is invalid.");
-        if (BundleIds is null || ParameterOverrides is null || PreviouslyEvaluatedConfigurationFingerprints is null)
+        if (BundleIds is null || ParameterOverrides is null || PreviouslyEvaluatedConfigurationFingerprints is null ||
+            PendingFrontier is null || RecoveryArchive is null)
             throw new InvalidDataException("Campaign search candidate configuration is missing.");
         if (ParameterOverrides.Count > 64 || ParameterOverrides.Any(entry =>
                 string.IsNullOrWhiteSpace(entry.Key) || entry.Key.Length > 128 || !double.IsFinite(entry.Value) ||
                 !CampaignWavePlanGenerator.SupportedParameterNames.Contains(entry.Key)))
             throw new InvalidDataException("Campaign search parameter overrides are invalid.");
-        if (PreviouslyEvaluatedConfigurationFingerprints.Count > 100_000 ||
-            PreviouslyEvaluatedConfigurationFingerprints.Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
+        if (PreviouslyEvaluatedConfigurationFingerprints.Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
             PreviouslyEvaluatedConfigurationFingerprints.Count ||
             PreviouslyEvaluatedConfigurationFingerprints.Any(fingerprint => !IsSha256(fingerprint)))
             throw new InvalidDataException("Campaign search evaluated-configuration fingerprints are invalid.");
+        if ((PendingFrontier.Count > 0 || InProgressWave > 0) && StartingBroadeningRound > BroadeningRounds)
+            throw new ArgumentOutOfRangeException(nameof(StartingBroadeningRound),
+                "An in-progress campaign wave cannot resume beyond its final broadening round.");
+        if (PendingFrontier.Count > 0 && InProgressWave == 0)
+            throw new InvalidDataException("A pending campaign frontier requires an in-progress wave marker.");
     }
 
     internal static bool IsSha256(string? value) => value is { Length: 64 } &&
@@ -93,7 +116,45 @@ public sealed record CampaignSearchWaveArtifact(
 public sealed record CampaignFrontierArtifact(
     string CheckpointFingerprint,
     string CheckpointPath,
-    string StrategyPath);
+    string StrategyPath)
+{
+    public string StrategicFingerprint { get; init; } = "";
+    public string StrategyFingerprint { get; init; } = "";
+    public string StateFingerprint { get; init; } = "";
+    public string CheckpointContentHash { get; init; } = "";
+    public string StrategyContentHash { get; init; } = "";
+}
+
+public sealed record CampaignRecoveryStateArtifact(
+    string StateFingerprint,
+    string CheckpointFingerprint,
+    string DecisionFingerprint,
+    string CheckpointPath,
+    string StrategyPath)
+{
+    public string StrategicFingerprint { get; init; } = "";
+    public string StrategyFingerprint { get; init; } = "";
+    public string CheckpointContentHash { get; init; } = "";
+    public string StrategyContentHash { get; init; } = "";
+}
+
+public sealed record CampaignEvaluationIdentityArtifact(
+    string Path,
+    string ContentHash,
+    int Count);
+
+public sealed record CampaignRecoveryArchiveArtifact(
+    int CompletedWave,
+    int RemainingStateCount,
+    int DistinctCheckpointCount,
+    int DistinctDecisionCount,
+    int ExcludedStateCount,
+    IReadOnlyList<string> ExcludedCheckpointFingerprints,
+    IReadOnlyList<CampaignRecoveryStateArtifact> States)
+{
+    public int DistinctStrategicCount { get; init; }
+    public IReadOnlyList<string> ExcludedStrategicFingerprints { get; init; } = Array.Empty<string>();
+}
 
 public sealed record CampaignRecoveryArtifact(
     int Attempt,
@@ -132,7 +193,7 @@ public sealed record CampaignSimulationSettings(
 
 public sealed record CampaignSearchManifest
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 5;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public required string ArtifactId { get; init; }
@@ -140,6 +201,8 @@ public sealed record CampaignSearchManifest
     public required string DifficultyId { get; init; }
     public required string ChallengeId { get; init; }
     public required int BaseSeed { get; init; }
+    public string? BuildFingerprint { get; init; }
+    public AutoPlayerStrategy? DefaultStrategy { get; init; }
     public required int StartingWave { get; init; }
     public required int LastCompletedWave { get; init; }
     public required int MaximumWave { get; init; }
@@ -158,11 +221,20 @@ public sealed record CampaignSearchManifest
     public required CampaignSearchStatus Status { get; init; }
     public required IReadOnlyList<CampaignSearchWaveArtifact> WaveAttempts { get; init; }
     public required IReadOnlyList<CampaignFrontierArtifact> FrontierArtifacts { get; init; }
+    public int InProgressWave { get; init; }
+    public int PendingWave { get; init; }
+    public IReadOnlyList<CampaignFrontierArtifact> PendingFrontierArtifacts { get; init; } =
+        Array.Empty<CampaignFrontierArtifact>();
+    public IReadOnlyList<CampaignRecoveryArchiveArtifact> RecoveryArchive { get; init; } =
+        Array.Empty<CampaignRecoveryArchiveArtifact>();
     public IReadOnlyList<CampaignRecoveryArtifact> RecoveryAttempts { get; init; } =
         Array.Empty<CampaignRecoveryArtifact>();
     public IReadOnlyList<string> EvaluatedConfigurationFingerprints { get; init; } = Array.Empty<string>();
+    public CampaignEvaluationIdentityArtifact? EvaluationIdentityArtifact { get; init; }
     public CheckpointWaveFailure? BestFailure { get; init; }
     public string? FinalStrategyPath { get; init; }
+    public string? FinalStrategyFingerprint { get; init; }
+    public string? FinalStrategyContentHash { get; init; }
 }
 
 public sealed class CampaignSearchRunResult
@@ -482,10 +554,21 @@ public static class CampaignStrategyOptimizer
     private const int MaximumPersistedFailureTraces = 8;
     private const int MaximumPersistedCompletionTraces = 1;
 
-    private sealed class RecoveryLayer(int completedWave, IReadOnlyList<CheckpointSearchState> alternatives)
+    private sealed record PersistedStrategyArtifact(
+        string Path,
+        string StrategyFingerprint,
+        string ContentHash);
+
+    private sealed class RecoveryLayer(
+        int completedWave,
+        IReadOnlyList<CheckpointSearchState> alternatives,
+        IEnumerable<string>? excludedStrategicFingerprints = null)
     {
         public int CompletedWave { get; } = completedWave;
         public List<CheckpointSearchState> Alternatives { get; } = alternatives.ToList();
+        public HashSet<string> ExcludedStrategicFingerprints { get; } = new(
+            excludedStrategicFingerprints ?? Array.Empty<string>(),
+            StringComparer.OrdinalIgnoreCase);
     }
 
     public static CampaignSearchRunResult Search(
@@ -514,27 +597,35 @@ public static class CampaignStrategyOptimizer
             throw new ArgumentException("Campaign search requires at least one checkpoint state.", nameof(initialFrontier));
         ArgumentNullException.ThrowIfNull(evaluator);
 
-        var rankedInitial = RankDistinctStates(initialFrontier);
-        var startingWave = rankedInitial[0].Checkpoint.Waves.CurrentWaveNumber;
-        var referenceStrategy = rankedInitial[0].Strategy;
-        if (rankedInitial.Any(state => state.Checkpoint.Waves.CurrentWaveNumber != startingWave))
+        var startingWave = initialFrontier[0].Checkpoint.Waves.CurrentWaveNumber;
+        var referenceStrategy = initialFrontier[0].Strategy;
+        var resumeManifest = searchOptions.ResumeManifest;
+        if (initialFrontier.Any(state => state.Checkpoint.Waves.CurrentWaveNumber != startingWave))
             throw new ArgumentException("Campaign search frontier states must be at the same wave.", nameof(initialFrontier));
-        foreach (var state in rankedInitial)
+        foreach (var state in initialFrontier)
         {
-            state.Strategy.ValidatePrefixForCheckpoint(state.Checkpoint);
-            if (!StrategyArtifactStore.Fingerprint(state.Checkpoint)
-                    .Equals(state.CheckpointFingerprint, StringComparison.Ordinal) ||
-                CheckpointBeamOptimizer.Rank(content, state.Checkpoint) != state.Score)
-                throw new InvalidDataException("Campaign search frontier identity or ranking score is invalid.");
-            if (state.Strategy.BaseSeed != searchOptions.BaseSeed ||
-                !state.Strategy.ArtifactId.Equals(referenceStrategy.ArtifactId, StringComparison.Ordinal) ||
-                !state.Strategy.MapId.Equals(referenceStrategy.MapId, StringComparison.OrdinalIgnoreCase) ||
-                !state.Strategy.DifficultyId.Equals(referenceStrategy.DifficultyId, StringComparison.OrdinalIgnoreCase) ||
-                !state.Strategy.ChallengeId.Equals(referenceStrategy.ChallengeId, StringComparison.OrdinalIgnoreCase) ||
-                state.Strategy.DefaultStrategy != referenceStrategy.DefaultStrategy)
-                throw new InvalidDataException("Campaign search frontier strategies do not share one execution context.");
+            ValidateResumableState(content, state, referenceStrategy, searchOptions.BaseSeed, startingWave,
+                "frontier");
         }
+        var rankedInitial = RankDistinctStates(content, initialFrontier);
+        if (resumeManifest is not null)
+        {
+            if (resumeManifest.SchemaVersion >= 4 &&
+                !MinimalBastion.Multiplayer.BuildFingerprint.Compute(content).Equals(
+                    resumeManifest.BuildFingerprint, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("Campaign resume manifest was created by a different gameplay build.");
+            ValidateResumeCompatibility(resumeManifest, referenceStrategy, simulationOptions, searchOptions,
+                startingWave);
+        }
+        if (searchOptions.InProgressWave != 0 && searchOptions.InProgressWave != startingWave + 1)
+            throw new InvalidDataException("The in-progress campaign wave does not follow the resume frontier.");
         IReadOnlyList<CheckpointSearchState> frontier = rankedInitial.Take(searchOptions.BeamWidth).ToArray();
+        foreach (var state in searchOptions.PendingFrontier)
+            ValidateResumableState(content, state, referenceStrategy, searchOptions.BaseSeed, startingWave + 1,
+                "pending frontier");
+        var pendingFrontier = RankDistinctStates(content, searchOptions.PendingFrontier);
+        if (pendingFrontier.Count >= searchOptions.BeamWidth)
+            throw new InvalidDataException("A pending campaign frontier must be smaller than the configured beam.");
         if (preferredPlan is not null)
         {
             preferredPlan.ValidateForCheckpoint(frontier[0].Checkpoint);
@@ -546,25 +637,58 @@ public static class CampaignStrategyOptimizer
 
         var restored = GameSession.RestoreSaveGame(content, frontier[0].Checkpoint);
         var maximumWave = Math.Min(searchOptions.MaximumWave, restored.TotalWaves);
-        var attempts = new List<CampaignSearchWaveArtifact>();
-        var recoveryAttempts = new List<CampaignRecoveryArtifact>();
-        var recoveryLayers = new Dictionary<int, RecoveryLayer>();
-        ArchiveRecoveryLayer(recoveryLayers, startingWave, rankedInitial, frontier);
+        if (pendingFrontier.Count > 0 && startingWave >= maximumWave)
+            throw new InvalidDataException("A pending campaign frontier exceeds the requested campaign boundary.");
+        var attempts = resumeManifest?.WaveAttempts
+            .Select(attempt => attempt with { TracePath = null })
+            .ToList() ?? new List<CampaignSearchWaveArtifact>();
+        var recoveryAttempts = resumeManifest?.RecoveryAttempts
+            .Select(attempt => attempt with { FrontierArtifacts = Array.Empty<CampaignFrontierArtifact>() })
+            .ToList() ?? new List<CampaignRecoveryArtifact>();
+        var bestFailureSoFar = resumeManifest?.BestFailure;
+        var archiveCapacity = checked(searchOptions.BeamWidth * searchOptions.MaximumRecoveryAttempts);
+        var recoveryLayers = RestoreRecoveryLayers(
+            content,
+            searchOptions.RecoveryArchive,
+            referenceStrategy,
+            searchOptions.BaseSeed,
+            archiveCapacity);
+        ArchiveRecoveryLayer(content, recoveryLayers, startingWave, rankedInitial, frontier, archiveCapacity);
         var evaluatedConfigurations = new HashSet<string>(
             searchOptions.PreviouslyEvaluatedConfigurationFingerprints.Select(value => value.ToUpperInvariant()),
             StringComparer.Ordinal);
-        var totalEvaluations = 0;
+        var totalEvaluations = resumeManifest?.TotalEvaluations ?? 0;
+        if (resumeManifest is not null && evaluatedConfigurations.Count != totalEvaluations)
+            throw new InvalidDataException("Campaign resume evaluation identities do not match its evaluation total.");
         var artifactRoot = string.IsNullOrWhiteSpace(searchOptions.ArtifactDirectory)
             ? null
             : Path.GetFullPath(searchOptions.ArtifactDirectory);
         var frontierArtifacts = PersistFrontier(content, artifactRoot, $"wave-{startingWave:D2}/resume", frontier);
+        var pendingFrontierArtifacts = PersistFrontier(
+            content,
+            artifactRoot,
+            $"wave-{startingWave + 1:D2}/pending-resume",
+            pendingFrontier);
+        var recoveryArchiveArtifacts = PersistRecoveryArchive(content, artifactRoot, recoveryLayers);
+        var evaluationIdentityArtifact = PersistEvaluationIdentities(artifactRoot, evaluatedConfigurations);
         var manifest = NewManifest(
+            content,
             frontier[0].Strategy,
             simulationOptions,
             searchOptions,
             startingWave,
             maximumWave,
-            frontierArtifacts);
+            frontierArtifacts,
+            searchOptions.InProgressWave,
+            pendingFrontier.Count == 0 ? 0 : startingWave + 1,
+            pendingFrontierArtifacts,
+            recoveryArchiveArtifacts,
+            evaluationIdentityArtifact,
+            resumeManifest,
+            attempts,
+            recoveryAttempts,
+            totalEvaluations,
+            bestFailureSoFar);
         SaveManifest(artifactRoot, manifest);
 
         if (startingWave >= maximumWave)
@@ -575,16 +699,25 @@ public static class CampaignStrategyOptimizer
         {
             var priorFrontier = frontier;
             var targetWave = priorFrontier[0].Checkpoint.Waves.CurrentWaveNumber + 1;
+            var isPendingResume = firstAttemptedWave && searchOptions.InProgressWave == targetWave;
             var startingRound = firstAttemptedWave ? searchOptions.StartingBroadeningRound : 0;
+            var seededPendingFrontier = firstAttemptedWave ? pendingFrontier : Array.Empty<CheckpointSearchState>();
+            var finalRound = isPendingResume
+                ? searchOptions.BroadeningRounds
+                : checked(startingRound + searchOptions.BroadeningRounds);
             firstAttemptedWave = false;
             var failures = new List<CheckpointWaveFailure>();
-            var successfulStates = new List<CheckpointSearchState>();
+            var successfulStates = seededPendingFrontier.ToList();
             var advanced = false;
 
-            for (var offset = 0; offset <= searchOptions.BroadeningRounds; offset++)
+            for (var broadeningRound = startingRound;
+                 broadeningRound <= finalRound;
+                 broadeningRound++)
             {
-                var broadeningRound = startingRound + offset;
-                var candidateCount = Math.Min(256, checked(searchOptions.CandidateCount * (offset + 1)));
+                var candidateMultiplier = isPendingResume
+                    ? broadeningRound + 1
+                    : broadeningRound - startingRound + 1;
+                var candidateCount = Math.Min(256, checked(searchOptions.CandidateCount * candidateMultiplier));
                 var candidates = CampaignWavePlanGenerator.Generate(
                     targetWave,
                     searchOptions,
@@ -602,7 +735,11 @@ public static class CampaignStrategyOptimizer
                 totalEvaluations += waveResult.Evaluations;
                 failures.AddRange(waveResult.Failures);
                 successfulStates.AddRange(waveResult.SuccessfulEvaluations.Select(success => success.State));
-                var retainedStates = RankDistinctStates(successfulStates, searchOptions.BeamWidth);
+                var distinctSuccessfulStates = RankDistinctStates(content, successfulStates);
+                var retainedStates = CheckpointBeamOptimizer.RankStates(
+                    distinctSuccessfulStates.Where(state =>
+                        !IsStrategicallyExcluded(recoveryLayers, targetWave, state)),
+                    searchOptions.BeamWidth);
                 var tracePath = PersistSearchTrace(
                     content,
                     artifactRoot,
@@ -625,12 +762,20 @@ public static class CampaignStrategyOptimizer
                     RecoveryAttempt = searchOptions.RecoveryAttemptOffset + recoveryAttempts.Count
                 };
                 attempts.Add(attempt);
+                bestFailureSoFar = SelectBestFailure(
+                    waveResult.Failures.Concat(bestFailureSoFar is null ? [] : [bestFailureSoFar]));
+                evaluationIdentityArtifact = PersistEvaluationIdentities(artifactRoot, evaluatedConfigurations);
+                var inlineEvaluationIdentities = evaluationIdentityArtifact is null
+                    ? OrderedFingerprints(evaluatedConfigurations)
+                    : Array.Empty<string>();
 
                 if (waveResult.CampaignCompletions.Count > 0)
                 {
                     var completions = OrderCompletions(waveResult.CampaignCompletions);
                     var winning = completions[0].Strategy;
-                    var strategyPath = PersistStrategy(artifactRoot, "winning-strategy.json", winning);
+                    ValidateCompletedStrategy(winning, targetWave);
+                    var strategyArtifact = PersistStrategy(artifactRoot, "winning-strategy.json", winning);
+                    recoveryArchiveArtifacts = PersistRecoveryArchive(content, artifactRoot, recoveryLayers);
                     manifest = manifest with
                     {
                         LastCompletedWave = targetWave,
@@ -639,10 +784,17 @@ public static class CampaignStrategyOptimizer
                         Status = CampaignSearchStatus.CampaignCompleted,
                         WaveAttempts = attempts.ToArray(),
                         FrontierArtifacts = Array.Empty<CampaignFrontierArtifact>(),
+                        InProgressWave = 0,
+                        PendingWave = 0,
+                        PendingFrontierArtifacts = Array.Empty<CampaignFrontierArtifact>(),
+                        RecoveryArchive = recoveryArchiveArtifacts,
                         RecoveryAttempts = recoveryAttempts.ToArray(),
-                        EvaluatedConfigurationFingerprints = OrderedFingerprints(evaluatedConfigurations),
-                        BestFailure = SelectBestFailure(failures),
-                        FinalStrategyPath = strategyPath
+                        EvaluatedConfigurationFingerprints = inlineEvaluationIdentities,
+                        EvaluationIdentityArtifact = evaluationIdentityArtifact,
+                        BestFailure = bestFailureSoFar,
+                        FinalStrategyPath = strategyArtifact?.Path,
+                        FinalStrategyFingerprint = strategyArtifact?.StrategyFingerprint,
+                        FinalStrategyContentHash = strategyArtifact?.ContentHash
                     };
                     SaveManifest(artifactRoot, manifest);
                     return new CampaignSearchRunResult
@@ -654,22 +806,25 @@ public static class CampaignStrategyOptimizer
                         ResumeFrontier = Array.Empty<CheckpointSearchState>(),
                         CampaignCompletions = completions,
                         FinalStrategy = winning,
-                        BestFailure = manifest.BestFailure,
+                        BestFailure = bestFailureSoFar,
                         Manifest = manifest
                     };
                 }
 
-                var exhaustedBroadening = offset == searchOptions.BroadeningRounds;
+                var exhaustedBroadening = broadeningRound == finalRound;
                 if (retainedStates.Count > 0 &&
                     (retainedStates.Count >= searchOptions.BeamWidth || exhaustedBroadening))
                 {
                     frontier = retainedStates;
                     ArchiveRecoveryLayer(
+                        content,
                         recoveryLayers,
                         targetWave,
                         successfulStates,
-                        frontier);
+                        frontier,
+                        archiveCapacity);
                     frontierArtifacts = PersistFrontier(content, artifactRoot, $"wave-{targetWave:D2}/frontier", frontier);
+                    recoveryArchiveArtifacts = PersistRecoveryArchive(content, artifactRoot, recoveryLayers);
                     manifest = manifest with
                     {
                         LastCompletedWave = targetWave,
@@ -678,33 +833,48 @@ public static class CampaignStrategyOptimizer
                         Status = CampaignSearchStatus.Running,
                         WaveAttempts = attempts.ToArray(),
                         FrontierArtifacts = frontierArtifacts,
+                        InProgressWave = 0,
+                        PendingWave = 0,
+                        PendingFrontierArtifacts = Array.Empty<CampaignFrontierArtifact>(),
+                        RecoveryArchive = recoveryArchiveArtifacts,
                         RecoveryAttempts = recoveryAttempts.ToArray(),
-                        EvaluatedConfigurationFingerprints = OrderedFingerprints(evaluatedConfigurations),
-                        BestFailure = SelectBestFailure(failures)
+                        EvaluatedConfigurationFingerprints = inlineEvaluationIdentities,
+                        EvaluationIdentityArtifact = evaluationIdentityArtifact,
+                        BestFailure = bestFailureSoFar
                     };
                     SaveManifest(artifactRoot, manifest);
                     advanced = true;
                     break;
                 }
 
+                pendingFrontierArtifacts = PersistFrontier(
+                    content,
+                    artifactRoot,
+                    $"wave-{targetWave:D2}/pending-round-{broadeningRound:D3}",
+                    retainedStates);
                 manifest = manifest with
                 {
                     NextBroadeningRound = broadeningRound + 1,
                     TotalEvaluations = totalEvaluations,
                     Status = CampaignSearchStatus.Running,
                     WaveAttempts = attempts.ToArray(),
+                    InProgressWave = targetWave,
+                    PendingWave = retainedStates.Count == 0 ? 0 : targetWave,
+                    PendingFrontierArtifacts = pendingFrontierArtifacts,
                     RecoveryAttempts = recoveryAttempts.ToArray(),
-                    EvaluatedConfigurationFingerprints = OrderedFingerprints(evaluatedConfigurations),
-                    BestFailure = SelectBestFailure(failures)
+                    EvaluatedConfigurationFingerprints = inlineEvaluationIdentities,
+                    EvaluationIdentityArtifact = evaluationIdentityArtifact,
+                    BestFailure = bestFailureSoFar
                 };
                 SaveManifest(artifactRoot, manifest);
             }
 
             if (!advanced)
             {
-                var bestFailure = SelectBestFailure(failures);
-                if (recoveryAttempts.Count < searchOptions.MaximumRecoveryAttempts &&
+                if (searchOptions.RecoveryAttemptOffset + recoveryAttempts.Count <
+                    searchOptions.MaximumRecoveryAttempts &&
                     TryTakeRecoveryFrontier(
+                        content,
                         recoveryLayers,
                         targetWave - 1,
                         searchOptions.BacktrackDepth,
@@ -727,6 +897,7 @@ public static class CampaignStrategyOptimizer
                         recoveryDepth,
                         frontier.Select(state => state.CheckpointFingerprint).ToArray(),
                         frontierArtifacts));
+                    recoveryArchiveArtifacts = PersistRecoveryArchive(content, artifactRoot, recoveryLayers);
                     manifest = manifest with
                     {
                         LastCompletedWave = recoveredWave,
@@ -735,27 +906,46 @@ public static class CampaignStrategyOptimizer
                         Status = CampaignSearchStatus.Running,
                         WaveAttempts = attempts.ToArray(),
                         FrontierArtifacts = frontierArtifacts,
+                        InProgressWave = 0,
+                        PendingWave = 0,
+                        PendingFrontierArtifacts = Array.Empty<CampaignFrontierArtifact>(),
+                        RecoveryArchive = recoveryArchiveArtifacts,
                         RecoveryAttempts = recoveryAttempts.ToArray(),
-                        EvaluatedConfigurationFingerprints = OrderedFingerprints(evaluatedConfigurations),
-                        BestFailure = bestFailure
+                        EvaluatedConfigurationFingerprints = evaluationIdentityArtifact is null
+                            ? OrderedFingerprints(evaluatedConfigurations)
+                            : Array.Empty<string>(),
+                        EvaluationIdentityArtifact = evaluationIdentityArtifact,
+                        BestFailure = bestFailureSoFar
                     };
                     SaveManifest(artifactRoot, manifest);
                     continue;
                 }
 
                 frontierArtifacts = PersistFrontier(content, artifactRoot, $"wave-{targetWave:D2}/retry", priorFrontier);
+                recoveryArchiveArtifacts = PersistRecoveryArchive(content, artifactRoot, recoveryLayers);
+                var prefixStrategyArtifact = PersistStrategy(
+                    artifactRoot, "best-prefix-strategy.json", priorFrontier[0].Strategy);
                 manifest = manifest with
                 {
                     LastCompletedWave = targetWave - 1,
-                    NextBroadeningRound = startingRound + searchOptions.BroadeningRounds + 1,
+                    NextBroadeningRound = finalRound + 1,
                     TotalEvaluations = totalEvaluations,
                     Status = CampaignSearchStatus.FrontierExhausted,
                     WaveAttempts = attempts.ToArray(),
                     FrontierArtifacts = frontierArtifacts,
+                    InProgressWave = 0,
+                    PendingWave = 0,
+                    PendingFrontierArtifacts = Array.Empty<CampaignFrontierArtifact>(),
+                    RecoveryArchive = recoveryArchiveArtifacts,
                     RecoveryAttempts = recoveryAttempts.ToArray(),
-                    EvaluatedConfigurationFingerprints = OrderedFingerprints(evaluatedConfigurations),
-                    BestFailure = bestFailure,
-                    FinalStrategyPath = PersistStrategy(artifactRoot, "best-prefix-strategy.json", priorFrontier[0].Strategy)
+                    EvaluatedConfigurationFingerprints = evaluationIdentityArtifact is null
+                        ? OrderedFingerprints(evaluatedConfigurations)
+                        : Array.Empty<string>(),
+                    EvaluationIdentityArtifact = evaluationIdentityArtifact,
+                    BestFailure = bestFailureSoFar,
+                    FinalStrategyPath = prefixStrategyArtifact?.Path,
+                    FinalStrategyFingerprint = prefixStrategyArtifact?.StrategyFingerprint,
+                    FinalStrategyContentHash = prefixStrategyArtifact?.ContentHash
                 };
                 SaveManifest(artifactRoot, manifest);
                 return new CampaignSearchRunResult
@@ -767,7 +957,7 @@ public static class CampaignStrategyOptimizer
                     ResumeFrontier = priorFrontier,
                     CampaignCompletions = Array.Empty<CheckpointCampaignCompletion>(),
                     FinalStrategy = priorFrontier[0].Strategy,
-                    BestFailure = bestFailure,
+                    BestFailure = bestFailureSoFar,
                     Manifest = manifest
                 };
             }
@@ -809,7 +999,7 @@ public static class CampaignStrategyOptimizer
             failures.AddRange(result.Failures);
         }
 
-        var retained = RankDistinctStates(successes.Select(success => success.State), beamWidth);
+        var retained = RankDistinctStates(content, successes.Select(success => success.State), beamWidth);
         return new CheckpointSearchResult
         {
             TargetWave = targetWave,
@@ -837,33 +1027,164 @@ public static class CampaignStrategyOptimizer
         return Convert.ToHexString(SHA256.HashData(payload));
     }
 
-    private static IReadOnlyList<CheckpointSearchState> RankDistinctStates(
+    internal static IReadOnlyList<CheckpointSearchState> RankDistinctStates(
+        GameContent content,
         IEnumerable<CheckpointSearchState> states,
-        int limit = int.MaxValue) => CheckpointBeamOptimizer.RankStates(
-        states
-            .GroupBy(StateIdentity, StringComparer.Ordinal)
+        int limit = int.MaxValue)
+    {
+        var materialized = states.ToArray();
+        foreach (var state in materialized)
+        {
+            var computed = CheckpointStrategicFingerprint.Compute(content, state.Checkpoint);
+            if (!computed.Equals(state.StrategicFingerprint, StringComparison.Ordinal))
+                throw new InvalidDataException("Campaign checkpoint strategic fingerprint is invalid.");
+        }
+        return CheckpointBeamOptimizer.RankStates(
+        materialized
+            .GroupBy(CheckpointBeamOptimizer.StrategicIdentity, StringComparer.Ordinal)
             .Select(group => group
                 .OrderBy(state => state.Strategy.Waves.LastOrDefault()?.StableKey ?? string.Empty, StringComparer.Ordinal)
+                .ThenBy(state => StrategyFingerprint(state.Strategy), StringComparer.Ordinal)
+                .ThenBy(state => state.CheckpointFingerprint, StringComparer.Ordinal)
                 .First()),
         limit);
+    }
 
-    private static string StateIdentity(CheckpointSearchState state) =>
-        $"{state.CheckpointFingerprint}|{state.Strategy.DefaultStrategy}";
+    private static bool IsStrategicallyExcluded(
+        IReadOnlyDictionary<int, RecoveryLayer> layers,
+        int completedWave,
+        CheckpointSearchState state) =>
+        layers.TryGetValue(completedWave, out var layer) &&
+        layer.ExcludedStrategicFingerprints.Contains(state.StrategicFingerprint);
+
+    private static void ValidateResumableState(
+        GameContent content,
+        CheckpointSearchState state,
+        StrategyPlan referenceStrategy,
+        int baseSeed,
+        int completedWave,
+        string field)
+    {
+        state.Strategy.ValidatePrefixForCheckpoint(state.Checkpoint);
+        if (state.Checkpoint.Waves.CurrentWaveNumber != completedWave ||
+            !StrategyArtifactStore.Fingerprint(state.Checkpoint)
+                .Equals(state.CheckpointFingerprint, StringComparison.Ordinal) ||
+            !CheckpointStrategicFingerprint.Compute(content, state.Checkpoint)
+                .Equals(state.StrategicFingerprint, StringComparison.Ordinal) ||
+            CheckpointBeamOptimizer.Rank(content, state.Checkpoint) != state.Score)
+            throw new InvalidDataException($"Campaign search {field} identity, wave, or ranking score is invalid.");
+        if (state.Strategy.BaseSeed != baseSeed ||
+            !state.Strategy.ArtifactId.Equals(referenceStrategy.ArtifactId, StringComparison.Ordinal) ||
+            !state.Strategy.MapId.Equals(referenceStrategy.MapId, StringComparison.OrdinalIgnoreCase) ||
+            !state.Strategy.DifficultyId.Equals(referenceStrategy.DifficultyId, StringComparison.OrdinalIgnoreCase) ||
+            !state.Strategy.ChallengeId.Equals(referenceStrategy.ChallengeId, StringComparison.OrdinalIgnoreCase) ||
+            state.Strategy.DefaultStrategy != referenceStrategy.DefaultStrategy)
+            throw new InvalidDataException($"Campaign search {field} does not share the execution context.");
+    }
+
+    private static void ValidateResumeCompatibility(
+        CampaignSearchManifest manifest,
+        StrategyPlan strategy,
+        SimulationOptions simulationOptions,
+        CampaignSearchOptions options,
+        int startingWave)
+    {
+        if (manifest.Status == CampaignSearchStatus.CampaignCompleted || manifest.LastCompletedWave != startingWave ||
+            !manifest.ArtifactId.Equals(strategy.ArtifactId, StringComparison.Ordinal) ||
+            !manifest.MapId.Equals(strategy.MapId, StringComparison.OrdinalIgnoreCase) ||
+            !manifest.DifficultyId.Equals(strategy.DifficultyId, StringComparison.OrdinalIgnoreCase) ||
+            !manifest.ChallengeId.Equals(strategy.ChallengeId, StringComparison.OrdinalIgnoreCase) ||
+            manifest.BaseSeed != strategy.BaseSeed ||
+            manifest.DefaultStrategy is { } defaultStrategy && defaultStrategy != strategy.DefaultStrategy)
+            throw new InvalidDataException("Campaign resume manifest does not match its frontier execution context.");
+        if (CampaignSimulationSettings.From(simulationOptions) != manifest.SimulationSettings)
+            throw new InvalidDataException("Campaign resume cannot change persisted simulation settings.");
+        var expectedInProgressWave = manifest.InProgressWave != 0
+            ? manifest.InProgressWave
+            : manifest.SchemaVersion < 4 ? manifest.PendingWave : 0;
+        if (options.InProgressWave != expectedInProgressWave ||
+            options.RecoveryAttemptOffset != manifest.RecoveryAttemptOffset)
+            throw new InvalidDataException("Campaign resume cursor or recovery offset does not match its manifest.");
+        var consumedRecoveries = checked(manifest.RecoveryAttemptOffset + manifest.RecoveryAttempts.Count);
+        if (options.MaximumRecoveryAttempts < consumedRecoveries)
+            throw new InvalidDataException("Campaign resume recovery limit is below the attempts already consumed.");
+        if (expectedInProgressWave == 0) return;
+        if (options.BeamWidth != manifest.BeamWidth || options.CandidateCount != manifest.CandidateCount ||
+            options.BroadeningRounds != manifest.BroadeningRounds ||
+            options.StartingBroadeningRound != manifest.NextBroadeningRound ||
+            options.MaximumWave != manifest.MaximumWave ||
+            options.BacktrackDepth != manifest.BacktrackDepth ||
+            options.MaximumRecoveryAttempts != manifest.MaximumRecoveryAttempts ||
+            !options.PolicyId.Equals(manifest.PolicyId, StringComparison.Ordinal) ||
+            !options.BundleIds.SequenceEqual(manifest.BundleIds, StringComparer.Ordinal) ||
+            options.ParameterOverrides.Count != manifest.ParameterOverrides.Count ||
+            options.ParameterOverrides.Any(parameter =>
+                !manifest.ParameterOverrides.TryGetValue(parameter.Key, out var value) || value != parameter.Value))
+            throw new InvalidDataException("An in-progress campaign wave must retain its search configuration.");
+    }
+
+    private static void ValidateCompletedStrategy(StrategyPlan strategy, int completedWave)
+    {
+        strategy.Validate();
+        if (strategy.Waves.Count != completedWave ||
+            !strategy.Waves.Select(wave => wave.Wave).SequenceEqual(Enumerable.Range(1, completedWave)))
+            throw new InvalidDataException("A completed campaign strategy must contain every campaign wave in order.");
+    }
+
+    private static Dictionary<int, RecoveryLayer> RestoreRecoveryLayers(
+        GameContent content,
+        IReadOnlyList<CampaignRecoveryArchiveLayerState> archivedLayers,
+        StrategyPlan referenceStrategy,
+        int baseSeed,
+        int capacity)
+    {
+        var layers = new Dictionary<int, RecoveryLayer>();
+        foreach (var archived in archivedLayers.OrderBy(layer => layer.CompletedWave))
+        {
+            if (archived.CompletedWave < 0 || archived.Alternatives is null ||
+                archived.ExcludedStrategicFingerprints is null || layers.ContainsKey(archived.CompletedWave) ||
+                archived.ExcludedStrategicFingerprints.Any(fingerprint =>
+                    !CampaignSearchOptions.IsSha256(fingerprint)) ||
+                archived.ExcludedStrategicFingerprints.Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
+                archived.ExcludedStrategicFingerprints.Count)
+                throw new InvalidDataException("Campaign recovery archive layer is invalid.");
+            foreach (var state in archived.Alternatives)
+                ValidateResumableState(content, state, referenceStrategy, baseSeed, archived.CompletedWave,
+                    "recovery archive");
+            var ranked = RankDistinctStates(content, archived.Alternatives);
+            var excluded = archived.ExcludedStrategicFingerprints.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (ranked.Any(state => excluded.Contains(state.StrategicFingerprint)))
+                throw new InvalidDataException("Campaign recovery archive contains an excluded state.");
+            var retained = capacity == 0 ? Array.Empty<CheckpointSearchState>() : ranked.Take(capacity).ToArray();
+            layers.Add(archived.CompletedWave, new RecoveryLayer(archived.CompletedWave, retained, excluded));
+        }
+        return layers;
+    }
 
     private static void ArchiveRecoveryLayer(
+        GameContent content,
         IDictionary<int, RecoveryLayer> layers,
         int completedWave,
         IEnumerable<CheckpointSearchState> successfulStates,
-        IReadOnlyList<CheckpointSearchState> retainedStates)
+        IReadOnlyList<CheckpointSearchState> retainedStates,
+        int capacity)
     {
-        var retained = retainedStates.Select(StateIdentity).ToHashSet(StringComparer.Ordinal);
-        var alternatives = RankDistinctStates(successfulStates)
-            .Where(state => !retained.Contains(StateIdentity(state)))
-            .ToArray();
-        layers[completedWave] = new RecoveryLayer(completedWave, alternatives);
+        if (!layers.TryGetValue(completedWave, out var layer))
+        {
+            layer = new RecoveryLayer(completedWave, Array.Empty<CheckpointSearchState>());
+            layers.Add(completedWave, layer);
+        }
+        foreach (var retained in retainedStates)
+            layer.ExcludedStrategicFingerprints.Add(retained.StrategicFingerprint);
+        var alternatives = RankDistinctStates(content, layer.Alternatives.Concat(successfulStates))
+            .Where(state => !layer.ExcludedStrategicFingerprints.Contains(state.StrategicFingerprint));
+        var ranked = capacity == 0 ? Array.Empty<CheckpointSearchState>() : alternatives.Take(capacity).ToArray();
+        layer.Alternatives.Clear();
+        layer.Alternatives.AddRange(ranked);
     }
 
     private static bool TryTakeRecoveryFrontier(
+        GameContent content,
         IDictionary<int, RecoveryLayer> layers,
         int currentCompletedWave,
         int maximumDepth,
@@ -876,11 +1197,13 @@ public static class CampaignStrategyOptimizer
         {
             var candidateWave = currentCompletedWave - candidateDepth + 1;
             if (!layers.TryGetValue(candidateWave, out var layer) || layer.Alternatives.Count == 0) continue;
-            var selected = CheckpointBeamOptimizer.RankStates(layer.Alternatives, beamWidth);
-            var selectedIdentities = selected.Select(StateIdentity).ToHashSet(StringComparer.Ordinal);
-            layer.Alternatives.RemoveAll(state => selectedIdentities.Contains(StateIdentity(state)));
-            foreach (var futureWave in layers.Keys.Where(wave => wave > layer.CompletedWave).ToArray())
-                layers.Remove(futureWave);
+            var selected = RankDistinctStates(content, layer.Alternatives, beamWidth);
+            var selectedIdentities = selected.Select(CheckpointBeamOptimizer.StrategicIdentity)
+                .ToHashSet(StringComparer.Ordinal);
+            foreach (var selectedState in selected)
+                layer.ExcludedStrategicFingerprints.Add(selectedState.StrategicFingerprint);
+            layer.Alternatives.RemoveAll(state =>
+                selectedIdentities.Contains(CheckpointBeamOptimizer.StrategicIdentity(state)));
             frontier = selected;
             recoveredWave = layer.CompletedWave;
             depth = candidateDepth;
@@ -901,7 +1224,8 @@ public static class CampaignStrategyOptimizer
 
     private static IOrderedEnumerable<CheckpointWaveFailure> OrderFailures(
         IEnumerable<CheckpointWaveFailure> failures) => failures
-        .OrderBy(failure => failure.FailureMargin is null ? 1 : 0)
+        .OrderByDescending(failure => failure.WavePlan.Wave)
+        .ThenBy(failure => failure.FailureMargin is null ? 1 : 0)
         .ThenBy(failure => failure.FailureMargin?.UnresolvedArmorAdjustedDurabilityFraction ?? float.MaxValue)
         .ThenBy(failure => failure.FailureMargin?.UnresolvedArmorAdjustedDurability ?? float.MaxValue)
         .ThenBy(failure => failure.FailureMargin?.UnresolvedEnemyCount ?? int.MaxValue)
@@ -921,6 +1245,7 @@ public static class CampaignStrategyOptimizer
         var ranked = CheckpointBeamOptimizer.RankStates(frontier, frontier.Count);
         var finalStrategy = ranked[0].Strategy;
         var frontierArtifacts = PersistFrontier(content, artifactRoot, $"wave-{wave:D2}/frontier", ranked);
+        var strategyArtifact = PersistStrategy(artifactRoot, "best-strategy.json", finalStrategy);
         manifest = manifest with
         {
             LastCompletedWave = wave,
@@ -929,7 +1254,12 @@ public static class CampaignStrategyOptimizer
             Status = CampaignSearchStatus.WaveLimitReached,
             WaveAttempts = attempts.ToArray(),
             FrontierArtifacts = frontierArtifacts,
-            FinalStrategyPath = PersistStrategy(artifactRoot, "best-strategy.json", finalStrategy)
+            InProgressWave = 0,
+            PendingWave = 0,
+            PendingFrontierArtifacts = Array.Empty<CampaignFrontierArtifact>(),
+            FinalStrategyPath = strategyArtifact?.Path,
+            FinalStrategyFingerprint = strategyArtifact?.StrategyFingerprint,
+            FinalStrategyContentHash = strategyArtifact?.ContentHash
         };
         SaveManifest(artifactRoot, manifest);
         return new CampaignSearchRunResult
@@ -959,19 +1289,32 @@ public static class CampaignStrategyOptimizer
         .ToArray();
 
     private static CampaignSearchManifest NewManifest(
+        GameContent content,
         StrategyPlan strategy,
         SimulationOptions simulationOptions,
         CampaignSearchOptions options,
         int startingWave,
         int maximumWave,
-        IReadOnlyList<CampaignFrontierArtifact> frontierArtifacts) => new()
+        IReadOnlyList<CampaignFrontierArtifact> frontierArtifacts,
+        int inProgressWave,
+        int pendingWave,
+        IReadOnlyList<CampaignFrontierArtifact> pendingFrontierArtifacts,
+        IReadOnlyList<CampaignRecoveryArchiveArtifact> recoveryArchive,
+        CampaignEvaluationIdentityArtifact? evaluationIdentityArtifact,
+        CampaignSearchManifest? resumeManifest,
+        IReadOnlyList<CampaignSearchWaveArtifact> attempts,
+        IReadOnlyList<CampaignRecoveryArtifact> recoveryAttempts,
+        int totalEvaluations,
+        CheckpointWaveFailure? bestFailure) => new()
     {
         ArtifactId = strategy.ArtifactId,
         MapId = strategy.MapId,
         DifficultyId = strategy.DifficultyId,
         ChallengeId = strategy.ChallengeId,
         BaseSeed = strategy.BaseSeed,
-        StartingWave = startingWave,
+        BuildFingerprint = MinimalBastion.Multiplayer.BuildFingerprint.Compute(content),
+        DefaultStrategy = strategy.DefaultStrategy,
+        StartingWave = resumeManifest?.StartingWave ?? startingWave,
         LastCompletedWave = startingWave,
         MaximumWave = maximumWave,
         BeamWidth = options.BeamWidth,
@@ -979,23 +1322,31 @@ public static class CampaignStrategyOptimizer
         BroadeningRounds = options.BroadeningRounds,
         BacktrackDepth = options.BacktrackDepth,
         MaximumRecoveryAttempts = options.MaximumRecoveryAttempts,
-        RecoveryAttemptOffset = options.RecoveryAttemptOffset,
+        RecoveryAttemptOffset = resumeManifest?.RecoveryAttemptOffset ?? options.RecoveryAttemptOffset,
         PolicyId = options.PolicyId,
         BundleIds = options.BundleIds.ToArray(),
         ParameterOverrides = options.ParameterOverrides.OrderBy(parameter => parameter.Key, StringComparer.Ordinal)
             .ToDictionary(parameter => parameter.Key, parameter => parameter.Value, StringComparer.Ordinal),
         SimulationSettings = CampaignSimulationSettings.From(simulationOptions),
         NextBroadeningRound = options.StartingBroadeningRound,
-        TotalEvaluations = 0,
+        TotalEvaluations = totalEvaluations,
         Status = CampaignSearchStatus.Running,
-        WaveAttempts = Array.Empty<CampaignSearchWaveArtifact>(),
+        WaveAttempts = attempts.ToArray(),
         FrontierArtifacts = frontierArtifacts,
-        RecoveryAttempts = Array.Empty<CampaignRecoveryArtifact>(),
-        EvaluatedConfigurationFingerprints = options.PreviouslyEvaluatedConfigurationFingerprints
-            .Select(value => value.ToUpperInvariant())
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(value => value, StringComparer.Ordinal)
-            .ToArray()
+        InProgressWave = inProgressWave,
+        PendingWave = pendingWave,
+        PendingFrontierArtifacts = pendingFrontierArtifacts,
+        RecoveryArchive = recoveryArchive,
+        RecoveryAttempts = recoveryAttempts.ToArray(),
+        EvaluatedConfigurationFingerprints = evaluationIdentityArtifact is null
+            ? options.PreviouslyEvaluatedConfigurationFingerprints
+                .Select(value => value.ToUpperInvariant())
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal)
+                .ToArray()
+            : Array.Empty<string>(),
+        EvaluationIdentityArtifact = evaluationIdentityArtifact,
+        BestFailure = bestFailure
     };
 
     private static IReadOnlyList<CampaignFrontierArtifact> PersistFrontier(
@@ -1013,11 +1364,112 @@ public static class CampaignStrategyOptimizer
             var checkpointPath = NormalizeRelative(Path.Combine(relativeDirectory, stem + ".checkpoint.json"));
             var strategyPath = NormalizeRelative(Path.Combine(relativeDirectory, stem + ".strategy.json"));
             StrategyArtifactStore.SaveCheckpoint(Path.Combine(artifactRoot, checkpointPath),
-                StrategyCheckpointArtifact.Create(state.Strategy.ArtifactId, state.Checkpoint), content);
+                StrategyCheckpointArtifact.Create(state.Strategy.ArtifactId, state.Checkpoint, content), content);
             StrategyArtifactStore.SavePlan(Path.Combine(artifactRoot, strategyPath), state.Strategy);
-            results.Add(new CampaignFrontierArtifact(state.CheckpointFingerprint, checkpointPath, strategyPath));
+            results.Add(new CampaignFrontierArtifact(state.CheckpointFingerprint, checkpointPath, strategyPath)
+            {
+                StrategicFingerprint = state.StrategicFingerprint,
+                StrategyFingerprint = StrategyFingerprint(state.Strategy),
+                StateFingerprint = RecoveryStateFingerprint(state),
+                CheckpointContentHash = ContentHash(Path.Combine(artifactRoot, checkpointPath)),
+                StrategyContentHash = ContentHash(Path.Combine(artifactRoot, strategyPath))
+            });
         }
         return results;
+    }
+
+    private static IReadOnlyList<CampaignRecoveryArchiveArtifact> PersistRecoveryArchive(
+        GameContent content,
+        string? artifactRoot,
+        IReadOnlyDictionary<int, RecoveryLayer> layers)
+    {
+        if (artifactRoot is null) return Array.Empty<CampaignRecoveryArchiveArtifact>();
+        var archivedLayers = new List<CampaignRecoveryArchiveArtifact>();
+        foreach (var layer in layers.Values.OrderBy(layer => layer.CompletedWave))
+        {
+            var states = new List<CampaignRecoveryStateArtifact>();
+            foreach (var state in RankDistinctStates(content, layer.Alternatives))
+            {
+                if (layer.ExcludedStrategicFingerprints.Contains(state.StrategicFingerprint))
+                    throw new InvalidDataException("Campaign recovery archive contains an excluded state.");
+                var stateFingerprint = RecoveryStateFingerprint(state);
+                var decisionFingerprint = RecoveryDecisionFingerprint(state, layer.CompletedWave);
+                var relativeDirectory = $"recovery-archive/wave-{layer.CompletedWave:D2}";
+                var checkpointPath = NormalizeRelative(Path.Combine(
+                    relativeDirectory, stateFingerprint + ".checkpoint.json"));
+                var strategyPath = NormalizeRelative(Path.Combine(
+                    relativeDirectory, stateFingerprint + ".strategy.json"));
+                var fullCheckpointPath = Path.Combine(artifactRoot, checkpointPath);
+                var fullStrategyPath = Path.Combine(artifactRoot, strategyPath);
+                StrategyArtifactStore.SaveCheckpoint(fullCheckpointPath,
+                    StrategyCheckpointArtifact.Create(state.Strategy.ArtifactId, state.Checkpoint, content), content);
+                StrategyArtifactStore.SavePlan(fullStrategyPath, state.Strategy);
+                states.Add(new CampaignRecoveryStateArtifact(
+                    stateFingerprint,
+                    state.CheckpointFingerprint,
+                    decisionFingerprint,
+                    checkpointPath,
+                    strategyPath)
+                {
+                    StrategicFingerprint = state.StrategicFingerprint,
+                    StrategyFingerprint = StrategyFingerprint(state.Strategy),
+                    CheckpointContentHash = ContentHash(fullCheckpointPath),
+                    StrategyContentHash = ContentHash(fullStrategyPath)
+                });
+            }
+            var excluded = layer.ExcludedStrategicFingerprints
+                .OrderBy(fingerprint => fingerprint, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            archivedLayers.Add(new CampaignRecoveryArchiveArtifact(
+                layer.CompletedWave,
+                states.Count,
+                states.Select(state => state.CheckpointFingerprint).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+                states.Select(state => state.DecisionFingerprint).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+                excluded.Length,
+                Array.Empty<string>(),
+                states)
+            {
+                DistinctStrategicCount = states.Select(state => state.StrategicFingerprint)
+                    .Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+                ExcludedStrategicFingerprints = excluded
+            });
+        }
+        return archivedLayers;
+    }
+
+    internal static string RecoveryStateFingerprint(CheckpointSearchState state)
+    {
+        var payload = new StringBuilder(state.CheckpointFingerprint)
+            .Append('\n').Append(state.Strategy.DefaultStrategy);
+        foreach (var wave in state.Strategy.Waves)
+            payload.Append('\n').Append(wave.StableKey);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload.ToString())));
+    }
+
+    internal static string StrategyFingerprint(StrategyPlan strategy)
+    {
+        strategy.Validate();
+        var canonical = strategy with
+        {
+            Waves = strategy.Waves.Select(wave => wave with
+            {
+                Parameters = wave.Parameters.OrderBy(parameter => parameter.Key, StringComparer.Ordinal)
+                    .ToDictionary(parameter => parameter.Key, parameter => parameter.Value, StringComparer.Ordinal)
+            }).ToArray(),
+            Metadata = strategy.Metadata.OrderBy(entry => entry.Key, StringComparer.Ordinal)
+                .ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal)
+        };
+        var payload = JsonSerializer.SerializeToUtf8Bytes(canonical, StrategyArtifactStore.CreateJsonOptions());
+        return Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
+    }
+
+    internal static string ContentHash(string path) =>
+        Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
+
+    internal static string RecoveryDecisionFingerprint(CheckpointSearchState state, int completedWave)
+    {
+        var decision = state.Strategy.FindWave(completedWave)?.StableKey ?? $"opening:{completedWave}";
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(decision)));
     }
 
     private static string? PersistSearchTrace(
@@ -1080,12 +1532,52 @@ public static class CampaignStrategyOptimizer
         left.Strategy.Waves.Select(wave => wave.StableKey)
             .SequenceEqual(right.Strategy.Waves.Select(wave => wave.StableKey), StringComparer.Ordinal);
 
-    private static string? PersistStrategy(string? artifactRoot, string filename, StrategyPlan strategy)
+    private static CampaignEvaluationIdentityArtifact? PersistEvaluationIdentities(
+        string? artifactRoot,
+        IEnumerable<string> fingerprints)
+    {
+        if (artifactRoot is null) return null;
+        var ordered = OrderedFingerprints(fingerprints);
+        var payload = Encoding.UTF8.GetBytes(ordered.Count == 0 ? "" : string.Join('\n', ordered) + "\n");
+        var contentHash = Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
+        var relativePath = NormalizeRelative(Path.Combine(
+            "evaluation-identities", contentHash + ".txt"));
+        WriteAtomically(Path.Combine(artifactRoot, relativePath), payload);
+        return new CampaignEvaluationIdentityArtifact(
+            relativePath,
+            contentHash,
+            ordered.Count);
+    }
+
+    private static PersistedStrategyArtifact? PersistStrategy(
+        string? artifactRoot,
+        string filename,
+        StrategyPlan strategy)
     {
         if (artifactRoot is null) return null;
         var relativePath = NormalizeRelative(filename);
-        StrategyArtifactStore.SavePlan(Path.Combine(artifactRoot, relativePath), strategy);
-        return relativePath;
+        var fullPath = Path.Combine(artifactRoot, relativePath);
+        StrategyArtifactStore.SavePlan(fullPath, strategy);
+        return new PersistedStrategyArtifact(
+            relativePath,
+            StrategyFingerprint(strategy),
+            ContentHash(fullPath));
+    }
+
+    private static void WriteAtomically(string path, byte[] payload)
+    {
+        var fullPath = Path.GetFullPath(path);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        var temporaryPath = fullPath + $".{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllBytes(temporaryPath, payload);
+            File.Move(temporaryPath, fullPath, true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+        }
     }
 
     private static void SaveManifest(string? artifactRoot, CampaignSearchManifest manifest)
@@ -1141,19 +1633,213 @@ public static class CampaignSearchArtifactStore
     {
         var fullManifestPath = Path.GetFullPath(manifestPath);
         var manifest = LoadManifest(fullManifestPath);
+        ValidateBuildFingerprint(content, manifest);
         var root = Path.GetDirectoryName(fullManifestPath)!;
-        var states = manifest.FrontierArtifacts.Select(artifact =>
+        return LoadFrontierArtifacts(
+            content,
+            root,
+            manifest,
+            manifest.FrontierArtifacts,
+            manifest.LastCompletedWave,
+            "frontier");
+    }
+
+    public static CampaignSearchResumeState LoadResumeState(GameContent content, string manifestPath)
+    {
+        var fullManifestPath = Path.GetFullPath(manifestPath);
+        var manifest = LoadManifest(fullManifestPath);
+        ValidateBuildFingerprint(content, manifest);
+        if (manifest.SchemaVersion < 5 && manifest.RecoveryArchive.Count > 0)
+            throw new InvalidDataException(
+                "Legacy campaign recovery archives use exact checkpoint tombstones and cannot be resumed strategically.");
+        var root = Path.GetDirectoryName(fullManifestPath)!;
+        var frontier = LoadFrontierArtifacts(
+            content,
+            root,
+            manifest,
+            manifest.FrontierArtifacts,
+            manifest.LastCompletedWave,
+            "frontier");
+        var pending = LoadFrontierArtifacts(
+            content,
+            root,
+            manifest,
+            manifest.PendingFrontierArtifacts,
+            manifest.PendingWave,
+            "pending frontier");
+        IReadOnlyList<CampaignRecoveryArchiveLayerState> archive = manifest.SchemaVersion < 5
+            ? Array.Empty<CampaignRecoveryArchiveLayerState>()
+            : manifest.RecoveryArchive.OrderBy(layer => layer.CompletedWave).Select(layer =>
+            {
+                var states = layer.States.Select(artifact =>
+                {
+                    var checkpointPath = ResolveRelative(root, artifact.CheckpointPath);
+                    var strategyPath = ResolveRelative(root, artifact.StrategyPath);
+                    VerifyContentHash(manifest, checkpointPath, artifact.CheckpointContentHash,
+                        "recovery checkpoint");
+                    VerifyContentHash(manifest, strategyPath, artifact.StrategyContentHash,
+                        "recovery strategy");
+                    var checkpoint = StrategyArtifactStore.LoadCheckpoint(checkpointPath, content);
+                    var strategy = StrategyArtifactStore.LoadPlan(strategyPath);
+                    var state = CheckpointSearchState.Create(content, strategy, checkpoint.Checkpoint);
+                    ValidateArtifactContext(manifest, checkpoint, strategy, state, layer.CompletedWave,
+                        "recovery state");
+                    if (state.Checkpoint.Waves.CurrentWaveNumber != layer.CompletedWave ||
+                        !state.CheckpointFingerprint.Equals(artifact.CheckpointFingerprint,
+                            StringComparison.OrdinalIgnoreCase) ||
+                        !CampaignStrategyOptimizer.RecoveryStateFingerprint(state).Equals(
+                            artifact.StateFingerprint, StringComparison.OrdinalIgnoreCase) ||
+                        !CampaignStrategyOptimizer.RecoveryDecisionFingerprint(state, layer.CompletedWave).Equals(
+                            artifact.DecisionFingerprint, StringComparison.OrdinalIgnoreCase) ||
+                        !state.StrategicFingerprint.Equals(artifact.StrategicFingerprint,
+                            StringComparison.OrdinalIgnoreCase) ||
+                        !CampaignStrategyOptimizer.StrategyFingerprint(strategy).Equals(
+                            artifact.StrategyFingerprint, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException("Campaign recovery state does not match its archive identity.");
+                    return state;
+                }).ToArray();
+                var ranked = CampaignStrategyOptimizer.RankDistinctStates(
+                    content, states, Math.Max(1, states.Length));
+                return new CampaignRecoveryArchiveLayerState(
+                    layer.CompletedWave,
+                    ranked,
+                    layer.ExcludedStrategicFingerprints.ToArray());
+            }).ToArray();
+        var evaluatedConfigurations = LoadEvaluationIdentities(root, manifest);
+        return new CampaignSearchResumeState(manifest, frontier, pending, archive, evaluatedConfigurations);
+    }
+
+    private static IReadOnlyList<CheckpointSearchState> LoadFrontierArtifacts(
+        GameContent content,
+        string root,
+        CampaignSearchManifest manifest,
+        IReadOnlyList<CampaignFrontierArtifact> artifacts,
+        int expectedWave,
+        string field)
+    {
+        var states = artifacts.Select(artifact =>
         {
             var checkpointPath = ResolveRelative(root, artifact.CheckpointPath);
             var strategyPath = ResolveRelative(root, artifact.StrategyPath);
+            VerifyContentHash(manifest, checkpointPath, artifact.CheckpointContentHash, $"{field} checkpoint");
+            VerifyContentHash(manifest, strategyPath, artifact.StrategyContentHash, $"{field} strategy");
             var checkpoint = StrategyArtifactStore.LoadCheckpoint(checkpointPath, content);
             var strategy = StrategyArtifactStore.LoadPlan(strategyPath);
             var state = CheckpointSearchState.Create(content, strategy, checkpoint.Checkpoint);
-            if (!state.CheckpointFingerprint.Equals(artifact.CheckpointFingerprint, StringComparison.Ordinal))
-                throw new InvalidDataException("Campaign search frontier fingerprint does not match its artifacts.");
+            ValidateArtifactContext(manifest, checkpoint, strategy, state, expectedWave, field);
+            if (state.Checkpoint.Waves.CurrentWaveNumber != expectedWave ||
+                !state.CheckpointFingerprint.Equals(artifact.CheckpointFingerprint, StringComparison.OrdinalIgnoreCase) ||
+                manifest.SchemaVersion >= 4 &&
+                (!state.StrategicFingerprint.Equals(artifact.StrategicFingerprint,
+                     StringComparison.OrdinalIgnoreCase) ||
+                 !CampaignStrategyOptimizer.StrategyFingerprint(strategy).Equals(
+                     artifact.StrategyFingerprint, StringComparison.OrdinalIgnoreCase) ||
+                 !CampaignStrategyOptimizer.RecoveryStateFingerprint(state).Equals(
+                     artifact.StateFingerprint, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidDataException($"Campaign search {field} does not match its artifacts.");
             return state;
         }).ToArray();
-        return CheckpointBeamOptimizer.RankStates(states, Math.Max(1, states.Length));
+        return CampaignStrategyOptimizer.RankDistinctStates(content, states, Math.Max(1, states.Length));
+    }
+
+    public static StrategyPlan LoadFinalStrategy(GameContent content, string manifestPath)
+    {
+        var fullManifestPath = Path.GetFullPath(manifestPath);
+        var manifest = LoadManifest(fullManifestPath);
+        ValidateBuildFingerprint(content, manifest);
+        if (manifest.FinalStrategyPath is null)
+            throw new InvalidDataException("Campaign search manifest has no final strategy artifact.");
+        var strategyPath = ResolveRelative(Path.GetDirectoryName(fullManifestPath)!, manifest.FinalStrategyPath);
+        VerifyContentHash(manifest, strategyPath, manifest.FinalStrategyContentHash, "final strategy");
+        var strategy = StrategyArtifactStore.LoadPlan(strategyPath);
+        ValidateStrategyContext(manifest, strategy, "final strategy");
+        if (manifest.SchemaVersion >= 4 &&
+            !CampaignStrategyOptimizer.StrategyFingerprint(strategy).Equals(
+                manifest.FinalStrategyFingerprint, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Campaign final strategy fingerprint does not match its artifact.");
+        if (manifest.Status == CampaignSearchStatus.CampaignCompleted)
+        {
+            if (manifest.LastCompletedWave != manifest.MaximumWave ||
+                strategy.Waves.Count != manifest.LastCompletedWave ||
+                !strategy.Waves.Select(wave => wave.Wave)
+                    .SequenceEqual(Enumerable.Range(1, manifest.LastCompletedWave)))
+                throw new InvalidDataException("Completed campaign strategy is not a full contiguous campaign plan.");
+        }
+        return strategy;
+    }
+
+    private static void ValidateBuildFingerprint(GameContent content, CampaignSearchManifest manifest)
+    {
+        if (manifest.SchemaVersion < 4) return;
+        var current = MinimalBastion.Multiplayer.BuildFingerprint.Compute(content);
+        if (!current.Equals(manifest.BuildFingerprint, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Campaign search manifest was created by a different gameplay build.");
+    }
+
+    private static void ValidateArtifactContext(
+        CampaignSearchManifest manifest,
+        StrategyCheckpointArtifact checkpoint,
+        StrategyPlan strategy,
+        CheckpointSearchState state,
+        int expectedWave,
+        string field)
+    {
+        ValidateStrategyContext(manifest, strategy, field);
+        if (!checkpoint.StrategyArtifactId.Equals(manifest.ArtifactId, StringComparison.Ordinal) ||
+            !checkpoint.StrategyArtifactId.Equals(strategy.ArtifactId, StringComparison.Ordinal) ||
+            !checkpoint.Checkpoint.MapId.Equals(manifest.MapId, StringComparison.OrdinalIgnoreCase) ||
+            !checkpoint.Checkpoint.DifficultyId.Equals(manifest.DifficultyId, StringComparison.OrdinalIgnoreCase) ||
+            !checkpoint.Checkpoint.ChallengeId.Equals(manifest.ChallengeId, StringComparison.OrdinalIgnoreCase) ||
+            checkpoint.Checkpoint.Waves.CurrentWaveNumber != expectedWave ||
+            !checkpoint.CheckpointFingerprint.Equals(state.CheckpointFingerprint, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException($"Campaign search {field} does not match its manifest context.");
+    }
+
+    private static void ValidateStrategyContext(
+        CampaignSearchManifest manifest,
+        StrategyPlan strategy,
+        string field)
+    {
+        if (!strategy.ArtifactId.Equals(manifest.ArtifactId, StringComparison.Ordinal) ||
+            !strategy.MapId.Equals(manifest.MapId, StringComparison.OrdinalIgnoreCase) ||
+            !strategy.DifficultyId.Equals(manifest.DifficultyId, StringComparison.OrdinalIgnoreCase) ||
+            !strategy.ChallengeId.Equals(manifest.ChallengeId, StringComparison.OrdinalIgnoreCase) ||
+            strategy.BaseSeed != manifest.BaseSeed ||
+            manifest.DefaultStrategy is { } defaultStrategy && strategy.DefaultStrategy != defaultStrategy)
+            throw new InvalidDataException($"Campaign search {field} strategy does not match its manifest context.");
+    }
+
+    private static void VerifyContentHash(
+        CampaignSearchManifest manifest,
+        string path,
+        string? expectedHash,
+        string field)
+    {
+        if (manifest.SchemaVersion < 4) return;
+        if (!CampaignSearchOptions.IsSha256(expectedHash) ||
+            !CampaignStrategyOptimizer.ContentHash(path).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException($"Campaign search {field} content hash does not match its artifact.");
+    }
+
+    private static IReadOnlyList<string> LoadEvaluationIdentities(string root, CampaignSearchManifest manifest)
+    {
+        if (manifest.EvaluationIdentityArtifact is not { } artifact)
+            return manifest.EvaluatedConfigurationFingerprints
+                .Select(value => value.ToUpperInvariant()).ToArray();
+        var path = ResolveRelative(root, artifact.Path);
+        if (!CampaignStrategyOptimizer.ContentHash(path).Equals(
+                artifact.ContentHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Campaign evaluation identity content hash does not match its artifact.");
+        var values = File.ReadAllLines(path)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim().ToUpperInvariant())
+            .ToArray();
+        if (values.Length != artifact.Count ||
+            values.Any(value => !CampaignSearchOptions.IsSha256(value)) ||
+            values.Distinct(StringComparer.OrdinalIgnoreCase).Count() != values.Length ||
+            !values.SequenceEqual(values.OrderBy(value => value, StringComparer.Ordinal), StringComparer.Ordinal))
+            throw new InvalidDataException("Campaign evaluation identity artifact is invalid.");
+        return values;
     }
 
     private static void Validate(CampaignSearchManifest manifest)
@@ -1165,13 +1851,28 @@ public static class CampaignSearchArtifactStore
             manifest.StartingWave < 0 || manifest.LastCompletedWave < manifest.StartingWave ||
             manifest.MaximumWave < manifest.LastCompletedWave || manifest.BeamWidth <= 0 ||
             manifest.CandidateCount <= 0 || manifest.BroadeningRounds < 0 || manifest.NextBroadeningRound < 0 ||
+            manifest.InProgressWave < 0 ||
             manifest.BacktrackDepth is < 0 or > GameConstants.CampaignWaveCount ||
             manifest.MaximumRecoveryAttempts is < 0 or > 1000 || manifest.RecoveryAttemptOffset < 0 ||
             manifest.TotalEvaluations < 0 || string.IsNullOrWhiteSpace(manifest.PolicyId) ||
             manifest.BundleIds is null || manifest.ParameterOverrides is null || manifest.SimulationSettings is null ||
             manifest.WaveAttempts is null || manifest.FrontierArtifacts is null || manifest.RecoveryAttempts is null ||
+            manifest.PendingFrontierArtifacts is null || manifest.RecoveryArchive is null ||
             manifest.EvaluatedConfigurationFingerprints is null)
             throw new InvalidDataException("Campaign search manifest fields are invalid.");
+        if (manifest.SchemaVersion < 3 &&
+            (manifest.PendingWave != 0 || manifest.PendingFrontierArtifacts.Count != 0 ||
+             manifest.RecoveryArchive.Count != 0))
+            throw new InvalidDataException("Legacy campaign search manifests cannot contain resume archives.");
+        if (manifest.SchemaVersion < 4 &&
+            (manifest.InProgressWave != 0 || manifest.BuildFingerprint is not null ||
+             manifest.DefaultStrategy is not null ||
+             manifest.EvaluationIdentityArtifact is not null || manifest.FinalStrategyFingerprint is not null ||
+             manifest.FinalStrategyContentHash is not null))
+            throw new InvalidDataException("Legacy campaign search manifests cannot contain schema-v4 fields.");
+        if (manifest.SchemaVersion >= 4 &&
+            (manifest.DefaultStrategy is null || !CampaignSearchOptions.IsSha256(manifest.BuildFingerprint)))
+            throw new InvalidDataException("Campaign search manifest build or default strategy is missing.");
         if (!float.IsFinite(manifest.SimulationSettings.StepSeconds) ||
             manifest.SimulationSettings.StepSeconds is < 0.01f or > 0.1f ||
             !float.IsFinite(manifest.SimulationSettings.MaximumSimulatedSeconds) ||
@@ -1182,19 +1883,122 @@ public static class CampaignSearchArtifactStore
             throw new InvalidDataException("Campaign search execution settings are invalid.");
         if (manifest.TotalEvaluations != manifest.WaveAttempts.Sum(attempt => attempt.Evaluations))
             throw new InvalidDataException("Campaign search manifest evaluation totals are inconsistent.");
-        if (manifest.EvaluatedConfigurationFingerprints.Count > 100_000 ||
-            manifest.EvaluatedConfigurationFingerprints.Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
+        if (manifest.EvaluatedConfigurationFingerprints.Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
             manifest.EvaluatedConfigurationFingerprints.Count ||
             manifest.EvaluatedConfigurationFingerprints.Any(fingerprint =>
                 !CampaignSearchOptions.IsSha256(fingerprint)))
             throw new InvalidDataException("Campaign search evaluated-configuration fingerprints are invalid.");
+        if (manifest.EvaluationIdentityArtifact is { } evaluationArtifact)
+        {
+            if (manifest.EvaluatedConfigurationFingerprints.Count != 0 || evaluationArtifact.Count < 0 ||
+                evaluationArtifact.Count != manifest.TotalEvaluations ||
+                !IsSafeRelativePath(evaluationArtifact.Path) ||
+                !CampaignSearchOptions.IsSha256(evaluationArtifact.ContentHash))
+                throw new InvalidDataException("Campaign search evaluation identity artifact is invalid.");
+        }
+        else if (manifest.SchemaVersion >= 4 &&
+                 manifest.EvaluatedConfigurationFingerprints.Count != manifest.TotalEvaluations)
+            throw new InvalidDataException("Campaign search inline evaluation identities are incomplete.");
         if (manifest.FrontierArtifacts.Count > manifest.BeamWidth)
             throw new InvalidDataException("Campaign search manifest frontier exceeds its beam width.");
         foreach (var artifact in manifest.FrontierArtifacts)
         {
-            if (artifact.CheckpointFingerprint.Length != 64 || !IsSafeRelativePath(artifact.CheckpointPath) ||
-                !IsSafeRelativePath(artifact.StrategyPath))
+            if (!CampaignSearchOptions.IsSha256(artifact.CheckpointFingerprint) ||
+                !IsSafeRelativePath(artifact.CheckpointPath) || !IsSafeRelativePath(artifact.StrategyPath) ||
+                manifest.SchemaVersion >= 4 &&
+                (!CampaignSearchOptions.IsSha256(artifact.StrategicFingerprint) ||
+                 !CampaignSearchOptions.IsSha256(artifact.StrategyFingerprint) ||
+                 !CampaignSearchOptions.IsSha256(artifact.StateFingerprint) ||
+                 !CampaignSearchOptions.IsSha256(artifact.CheckpointContentHash) ||
+                 !CampaignSearchOptions.IsSha256(artifact.StrategyContentHash)))
                 throw new InvalidDataException("Campaign search frontier artifact path or identity is invalid.");
+        }
+        if (manifest.SchemaVersion >= 5 &&
+            manifest.FrontierArtifacts.Select(artifact => artifact.StrategicFingerprint)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count() != manifest.FrontierArtifacts.Count)
+            throw new InvalidDataException("Campaign search frontier contains duplicate strategic identities.");
+        var expectedInProgressWave = manifest.SchemaVersion >= 4
+            ? manifest.InProgressWave
+            : manifest.PendingWave;
+        if ((manifest.PendingWave == 0) != (manifest.PendingFrontierArtifacts.Count == 0) ||
+            manifest.PendingFrontierArtifacts.Count >= manifest.BeamWidth ||
+            manifest.PendingWave != 0 && manifest.PendingWave != expectedInProgressWave ||
+            expectedInProgressWave != 0 &&
+            (manifest.Status != CampaignSearchStatus.Running ||
+             expectedInProgressWave != manifest.LastCompletedWave + 1 ||
+             expectedInProgressWave > manifest.MaximumWave || manifest.NextBroadeningRound <= 0) ||
+            expectedInProgressWave == 0 &&
+            (manifest.PendingWave != 0 || manifest.PendingFrontierArtifacts.Count != 0))
+            throw new InvalidDataException("Campaign search pending frontier summary is invalid.");
+        foreach (var artifact in manifest.PendingFrontierArtifacts)
+        {
+            if (!CampaignSearchOptions.IsSha256(artifact.CheckpointFingerprint) ||
+                !IsSafeRelativePath(artifact.CheckpointPath) || !IsSafeRelativePath(artifact.StrategyPath) ||
+                manifest.SchemaVersion >= 4 &&
+                (!CampaignSearchOptions.IsSha256(artifact.StrategicFingerprint) ||
+                 !CampaignSearchOptions.IsSha256(artifact.StrategyFingerprint) ||
+                 !CampaignSearchOptions.IsSha256(artifact.StateFingerprint) ||
+                 !CampaignSearchOptions.IsSha256(artifact.CheckpointContentHash) ||
+                 !CampaignSearchOptions.IsSha256(artifact.StrategyContentHash)))
+                throw new InvalidDataException("Campaign search pending frontier artifact is invalid.");
+        }
+        if (manifest.SchemaVersion >= 5 &&
+            manifest.PendingFrontierArtifacts.Select(artifact => artifact.StrategicFingerprint)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count() != manifest.PendingFrontierArtifacts.Count)
+            throw new InvalidDataException("Campaign search pending frontier contains duplicate strategic identities.");
+        if (manifest.RecoveryArchive.Select(layer => layer.CompletedWave).Distinct().Count() !=
+            manifest.RecoveryArchive.Count)
+            throw new InvalidDataException("Campaign recovery archive contains duplicate wave layers.");
+        var maximumArchivedStates = (long)manifest.BeamWidth * manifest.MaximumRecoveryAttempts;
+        foreach (var layer in manifest.RecoveryArchive)
+        {
+            if (layer.CompletedWave < 0 || layer.CompletedWave > manifest.MaximumWave ||
+                layer.States is null || layer.ExcludedCheckpointFingerprints is null ||
+                layer.ExcludedStrategicFingerprints is null ||
+                layer.RemainingStateCount != layer.States.Count ||
+                layer.DistinctCheckpointCount != layer.States.Select(state => state.CheckpointFingerprint)
+                    .Distinct(StringComparer.OrdinalIgnoreCase).Count() ||
+                layer.DistinctDecisionCount != layer.States.Select(state => state.DecisionFingerprint)
+                    .Distinct(StringComparer.OrdinalIgnoreCase).Count() ||
+                layer.RemainingStateCount < 0 || layer.RemainingStateCount > maximumArchivedStates ||
+                layer.ExcludedStateCount < 0 ||
+                layer.States.Select(state => state.StateFingerprint).Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
+                layer.States.Count ||
+                layer.States.Any(state =>
+                    !CampaignSearchOptions.IsSha256(state.StateFingerprint) ||
+                    !CampaignSearchOptions.IsSha256(state.CheckpointFingerprint) ||
+                    !CampaignSearchOptions.IsSha256(state.DecisionFingerprint) ||
+                    !IsSafeRelativePath(state.CheckpointPath) || !IsSafeRelativePath(state.StrategyPath) ||
+                    manifest.SchemaVersion >= 4 &&
+                    (!CampaignSearchOptions.IsSha256(state.StrategicFingerprint) ||
+                     !CampaignSearchOptions.IsSha256(state.StrategyFingerprint) ||
+                     !CampaignSearchOptions.IsSha256(state.CheckpointContentHash) ||
+                     !CampaignSearchOptions.IsSha256(state.StrategyContentHash))))
+                throw new InvalidDataException("Campaign recovery archive layer is invalid.");
+            if (manifest.SchemaVersion >= 5)
+            {
+                if (layer.ExcludedCheckpointFingerprints.Count != 0 ||
+                    layer.DistinctStrategicCount != layer.States.Select(state => state.StrategicFingerprint)
+                        .Distinct(StringComparer.OrdinalIgnoreCase).Count() ||
+                    layer.DistinctStrategicCount != layer.States.Count ||
+                    layer.ExcludedStateCount != layer.ExcludedStrategicFingerprints.Count ||
+                    layer.ExcludedStrategicFingerprints.Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
+                    layer.ExcludedStrategicFingerprints.Count ||
+                    layer.ExcludedStrategicFingerprints.Any(fingerprint =>
+                        !CampaignSearchOptions.IsSha256(fingerprint)) ||
+                    layer.States.Any(state => layer.ExcludedStrategicFingerprints.Contains(
+                        state.StrategicFingerprint, StringComparer.OrdinalIgnoreCase)))
+                    throw new InvalidDataException("Campaign strategic recovery archive layer is invalid.");
+            }
+            else if (layer.DistinctStrategicCount != 0 || layer.ExcludedStrategicFingerprints.Count != 0 ||
+                     layer.ExcludedStateCount != layer.ExcludedCheckpointFingerprints.Count ||
+                     layer.ExcludedCheckpointFingerprints.Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
+                     layer.ExcludedCheckpointFingerprints.Count ||
+                     layer.ExcludedCheckpointFingerprints.Any(fingerprint =>
+                         !CampaignSearchOptions.IsSha256(fingerprint)) ||
+                     layer.States.Any(state => layer.ExcludedCheckpointFingerprints.Contains(
+                         state.CheckpointFingerprint, StringComparer.OrdinalIgnoreCase)))
+                throw new InvalidDataException("Legacy campaign recovery archive layer is invalid.");
         }
         var expectedRecoveryAttempt = manifest.RecoveryAttemptOffset + 1;
         foreach (var recovery in manifest.RecoveryAttempts)
@@ -1215,21 +2019,39 @@ public static class CampaignSearchArtifactStore
                 throw new InvalidDataException("Campaign search recovery history is invalid.");
             foreach (var artifact in recovery.FrontierArtifacts)
             {
-                if (!IsSafeRelativePath(artifact.CheckpointPath) || !IsSafeRelativePath(artifact.StrategyPath))
+                if (!CampaignSearchOptions.IsSha256(artifact.CheckpointFingerprint) ||
+                    !IsSafeRelativePath(artifact.CheckpointPath) || !IsSafeRelativePath(artifact.StrategyPath) ||
+                    manifest.SchemaVersion >= 4 &&
+                    (!CampaignSearchOptions.IsSha256(artifact.StrategicFingerprint) ||
+                     !CampaignSearchOptions.IsSha256(artifact.StrategyFingerprint) ||
+                     !CampaignSearchOptions.IsSha256(artifact.StateFingerprint) ||
+                     !CampaignSearchOptions.IsSha256(artifact.CheckpointContentHash) ||
+                     !CampaignSearchOptions.IsSha256(artifact.StrategyContentHash)))
                     throw new InvalidDataException("Campaign search recovery artifact path is invalid.");
             }
         }
-        if (manifest.RecoveryAttempts.Count > manifest.MaximumRecoveryAttempts ||
+        if ((long)manifest.RecoveryAttemptOffset + manifest.RecoveryAttempts.Count >
+            manifest.MaximumRecoveryAttempts ||
             manifest.WaveAttempts.Any(attempt =>
                 attempt.RecoveryAttempt < manifest.RecoveryAttemptOffset ||
                 attempt.RecoveryAttempt > manifest.RecoveryAttemptOffset + manifest.RecoveryAttempts.Count))
             throw new InvalidDataException("Campaign search recovery bounds are inconsistent.");
         if (manifest.FinalStrategyPath is not null && !IsSafeRelativePath(manifest.FinalStrategyPath))
             throw new InvalidDataException("Campaign search final strategy path is invalid.");
+        if (manifest.SchemaVersion >= 4 &&
+            ((manifest.FinalStrategyPath is null) != (manifest.FinalStrategyFingerprint is null) ||
+             (manifest.FinalStrategyPath is null) != (manifest.FinalStrategyContentHash is null) ||
+             manifest.FinalStrategyFingerprint is not null &&
+             !CampaignSearchOptions.IsSha256(manifest.FinalStrategyFingerprint) ||
+             manifest.FinalStrategyContentHash is not null &&
+             !CampaignSearchOptions.IsSha256(manifest.FinalStrategyContentHash)))
+            throw new InvalidDataException("Campaign search final strategy identity is invalid.");
         if (manifest.Status == CampaignSearchStatus.FrontierExhausted &&
             (manifest.FrontierArtifacts.Count == 0 || manifest.BestFailure is null))
             throw new InvalidDataException("An exhausted campaign search must retain its retry frontier and best failure.");
-        if (manifest.Status == CampaignSearchStatus.CampaignCompleted && manifest.FinalStrategyPath is null)
+        if (manifest.Status == CampaignSearchStatus.CampaignCompleted &&
+            (manifest.FinalStrategyPath is null || manifest.SchemaVersion >= 4 &&
+             (manifest.FinalStrategyFingerprint is null || manifest.FinalStrategyContentHash is null)))
             throw new InvalidDataException("A completed campaign search must identify its final strategy.");
         if (manifest.BestFailure is { } failure && failure.FailureMargin is { } margin)
         {

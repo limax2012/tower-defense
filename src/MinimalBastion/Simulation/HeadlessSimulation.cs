@@ -20,6 +20,107 @@ public static class HeadlessSimulation
         return (session, Run(session, options));
     }
 
+    public static StrategyReplayResult ReplayStrategy(
+        Data.GameContent content,
+        StrategyReplayEnvelope envelope) => ReplayStrategyForDiagnostics(content, envelope).Result;
+
+    internal static (GameSession Session, StrategyReplayResult Result) ReplayStrategyForDiagnostics(
+        Data.GameContent content,
+        StrategyPlan strategyPlan,
+        SimulationOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentNullException.ThrowIfNull(strategyPlan);
+        ArgumentNullException.ThrowIfNull(options);
+        strategyPlan.Validate();
+        ValidateReplaySelectors(strategyPlan, options);
+        var envelope = StrategyReplayEnvelope.Create(
+            content,
+            strategyPlan,
+            CampaignSimulationSettings.From(options));
+        var expectedWaveCount = content.Maps.TryGetValue(strategyPlan.MapId, out var map) &&
+                                content.WaveSets.TryGetValue(map.WaveSet, out var waveSet)
+            ? waveSet.Waves.Count
+            : content.Waves.Waves.Count;
+        strategyPlan.ValidateCompleteCampaign(expectedWaveCount);
+        return ReplayValidatedStrategy(content, envelope, expectedWaveCount);
+    }
+
+    internal static (GameSession Session, StrategyReplayResult Result) ReplayStrategyForDiagnostics(
+        Data.GameContent content,
+        StrategyReplayEnvelope envelope)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentNullException.ThrowIfNull(envelope);
+        var expectedWaveCount = StrategyReplayValidation.ValidateEnvelope(envelope, content);
+        return ReplayValidatedStrategy(content, envelope, expectedWaveCount);
+    }
+
+    private static (GameSession Session, StrategyReplayResult Result) ReplayValidatedStrategy(
+        Data.GameContent content,
+        StrategyReplayEnvelope envelope,
+        int expectedWaveCount)
+    {
+        var strategyPlan = envelope.Plan;
+        var options = CreateReplayOptions(envelope);
+
+        var session = ConfigureSession(new GameSession(
+            content,
+            strategyPlan.MapId,
+            strategyPlan.DifficultyId,
+            strategyPlan.ChallengeId), options);
+        ValidateReplaySession(strategyPlan, session);
+        if (session.TotalWaves != expectedWaveCount)
+            throw new InvalidOperationException("The fresh replay session resolved a different campaign wave set.");
+
+        var waveRuns = new List<StrategyReplayWaveResult>(session.TotalWaves);
+        foreach (var wavePlan in strategyPlan.Waves)
+        {
+            if (session.CurrentWave != wavePlan.Wave - 1 || !session.CanStartWave || session.IsVictory || session.IsDefeat)
+                throw new InvalidOperationException(
+                    $"The fresh replay session is not ready to execute planned wave {wavePlan.Wave}.");
+
+            var baseline = ReplayWaveBaseline.Capture(session);
+            var waveOptions = StrategySimulationOptions.ForWave(options, wavePlan, strategyPlan.DefaultStrategy);
+            var simulation = Run(session, waveOptions);
+            var succeeded = !session.IsDefeat && !session.Waves.IsActive && session.Enemies.Count == 0 &&
+                            session.CurrentWave == wavePlan.Wave && simulation.Result is "WaveLimit" or "Victory";
+            waveRuns.Add(new StrategyReplayWaveResult
+            {
+                WavePlan = wavePlan,
+                Simulation = simulation,
+                Deltas = BuildReplayWaveDeltas(session, simulation, baseline),
+                Succeeded = succeeded
+            });
+            if (!succeeded) break;
+        }
+
+        var finalRun = waveRuns[^1];
+        var campaignCleared = finalRun.Succeeded && waveRuns.Count == session.TotalWaves &&
+                              session.CurrentWave == session.TotalWaves && session.IsVictory &&
+                              finalRun.Simulation.CampaignCleared;
+        return (session, new StrategyReplayResult
+        {
+            EnvelopeSchemaVersion = envelope.SchemaVersion,
+            StrategyArtifactId = strategyPlan.ArtifactId,
+            StrategyFingerprint = envelope.ExpectedPlanFingerprint.ToLowerInvariant(),
+            ContentBuildFingerprint = envelope.ContentBuildFingerprint.ToLowerInvariant(),
+            ReplayFingerprint = envelope.ReplayFingerprint.ToLowerInvariant(),
+            SimulationSettings = envelope.SimulationSettings,
+            MapId = session.Map.Definition.Id,
+            DifficultyId = session.DifficultyId,
+            ChallengeId = session.ChallengeId,
+            BaseSeed = strategyPlan.BaseSeed,
+            Result = finalRun.Simulation.Result,
+            StartingWave = 0,
+            WaveReached = session.CurrentWave,
+            CompletedWaveCount = waveRuns.Count(run => run.Succeeded),
+            CampaignCleared = campaignCleared,
+            FailedWave = finalRun.Succeeded ? null : finalRun.WavePlan.Wave,
+            WaveRuns = waveRuns
+        });
+    }
+
     public static SimulationRunResult Run(Data.GameContent content, SaveGameData save, SimulationOptions options) =>
         Run(ConfigureSession(GameSession.RestoreSaveGame(content, save), options), options);
 
@@ -84,11 +185,133 @@ public static class HeadlessSimulation
         return session;
     }
 
+    private static SimulationOptions CreateReplayOptions(StrategyReplayEnvelope envelope)
+    {
+        var plan = envelope.Plan;
+        var settings = envelope.SimulationSettings;
+        return new SimulationOptions
+        {
+            Seed = plan.BaseSeed,
+            Strategy = plan.DefaultStrategy,
+            MapId = plan.MapId,
+            DifficultyId = plan.DifficultyId,
+            ChallengeId = plan.ChallengeId,
+            StepSeconds = settings.StepSeconds,
+            MaximumSimulatedSeconds = settings.MaximumSimulatedSeconds,
+            MaximumWave = int.MaxValue,
+            ContinueEndless = false,
+            ForcedTowerId = settings.ForcedTowerId,
+            ForcedDoctrineId = settings.ForcedDoctrineId,
+            ForcedSpecializationId = settings.ForcedSpecializationId,
+            UseProtocols = settings.UseProtocols,
+            UseApexUpgrades = settings.UseApexUpgrades,
+            UseCounterSupport = settings.UseCounterSupport,
+            UseCounterAttackers = settings.UseCounterAttackers,
+            HoldBuild = settings.HoldBuild,
+            HoldFootprint = settings.HoldFootprint
+        };
+    }
+
+    private static StrategyReplayWaveDeltas BuildReplayWaveDeltas(
+        GameSession session,
+        SimulationRunResult simulation,
+        ReplayWaveBaseline baseline) => new()
+    {
+        StartingCredits = baseline.Credits,
+        CreditsEarned = session.Economy.TotalCreditsEarned - baseline.CreditsEarned,
+        CreditsSpent = session.Economy.TotalCreditsSpent - baseline.CreditsSpent,
+        SaleCreditsRecovered = session.Economy.SaleCreditsRecovered - baseline.SaleCreditsRecovered,
+        EarlyStartCreditsEarned = session.Economy.EarlyStartCreditsEarned - baseline.EarlyStartCreditsEarned,
+        EndingCredits = session.Economy.Credits,
+        UnspentCreditChange = session.Economy.Credits - baseline.Credits,
+        StartingLives = baseline.Lives,
+        EndingLives = session.Economy.Lives,
+        Kills = session.Economy.TotalKills - baseline.Kills,
+        Leaks = session.Economy.EscapedEnemies - baseline.Leaks,
+        TowerPurchases = simulation.Towers.Values.Sum(metrics => metrics.Purchases),
+        TowerUpgrades = simulation.Towers.Values.Sum(metrics => metrics.Upgrades),
+        ApexUpgrades = simulation.Towers.Values.Sum(metrics => metrics.ApexUpgrades),
+        TowerSales = simulation.Towers.Values.Sum(metrics => metrics.Sales),
+        PulsePlateDeployments = simulation.PulsePlateDeployments.Count,
+        EmergencyDeployments = simulation.EmergencyDeployments,
+        EmergencyDirectPurchases = simulation.EmergencyDirectPurchases,
+        EmergencyTriggers = simulation.EmergencyTriggers,
+        EmergencyHits = simulation.EmergencyHits,
+        EmergencyKills = simulation.EmergencyKills,
+        EmergencyDamage = simulation.EmergencyDamage,
+        GeneratorPurchases = simulation.GeneratorPurchases,
+        GeneratorUpgrades = simulation.GeneratorUpgrades,
+        GeneratedCharges = simulation.GeneratedCharges,
+        Overdrives = simulation.Overdrives,
+        ProtocolActivations = simulation.ProtocolActivations.Count
+    };
+
+    private static void ValidateReplaySelectors(StrategyPlan strategyPlan, SimulationOptions options)
+    {
+        if (options.MapId is { } mapId &&
+            !mapId.Equals(strategyPlan.MapId, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The replay map selector does not match the strategy artifact.");
+        if (!string.Equals(options.DifficultyId, strategyPlan.DifficultyId, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The replay difficulty selector does not match the strategy artifact.");
+        if (!string.Equals(options.ChallengeId, strategyPlan.ChallengeId, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The replay challenge selector does not match the strategy artifact.");
+        if (options.Seed != strategyPlan.BaseSeed)
+            throw new InvalidDataException("The replay seed selector does not match the strategy artifact.");
+        if (options.WavePlan is not null)
+            throw new InvalidDataException("A complete strategy replay cannot also specify a single-wave plan.");
+        if (options.ContinueEndless)
+            throw new InvalidDataException("A complete campaign strategy replay cannot continue into endless mode.");
+        if (options.MaximumWave < strategyPlan.Waves.Count)
+            throw new InvalidDataException("A complete campaign strategy replay cannot use a partial wave limit.");
+        if (!float.IsFinite(options.StepSeconds) || options.StepSeconds is < 0.01f or > 0.1f)
+            throw new InvalidDataException("The replay simulation step must be within 0.01 through 0.1 seconds.");
+        if (!float.IsFinite(options.MaximumSimulatedSeconds) || options.MaximumSimulatedSeconds <= 0)
+            throw new InvalidDataException("The replay time limit must be finite and positive.");
+    }
+
+    private static void ValidateReplaySession(StrategyPlan strategyPlan, GameSession session)
+    {
+        if (!session.Map.Definition.Id.Equals(strategyPlan.MapId, StringComparison.OrdinalIgnoreCase) ||
+            !session.DifficultyId.Equals(strategyPlan.DifficultyId, StringComparison.OrdinalIgnoreCase) ||
+            !session.ChallengeId.Equals(strategyPlan.ChallengeId, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The strategy artifact references an unavailable run configuration.");
+        if (session.CurrentWave != 0 || session.Waves.IsActive || session.Enemies.Count != 0 ||
+            session.IsVictory || session.IsDefeat)
+            throw new InvalidOperationException("A strategy replay must begin from a fresh campaign session.");
+    }
+
+    private readonly record struct ReplayWaveBaseline(
+        int Credits,
+        int CreditsEarned,
+        int CreditsSpent,
+        int SaleCreditsRecovered,
+        int EarlyStartCreditsEarned,
+        int Lives,
+        int Kills,
+        int Leaks)
+    {
+        public static ReplayWaveBaseline Capture(GameSession session) => new(
+            session.Economy.Credits,
+            session.Economy.TotalCreditsEarned,
+            session.Economy.TotalCreditsSpent,
+            session.Economy.SaleCreditsRecovered,
+            session.Economy.EarlyStartCreditsEarned,
+            session.Economy.Lives,
+            session.Economy.TotalKills,
+            session.Economy.EscapedEnemies);
+    }
+
     private static SimulationRunResult Run(GameSession session, SimulationOptions options)
     {
+        if (!float.IsFinite(options.StepSeconds) || options.StepSeconds is < 0.01f or > 0.1f)
+            throw new ArgumentOutOfRangeException(nameof(options),
+                "Simulation step seconds must be within 0.01 through 0.1.");
+        if (!float.IsFinite(options.MaximumSimulatedSeconds) || options.MaximumSimulatedSeconds <= 0)
+            throw new ArgumentOutOfRangeException(nameof(options),
+                "Maximum simulated seconds must be finite and positive.");
         var player = new AutoPlayer(session, options.Strategy, options.Seed, options);
-        var telemetry = new RunTelemetry(session);
-        var step = Math.Clamp(options.StepSeconds, 0.01f, 0.1f);
+        using var telemetry = new RunTelemetry(session);
+        var step = options.StepSeconds;
         var elapsed = 0f;
         var reactionTimer = 0f;
         var wasWaveActive = false;
@@ -103,8 +326,9 @@ public static class HeadlessSimulation
 
             if (session.CanStartWave && session.CurrentWave < options.MaximumWave)
             {
+                telemetry.BeginWave(session, elapsed);
                 player.PrepareForWave(session);
-                if (session.StartNextWave()) telemetry.BeginWave(session, elapsed);
+                if (!session.StartNextWave()) telemetry.CancelWave();
             }
 
             if (!session.Waves.IsActive && session.CurrentWave >= options.MaximumWave && session.Enemies.Count == 0)
@@ -133,8 +357,9 @@ public static class HeadlessSimulation
         return telemetry.Build(session, options, elapsed, result);
     }
 
-    private sealed class RunTelemetry
+    private sealed class RunTelemetry : IDisposable
     {
+        private readonly GameSession _session;
         private readonly Dictionary<string, TowerRunMetrics> _towers = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<int, string> _towerIdToDefinition = new();
         private readonly Dictionary<int, TowerInstance> _towerInstances = new();
@@ -161,23 +386,42 @@ public static class HeadlessSimulation
         private int _generatorUpgrades;
         private int _generatedCharges;
         private int _overdrives;
+        private bool _disposed;
 
         public RunTelemetry(GameSession session)
         {
+            _session = session;
             session.TowerPlaced += OnTowerPlaced;
             session.TowerUpgraded += OnTowerUpgraded;
-            session.TowerOverdriven += tower => OnTowerOverdriven(session, tower);
+            session.TowerOverdriven += OnTowerOverdriven;
             session.TowerSold += OnTowerSold;
             session.EnemyKilled += OnEnemyKilled;
             session.EnemyEscaped += OnEnemyEscaped;
-            session.DamageResolver.DamageApplied += report => OnDamage(session, report);
-            session.EmergencyDefenseDeployed += (plate, purchased) =>
-                OnEmergencyDefenseDeployed(session, plate, purchased);
+            session.DamageResolver.DamageApplied += OnDamage;
+            session.EmergencyDefenseDeployed += OnEmergencyDefenseDeployed;
             session.EmergencyDefenseTriggered += OnEmergencyDefenseTriggered;
-            session.GeneratorPlaced += _ => _generatorPurchases++;
-            session.GeneratorUpgraded += (_, _) => _generatorUpgrades++;
-            session.EmergencyChargeProduced += () => _generatedCharges++;
+            session.GeneratorPlaced += OnGeneratorPlaced;
+            session.GeneratorUpgraded += OnGeneratorUpgraded;
+            session.EmergencyChargeProduced += OnEmergencyChargeProduced;
             foreach (var tower in session.Towers) TrackExistingTower(tower);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _session.TowerPlaced -= OnTowerPlaced;
+            _session.TowerUpgraded -= OnTowerUpgraded;
+            _session.TowerOverdriven -= OnTowerOverdriven;
+            _session.TowerSold -= OnTowerSold;
+            _session.EnemyKilled -= OnEnemyKilled;
+            _session.EnemyEscaped -= OnEnemyEscaped;
+            _session.DamageResolver.DamageApplied -= OnDamage;
+            _session.EmergencyDefenseDeployed -= OnEmergencyDefenseDeployed;
+            _session.EmergencyDefenseTriggered -= OnEmergencyDefenseTriggered;
+            _session.GeneratorPlaced -= OnGeneratorPlaced;
+            _session.GeneratorUpgraded -= OnGeneratorUpgraded;
+            _session.EmergencyChargeProduced -= OnEmergencyChargeProduced;
         }
 
         public void SetElapsed(float elapsed) => _elapsed = MathF.Max(0, elapsed);
@@ -198,7 +442,8 @@ public static class HeadlessSimulation
 
         public void BeginWave(GameSession session, float elapsed)
         {
-            var pressure = session.Waves.ActiveWave is { } wave
+            var wave = session.Waves.NextWave ?? session.Waves.ActiveWave;
+            var pressure = wave is not null
                 ? WavePressureAnalysis.Analyze(
                     wave,
                     session.Content.Enemies,
@@ -206,16 +451,18 @@ public static class HeadlessSimulation
                     session.Difficulty.EnemySpeedMultiplier)
                 : null;
             _activeWave = new WaveSnapshot(
-                session.CurrentWave,
+                wave?.Number ?? session.CurrentWave + 1,
                 elapsed,
                 session.Economy.Lives,
                 session.Economy.TotalKills,
                 session.Economy.EscapedEnemies,
                 session.Economy.TotalCreditsSpent,
-                DescribeWave(session.Waves.ActiveWave, session.Content.Enemies),
+                DescribeWave(wave, session.Content.Enemies),
                 pressure?.EnemyCount ?? 0,
                 pressure?.ArmorAdjustedDemand ?? 0);
         }
+
+        public void CancelWave() => _activeWave = null;
 
         public void EndWave(GameSession session, float elapsed)
         {
@@ -466,26 +713,6 @@ public static class HeadlessSimulation
             _towerIdToDefinition[tower.Id] = tower.Definition.Id;
             _towerInstances[tower.Id] = tower;
             _towerLevels[tower.Id] = tower.LevelIndex + 1;
-            var metrics = GetTower(tower.Definition.Id);
-            metrics.Purchases++;
-            metrics.Upgrades += tower.LevelIndex + (tower.IsApex ? 1 : 0);
-            metrics.CreditsSpent += tower.InvestedCredits;
-            if (tower.DoctrineId is { } doctrineId)
-                metrics.Doctrines[doctrineId] = metrics.Doctrines.GetValueOrDefault(doctrineId) + 1;
-            if (tower.SpecializationId is { } specializationId)
-            {
-                metrics.Specializations[specializationId] = metrics.Specializations.GetValueOrDefault(specializationId) + 1;
-                if (tower.DoctrineId is { } completedDoctrineId)
-                {
-                    var path = $"{completedDoctrineId}>{specializationId}";
-                    metrics.BuildPaths[path] = metrics.BuildPaths.GetValueOrDefault(path) + 1;
-                }
-            }
-            if (tower.IsApex)
-            {
-                metrics.ApexUpgrades++;
-                metrics.ApexCreditsSpent += tower.ApexUpgradeCost;
-            }
         }
 
         private void OnTowerUpgraded(TowerInstance tower, int cost)
@@ -510,16 +737,16 @@ public static class HeadlessSimulation
             metrics.CreditsRecovered += value;
         }
 
-        private void OnTowerOverdriven(GameSession session, TowerInstance tower)
+        private void OnTowerOverdriven(TowerInstance tower)
         {
             _overdrives++;
             GetTower(tower.Definition.Id).Overdrives++;
-            var liveInstances = session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped).ToArray();
-            var composition = CaptureRemainingEnemies(session);
+            var liveInstances = _session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped).ToArray();
+            var composition = CaptureRemainingEnemies(_session);
             var rankedComposition = composition.Where(enemy =>
                 !enemy.Rank.Equals(EnemyRank.Standard.ToString(), StringComparison.OrdinalIgnoreCase)).ToArray();
             _protocolActivations.Add(new SimulationProtocolActivation(
-                session.CurrentWave,
+                _session.CurrentWave,
                 _elapsed,
                 _activeWave is null ? 0 : MathF.Max(0, _elapsed - _activeWave.StartedAt),
                 tower.Id,
@@ -528,9 +755,9 @@ public static class HeadlessSimulation
                 _insideSessionUpdate,
                 tower.TargetMode,
                 liveInstances.Length,
-                session.Waves.ActiveWave is null
+                _session.Waves.ActiveWave is null
                     ? 0
-                    : session.Waves.CaptureQueuedEnemies(session).Sum(group => group.Count),
+                    : _session.Waves.CaptureQueuedEnemies(_session).Sum(group => group.Count),
                 liveInstances.Length == 0 ? 0 : liveInstances.Max(enemy => enemy.PathProgress),
                 liveInstances.Count(enemy => enemy.Rank == EnemyRank.Elite),
                 liveInstances.Count(enemy => enemy.Rank == EnemyRank.Boss),
@@ -556,32 +783,32 @@ public static class HeadlessSimulation
                 float.IsFinite(enemy.PathProgress) ? Math.Clamp(enemy.PathProgress, 0, 1) : 0));
         }
 
-        private void OnEmergencyDefenseDeployed(GameSession session, PulsePlateInstance plate, bool purchased)
+        private void OnEmergencyDefenseDeployed(PulsePlateInstance plate, bool purchased)
         {
             _emergencyDeployments++;
             if (purchased) _emergencyDirectPurchases++;
             var actualCost = purchased
                 ? SaturatingPlateCost(plate.Definition.PurchaseCost, plate.Definition.DirectPurchaseCostIncrease,
-                    Math.Max(0, session.EmergencyDirectPurchasesThisWave - 1))
+                    Math.Max(0, _session.EmergencyDirectPurchasesThisWave - 1))
                 : 0;
-            var projection = session.Map.Path.Project(plate.Position);
-            var liveEnemies = session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped).ToArray();
+            var projection = _session.Map.Path.Project(plate.Position);
+            var liveEnemies = _session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped).ToArray();
             var deployment = new PlateDeploymentAccumulator
             {
-                Wave = session.Waves.IsActive ? session.CurrentWave : session.CurrentWave + 1,
+                Wave = _session.Waves.IsActive ? _session.CurrentWave : _session.CurrentWave + 1,
                 PlateId = plate.Id,
                 ElapsedSeconds = _elapsed,
                 WaveElapsedSeconds = _activeWave is null ? 0 : MathF.Max(0, _elapsed - _activeWave.StartedAt),
                 DirectPurchase = purchased,
                 Cost = actualCost,
-                PathProgress = session.Map.Path.GetProgress(projection.DistanceAlongPath),
+                PathProgress = _session.Map.Path.GetProgress(projection.DistanceAlongPath),
                 X = plate.Position.X,
                 Y = plate.Position.Y,
                 LeadProgress = liveEnemies.Length == 0 ? 0 : liveEnemies.Max(enemy => enemy.PathProgress),
                 LiveEnemyCount = liveEnemies.Length,
-                QueuedEnemyCount = session.Waves.ActiveWave is null
+                QueuedEnemyCount = _session.Waves.ActiveWave is null
                     ? 0
-                    : session.Waves.CaptureQueuedEnemies(session).Sum(group => group.Count)
+                    : _session.Waves.CaptureQueuedEnemies(_session).Sum(group => group.Count)
             };
             _pulsePlateDeployments.Add(deployment);
             _pulsePlateById[plate.Id] = deployment;
@@ -602,7 +829,7 @@ public static class HeadlessSimulation
             return (int)Math.Min(int.MaxValue, cost);
         }
 
-        private void OnDamage(GameSession session, DamageReport report)
+        private void OnDamage(DamageReport report)
         {
             if (report.SourceTowerId <= -100_000)
             {
@@ -634,14 +861,18 @@ public static class HeadlessSimulation
                 GetTower(breakTowerId).ArmorBreakDamageEquivalent += report.ArmorBreakDamageEquivalent;
 
             if (!_towerInstances.TryGetValue(report.SourceTowerId, out var sourceTower)) return;
-            var support = session.GetSupportBuff(sourceTower);
+            var support = _session.GetSupportBuff(sourceTower);
             if (support.AttackSpeedBonus <= 0 || !_towerIdToDefinition.TryGetValue(support.AttackSpeedSourceTowerId, out var supportTowerId)) return;
-            var power = session.Map.GetPowerBuff(sourceTower.Position);
+            var power = _session.Map.GetPowerBuff(sourceTower.Position);
             var protocol = sourceTower.IsOverdriven ? sourceTower.Protocol.AttackSpeedBonus : 0f;
             var totalRateMultiplier = 1f + support.AttackSpeedBonus + power.AttackSpeedBonus + protocol;
             GetTower(supportTowerId).SupportDamageEquivalent +=
                 (report.HealthDamage + report.ShieldDamage) * support.AttackSpeedBonus / MathF.Max(1f, totalRateMultiplier);
         }
+
+        private void OnGeneratorPlaced(ChargeForgeInstance _) => _generatorPurchases++;
+        private void OnGeneratorUpgraded(ChargeForgeInstance _, int __) => _generatorUpgrades++;
+        private void OnEmergencyChargeProduced() => _generatedCharges++;
 
         private TowerRunMetrics GetTower(string id)
         {

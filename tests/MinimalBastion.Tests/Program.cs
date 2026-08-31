@@ -30,7 +30,9 @@ internal static class Program
     {
         if (args.Any(x => x.Equals("--simulate", StringComparison.OrdinalIgnoreCase) ||
                           x.Equals("--simulate-full", StringComparison.OrdinalIgnoreCase) ||
-                          x.Equals("--optimize-strategy", StringComparison.OrdinalIgnoreCase)))
+                          x.Equals("--optimize-strategy", StringComparison.OrdinalIgnoreCase) ||
+                          x.Equals("--replay-manifest", StringComparison.OrdinalIgnoreCase) ||
+                          x.StartsWith("--replay-manifest=", StringComparison.OrdinalIgnoreCase)))
         {
             var root = Path.Combine(AppContext.BaseDirectory, "ContentData");
             return SimulationCli.Run(new ContentLoader(root).Load(), args, args.Any(x => x.Equals("--simulate-full", StringComparison.OrdinalIgnoreCase)));
@@ -130,16 +132,25 @@ internal static class Program
             ("deterministic checkpoint beam search", DeterministicCheckpointBeamSearch),
             ("deterministic campaign candidate family", DeterministicCampaignCandidateFamily),
             ("campaign failure ranking", CampaignFailureRanking),
+            ("campaign strategic checkpoint diversity", CampaignStrategicCheckpointDiversity),
+            ("campaign strategic beam broadening", CampaignStrategicBeamBroadening),
+            ("campaign strategic recovery tombstone", CampaignStrategicRecoveryTombstone),
             ("campaign partial beam broadening", CampaignPartialBeamBroadening),
+            ("campaign partial beam resume", CampaignPartialBeamResume),
+            ("campaign zero-success beam resume", CampaignZeroSuccessBeamResume),
             ("campaign full beam stops broadening", CampaignFullBeamStopsBroadening),
             ("multi-wave campaign search artifacts", MultiWaveCampaignSearchArtifacts),
+            ("campaign recovery archive artifacts", CampaignRecoveryArchiveArtifacts),
             ("compact campaign search trace", CompactCampaignSearchTrace),
             ("campaign search retry frontier", CampaignSearchRetryFrontier),
             ("campaign search backtrack recovery", CampaignSearchBacktrackRecovery),
             ("campaign search completion", CampaignSearchCompletion),
+            ("fresh strategy replay", FreshStrategyReplay),
+            ("strategy replay envelope validation", StrategyReplayEnvelopeValidation),
             ("headless simulation deterministic", HeadlessSimulationDeterministic),
             ("pulse plate deployment telemetry", PulsePlateDeploymentTelemetry),
             ("experienced sale limits", ExperiencedSaleLimits),
+            ("experienced targeting continuity", ExperiencedTargetingContinuity),
             ("simulation footprint hold", SimulationFootprintHold),
             ("forced build completion summary", ForcedBuildCompletionSummary),
             ("simulation campaign default", SimulationCampaignDefault)
@@ -3691,6 +3702,12 @@ internal static class Program
             File.WriteAllText(Path.Combine(directory, "Maps", "Arena.json"), "{\"id\":\"changed\"}");
             Check.True(!baseline.Equals(BuildFingerprint.Compute(directory), StringComparison.Ordinal),
                 "nested campaign content changes the compatibility fingerprint");
+
+            var inMemory = ReplayTestContent(1);
+            var inMemoryBaseline = BuildFingerprint.Compute(inMemory);
+            inMemory.Enemies["replay_enemy"].MaxHealth += 1;
+            Check.True(!inMemoryBaseline.Equals(BuildFingerprint.Compute(inMemory), StringComparison.Ordinal),
+                "same-object balance mutations invalidate the canonical gameplay fingerprint");
         }
         finally
         {
@@ -3789,13 +3806,26 @@ internal static class Program
             checkpoint.RunId = Guid.NewGuid().ToString("N");
             Check.Equal(fingerprint, StrategyArtifactStore.Fingerprint(checkpoint),
                 "checkpoint identity ignores run metadata that does not affect decisions");
-            var checkpointArtifact = StrategyCheckpointArtifact.Create(plan.ArtifactId, checkpoint);
+            var checkpointArtifact = StrategyCheckpointArtifact.Create(plan.ArtifactId, checkpoint, session.Content);
             StrategyArtifactStore.SaveCheckpoint(checkpointPath, checkpointArtifact, content);
             var restoredCheckpoint = StrategyArtifactStore.LoadCheckpoint(checkpointPath, content);
             Check.Equal(checkpointArtifact.CheckpointFingerprint, restoredCheckpoint.CheckpointFingerprint,
                 "checkpoint artifact verifies its deterministic fingerprint");
             Check.Equal(0, restoredCheckpoint.Checkpoint.Waves.CurrentWaveNumber,
                 "checkpoint artifact preserves campaign position");
+
+            var checkpointJson = File.ReadAllText(checkpointPath);
+            var wrongBuildCheckpoint = JsonNode.Parse(checkpointJson)!.AsObject();
+            wrongBuildCheckpoint["buildFingerprint"] = new string('d', 64);
+            File.WriteAllText(checkpointPath,
+                wrongBuildCheckpoint.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() => StrategyArtifactStore.LoadCheckpoint(checkpointPath, content),
+                "checkpoint artifacts reject a different gameplay build");
+            Check.Throws<InvalidDataException>(() => SimulationCli.Run(content,
+                    ["--optimize-strategy", "--resume-checkpoint", checkpointPath, "--resume-plan", planPath,
+                        "--artifact-dir", Path.Combine(directory, "wrong-build-search")], false),
+                "CLI checkpoint resume rejects build-contaminated state before searching");
+            File.WriteAllText(checkpointPath, checkpointJson);
 
             Check.Throws<InvalidDataException>(() => StrategyArtifactStore.SaveCheckpoint(checkpointPath,
                 checkpointArtifact with { CheckpointFingerprint = new string('0', 64) }, content),
@@ -3920,18 +3950,20 @@ internal static class Program
             Check.True(originalProtocolTraces.SequenceEqual(restoredProtocolTraces),
                 "search artifacts preserve deterministic per-wave Protocol activation traces");
 
-            var legacyPayload = JsonNode.Parse(File.ReadAllText(searchPath))?.AsObject() ??
-                                throw new InvalidOperationException("Search fixture JSON was empty.");
-            legacyPayload["schemaVersion"] = 1;
-            legacyPayload.Remove("omittedSuccessfulEvaluations");
-            legacyPayload.Remove("omittedCampaignCompletions");
-            legacyPayload.Remove("omittedFailures");
-            File.WriteAllText(searchPath, legacyPayload.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-            var restoredLegacy = StrategyArtifactStore.LoadSearchResult(searchPath, content);
-            Check.True(restoredLegacy.SchemaVersion == 1 &&
-                       restoredLegacy.Evaluations == restoredLegacy.SuccessfulEvaluations.Count +
-                       restoredLegacy.CampaignCompletions.Count + restoredLegacy.Failures.Count,
-                "legacy full search traces load with zero implicit omissions");
+            var currentPayload = File.ReadAllText(searchPath);
+            foreach (var legacySchema in new[] { 1, 2 })
+            {
+                var legacyPayload = JsonNode.Parse(currentPayload)?.AsObject() ??
+                                    throw new InvalidOperationException("Search fixture JSON was empty.");
+                legacyPayload["schemaVersion"] = legacySchema;
+                legacyPayload.Remove("omittedSuccessfulEvaluations");
+                legacyPayload.Remove("omittedCampaignCompletions");
+                legacyPayload.Remove("omittedFailures");
+                File.WriteAllText(searchPath,
+                    legacyPayload.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+                Check.Throws<InvalidDataException>(() => StrategyArtifactStore.LoadSearchResult(searchPath, content),
+                    $"schema-v{legacySchema} search traces without strategic checkpoint identities are rejected");
+            }
         }
         finally
         {
@@ -4234,12 +4266,12 @@ internal static class Program
 
     private static void CampaignFailureRanking()
     {
-        static CheckpointWaveFailure Failure(float progress, int decisionSeed) => new()
+        static CheckpointWaveFailure Failure(float progress, int decisionSeed, int wave = 27) => new()
         {
             ParentCheckpointFingerprint = $"parent-{decisionSeed}",
             WavePlan = new WavePlan
             {
-                Wave = 27,
+                Wave = wave,
                 DecisionSeed = decisionSeed,
                 PolicyId = "failure-ranking-fixture"
             },
@@ -4247,7 +4279,7 @@ internal static class Program
             LivesRemaining = 0,
             CreditsUnspent = 0,
             FailureMargin = new SimulationFailureMargin(
-                27,
+                wave,
                 1,
                 0,
                 100,
@@ -4284,7 +4316,438 @@ internal static class Program
             "equal unresolved pressure favors the threat farther from the exit");
         Check.Equal(first.WavePlan.StableKey, reversed!.WavePlan.StableKey,
             "failure ranking is independent of candidate enumeration order");
+        var earlierNearClear = Failure(0.1f, 123, 26);
+        Check.Equal(fartherFromExit.WavePlan.StableKey,
+            CampaignStrategyOptimizer.SelectBestFailure([earlierNearClear, fartherFromExit])!.WavePlan.StableKey,
+            "campaign failure reporting prioritizes the deepest attempted wave before its exact margin");
     }
+
+    private static void CampaignStrategicCheckpointDiversity()
+    {
+        var session = SessionWithWaves(2);
+        Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)),
+            "place strategic checkpoint identity fixture tower");
+        var checkpoint = session.CaptureSaveGame();
+        var plan = new StrategyPlan
+        {
+            ArtifactId = "campaign-strategic-identity-fixture",
+            MapId = checkpoint.MapId,
+            DifficultyId = checkpoint.DifficultyId,
+            ChallengeId = checkpoint.ChallengeId,
+            BaseSeed = 6431,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive
+        };
+        var baseline = CheckpointSearchState.Create(session.Content, plan, checkpoint);
+        var telemetryCheckpoint = CloneCampaignCheckpoint(checkpoint);
+        telemetryCheckpoint.Economy.TotalKills += 7;
+        telemetryCheckpoint.Statistics.SimulatedSeconds += 12.5f;
+        telemetryCheckpoint.Towers.Single().LifetimeDamage += 900;
+        telemetryCheckpoint.Towers.Single().LifetimeKills += 3;
+        var telemetryTwin = CheckpointSearchState.Create(session.Content, plan, telemetryCheckpoint);
+
+        Check.True(baseline.CheckpointFingerprint != telemetryTwin.CheckpointFingerprint &&
+                   baseline.StrategicFingerprint == telemetryTwin.StrategicFingerprint &&
+                   baseline.Score == telemetryTwin.Score,
+            "telemetry-only checkpoint changes retain one strategic identity while exact integrity hashes differ");
+
+        CheckpointSearchState Variant(Action<SaveGameData> mutate)
+        {
+            var clone = CloneCampaignCheckpoint(checkpoint);
+            mutate(clone);
+            return CheckpointSearchState.Create(session.Content, plan, clone);
+        }
+
+        var layout = Variant(save => save.Towers.Single().X = 100);
+        var economy = Variant(save => save.Economy.Credits += 1);
+        var tactical = Variant(save => save.EmergencyInventory += 1);
+        var targeting = Variant(save => save.Towers.Single().TargetMode = TargetMode.Strongest);
+        Check.Equal(5, new[] { baseline, layout, economy, tactical, targeting }
+                .Select(CheckpointBeamOptimizer.StrategicIdentity).Distinct(StringComparer.Ordinal).Count(),
+            "layout, economy, tactical inventory, and targeting differences remain strategically distinct");
+
+        var forward = CampaignStrategyOptimizer.RankDistinctStates(
+            session.Content, [telemetryTwin, targeting, baseline, layout, economy, tactical]);
+        var reverse = CampaignStrategyOptimizer.RankDistinctStates(
+            session.Content, [tactical, economy, layout, baseline, targeting, telemetryTwin]);
+        Check.True(forward.Count == 5 &&
+                   forward.Select(state => state.CheckpointFingerprint).SequenceEqual(
+                       reverse.Select(state => state.CheckpointFingerprint)),
+            "campaign strategic collapse and representative selection are input-order deterministic");
+        var selectedTwin = forward.Single(state => state.StrategicFingerprint == baseline.StrategicFingerprint);
+        Check.Equal(new[] { baseline.CheckpointFingerprint, telemetryTwin.CheckpointFingerprint }
+                .OrderBy(value => value, StringComparer.Ordinal).First(), selectedTwin.CheckpointFingerprint,
+            "telemetry twins use their exact checkpoint hash as a deterministic representative tie-break");
+
+        var tampered = new CheckpointSearchState
+        {
+            Strategy = baseline.Strategy,
+            Checkpoint = baseline.Checkpoint,
+            CheckpointFingerprint = baseline.CheckpointFingerprint,
+            StrategicFingerprint = new string('0', 64),
+            Score = baseline.Score
+        };
+        Check.Throws<InvalidDataException>(() =>
+                CampaignStrategyOptimizer.RankDistinctStates(session.Content, [tampered]),
+            "campaign grouping recomputes every resumable strategic fingerprint before deduplication");
+        var forgedCheckpoint = CloneCampaignCheckpoint(checkpoint);
+        forgedCheckpoint.Economy.Credits += 25;
+        var correctlyRankedForgery = CheckpointSearchState.Create(session.Content, plan, forgedCheckpoint);
+        var forged = new CheckpointSearchState
+        {
+            Strategy = correctlyRankedForgery.Strategy,
+            Checkpoint = correctlyRankedForgery.Checkpoint,
+            CheckpointFingerprint = correctlyRankedForgery.CheckpointFingerprint,
+            StrategicFingerprint = baseline.StrategicFingerprint,
+            Score = correctlyRankedForgery.Score
+        };
+        Check.Throws<InvalidDataException>(() =>
+                CampaignStrategyOptimizer.RankDistinctStates(session.Content, [baseline, forged]),
+            "a forged strategic twin cannot disappear behind a valid state before fingerprint validation");
+        Check.Throws<InvalidDataException>(() =>
+                CampaignStrategyOptimizer.RankDistinctStates(session.Content, [forged, baseline]),
+            "raw strategic fingerprint validation is independent of input order");
+
+        var convergenceSession = SessionWithWaves(3);
+        Check.True(convergenceSession.TryPlaceTower("tower", new Vector2(50, 200)),
+            "place converged strategy-prefix fixture tower");
+        var convergedCheckpoint = convergenceSession.CaptureSaveGame();
+        convergedCheckpoint.Waves.CurrentWaveNumber = 2;
+        var sharedFinalDecision = new WavePlan
+            { Wave = 2, DecisionSeed = 7002, PolicyId = "shared-final-decision" };
+        StrategyPlan ConvergedPlan(string openingPolicy) => new()
+        {
+            ArtifactId = "campaign-converged-prefix-fixture",
+            MapId = convergedCheckpoint.MapId,
+            DifficultyId = convergedCheckpoint.DifficultyId,
+            ChallengeId = convergedCheckpoint.ChallengeId,
+            BaseSeed = 7000,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive,
+            Waves =
+            [
+                new WavePlan { Wave = 1, DecisionSeed = 7001, PolicyId = openingPolicy },
+                sharedFinalDecision
+            ]
+        };
+        var convergedA = CheckpointSearchState.Create(
+            convergenceSession.Content, ConvergedPlan("opening-a"), convergedCheckpoint);
+        var convergedB = CheckpointSearchState.Create(
+            convergenceSession.Content, ConvergedPlan("opening-b"), convergedCheckpoint);
+        var convergedForward = CampaignStrategyOptimizer.RankDistinctStates(
+            convergenceSession.Content, [convergedA, convergedB]).Single();
+        var convergedReverse = CampaignStrategyOptimizer.RankDistinctStates(
+            convergenceSession.Content, [convergedB, convergedA]).Single();
+        Check.Equal(CampaignStrategyOptimizer.StrategyFingerprint(convergedForward.Strategy),
+            CampaignStrategyOptimizer.StrategyFingerprint(convergedReverse.Strategy),
+            "converged checkpoints with the same final decision choose earlier strategy prefixes deterministically");
+    }
+
+    private static void CampaignStrategicBeamBroadening()
+    {
+        static CampaignSearchRunResult Run(bool reverseSuccesses, string directory, out int evaluatorCalls)
+        {
+            var session = SessionWithWaves(2);
+            Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)),
+                "place strategic broadening fixture tower");
+            var checkpoint = session.CaptureSaveGame();
+            var plan = new StrategyPlan
+            {
+                ArtifactId = "campaign-strategic-broadening-fixture",
+                MapId = checkpoint.MapId,
+                DifficultyId = checkpoint.DifficultyId,
+                ChallengeId = checkpoint.ChallengeId,
+                BaseSeed = 6443,
+                DefaultStrategy = AutoPlayerStrategy.Adaptive
+            };
+            var calls = 0;
+
+            CheckpointSearchResult Evaluate(
+                GameContent content,
+                IReadOnlyList<CheckpointSearchState> parents,
+                IReadOnlyList<WavePlan> candidates,
+                SimulationOptions options,
+                int beamWidth)
+            {
+                calls++;
+                var parent = parents.Single();
+                var ordered = candidates.OrderBy(candidate => candidate.StableKey, StringComparer.Ordinal).ToArray();
+                var successes = new List<CheckpointWaveSuccess>();
+                var failures = new List<CheckpointWaveFailure>();
+                var successCount = calls == 1 ? ordered.Length : 1;
+                for (var index = 0; index < ordered.Length; index++)
+                {
+                    var candidate = ordered[index];
+                    if (index >= successCount)
+                    {
+                        failures.Add(new CheckpointWaveFailure
+                        {
+                            ParentCheckpointFingerprint = parent.CheckpointFingerprint,
+                            WavePlan = candidate,
+                            Result = "SyntheticStrategicBroadeningFailure",
+                            LivesRemaining = parent.Checkpoint.Economy.Lives,
+                            CreditsUnspent = parent.Checkpoint.Economy.Credits,
+                            RemainingEnemies = Array.Empty<SimulationRemainingEnemy>(),
+                            QueuedEnemies = Array.Empty<SimulationRemainingEnemy>()
+                        });
+                        continue;
+                    }
+
+                    var next = CloneCampaignCheckpoint(parent.Checkpoint);
+                    next.Waves.CurrentWaveNumber = 1;
+                    var layout = calls == 1 ? index / 2 : 3;
+                    var positions = new[]
+                    {
+                        new Vector2(50, 200),
+                        new Vector2(50, 90),
+                        new Vector2(100, 200),
+                        new Vector2(100, 90)
+                    };
+                    next.Towers.Single().X = positions[layout].X;
+                    next.Towers.Single().Y = positions[layout].Y;
+                    next.Towers.Single().LifetimeDamage += index % 2 * 100;
+                    next.Statistics.SimulatedSeconds += index % 2;
+                    var state = CheckpointSearchState.Create(content, parent.Strategy.Append(candidate), next);
+                    successes.Add(new CheckpointWaveSuccess
+                    {
+                        ParentCheckpointFingerprint = parent.CheckpointFingerprint,
+                        WavePlan = candidate,
+                        Simulation = new SimulationRunResult
+                        {
+                            MapId = next.MapId,
+                            DifficultyId = next.DifficultyId,
+                            ChallengeId = next.ChallengeId,
+                            Strategy = options.Strategy,
+                            Seed = candidate.DecisionSeed,
+                            Result = "WaveLimit",
+                            WaveReached = 1,
+                            LivesRemaining = next.Economy.Lives,
+                            Kills = 0,
+                            EscapedEnemies = 0,
+                            CreditsEarned = 0,
+                            CreditsSpent = 0,
+                            CreditsUnspent = next.Economy.Credits,
+                            SaleCreditsRecovered = 0,
+                            SimulatedSeconds = 0,
+                            Towers = new Dictionary<string, TowerRunMetrics>(),
+                            EnemyKills = new Dictionary<string, int>(),
+                            EnemyLeaks = new Dictionary<string, int>(),
+                            Waves = Array.Empty<WaveRunMetrics>()
+                        },
+                        State = state
+                    });
+                }
+
+                IEnumerable<CheckpointWaveSuccess> orderedSuccesses = reverseSuccesses
+                    ? successes.AsEnumerable().Reverse()
+                    : successes;
+                var materialized = orderedSuccesses.ToArray();
+                return new CheckpointSearchResult
+                {
+                    TargetWave = 1,
+                    BeamWidth = beamWidth,
+                    Evaluations = ordered.Length,
+                    SuccessfulEvaluations = materialized,
+                    RetainedStates = CampaignStrategyOptimizer.RankDistinctStates(
+                        content, materialized.Select(success => success.State), beamWidth),
+                    CampaignCompletions = Array.Empty<CheckpointCampaignCompletion>(),
+                    Failures = failures
+                };
+            }
+
+            var result = CampaignStrategyOptimizer.Search(
+                session.Content,
+                [CheckpointSearchState.Create(session.Content, plan, checkpoint)],
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 4,
+                    CandidateCount = 6,
+                    MaximumWave = 1,
+                    BroadeningRounds = 1,
+                    BacktrackDepth = 0,
+                    MaximumRecoveryAttempts = 0,
+                    ArtifactDirectory = directory
+                },
+                null,
+                Evaluate);
+            evaluatorCalls = calls;
+            return result;
+        }
+
+        var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var forward = Run(false, Path.Combine(directory, "forward"), out var forwardCalls);
+            var reverse = Run(true, Path.Combine(directory, "reverse"), out var reverseCalls);
+            Check.True(forwardCalls == 2 && reverseCalls == 2 && forward.WaveAttempts[0] is
+                       { Evaluations: 6, SuccessfulEvaluations: 6, RetainedStates: 3 } &&
+                       forward.WaveAttempts[1] is
+                       { Evaluations: 12, SuccessfulEvaluations: 1, RetainedStates: 4 },
+                "six telemetry-paired successes collapse to three layouts and trigger deterministic broadening");
+            Check.True(forward.ResumeFrontier.Count == 4 &&
+                       forward.ResumeFrontier.Select(state => state.CheckpointFingerprint).SequenceEqual(
+                           reverse.ResumeFrontier.Select(state => state.CheckpointFingerprint)) &&
+                       forward.FinalStrategy!.Waves.Select(wave => wave.StableKey).SequenceEqual(
+                           reverse.FinalStrategy!.Waves.Select(wave => wave.StableKey)),
+                "strategic beam retention is independent of success enumeration order");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    private static void CampaignStrategicRecoveryTombstone()
+    {
+        var session = SessionWithWaves(2);
+        Check.True(session.TryPlaceTower("tower", new Vector2(50, 200)),
+            "place strategic recovery tombstone fixture tower");
+        var checkpoint = session.CaptureSaveGame();
+        var openingCheckpoint = CloneCampaignCheckpoint(checkpoint);
+        checkpoint.Waves.CurrentWaveNumber = 1;
+        var plan = new StrategyPlan
+        {
+            ArtifactId = "campaign-strategic-tombstone-fixture",
+            MapId = checkpoint.MapId,
+            DifficultyId = checkpoint.DifficultyId,
+            ChallengeId = checkpoint.ChallengeId,
+            BaseSeed = 6451,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive,
+            Waves = [new WavePlan { Wave = 1, DecisionSeed = 6452, PolicyId = "strategic-tombstone" }]
+        };
+        var active = CheckpointSearchState.Create(session.Content, plan, checkpoint);
+        var twinCheckpoint = CloneCampaignCheckpoint(checkpoint);
+        twinCheckpoint.Towers.Single().LifetimeDamage += 500;
+        twinCheckpoint.Statistics.SimulatedSeconds += 5;
+        var telemetryTwin = CheckpointSearchState.Create(session.Content, plan, twinCheckpoint);
+        Check.True(active.CheckpointFingerprint != telemetryTwin.CheckpointFingerprint &&
+                   active.StrategicFingerprint == telemetryTwin.StrategicFingerprint,
+            "recovery tombstone fixture has exact-distinct telemetry twins");
+
+        var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var result = CampaignStrategyOptimizer.Search(
+                session.Content,
+                [active],
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 1,
+                    CandidateCount = 1,
+                    MaximumWave = 1,
+                    BroadeningRounds = 0,
+                    BacktrackDepth = 1,
+                    MaximumRecoveryAttempts = 2,
+                    RecoveryArchive = [new CampaignRecoveryArchiveLayerState(1, [telemetryTwin], [])],
+                    ArtifactDirectory = Path.Combine(directory, "active")
+                },
+                plan);
+            var layer = result.Manifest.RecoveryArchive.Single(archive => archive.CompletedWave == 1);
+            Check.True(layer.RemainingStateCount == 0 && layer.DistinctStrategicCount == 0 &&
+                       layer.ExcludedStrategicFingerprints.Contains(
+                           active.StrategicFingerprint, StringComparer.OrdinalIgnoreCase) &&
+                       layer.States.All(state => state.CheckpointFingerprint != telemetryTwin.CheckpointFingerprint),
+                "an active or consumed strategic identity prevents telemetry twins from re-entering recovery slots");
+
+            var openingPlan = plan with { Waves = Array.Empty<WavePlan>() };
+            var consumed = CampaignStrategyOptimizer.Search(
+                session.Content,
+                [CheckpointSearchState.Create(session.Content, openingPlan, openingCheckpoint)],
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 1,
+                    CandidateCount = 2,
+                    MaximumWave = 1,
+                    BroadeningRounds = 0,
+                    BacktrackDepth = 0,
+                    MaximumRecoveryAttempts = 2,
+                    RecoveryArchive =
+                    [
+                        new CampaignRecoveryArchiveLayerState(
+                            1, Array.Empty<CheckpointSearchState>(), [active.StrategicFingerprint])
+                    ],
+                    ArtifactDirectory = Path.Combine(directory, "consumed")
+                },
+                openingPlan,
+                (content, parents, candidates, options, beamWidth) =>
+                {
+                    var parent = parents.Single();
+                    var ordered = candidates.OrderBy(candidate => candidate.StableKey, StringComparer.Ordinal).ToArray();
+                    var generatedTwinCheckpoint = CloneCampaignCheckpoint(twinCheckpoint);
+                    generatedTwinCheckpoint.Towers.Single().LifetimeDamage += 250;
+                    var generatedTwin = CheckpointSearchState.Create(
+                        content, parent.Strategy.Append(ordered[0]), generatedTwinCheckpoint);
+                    var success = new CheckpointWaveSuccess
+                    {
+                        ParentCheckpointFingerprint = parent.CheckpointFingerprint,
+                        WavePlan = ordered[0],
+                        Simulation = new SimulationRunResult
+                        {
+                            MapId = generatedTwinCheckpoint.MapId,
+                            DifficultyId = generatedTwinCheckpoint.DifficultyId,
+                            ChallengeId = generatedTwinCheckpoint.ChallengeId,
+                            Strategy = options.Strategy,
+                            Seed = ordered[0].DecisionSeed,
+                            Result = "WaveLimit",
+                            WaveReached = 1,
+                            LivesRemaining = generatedTwinCheckpoint.Economy.Lives,
+                            Kills = 0,
+                            EscapedEnemies = 0,
+                            CreditsEarned = 0,
+                            CreditsSpent = 0,
+                            CreditsUnspent = generatedTwinCheckpoint.Economy.Credits,
+                            SaleCreditsRecovered = 0,
+                            SimulatedSeconds = 0,
+                            Towers = new Dictionary<string, TowerRunMetrics>(),
+                            EnemyKills = new Dictionary<string, int>(),
+                            EnemyLeaks = new Dictionary<string, int>(),
+                            Waves = Array.Empty<WaveRunMetrics>()
+                        },
+                        State = generatedTwin
+                    };
+                    var failure = new CheckpointWaveFailure
+                    {
+                        ParentCheckpointFingerprint = parent.CheckpointFingerprint,
+                        WavePlan = ordered[1],
+                        Result = "SyntheticConsumedTwinFailure",
+                        LivesRemaining = parent.Checkpoint.Economy.Lives,
+                        CreditsUnspent = parent.Checkpoint.Economy.Credits,
+                        RemainingEnemies = Array.Empty<SimulationRemainingEnemy>(),
+                        QueuedEnemies = Array.Empty<SimulationRemainingEnemy>()
+                    };
+                    return new CheckpointSearchResult
+                    {
+                        TargetWave = 1,
+                        BeamWidth = beamWidth,
+                        Evaluations = 2,
+                        SuccessfulEvaluations = [success],
+                        RetainedStates = [generatedTwin],
+                        CampaignCompletions = Array.Empty<CheckpointCampaignCompletion>(),
+                        Failures = [failure]
+                    };
+                });
+            var consumedLayer = consumed.Manifest.RecoveryArchive.Single(archive => archive.CompletedWave == 1);
+            Check.True(consumed.Status == CampaignSearchStatus.FrontierExhausted &&
+                       consumed.WaveAttempts.Single() is
+                       { SuccessfulEvaluations: 1, RetainedStates: 0 } &&
+                       consumedLayer.RemainingStateCount == 0 &&
+                       consumedLayer.ExcludedStrategicFingerprints.Contains(
+                           active.StrategicFingerprint, StringComparer.OrdinalIgnoreCase),
+                "a consumed strategic tombstone filters a newly generated telemetry twin before beam retention");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    private static SaveGameData CloneCampaignCheckpoint(SaveGameData checkpoint) =>
+        JsonSerializer.Deserialize<SaveGameData>(JsonSerializer.Serialize(checkpoint)) ??
+        throw new InvalidOperationException("Campaign checkpoint clone failed.");
 
     private static void CampaignPartialBeamBroadening()
     {
@@ -4300,7 +4763,8 @@ internal static class Program
                    { Evaluations: 4, SuccessfulEvaluations: 2, RetainedStates: 4, Failures: 2 },
             "partial beam broadening preserves tranche-local outcomes and cumulative retained counts");
         Check.True(result.TotalEvaluations == 6 && result.Manifest.TotalEvaluations == 6 &&
-                   result.Manifest.EvaluatedConfigurationFingerprints.Count == 6,
+                   result.Manifest.EvaluatedConfigurationFingerprints.Count == 0 &&
+                   result.Manifest.EvaluationIdentityArtifact is { Count: 6 },
             "partial beam broadening preserves exact aggregate evaluation accounting");
         Check.True(result.BestFailure is { Result: "SyntheticBroadeningFailure" } &&
                    result.Manifest.BestFailure is { Result: "SyntheticBroadeningFailure" },
@@ -4361,7 +4825,10 @@ internal static class Program
                                            persisted.WaveAttempts.Count == 1 &&
                                            persisted.WaveAttempts[0] is
                                            { Evaluations: 2, SuccessfulEvaluations: 2, RetainedStates: 2 } &&
-                                           persisted.EvaluatedConfigurationFingerprints.Count == 2 &&
+                                           persisted.EvaluationIdentityArtifact is { Count: 2 } &&
+                                           persisted.InProgressWave == 1 &&
+                                           persisted.PendingWave == 1 &&
+                                           persisted.PendingFrontierArtifacts.Count == 2 &&
                                            persisted.FrontierArtifacts.Count == 1 &&
                                            persisted.FrontierArtifacts[0].CheckpointPath.StartsWith(
                                                "wave-00/resume/", StringComparison.Ordinal);
@@ -4483,6 +4950,440 @@ internal static class Program
         }
     }
 
+    private static void CampaignPartialBeamResume()
+    {
+        var session = SessionWithWaves(2);
+        var checkpoint = session.CaptureSaveGame();
+        var plan = new StrategyPlan
+        {
+            ArtifactId = "campaign-partial-resume-fixture",
+            MapId = checkpoint.MapId,
+            DifficultyId = checkpoint.DifficultyId,
+            ChallengeId = checkpoint.ChallengeId,
+            BaseSeed = 6414,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive
+        };
+        var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        var interruptedDirectory = Path.Combine(directory, "interrupted");
+        var resumedDirectory = Path.Combine(directory, "resumed");
+        var uninterruptedDirectory = Path.Combine(directory, "uninterrupted");
+        var interruptedCalls = 0;
+
+        CheckpointSearchResult InterruptBetweenRounds(
+            GameContent content,
+            IReadOnlyList<CheckpointSearchState> parents,
+            IReadOnlyList<WavePlan> candidates,
+            SimulationOptions options,
+            int beamWidth)
+        {
+            interruptedCalls++;
+            if (interruptedCalls == 2)
+                throw new InvalidOperationException("Synthetic interruption between broadening rounds.");
+            return EvaluateSyntheticBroadeningTranche(
+                content, parents, candidates, options, beamWidth, successesPerParent: 2);
+        }
+
+        try
+        {
+            Check.Throws<InvalidOperationException>(() => CampaignStrategyOptimizer.Search(
+                    session.Content,
+                    [CheckpointSearchState.Create(session.Content, plan, checkpoint)],
+                    new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                    new CampaignSearchOptions
+                    {
+                        BaseSeed = plan.BaseSeed,
+                        BeamWidth = 4,
+                        CandidateCount = 2,
+                        MaximumWave = 1,
+                        BroadeningRounds = 1,
+                        BacktrackDepth = 0,
+                        MaximumRecoveryAttempts = 0,
+                        ArtifactDirectory = interruptedDirectory
+                    },
+                    null,
+                    InterruptBetweenRounds),
+                "campaign interruption fixture stops after persisting its partial beam");
+
+            var interruptedManifestPath = Path.Combine(interruptedDirectory, "campaign-search.json");
+            var resume = CampaignSearchArtifactStore.LoadResumeState(session.Content, interruptedManifestPath);
+            Check.True(resume.Manifest is
+                       {
+                           Status: CampaignSearchStatus.Running,
+                           LastCompletedWave: 0,
+                           InProgressWave: 1,
+                           PendingWave: 1,
+                           NextBroadeningRound: 1,
+                           TotalEvaluations: 2,
+                           EvaluationIdentityArtifact.Count: 2
+                       } && resume.PendingFrontier.Count == 2 &&
+                       resume.Manifest.PendingFrontierArtifacts.Count == 2,
+                "interrupted broadening persists the accumulated partial beam and exact absolute cursor");
+            Check.True(resume.Manifest.PendingFrontierArtifacts.All(artifact =>
+                    File.Exists(Path.Combine(interruptedDirectory, artifact.CheckpointPath)) &&
+                    File.Exists(Path.Combine(interruptedDirectory, artifact.StrategyPath))),
+                "pending beam checkpoints and strategies are durable external artifacts");
+            var interruptedManifestJson = File.ReadAllText(interruptedManifestPath);
+            var pendingArtifact = resume.Manifest.PendingFrontierArtifacts[0];
+            var pendingStrategyPath = Path.Combine(interruptedDirectory, pendingArtifact.StrategyPath);
+            var pendingStrategyJson = File.ReadAllText(pendingStrategyPath);
+            var pendingPlan = StrategyArtifactStore.LoadPlan(pendingStrategyPath);
+            var changedPendingPlan = pendingPlan with
+            {
+                Waves = [pendingPlan.Waves.Single() with { PolicyId = "mismatched-pending-decision" }]
+            };
+            StrategyArtifactStore.SavePlan(pendingStrategyPath, changedPendingPlan);
+            var mismatchedPendingManifest = JsonNode.Parse(interruptedManifestJson)!.AsObject();
+            var mismatchedPendingArtifact = mismatchedPendingManifest["pendingFrontierArtifacts"]!.AsArray()
+                .Select(node => node!.AsObject())
+                .Single(node => node["stateFingerprint"]!.GetValue<string>() == pendingArtifact.StateFingerprint);
+            mismatchedPendingArtifact["strategyContentHash"] =
+                CampaignStrategyOptimizer.ContentHash(pendingStrategyPath);
+            mismatchedPendingArtifact["strategyFingerprint"] =
+                CampaignStrategyOptimizer.StrategyFingerprint(changedPendingPlan);
+            File.WriteAllText(interruptedManifestPath,
+                mismatchedPendingManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() =>
+                    CampaignSearchArtifactStore.LoadResumeState(session.Content, interruptedManifestPath),
+                "pending strategy decisions remain bound to their accumulated checkpoint state identity");
+            File.WriteAllText(pendingStrategyPath, pendingStrategyJson);
+            File.WriteAllText(interruptedManifestPath, interruptedManifestJson);
+            Check.Throws<ArgumentOutOfRangeException>(() => new CampaignSearchOptions
+            {
+                BeamWidth = 4,
+                CandidateCount = 2,
+                BroadeningRounds = 0,
+                StartingBroadeningRound = resume.Manifest.NextBroadeningRound,
+                PendingFrontier = resume.PendingFrontier
+            }.Validate(), "pending resume cannot lower broadening below its saved cursor");
+            Check.Throws<ArgumentOutOfRangeException>(() => SimulationCli.Run(session.Content,
+                    ["--optimize-strategy", "--resume-manifest", interruptedManifestPath,
+                        "--broaden-rounds", "0"], false),
+                "CLI pending resume rejects a final broadening round below its saved cursor");
+
+            var resumedCandidateCounts = new List<int>();
+            var resumed = CampaignStrategyOptimizer.Search(
+                session.Content,
+                resume.Frontier,
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 4,
+                    CandidateCount = 2,
+                    MaximumWave = 1,
+                    BroadeningRounds = 1,
+                    StartingBroadeningRound = resume.Manifest.NextBroadeningRound,
+                    InProgressWave = resume.Manifest.InProgressWave,
+                    BacktrackDepth = 0,
+                    MaximumRecoveryAttempts = 0,
+                    RecoveryAttemptOffset = resume.Manifest.RecoveryAttemptOffset,
+                    PreviouslyEvaluatedConfigurationFingerprints =
+                        resume.EvaluatedConfigurationFingerprints,
+                    PendingFrontier = resume.PendingFrontier,
+                    RecoveryArchive = resume.RecoveryArchive,
+                    ResumeManifest = resume.Manifest,
+                    ArtifactDirectory = resumedDirectory
+                },
+                resume.Frontier[0].Strategy,
+                (content, parents, candidates, options, beamWidth) =>
+                {
+                    resumedCandidateCounts.Add(candidates.Count);
+                    return EvaluateSyntheticBroadeningTranche(
+                        content, parents, candidates, options, beamWidth, successesPerParent: 2);
+                });
+
+            var uninterrupted = CampaignStrategyOptimizer.Search(
+                session.Content,
+                [CheckpointSearchState.Create(session.Content, plan, checkpoint)],
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 4,
+                    CandidateCount = 2,
+                    MaximumWave = 1,
+                    BroadeningRounds = 1,
+                    BacktrackDepth = 0,
+                    MaximumRecoveryAttempts = 0,
+                    ArtifactDirectory = uninterruptedDirectory
+                },
+                null,
+                (content, parents, candidates, options, beamWidth) => EvaluateSyntheticBroadeningTranche(
+                    content, parents, candidates, options, beamWidth, successesPerParent: 2));
+
+            var resumedAttempt = resumed.WaveAttempts.Skip(resume.Manifest.WaveAttempts.Count).Single();
+            Check.True(resumedCandidateCounts.SequenceEqual([4]) && resumedAttempt is
+                       { BroadeningRound: 1, CandidateCount: 4, Evaluations: 4, RetainedStates: 4 },
+                "partial resume evaluates only the remaining absolute broadening round at its original width");
+            Check.True(resumed.WaveAttempts.Select(attempt => attempt.BroadeningRound).SequenceEqual([0, 1]) &&
+                       resumed.TotalEvaluations == uninterrupted.TotalEvaluations &&
+                       resumed.Manifest.TotalEvaluations == uninterrupted.TotalEvaluations &&
+                       resumed.Manifest.EvaluationIdentityArtifact is { Count: 6 },
+                "interrupted and resumed evaluation accounting reconciles with uninterrupted search");
+            Check.True(resumed.ResumeFrontier.Select(state => state.CheckpointFingerprint).SequenceEqual(
+                           uninterrupted.ResumeFrontier.Select(state => state.CheckpointFingerprint)) &&
+                       resumed.ResumeFrontier.Select(state => CampaignStrategyOptimizer.RecoveryStateFingerprint(state))
+                           .SequenceEqual(uninterrupted.ResumeFrontier.Select(
+                               state => CampaignStrategyOptimizer.RecoveryStateFingerprint(state))),
+                "partial-beam resume produces the same deterministic frontier as uninterrupted broadening");
+            Check.True(resumed.Manifest.InProgressWave == 0 && resumed.Manifest.PendingWave == 0 &&
+                       resumed.Manifest.PendingFrontierArtifacts.Count == 0,
+                "completed broadening clears the pending frontier from the next manifest");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    private static void CampaignZeroSuccessBeamResume()
+    {
+        var session = SessionWithWaves(2);
+        var checkpoint = session.CaptureSaveGame();
+        var plan = new StrategyPlan
+        {
+            ArtifactId = "campaign-zero-success-resume-fixture",
+            MapId = checkpoint.MapId,
+            DifficultyId = checkpoint.DifficultyId,
+            ChallengeId = checkpoint.ChallengeId,
+            BaseSeed = 6421,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive
+        };
+        var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        var interruptedDirectory = Path.Combine(directory, "interrupted");
+        var resumedDirectory = Path.Combine(directory, "resumed");
+        var uninterruptedDirectory = Path.Combine(directory, "uninterrupted");
+        var interruptedCalls = 0;
+
+        CheckpointSearchResult Pattern(
+            GameContent content,
+            IReadOnlyList<CheckpointSearchState> parents,
+            IReadOnlyList<WavePlan> candidates,
+            SimulationOptions options,
+            int beamWidth) => EvaluateSyntheticBroadeningTranche(
+            content,
+            parents,
+            candidates,
+            options,
+            beamWidth,
+            successesPerParent: candidates.Count == 2 ? 0 : 2);
+
+        CheckpointSearchResult InterruptAfterEmptyRound(
+            GameContent content,
+            IReadOnlyList<CheckpointSearchState> parents,
+            IReadOnlyList<WavePlan> candidates,
+            SimulationOptions options,
+            int beamWidth)
+        {
+            interruptedCalls++;
+            if (interruptedCalls == 2)
+                throw new InvalidOperationException("Synthetic interruption after an empty broadening round.");
+            return Pattern(content, parents, candidates, options, beamWidth);
+        }
+
+        try
+        {
+            var simulation = new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 };
+            Check.Throws<InvalidOperationException>(() => CampaignStrategyOptimizer.Search(
+                    session.Content,
+                    [CheckpointSearchState.Create(session.Content, plan, checkpoint)],
+                    simulation,
+                    new CampaignSearchOptions
+                    {
+                        BaseSeed = plan.BaseSeed,
+                        BeamWidth = 4,
+                        CandidateCount = 2,
+                        MaximumWave = 1,
+                        BroadeningRounds = 1,
+                        BacktrackDepth = 0,
+                        MaximumRecoveryAttempts = 0,
+                        ArtifactDirectory = interruptedDirectory
+                    },
+                    null,
+                    InterruptAfterEmptyRound),
+                "zero-success fixture interrupts after persisting its empty first tranche");
+
+            var manifestPath = Path.Combine(interruptedDirectory, "campaign-search.json");
+            var resume = CampaignSearchArtifactStore.LoadResumeState(session.Content, manifestPath);
+            Check.True(resume.Manifest is
+                       {
+                           Status: CampaignSearchStatus.Running,
+                           LastCompletedWave: 0,
+                           InProgressWave: 1,
+                           PendingWave: 0,
+                           NextBroadeningRound: 1,
+                           TotalEvaluations: 2,
+                           EvaluationIdentityArtifact.Count: 2
+                       } && resume.PendingFrontier.Count == 0 &&
+                       resume.Manifest.PendingFrontierArtifacts.Count == 0 &&
+                       resume.Manifest.BestFailure is { Result: "SyntheticBroadeningFailure" },
+                "an empty interrupted tranche retains its independent in-progress cursor and best failure");
+            Check.Throws<ArgumentOutOfRangeException>(() => new CampaignSearchOptions
+            {
+                BeamWidth = 4,
+                CandidateCount = 2,
+                BroadeningRounds = 0,
+                StartingBroadeningRound = 1,
+                InProgressWave = 1
+            }.Validate(), "an empty pending beam cannot discard an unfinished absolute round cursor");
+            Check.Throws<ArgumentOutOfRangeException>(() => SimulationCli.Run(session.Content,
+                    ["--optimize-strategy", "--resume-manifest", manifestPath, "--broaden-rounds", "0"], false),
+                "CLI rejects lowering the final broadening round for an empty in-progress beam");
+            Check.Throws<InvalidDataException>(() => SimulationCli.Run(session.Content,
+                    ["--optimize-strategy", "--resume-manifest", manifestPath, "--beam-width", "3"], false),
+                "CLI cannot resize an in-progress campaign beam");
+            Check.Throws<InvalidDataException>(() => SimulationCli.Run(session.Content,
+                    ["--optimize-strategy", "--resume-manifest", manifestPath, "--step-seconds", "0.05"], false),
+                "CLI cannot change simulation settings while reusing campaign evaluation identities");
+
+            var resumedCandidateCounts = new List<int>();
+            var resumed = CampaignStrategyOptimizer.Search(
+                session.Content,
+                resume.Frontier,
+                simulation,
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 4,
+                    CandidateCount = 2,
+                    MaximumWave = 1,
+                    BroadeningRounds = 1,
+                    StartingBroadeningRound = resume.Manifest.NextBroadeningRound,
+                    InProgressWave = resume.Manifest.InProgressWave,
+                    BacktrackDepth = 0,
+                    MaximumRecoveryAttempts = 0,
+                    RecoveryAttemptOffset = resume.Manifest.RecoveryAttemptOffset,
+                    PreviouslyEvaluatedConfigurationFingerprints = resume.EvaluatedConfigurationFingerprints,
+                    PendingFrontier = resume.PendingFrontier,
+                    RecoveryArchive = resume.RecoveryArchive,
+                    ResumeManifest = resume.Manifest,
+                    ArtifactDirectory = resumedDirectory
+                },
+                resume.Frontier[0].Strategy,
+                (content, parents, candidates, options, beamWidth) =>
+                {
+                    resumedCandidateCounts.Add(candidates.Count);
+                    return Pattern(content, parents, candidates, options, beamWidth);
+                });
+
+            var uninterrupted = CampaignStrategyOptimizer.Search(
+                session.Content,
+                [CheckpointSearchState.Create(session.Content, plan, checkpoint)],
+                simulation,
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 4,
+                    CandidateCount = 2,
+                    MaximumWave = 1,
+                    BroadeningRounds = 1,
+                    BacktrackDepth = 0,
+                    MaximumRecoveryAttempts = 0,
+                    ArtifactDirectory = uninterruptedDirectory
+                },
+                null,
+                Pattern);
+
+            Check.True(resumedCandidateCounts.SequenceEqual([4]) &&
+                       resumed.WaveAttempts.Select(attempt => attempt.BroadeningRound).SequenceEqual([0, 1]) &&
+                       resumed.WaveAttempts.Select(attempt => attempt.CandidateCount).SequenceEqual([2, 4]) &&
+                       resumed.TotalEvaluations == 6 && resumed.Manifest.EvaluationIdentityArtifact is { Count: 6 },
+                "zero-success resume evaluates the exact remaining absolute tranche with cumulative accounting");
+            Check.True(resumed.ResumeFrontier.Select(state => state.CheckpointFingerprint).SequenceEqual(
+                           uninterrupted.ResumeFrontier.Select(state => state.CheckpointFingerprint)) &&
+                       resumed.FinalStrategy!.Waves.Select(wave => wave.StableKey).SequenceEqual(
+                           uninterrupted.FinalStrategy!.Waves.Select(wave => wave.StableKey)),
+                "zero-success interrupted and uninterrupted searches produce the same frontier and strategy");
+            Check.Equal(JsonSerializer.Serialize(uninterrupted.BestFailure), JsonSerializer.Serialize(resumed.BestFailure),
+                "zero-success resume preserves the cumulative best failure across the interruption");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    private static CheckpointSearchResult EvaluateSyntheticBroadeningTranche(
+        GameContent content,
+        IReadOnlyList<CheckpointSearchState> parents,
+        IReadOnlyList<WavePlan> candidates,
+        SimulationOptions options,
+        int beamWidth,
+        int successesPerParent)
+    {
+        var orderedCandidates = candidates.OrderBy(candidate => candidate.StableKey, StringComparer.Ordinal).ToArray();
+        var targetWave = orderedCandidates[0].Wave;
+        var successes = new List<CheckpointWaveSuccess>();
+        var failures = new List<CheckpointWaveFailure>();
+        foreach (var parent in parents.OrderBy(state => state.CheckpointFingerprint, StringComparer.Ordinal))
+        {
+            for (var index = 0; index < orderedCandidates.Length; index++)
+            {
+                var candidate = orderedCandidates[index];
+                if (index >= successesPerParent)
+                {
+                    failures.Add(new CheckpointWaveFailure
+                    {
+                        ParentCheckpointFingerprint = parent.CheckpointFingerprint,
+                        WavePlan = candidate,
+                        Result = "SyntheticBroadeningFailure",
+                        LivesRemaining = parent.Checkpoint.Economy.Lives,
+                        CreditsUnspent = parent.Checkpoint.Economy.Credits,
+                        RemainingEnemies = Array.Empty<SimulationRemainingEnemy>(),
+                        QueuedEnemies = Array.Empty<SimulationRemainingEnemy>()
+                    });
+                    continue;
+                }
+
+                var nextCheckpoint = JsonSerializer.Deserialize<SaveGameData>(
+                    JsonSerializer.Serialize(parent.Checkpoint)) ??
+                                     throw new InvalidOperationException("Synthetic checkpoint clone failed.");
+                nextCheckpoint.Waves.CurrentWaveNumber = targetWave;
+                nextCheckpoint.Economy.Credits = 10_000 + orderedCandidates.Length * 100 + index;
+                var state = CheckpointSearchState.Create(content, parent.Strategy.Append(candidate), nextCheckpoint);
+                successes.Add(new CheckpointWaveSuccess
+                {
+                    ParentCheckpointFingerprint = parent.CheckpointFingerprint,
+                    WavePlan = candidate,
+                    Simulation = new SimulationRunResult
+                    {
+                        MapId = parent.Checkpoint.MapId,
+                        DifficultyId = parent.Checkpoint.DifficultyId,
+                        ChallengeId = parent.Checkpoint.ChallengeId,
+                        Strategy = options.Strategy,
+                        Seed = candidate.DecisionSeed,
+                        Result = "WaveLimit",
+                        WaveReached = targetWave,
+                        LivesRemaining = nextCheckpoint.Economy.Lives,
+                        Kills = 0,
+                        EscapedEnemies = 0,
+                        CreditsEarned = 0,
+                        CreditsSpent = 0,
+                        CreditsUnspent = nextCheckpoint.Economy.Credits,
+                        SaleCreditsRecovered = 0,
+                        SimulatedSeconds = 0,
+                        Towers = new Dictionary<string, TowerRunMetrics>(),
+                        EnemyKills = new Dictionary<string, int>(),
+                        EnemyLeaks = new Dictionary<string, int>(),
+                        Waves = Array.Empty<WaveRunMetrics>()
+                    },
+                    State = state
+                });
+            }
+        }
+
+        return new CheckpointSearchResult
+        {
+            TargetWave = targetWave,
+            BeamWidth = beamWidth,
+            Evaluations = parents.Count * orderedCandidates.Length,
+            SuccessfulEvaluations = successes,
+            RetainedStates = CheckpointBeamOptimizer.RankStates(successes.Select(success => success.State), beamWidth),
+            CampaignCompletions = Array.Empty<CheckpointCampaignCompletion>(),
+            Failures = failures
+        };
+    }
+
     private static void MultiWaveCampaignSearchArtifacts()
     {
         var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
@@ -4524,10 +5425,11 @@ internal static class Program
                        File.Exists(Path.Combine(segmentOneDirectory, tracePath)),
                 "campaign search persists its manifest and wave trace");
 
-            var loadedManifest = CampaignSearchArtifactStore.LoadManifest(
-                Path.Combine(segmentOneDirectory, "campaign-search.json"));
+            var segmentOneManifestPath = Path.Combine(segmentOneDirectory, "campaign-search.json");
+            var segmentOneManifestJson = File.ReadAllText(segmentOneManifestPath);
+            var loadedManifest = CampaignSearchArtifactStore.LoadManifest(segmentOneManifestPath);
             var resumedFrontier = CampaignSearchArtifactStore.LoadFrontier(content,
-                Path.Combine(segmentOneDirectory, "campaign-search.json"));
+                segmentOneManifestPath);
             Check.Equal(segmentOne.ResumeFrontier.Count, resumedFrontier.Count,
                 "campaign manifest restores every retained beam state");
             Check.True(resumedFrontier.All(state => state.Checkpoint.Waves.CurrentWaveNumber == 1),
@@ -4535,7 +5437,50 @@ internal static class Program
             Check.Equal(segmentOne.TotalEvaluations, loadedManifest.TotalEvaluations,
                 "campaign manifest retains the exact evaluation count");
 
-            var segmentTwo = CampaignStrategyOptimizer.Search(content, resumedFrontier,
+            var frontierArtifact = loadedManifest.FrontierArtifacts[0];
+            var frontierCheckpointPath = Path.Combine(segmentOneDirectory, frontierArtifact.CheckpointPath);
+            var frontierCheckpointJson = File.ReadAllText(frontierCheckpointPath);
+            var wrongWrapper = JsonNode.Parse(frontierCheckpointJson)!.AsObject();
+            wrongWrapper["strategyArtifactId"] = "wrong-frontier-artifact";
+            File.WriteAllText(frontierCheckpointPath,
+                wrongWrapper.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            var wrongWrapperManifest = JsonNode.Parse(segmentOneManifestJson)!.AsObject();
+            var wrongWrapperNode = wrongWrapperManifest["frontierArtifacts"]!.AsArray()[0]!.AsObject();
+            wrongWrapperNode["checkpointContentHash"] =
+                CampaignStrategyOptimizer.ContentHash(frontierCheckpointPath);
+            File.WriteAllText(segmentOneManifestPath,
+                wrongWrapperManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() =>
+                    CampaignSearchArtifactStore.LoadResumeState(content, segmentOneManifestPath),
+                "frontier checkpoint wrappers remain bound to the manifest artifact identity");
+            File.WriteAllText(frontierCheckpointPath, frontierCheckpointJson);
+            File.WriteAllText(segmentOneManifestPath, segmentOneManifestJson);
+
+            var frontierStrategyPath = Path.Combine(segmentOneDirectory, frontierArtifact.StrategyPath);
+            var frontierStrategyJson = File.ReadAllText(frontierStrategyPath);
+            var frontierPlan = StrategyArtifactStore.LoadPlan(frontierStrategyPath);
+            var changedFrontierPlan = frontierPlan with
+            {
+                Waves = [frontierPlan.Waves.Single() with { PolicyId = "mismatched-frontier-decision" }]
+            };
+            StrategyArtifactStore.SavePlan(frontierStrategyPath, changedFrontierPlan);
+            var mismatchedFrontierManifest = JsonNode.Parse(segmentOneManifestJson)!.AsObject();
+            var mismatchedFrontierNode = mismatchedFrontierManifest["frontierArtifacts"]!.AsArray()[0]!.AsObject();
+            mismatchedFrontierNode["strategyContentHash"] =
+                CampaignStrategyOptimizer.ContentHash(frontierStrategyPath);
+            mismatchedFrontierNode["strategyFingerprint"] =
+                CampaignStrategyOptimizer.StrategyFingerprint(changedFrontierPlan);
+            File.WriteAllText(segmentOneManifestPath,
+                mismatchedFrontierManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() =>
+                    CampaignSearchArtifactStore.LoadResumeState(content, segmentOneManifestPath),
+                "frontier strategy decisions remain bound to their checkpoint state identity");
+            File.WriteAllText(frontierStrategyPath, frontierStrategyJson);
+            File.WriteAllText(segmentOneManifestPath, segmentOneManifestJson);
+
+            var segmentOneResume = CampaignSearchArtifactStore.LoadResumeState(content, segmentOneManifestPath);
+
+            var segmentTwo = CampaignStrategyOptimizer.Search(content, segmentOneResume.Frontier,
                 new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 240 },
                 new CampaignSearchOptions
                 {
@@ -4544,8 +5489,16 @@ internal static class Program
                     CandidateCount = 2,
                     MaximumWave = 2,
                     BroadeningRounds = 0,
+                    StartingBroadeningRound = segmentOneResume.Manifest.NextBroadeningRound,
+                    BacktrackDepth = segmentOneResume.Manifest.BacktrackDepth,
+                    MaximumRecoveryAttempts = segmentOneResume.Manifest.MaximumRecoveryAttempts,
+                    RecoveryAttemptOffset = segmentOneResume.Manifest.RecoveryAttemptOffset,
+                    PreviouslyEvaluatedConfigurationFingerprints =
+                        segmentOneResume.EvaluatedConfigurationFingerprints,
+                    RecoveryArchive = segmentOneResume.RecoveryArchive,
+                    ResumeManifest = segmentOneResume.Manifest,
                     ArtifactDirectory = Path.Combine(directory, "segment-two")
-                }, resumedFrontier[0].Strategy);
+                }, segmentOneResume.Frontier[0].Strategy);
             Check.Equal(CampaignSearchStatus.WaveLimitReached, segmentTwo.Status,
                 "resumed campaign search reaches the next requested boundary");
             Check.Equal(2, segmentTwo.LastCompletedWave, "resumed campaign advances from its artifact checkpoint");
@@ -4573,6 +5526,285 @@ internal static class Program
             Check.True(segmentTwo.ResumeFrontier.Select(state => state.CheckpointFingerprint)
                            .SequenceEqual(uninterrupted.ResumeFrontier.Select(state => state.CheckpointFingerprint)),
                 "resumed and uninterrupted campaign searches retain the same checkpoint beam");
+            Check.True(segmentTwo.TotalEvaluations == uninterrupted.TotalEvaluations &&
+                       segmentTwo.WaveAttempts.Count == uninterrupted.WaveAttempts.Count &&
+                       segmentTwo.Manifest.EvaluationIdentityArtifact?.Count == uninterrupted.TotalEvaluations,
+                "wave-limit resume preserves cumulative attempt and evaluation history");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    private static void CampaignRecoveryArchiveArtifacts()
+    {
+        var session = SessionWithWaves(2);
+        var checkpoint = session.CaptureSaveGame();
+        var plan = new StrategyPlan
+        {
+            ArtifactId = "campaign-archive-fixture",
+            MapId = checkpoint.MapId,
+            DifficultyId = checkpoint.DifficultyId,
+            ChallengeId = checkpoint.ChallengeId,
+            BaseSeed = 9173,
+            DefaultStrategy = AutoPlayerStrategy.Adaptive
+        };
+        var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
+        var sourceDirectory = Path.Combine(directory, "source");
+
+        try
+        {
+            var source = CampaignStrategyOptimizer.Search(
+                session.Content,
+                [CheckpointSearchState.Create(session.Content, plan, checkpoint)],
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 1,
+                    CandidateCount = 3,
+                    MaximumWave = 1,
+                    BroadeningRounds = 0,
+                    BacktrackDepth = 1,
+                    MaximumRecoveryAttempts = 3,
+                    ArtifactDirectory = sourceDirectory
+                },
+                null,
+                (content, parents, candidates, options, beamWidth) => EvaluateSyntheticBroadeningTranche(
+                    content, parents, candidates, options, beamWidth, successesPerParent: 3));
+            var manifestPath = Path.Combine(sourceDirectory, "campaign-search.json");
+            var originalManifestJson = File.ReadAllText(manifestPath);
+            var resume = CampaignSearchArtifactStore.LoadResumeState(session.Content, manifestPath);
+            var sourceLayer = resume.RecoveryArchive.Single(layer => layer.CompletedWave == 1);
+            var artifactLayer = source.Manifest.RecoveryArchive.Single(layer => layer.CompletedWave == 1);
+
+            Check.True(source.Manifest.SchemaVersion == CampaignSearchManifest.CurrentSchemaVersion &&
+                       sourceLayer.Alternatives.Count == 2 && artifactLayer is
+                       {
+                           RemainingStateCount: 2,
+                           DistinctCheckpointCount: 2,
+                           DistinctStrategicCount: 2,
+                           DistinctDecisionCount: 2
+                       },
+                "current archive round trip preserves exact state and decision diversity");
+            Check.True(artifactLayer.States.All(state =>
+                    state.CheckpointPath.StartsWith("recovery-archive/wave-01/", StringComparison.Ordinal) &&
+                    state.StrategyPath.StartsWith("recovery-archive/wave-01/", StringComparison.Ordinal) &&
+                    File.Exists(Path.Combine(sourceDirectory, state.CheckpointPath)) &&
+                    File.Exists(Path.Combine(sourceDirectory, state.StrategyPath))),
+                "recovery states use external immutable content-addressed checkpoint and strategy artifacts");
+
+            var mergeArchive = new CampaignRecoveryArchiveLayerState(
+                1,
+                [sourceLayer.Alternatives[0]],
+                sourceLayer.ExcludedStrategicFingerprints);
+            CampaignSearchRunResult Merge(
+                IReadOnlyList<CheckpointSearchState> initial,
+                string name,
+                int maximumRecoveryAttempts = 3) =>
+                CampaignStrategyOptimizer.Search(
+                    session.Content,
+                    initial,
+                    new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                    new CampaignSearchOptions
+                    {
+                        BaseSeed = plan.BaseSeed,
+                        BeamWidth = 1,
+                        CandidateCount = 3,
+                        MaximumWave = 1,
+                        BroadeningRounds = 0,
+                        BacktrackDepth = 1,
+                        MaximumRecoveryAttempts = maximumRecoveryAttempts,
+                        RecoveryArchive = [mergeArchive],
+                        ArtifactDirectory = Path.Combine(directory, name)
+                    });
+
+            var mergeForward = Merge([resume.Frontier.Single(), sourceLayer.Alternatives[1]], "merge-forward");
+            var mergeReverse = Merge([sourceLayer.Alternatives[1], resume.Frontier.Single()], "merge-reverse");
+            var mergeCapped = Merge(
+                [resume.Frontier.Single(), sourceLayer.Alternatives[1]], "merge-capped", maximumRecoveryAttempts: 1);
+            var expectedMerged = sourceLayer.Alternatives
+                .Select(CampaignStrategyOptimizer.RecoveryStateFingerprint)
+                .OrderBy(value => value, StringComparer.Ordinal)
+                .ToArray();
+            var mergedForward = mergeForward.Manifest.RecoveryArchive.Single(layer => layer.CompletedWave == 1).States
+                .Select(state => state.StateFingerprint).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+            var mergedReverse = mergeReverse.Manifest.RecoveryArchive.Single(layer => layer.CompletedWave == 1).States
+                .Select(state => state.StateFingerprint).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+            Check.True(mergedForward.SequenceEqual(expectedMerged) && mergedReverse.SequenceEqual(expectedMerged),
+                "archive merge retains prior and newly unused alternatives independent of frontier enumeration order");
+            Check.Equal(1,
+                mergeCapped.Manifest.RecoveryArchive.Single(layer => layer.CompletedWave == 1).RemainingStateCount,
+                "archive merge caps each layer to beam width times maximum recovery attempts");
+
+            static JsonObject RecoveryLayerNode(JsonObject manifest) => manifest["recoveryArchive"]!.AsArray()
+                .Select(node => node!.AsObject())
+                .Single(layer => layer["completedWave"]!.GetValue<int>() == 1);
+
+            var unsafePathManifest = JsonNode.Parse(originalManifestJson)!.AsObject();
+            RecoveryLayerNode(unsafePathManifest)["states"]!.AsArray()[0]!.AsObject()["checkpointPath"] =
+                "../outside.checkpoint.json";
+            File.WriteAllText(manifestPath, unsafePathManifest.ToJsonString(new JsonSerializerOptions
+                { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() => CampaignSearchArtifactStore.LoadManifest(manifestPath),
+                "campaign archive rejects unsafe external artifact paths");
+
+            var countManifest = JsonNode.Parse(originalManifestJson)!.AsObject();
+            var countLayer = RecoveryLayerNode(countManifest);
+            countLayer["remainingStateCount"] = countLayer["remainingStateCount"]!.GetValue<int>() + 1;
+            File.WriteAllText(manifestPath, countManifest.ToJsonString(new JsonSerializerOptions
+                { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() => CampaignSearchArtifactStore.LoadManifest(manifestPath),
+                "campaign archive rejects inconsistent count summaries");
+
+            var diversityManifest = JsonNode.Parse(originalManifestJson)!.AsObject();
+            var diversityLayer = RecoveryLayerNode(diversityManifest);
+            diversityLayer["distinctDecisionCount"] =
+                diversityLayer["distinctDecisionCount"]!.GetValue<int>() + 1;
+            File.WriteAllText(manifestPath, diversityManifest.ToJsonString(new JsonSerializerOptions
+                { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() => CampaignSearchArtifactStore.LoadManifest(manifestPath),
+                "campaign archive rejects inconsistent diversity summaries");
+
+            var strategicDiversityManifest = JsonNode.Parse(originalManifestJson)!.AsObject();
+            var strategicDiversityLayer = RecoveryLayerNode(strategicDiversityManifest);
+            strategicDiversityLayer["distinctStrategicCount"] =
+                strategicDiversityLayer["distinctStrategicCount"]!.GetValue<int>() + 1;
+            File.WriteAllText(manifestPath,
+                strategicDiversityManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() => CampaignSearchArtifactStore.LoadManifest(manifestPath),
+                "campaign archive rejects inconsistent strategic diversity summaries");
+
+            var strategicIdentityManifest = JsonNode.Parse(originalManifestJson)!.AsObject();
+            RecoveryLayerNode(strategicIdentityManifest)["states"]!.AsArray()[0]!.AsObject()[
+                "strategicFingerprint"] = new string('0', 64);
+            File.WriteAllText(manifestPath,
+                strategicIdentityManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(
+                () => CampaignSearchArtifactStore.LoadResumeState(session.Content, manifestPath),
+                "campaign archive rejects a tampered strategic checkpoint identity");
+
+            File.WriteAllText(manifestPath, originalManifestJson);
+            var stateArtifact = artifactLayer.States[0];
+            var strategyArtifactPath = Path.Combine(sourceDirectory, stateArtifact.StrategyPath);
+            var originalStrategyJson = File.ReadAllText(strategyArtifactPath);
+            var archivedPlan = StrategyArtifactStore.LoadPlan(strategyArtifactPath);
+            var changedWave = archivedPlan.Waves[0] with { PolicyId = "tampered-archive-policy" };
+            StrategyArtifactStore.SavePlan(strategyArtifactPath, archivedPlan with { Waves = [changedWave] });
+            Check.Throws<InvalidDataException>(
+                () => CampaignSearchArtifactStore.LoadResumeState(session.Content, manifestPath),
+                "campaign archive detects strategy content that no longer matches its content hash");
+            File.WriteAllText(strategyArtifactPath, originalStrategyJson);
+
+            var checkpointArtifactPath = Path.Combine(sourceDirectory, stateArtifact.CheckpointPath);
+            var originalCheckpointJson = File.ReadAllText(checkpointArtifactPath);
+            var wrongWrapper = JsonNode.Parse(originalCheckpointJson)!.AsObject();
+            wrongWrapper["strategyArtifactId"] = "different-campaign-artifact";
+            File.WriteAllText(checkpointArtifactPath,
+                wrongWrapper.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            var wrongWrapperManifest = JsonNode.Parse(originalManifestJson)!.AsObject();
+            var wrongWrapperState = RecoveryLayerNode(wrongWrapperManifest)["states"]!.AsArray()
+                .Select(node => node!.AsObject())
+                .Single(node => node["stateFingerprint"]!.GetValue<string>() == stateArtifact.StateFingerprint);
+            wrongWrapperState["checkpointContentHash"] =
+                CampaignStrategyOptimizer.ContentHash(checkpointArtifactPath);
+            File.WriteAllText(manifestPath,
+                wrongWrapperManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(
+                () => CampaignSearchArtifactStore.LoadResumeState(session.Content, manifestPath),
+                "campaign archive binds checkpoint wrappers to the manifest and strategy artifact identity");
+            File.WriteAllText(checkpointArtifactPath, originalCheckpointJson);
+
+            StrategyArtifactStore.SavePlan(strategyArtifactPath, archivedPlan with { Waves = [changedWave] });
+            var mismatchedStateManifest = JsonNode.Parse(originalManifestJson)!.AsObject();
+            var mismatchedState = RecoveryLayerNode(mismatchedStateManifest)["states"]!.AsArray()
+                .Select(node => node!.AsObject())
+                .Single(node => node["stateFingerprint"]!.GetValue<string>() == stateArtifact.StateFingerprint);
+            var changedPlan = StrategyArtifactStore.LoadPlan(strategyArtifactPath);
+            mismatchedState["strategyContentHash"] = CampaignStrategyOptimizer.ContentHash(strategyArtifactPath);
+            mismatchedState["strategyFingerprint"] = CampaignStrategyOptimizer.StrategyFingerprint(changedPlan);
+            File.WriteAllText(manifestPath,
+                mismatchedStateManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(
+                () => CampaignSearchArtifactStore.LoadResumeState(session.Content, manifestPath),
+                "campaign archive binds each strategy decision prefix to its persisted state fingerprint");
+            File.WriteAllText(strategyArtifactPath, originalStrategyJson);
+            File.WriteAllText(manifestPath, originalManifestJson);
+
+            var evaluationIdentityPath = Path.Combine(sourceDirectory,
+                source.Manifest.EvaluationIdentityArtifact?.Path ??
+                throw new InvalidOperationException("Archive fixture omitted its evaluation identity artifact."));
+            var originalEvaluationIdentities = File.ReadAllText(evaluationIdentityPath);
+            File.AppendAllText(evaluationIdentityPath, new string('0', 64) + Environment.NewLine);
+            Check.Throws<InvalidDataException>(
+                () => CampaignSearchArtifactStore.LoadResumeState(session.Content, manifestPath),
+                "campaign resume detects evaluation identity artifact tampering");
+            File.WriteAllText(evaluationIdentityPath, originalEvaluationIdentities);
+
+            var wrongBuildManifest = JsonNode.Parse(originalManifestJson)!.AsObject();
+            wrongBuildManifest["buildFingerprint"] = new string('f', 64);
+            File.WriteAllText(manifestPath,
+                wrongBuildManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(
+                () => CampaignSearchArtifactStore.LoadResumeState(session.Content, manifestPath),
+                "campaign resume rejects a manifest from a different gameplay build");
+            File.WriteAllText(manifestPath, originalManifestJson);
+
+            foreach (var legacySchema in new[] { 1, 2, 3, 4 })
+            {
+                var legacy = JsonNode.Parse(originalManifestJson)!.AsObject();
+                legacy["schemaVersion"] = legacySchema;
+                legacy.Remove("recoveryArchive");
+                if (legacySchema < 4)
+                {
+                    legacy.Remove("buildFingerprint");
+                    legacy.Remove("defaultStrategy");
+                    legacy.Remove("inProgressWave");
+                    legacy.Remove("evaluationIdentityArtifact");
+                    legacy.Remove("finalStrategyFingerprint");
+                    legacy.Remove("finalStrategyContentHash");
+                    legacy["evaluatedConfigurationFingerprints"] = new JsonArray(
+                        resume.EvaluatedConfigurationFingerprints
+                            .Select(value => (JsonNode?)JsonValue.Create(value)).ToArray());
+                }
+                if (legacySchema < 3)
+                {
+                    legacy.Remove("pendingWave");
+                    legacy.Remove("pendingFrontierArtifacts");
+                }
+                var legacyPath = Path.Combine(sourceDirectory, $"legacy-v{legacySchema}.json");
+                File.WriteAllText(legacyPath, legacy.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+                var loadedLegacy = CampaignSearchArtifactStore.LoadResumeState(session.Content, legacyPath);
+                Check.True(loadedLegacy.Frontier.Count == 1 && loadedLegacy.PendingFrontier.Count == 0 &&
+                           loadedLegacy.EvaluatedConfigurationFingerprints.Count == source.TotalEvaluations &&
+                           loadedLegacy.RecoveryArchive.Count == 0,
+                    $"schema-v{legacySchema} manifest restores its supported resume state");
+            }
+
+            var legacyArchive = JsonNode.Parse(originalManifestJson)!.AsObject();
+            legacyArchive["schemaVersion"] = 4;
+            foreach (var layerNode in legacyArchive["recoveryArchive"]!.AsArray())
+            {
+                var layer = layerNode!.AsObject();
+                layer["excludedCheckpointFingerprints"] =
+                    layer["excludedStrategicFingerprints"]!.DeepClone();
+                layer.Remove("excludedStrategicFingerprints");
+                layer.Remove("distinctStrategicCount");
+            }
+            var legacyArchivePath = Path.Combine(sourceDirectory, "legacy-v4-with-archive.json");
+            File.WriteAllText(legacyArchivePath,
+                legacyArchive.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() =>
+                    CampaignSearchArtifactStore.LoadResumeState(session.Content, legacyArchivePath),
+                "schema-v4 exact recovery tombstones are rejected instead of being reinterpreted strategically");
+
+            Check.Throws<ArgumentException>(() => SimulationCli.Run(session.Content,
+                    ["--optimize-strategy", "--resume-manifest", manifestPath, "--map", "different-map"], false),
+                "manifest resume rejects a contradictory map selector");
+            Check.Throws<ArgumentException>(() => SimulationCli.Run(session.Content,
+                    ["--optimize-strategy", "--resume-manifest", manifestPath, "--strategy", "experienced"], false),
+                "manifest resume rejects a contradictory strategy selector");
         }
         finally
         {
@@ -4817,6 +6049,42 @@ internal static class Program
             Check.Equal(result.ResumeFrontier[0].CheckpointFingerprint, restored.Single().CheckpointFingerprint,
                 "exhausted manifest restores the retained retry frontier");
 
+            var retryState = CampaignSearchArtifactStore.LoadResumeState(
+                content, Path.Combine(directory, "campaign-search.json"));
+            var widenedRetry = CampaignStrategyOptimizer.Search(
+                content,
+                retryState.Frontier,
+                new SimulationOptions
+                {
+                    HoldBuild = true,
+                    StepSeconds = 0.1f,
+                    MaximumSimulatedSeconds = 240
+                },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 1,
+                    CandidateCount = 2,
+                    MaximumWave = 1,
+                    BroadeningRounds = 1,
+                    StartingBroadeningRound = retryState.Manifest.NextBroadeningRound,
+                    BacktrackDepth = 0,
+                    MaximumRecoveryAttempts = retryState.Manifest.MaximumRecoveryAttempts,
+                    RecoveryAttemptOffset = retryState.Manifest.RecoveryAttemptOffset,
+                    PreviouslyEvaluatedConfigurationFingerprints =
+                        retryState.EvaluatedConfigurationFingerprints,
+                    RecoveryArchive = retryState.RecoveryArchive,
+                    ResumeManifest = retryState.Manifest,
+                    ArtifactDirectory = Path.Combine(directory, "widened-retry")
+                },
+                retryState.Frontier[0].Strategy);
+            var retryAttempts = widenedRetry.WaveAttempts.Skip(retryState.Manifest.WaveAttempts.Count).ToArray();
+            Check.True(retryAttempts.Select(attempt => attempt.BroadeningRound).SequenceEqual([2, 3]) &&
+                       retryAttempts.Select(attempt => attempt.CandidateCount).SequenceEqual([2, 4]) &&
+                       widenedRetry.TotalEvaluations == 12 && widenedRetry.Manifest.NextBroadeningRound == 4 &&
+                       widenedRetry.Manifest.EvaluationIdentityArtifact is { Count: 12 },
+                "no-pending retry preserves its relative two-tranche widening window after the saved cursor");
+
             var preferred = plan.Append(new WavePlan
             {
                 Wave = 1,
@@ -4847,7 +6115,8 @@ internal static class Program
                 "campaign broadening skips the preferred plan already evaluated in an earlier round");
             Check.Equal(5, deduplicated.TotalEvaluations,
                 "campaign evaluation identities prevent repeated parent-plan simulations");
-            Check.Equal(5, deduplicated.Manifest.EvaluatedConfigurationFingerprints.Count,
+            Check.True(deduplicated.Manifest.EvaluatedConfigurationFingerprints.Count == 0 &&
+                       deduplicated.Manifest.EvaluationIdentityArtifact is { Count: 5 },
                 "campaign manifest persists every unique evaluated configuration for resume");
         }
         finally
@@ -4871,6 +6140,8 @@ internal static class Program
         };
         var directory = Path.Combine(Path.GetTempPath(), "MinimalBastion.Tests", Guid.NewGuid().ToString("N"));
         string? greedyWaveOneKey = null;
+        var activeArtifactDirectory = directory;
+        var consumptionPersisted = false;
 
         CheckpointSearchResult RecoverableDeadEnd(
             GameContent content,
@@ -4902,6 +6173,21 @@ internal static class Program
                     continue;
                 }
 
+                if (targetWave == 2 && File.Exists(Path.Combine(activeArtifactDirectory, "campaign-search.json")))
+                {
+                    var persisted = CampaignSearchArtifactStore.LoadManifest(
+                        Path.Combine(activeArtifactDirectory, "campaign-search.json"));
+                    var consumed = persisted.RecoveryAttempts.LastOrDefault()?.FrontierArtifacts
+                        .SingleOrDefault()?.StrategicFingerprint;
+                    var persistedLayer = persisted.RecoveryArchive.SingleOrDefault(layer => layer.CompletedWave == 1);
+                    consumptionPersisted = consumed is not null && persistedLayer is
+                                           { RemainingStateCount: 1, ExcludedStateCount: 2 } &&
+                                           persistedLayer.ExcludedStrategicFingerprints.Contains(
+                                               consumed, StringComparer.OrdinalIgnoreCase) &&
+                                           persistedLayer.States.All(state => !state.StrategicFingerprint.Equals(
+                                               consumed, StringComparison.OrdinalIgnoreCase));
+                }
+
                 var templateRun = HeadlessSimulation.RunWave(
                     content,
                     parent.Checkpoint,
@@ -4911,13 +6197,17 @@ internal static class Program
                 var templateCheckpoint = templateRun.NextCheckpoint ??
                                          throw new InvalidOperationException("Recovery fixture wave did not advance.");
                 if (targetWave == 1) greedyWaveOneKey ??= orderedCandidates[0].StableKey;
-                foreach (var candidate in orderedCandidates)
+                for (var candidateIndex = 0; candidateIndex < orderedCandidates.Length; candidateIndex++)
                 {
+                    var candidate = orderedCandidates[candidateIndex];
                     var nextCheckpoint = JsonSerializer.Deserialize<SaveGameData>(
                         JsonSerializer.Serialize(templateCheckpoint)) ??
                                          throw new InvalidOperationException("Recovery fixture checkpoint clone failed.");
                     if (targetWave == 1)
-                        nextCheckpoint.Economy.Credits = candidate.StableKey == greedyWaveOneKey ? 10_000 : 1;
+                        nextCheckpoint.Economy.Credits =
+                            candidate.StableKey == greedyWaveOneKey ? 10_000 : candidateIndex;
+                    else
+                        nextCheckpoint.Economy.Credits += candidateIndex;
                     var state = CheckpointSearchState.Create(
                         content,
                         parent.Strategy.Append(candidate),
@@ -4956,11 +6246,11 @@ internal static class Program
                 {
                     BaseSeed = plan.BaseSeed,
                     BeamWidth = 1,
-                    CandidateCount = 2,
+                    CandidateCount = 3,
                     MaximumWave = 2,
                     BroadeningRounds = 0,
                     BacktrackDepth = 1,
-                    MaximumRecoveryAttempts = 1,
+                    MaximumRecoveryAttempts = 3,
                     ArtifactDirectory = directory
                 },
                 null,
@@ -4982,14 +6272,30 @@ internal static class Program
                                    throw new InvalidOperationException("Recovered strategy omitted wave 1.");
             Check.True(recoveredWaveOne.StableKey != greedyWaveOneKey,
                 "the recovered strategy replaces the greedy first-wave decision");
-            Check.Equal(6, result.TotalEvaluations,
+            Check.Equal(9, result.TotalEvaluations,
                 "campaign recovery evaluates each parent-plan configuration once");
-            Check.Equal(result.TotalEvaluations, result.Manifest.EvaluatedConfigurationFingerprints.Count,
+            Check.True(result.Manifest.EvaluatedConfigurationFingerprints.Count == 0 &&
+                       result.Manifest.EvaluationIdentityArtifact is { Count: 9 },
                 "campaign manifest retains one identity for every unique evaluation");
             Check.True(recovery.FrontierArtifacts.All(artifact =>
                     File.Exists(Path.Combine(directory, artifact.CheckpointPath)) &&
                     File.Exists(Path.Combine(directory, artifact.StrategyPath))),
                 "campaign recovery persists its alternate checkpoint frontier");
+            Check.True(consumptionPersisted,
+                "campaign recovery persists archive consumption and its exclusion tombstone before evaluating again");
+
+            var layerOne = result.Manifest.RecoveryArchive.Single(layer => layer.CompletedWave == 1);
+            var layerTwo = result.Manifest.RecoveryArchive.Single(layer => layer.CompletedWave == 2);
+            var consumedCheckpoint = recovery.CheckpointFingerprints.Single();
+            var consumedStrategic = recovery.FrontierArtifacts.Single().StrategicFingerprint;
+            Check.True(layerOne is { RemainingStateCount: 1, DistinctDecisionCount: 1 } &&
+                       layerTwo is { RemainingStateCount: 2, DistinctDecisionCount: 2 } &&
+                       recovery.FrontierArtifacts.Single().CheckpointFingerprint == consumedCheckpoint &&
+                       layerOne.ExcludedStrategicFingerprints.Contains(
+                           consumedStrategic, StringComparer.OrdinalIgnoreCase) &&
+                       layerOne.States.All(state => !state.StrategicFingerprint.Equals(
+                           consumedStrategic, StringComparison.OrdinalIgnoreCase)),
+                "recovery consumes one identity without deleting useful future layers or reintroducing it");
 
             var manifestPath = Path.Combine(directory, "campaign-search.json");
             var restoredManifest = CampaignSearchArtifactStore.LoadManifest(manifestPath);
@@ -5000,6 +6306,157 @@ internal static class Program
                                   throw new InvalidOperationException("Restored strategy omitted wave 1.");
             Check.True(restoredWaveOne.StableKey != greedyWaveOneKey,
                 "campaign resume restores the recovered strategy branch");
+
+            var segmentOneDirectory = Path.Combine(directory, "segment-one");
+            activeArtifactDirectory = segmentOneDirectory;
+            consumptionPersisted = false;
+            var segmentOne = CampaignStrategyOptimizer.Search(
+                session.Content,
+                [CheckpointSearchState.Create(session.Content, plan, checkpoint)],
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 1,
+                    CandidateCount = 3,
+                    MaximumWave = 1,
+                    BroadeningRounds = 0,
+                    BacktrackDepth = 1,
+                    MaximumRecoveryAttempts = 3,
+                    ArtifactDirectory = segmentOneDirectory
+                },
+                null,
+                RecoverableDeadEnd);
+            var segmentOneResume = CampaignSearchArtifactStore.LoadResumeState(
+                session.Content, Path.Combine(segmentOneDirectory, "campaign-search.json"));
+            Check.True(segmentOne.TotalEvaluations == 3 &&
+                       segmentOneResume.RecoveryArchive.Single(layer => layer.CompletedWave == 1)
+                           .Alternatives.Count == 2,
+                "first campaign segment persists both unused alternatives for later recovery");
+
+            var segmentTwoDirectory = Path.Combine(directory, "segment-two");
+            activeArtifactDirectory = segmentTwoDirectory;
+            consumptionPersisted = false;
+            var resumed = CampaignStrategyOptimizer.Search(
+                session.Content,
+                segmentOneResume.Frontier,
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 1,
+                    CandidateCount = 3,
+                    MaximumWave = 2,
+                    BroadeningRounds = 0,
+                    StartingBroadeningRound = segmentOneResume.Manifest.NextBroadeningRound,
+                    BacktrackDepth = 1,
+                    MaximumRecoveryAttempts = 3,
+                    RecoveryAttemptOffset = segmentOneResume.Manifest.RecoveryAttemptOffset,
+                    PreviouslyEvaluatedConfigurationFingerprints =
+                        segmentOneResume.EvaluatedConfigurationFingerprints,
+                    PendingFrontier = segmentOneResume.PendingFrontier,
+                    RecoveryArchive = segmentOneResume.RecoveryArchive,
+                    ResumeManifest = segmentOneResume.Manifest,
+                    ArtifactDirectory = segmentTwoDirectory
+                },
+                segmentOneResume.Frontier[0].Strategy,
+                RecoverableDeadEnd);
+            Check.True(consumptionPersisted && resumed.TotalEvaluations == result.TotalEvaluations &&
+                       resumed.WaveAttempts.Count == result.WaveAttempts.Count &&
+                       resumed.Manifest.RecoveryAttempts.Count == 1 &&
+                       resumed.Manifest.EvaluationIdentityArtifact is { Count: 9 },
+                "resumed recovery matches uninterrupted evaluation and persisted-consumption accounting");
+            Check.True(resumed.FinalStrategy!.Waves.Select(wave => wave.StableKey).SequenceEqual(
+                           result.FinalStrategy!.Waves.Select(wave => wave.StableKey)) &&
+                       resumed.ResumeFrontier.Select(state => state.CheckpointFingerprint).SequenceEqual(
+                           result.ResumeFrontier.Select(state => state.CheckpointFingerprint)),
+                "resumed recovery selects the same deterministic alternate branch as uninterrupted search");
+            var resumedLayerOne = resumed.Manifest.RecoveryArchive.Single(layer => layer.CompletedWave == 1);
+            var resumedConsumedStrategic = resumed.Manifest.RecoveryAttempts.Single().FrontierArtifacts
+                .Single().StrategicFingerprint;
+            Check.True(resumedLayerOne.RemainingStateCount == 1 &&
+                       resumedLayerOne.ExcludedStrategicFingerprints.Contains(
+                           resumedConsumedStrategic,
+                           StringComparer.OrdinalIgnoreCase),
+                "resumed archive retains its remaining alternative and consumed-identity tombstone");
+
+            var resumedState = CampaignSearchArtifactStore.LoadResumeState(
+                session.Content, Path.Combine(segmentTwoDirectory, "campaign-search.json"));
+            var zeroWorkEvaluatorCalls = 0;
+            var zeroWork = CampaignStrategyOptimizer.Search(
+                session.Content,
+                resumedState.Frontier,
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 1,
+                    CandidateCount = 3,
+                    MaximumWave = 2,
+                    BroadeningRounds = 0,
+                    StartingBroadeningRound = resumedState.Manifest.NextBroadeningRound,
+                    BacktrackDepth = 1,
+                    MaximumRecoveryAttempts = 3,
+                    RecoveryAttemptOffset = resumedState.Manifest.RecoveryAttemptOffset,
+                    PreviouslyEvaluatedConfigurationFingerprints =
+                        resumedState.EvaluatedConfigurationFingerprints,
+                    RecoveryArchive = resumedState.RecoveryArchive,
+                    ResumeManifest = resumedState.Manifest,
+                    ArtifactDirectory = Path.Combine(directory, "zero-work-resume")
+                },
+                resumedState.Frontier[0].Strategy,
+                (_, _, _, _, _) =>
+                {
+                    zeroWorkEvaluatorCalls++;
+                    throw new InvalidOperationException("A completed wave-limit resume must not evaluate another wave.");
+                });
+            Check.True(zeroWorkEvaluatorCalls == 0 && zeroWork.TotalEvaluations == resumed.TotalEvaluations &&
+                       zeroWork.WaveAttempts.Count == resumed.WaveAttempts.Count &&
+                       zeroWork.Manifest.RecoveryAttempts.Count == resumed.Manifest.RecoveryAttempts.Count &&
+                       zeroWork.Manifest.EvaluationIdentityArtifact is { Count: 9 },
+                "a zero-work resume preserves cumulative evaluations, attempts, and recovery history");
+
+            var capped = CampaignStrategyOptimizer.Search(
+                session.Content,
+                resumedState.Frontier,
+                new SimulationOptions { StepSeconds = 0.1f, MaximumSimulatedSeconds = 120 },
+                new CampaignSearchOptions
+                {
+                    BaseSeed = plan.BaseSeed,
+                    BeamWidth = 1,
+                    CandidateCount = 3,
+                    MaximumWave = 3,
+                    BroadeningRounds = 0,
+                    StartingBroadeningRound = resumedState.Manifest.NextBroadeningRound,
+                    BacktrackDepth = 1,
+                    MaximumRecoveryAttempts = 1,
+                    RecoveryAttemptOffset = resumedState.Manifest.RecoveryAttemptOffset,
+                    PreviouslyEvaluatedConfigurationFingerprints =
+                        resumedState.EvaluatedConfigurationFingerprints,
+                    RecoveryArchive = resumedState.RecoveryArchive,
+                    ResumeManifest = resumedState.Manifest,
+                    ArtifactDirectory = Path.Combine(directory, "capped-resume")
+                },
+                resumedState.Frontier[0].Strategy,
+                (content, parents, candidates, options, beamWidth) => EvaluateSyntheticBroadeningTranche(
+                    content, parents, candidates, options, beamWidth, successesPerParent: 0));
+            Check.True(capped.Status == CampaignSearchStatus.FrontierExhausted &&
+                       capped.Manifest.RecoveryAttempts.Count == 1 &&
+                       capped.Manifest.RecoveryAttempts.Single().Attempt == 1 &&
+                       capped.Manifest.RecoveryAttemptOffset + capped.Manifest.RecoveryAttempts.Count ==
+                       capped.Manifest.MaximumRecoveryAttempts && capped.TotalEvaluations == 12,
+                "a resumed campaign cannot exceed its campaign-total recovery-attempt cap");
+            Check.Throws<InvalidDataException>(() => CampaignSearchArtifactStore.SaveManifest(
+                    Path.Combine(directory, "invalid-recovery-cap.json"),
+                    capped.Manifest with { MaximumRecoveryAttempts = 0 }),
+                "manifest validation rejects recovery history beyond the campaign-total cap");
+
+            Directory.Delete(segmentOneDirectory, true);
+            var selfContainedResume = CampaignSearchArtifactStore.LoadResumeState(
+                session.Content, Path.Combine(segmentTwoDirectory, "campaign-search.json"));
+            Check.True(selfContainedResume.RecoveryArchive.Single(layer => layer.CompletedWave == 1)
+                           .Alternatives.Count == 1,
+                "resumed manifest owns an independent copy of every remaining recovery artifact");
         }
         finally
         {
@@ -5044,9 +6501,134 @@ internal static class Program
                 "campaign completion is retained separately from resumable checkpoint states");
             Check.Equal(1, result.FinalStrategy!.Waves.Count,
                 "campaign completion persists its winning wave decision");
-            Check.True(result.Manifest.FinalStrategyPath is { } strategyPath &&
-                       File.Exists(Path.Combine(directory, strategyPath)),
+            var completedManifestPath = Path.Combine(directory, "campaign-search.json");
+            var completedManifestJson = File.ReadAllText(completedManifestPath);
+            var strategyPath = result.Manifest.FinalStrategyPath ??
+                               throw new InvalidOperationException("Completed campaign omitted its strategy path.");
+            Check.True(File.Exists(Path.Combine(directory, strategyPath)),
                 "campaign completion persists its final StrategyPlan artifact");
+            var replayOutput = Path.Combine(directory, "verified-replay.json");
+            var replayExit = SimulationCli.Run(session.Content,
+                ["--replay-manifest", completedManifestPath, "--output", replayOutput], false);
+            Check.Equal(0, replayExit, "completed manifest fresh replay exits successfully only after a clear");
+            var replayReport = JsonSerializer.Deserialize<StrategyReplayResult>(
+                                   File.ReadAllText(replayOutput),
+                                   StrategyArtifactStore.CreateJsonOptions()) ??
+                               throw new InvalidOperationException("Fresh replay report was empty.");
+            Check.True(replayReport.CampaignCleared && replayReport.StartingWave == 0 &&
+                       replayReport.CompletedWaveCount == 1 && replayReport.WaveRuns.Count == 1 &&
+                       replayReport.StrategyFingerprint.Equals(
+                           result.Manifest.FinalStrategyFingerprint, StringComparison.OrdinalIgnoreCase) &&
+                       replayReport.ContentBuildFingerprint.Equals(
+                           result.Manifest.BuildFingerprint, StringComparison.OrdinalIgnoreCase),
+                "manifest replay report retains fresh-session completion and exact provenance");
+            var adjacentReplay = Path.Combine(directory, "campaign-replay.json");
+            Check.Equal(0, SimulationCli.Run(session.Content,
+                    ["--replay-manifest", completedManifestPath], false),
+                "completed manifest can use its deterministic adjacent replay report path");
+            var adjacentReport = JsonSerializer.Deserialize<StrategyReplayResult>(
+                                     File.ReadAllText(adjacentReplay),
+                                     StrategyArtifactStore.CreateJsonOptions()) ??
+                                 throw new InvalidOperationException("Adjacent fresh replay report was empty.");
+            Check.True(replayReport.ReplayFingerprint == adjacentReport.ReplayFingerprint &&
+                       JsonSerializer.Serialize(replayReport.WaveRuns.Select(wave => wave.Deltas)) ==
+                       JsonSerializer.Serialize(adjacentReport.WaveRuns.Select(wave => wave.Deltas)),
+                "manifest replay is deterministic across independent fresh sessions");
+            foreach (var forbidden in new[]
+                     {
+                         "--save-file", "--resume-manifest", "--max-wave", "--seed", "--no-protocols",
+                         "--optimize-strategy"
+                     })
+                Check.Throws<ArgumentException>(() => SimulationCli.Run(session.Content,
+                        ["--replay-manifest", completedManifestPath, forbidden, "1"], false),
+                    $"fresh manifest replay rejects execution override {forbidden}");
+
+            var legacyReplayManifest = JsonNode.Parse(completedManifestJson)!.AsObject();
+            legacyReplayManifest["schemaVersion"] = 4;
+            File.WriteAllText(completedManifestPath,
+                legacyReplayManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() => SimulationCli.Run(session.Content,
+                    ["--replay-manifest", completedManifestPath], false),
+                "fresh manifest replay requires the current schema-v5 provenance model");
+            File.WriteAllText(completedManifestPath, completedManifestJson);
+
+            var timeoutManifest = result.Manifest with
+            {
+                SimulationSettings = result.Manifest.SimulationSettings with
+                {
+                    MaximumSimulatedSeconds = 0.01f,
+                    HoldBuild = true
+                }
+            };
+            CampaignSearchArtifactStore.SaveManifest(completedManifestPath, timeoutManifest);
+            Check.Equal(2, SimulationCli.Run(session.Content,
+                    ["--replay-manifest", completedManifestPath,
+                        "--output", Path.Combine(directory, "failed-replay.json")], false),
+                "fresh manifest replay exits two when the recorded execution does not clear");
+            File.WriteAllText(completedManifestPath, completedManifestJson);
+            Check.Throws<ArgumentException>(() => SimulationCli.Run(session.Content,
+                    ["--optimize-strategy", "--resume-manifest", completedManifestPath,
+                        "--seed", (plan.BaseSeed + 1).ToString()], false),
+                "completed manifest resume rejects a contradictory seed selector before returning success");
+            var completedStrategyPath = Path.Combine(directory, strategyPath);
+            var completedStrategyJson = File.ReadAllText(completedStrategyPath);
+            File.Delete(completedStrategyPath);
+            Check.Throws<FileNotFoundException>(() => SimulationCli.Run(session.Content,
+                    ["--replay-manifest", completedManifestPath], false),
+                "fresh manifest replay rejects a missing final strategy artifact");
+            Check.Throws<FileNotFoundException>(() => SimulationCli.Run(session.Content,
+                    ["--optimize-strategy", "--resume-manifest", completedManifestPath], false),
+                "completed manifest resume validates that its winning strategy artifact exists");
+            File.WriteAllText(completedStrategyPath, completedStrategyJson);
+            var completedPlan = StrategyArtifactStore.LoadPlan(completedStrategyPath);
+            StrategyArtifactStore.SavePlan(completedStrategyPath, completedPlan with { BaseSeed = plan.BaseSeed + 1 });
+            Check.Throws<InvalidDataException>(() => SimulationCli.Run(session.Content,
+                    ["--replay-manifest", completedManifestPath], false),
+                "fresh manifest replay rejects a tampered strategy artifact");
+            Check.Throws<InvalidDataException>(() => SimulationCli.Run(session.Content,
+                    ["--optimize-strategy", "--resume-manifest", completedManifestPath], false),
+                "completed manifest resume validates its winning strategy execution context");
+            File.WriteAllText(completedStrategyPath, completedStrategyJson);
+
+            var changedDecision = completedPlan with
+            {
+                Waves = [completedPlan.Waves.Single() with { PolicyId = "same-context-tampered-policy" }]
+            };
+            StrategyArtifactStore.SavePlan(completedStrategyPath, changedDecision);
+            var changedDecisionManifest = JsonNode.Parse(completedManifestJson)!.AsObject();
+            changedDecisionManifest["finalStrategyContentHash"] =
+                CampaignStrategyOptimizer.ContentHash(completedStrategyPath);
+            File.WriteAllText(completedManifestPath,
+                changedDecisionManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() =>
+                    CampaignSearchArtifactStore.LoadFinalStrategy(session.Content, completedManifestPath),
+                "completed manifest binds its exact winning decisions with a semantic fingerprint");
+            File.WriteAllText(completedStrategyPath, completedStrategyJson);
+            File.WriteAllText(completedManifestPath, completedManifestJson);
+
+            var incompletePlan = completedPlan with { Waves = Array.Empty<WavePlan>() };
+            StrategyArtifactStore.SavePlan(completedStrategyPath, incompletePlan);
+            var incompleteManifest = JsonNode.Parse(completedManifestJson)!.AsObject();
+            incompleteManifest["finalStrategyContentHash"] =
+                CampaignStrategyOptimizer.ContentHash(completedStrategyPath);
+            incompleteManifest["finalStrategyFingerprint"] =
+                CampaignStrategyOptimizer.StrategyFingerprint(incompletePlan);
+            File.WriteAllText(completedManifestPath,
+                incompleteManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() => SimulationCli.Run(session.Content,
+                    ["--optimize-strategy", "--resume-manifest", completedManifestPath], false),
+                "completed manifest requires a full contiguous campaign strategy even when file hashes match");
+            File.WriteAllText(completedStrategyPath, completedStrategyJson);
+            File.WriteAllText(completedManifestPath, completedManifestJson);
+
+            var wrongBuildManifest = JsonNode.Parse(completedManifestJson)!.AsObject();
+            wrongBuildManifest["buildFingerprint"] = new string('e', 64);
+            File.WriteAllText(completedManifestPath,
+                wrongBuildManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            Check.Throws<InvalidDataException>(() => SimulationCli.Run(session.Content,
+                    ["--optimize-strategy", "--resume-manifest", completedManifestPath], false),
+                "completed manifest validates its gameplay build before reporting success");
+            File.WriteAllText(completedManifestPath, completedManifestJson);
             var tracePath = result.WaveAttempts.Single().TracePath ??
                             throw new InvalidOperationException("Campaign completion trace was not recorded.");
             var compactTrace = StrategyArtifactStore.LoadSearchResult(Path.Combine(directory, tracePath), session.Content);
@@ -5350,6 +6932,271 @@ internal static class Program
             "fatal escape telemetry is deterministic for a fixed seed and checkpoint state");
     }
 
+    private static void FreshStrategyReplay()
+    {
+        var content = ReplayTestContent(2);
+        var plan = ReplayTestPlan(2);
+        var settings = ReplayTestSettings();
+        var envelope = StrategyReplayEnvelope.Create(content, plan, settings);
+
+        var diagnostic = HeadlessSimulation.ReplayStrategyForDiagnostics(content, envelope);
+        var first = diagnostic.Result;
+        var second = HeadlessSimulation.ReplayStrategy(content, envelope);
+        Check.True(first.CampaignCleared && first.StartingWave == 0 && diagnostic.Session.CurrentWave == 2 &&
+                   diagnostic.Session.IsVictory && first.WaveRuns.Select(run => run.WavePlan.Wave)
+                       .SequenceEqual([1, 2]),
+            "fresh replay advances one new wave-zero session through every contiguous decision");
+        Check.True(first.WaveRuns.All(run => run.Simulation.Waves.Count == 1 &&
+                                            run.Simulation.Waves[0].Wave == run.WavePlan.Wave &&
+                                            run.Simulation.Seed == run.WavePlan.DecisionSeed),
+            "fresh replay applies each exact decision seed and records one exact wave metric");
+        Check.True(first.ReplayFingerprint == second.ReplayFingerprint &&
+                   first.StrategyFingerprint == second.StrategyFingerprint &&
+                   JsonSerializer.Serialize(first.WaveRuns.Select(run => run.Deltas)) ==
+                   JsonSerializer.Serialize(second.WaveRuns.Select(run => run.Deltas)),
+            "fixed replay envelope reproduces its fingerprint and every per-wave delta");
+
+        var opening = first.WaveRuns[0];
+        Check.True(opening.Deltas.CreditsSpent > 0 &&
+                   opening.Simulation.Waves.Single().CreditsSpent == opening.Deltas.CreditsSpent,
+            "wave accounting includes tower spending performed before the wave starts");
+        var secondWave = first.WaveRuns[1];
+        Check.Equal(opening.Simulation.FinalTowers.Count + secondWave.Deltas.TowerPurchases -
+                    secondWave.Deltas.TowerSales,
+            secondWave.Simulation.FinalTowers.Count,
+            "existing towers are not reported as new acquisitions on the next replay wave");
+        Check.Equal(secondWave.Deltas.TowerPurchases,
+            secondWave.Simulation.Towers.Values.Sum(metrics => metrics.Purchases),
+            "replay acquisition deltas match event telemetry without checkpoint inflation");
+        Check.Equal(opening.Simulation.Kills + secondWave.Deltas.Kills, secondWave.Simulation.Kills,
+            "per-wave kill deltas reconcile with the continuous session totals");
+
+        var failureContent = ReplayTestContent(1);
+        var failurePlan = ReplayTestPlan(1) with { DifficultyId = "bastion" };
+        var failureEnvelope = StrategyReplayEnvelope.Create(
+            failureContent,
+            failurePlan,
+            ReplayTestSettings() with { HoldBuild = true });
+        var failed = HeadlessSimulation.ReplayStrategy(failureContent, failureEnvelope);
+        var failedWave = failed.WaveRuns.Single();
+        var margin = failedWave.Simulation.FailureMargin ??
+                     throw new InvalidOperationException("Fresh replay defeat omitted its failure margin.");
+        Check.True(!failed.CampaignCleared && failed.Result == "Defeat" && failed.FailedWave == 1 &&
+                   failedWave.Deltas.Leaks == 1 && margin.FatalEscapedEnemyCount == 1 &&
+                   failedWave.Simulation.FatalEscapedEnemies.Count == 1 &&
+                   margin.UnresolvedEnemyCount == 1 && margin.UnresolvedArmorAdjustedDurability > 0,
+            "fresh replay preserves exact fatal escape and unresolved-pressure telemetry");
+    }
+
+    private static void StrategyReplayEnvelopeValidation()
+    {
+        var content = ReplayTestContent(2);
+        var plan = ReplayTestPlan(2);
+        var settings = ReplayTestSettings();
+        var envelope = StrategyReplayEnvelope.Create(content, plan, settings);
+        envelope.Validate(content);
+
+        var changedPlan = plan with
+        {
+            Waves = [plan.Waves[0] with { DecisionSeed = plan.Waves[0].DecisionSeed + 1 }, plan.Waves[1]]
+        };
+        Check.Throws<InvalidDataException>(() => (envelope with { Plan = changedPlan }).Validate(content),
+            "replay envelope rejects a changed plan before session creation");
+        Check.Throws<InvalidDataException>(() => (envelope with
+            { ExpectedPlanFingerprint = new string('1', 64) }).Validate(content),
+            "replay envelope rejects a mismatched expected plan hash");
+        Check.Throws<InvalidDataException>(() => (envelope with
+            { ContentBuildFingerprint = new string('2', 64) }).Validate(content),
+            "replay envelope rejects a different gameplay build");
+        Check.Throws<InvalidDataException>(() => (envelope with
+            { SimulationSettings = settings with { HoldBuild = true } }).Validate(content),
+            "replay envelope binds every recorded simulation setting");
+        Check.Throws<InvalidDataException>(() => (envelope with
+            { ReplayFingerprint = new string('3', 64) }).Validate(content),
+            "replay envelope rejects a mismatched combined replay hash");
+        Check.Throws<InvalidDataException>(() => StrategyReplayEnvelope.Create(
+                content, plan, settings with { StepSeconds = 0.009f }).Validate(content),
+            "replay envelope rejects a simulation step below the exact supported range");
+        Check.Throws<InvalidDataException>(() => StrategyReplayEnvelope.Create(
+                content, plan, settings with { StepSeconds = 0.101f }).Validate(content),
+            "replay envelope rejects a simulation step above the exact supported range");
+        Check.Throws<ArgumentOutOfRangeException>(() => HeadlessSimulation.Run(content,
+                new SimulationOptions
+                {
+                    MapId = plan.MapId,
+                    DifficultyId = plan.DifficultyId,
+                    ChallengeId = plan.ChallengeId,
+                    StepSeconds = 0.009f,
+                    MaximumWave = 1
+                }),
+            "headless simulation no longer silently clamps unsupported step seconds");
+
+        void RejectPlan(StrategyPlan invalid, string description) =>
+            Check.Throws<InvalidDataException>(() => StrategyReplayEnvelope.Create(
+                    content, invalid, settings).Validate(content), description);
+
+        RejectPlan(plan with
+            {
+                Waves = [plan.Waves[0] with { PlacementProfileId = "unknown" }, plan.Waves[1]]
+            }, "complete replay rejects unsupported profile IDs");
+        RejectPlan(plan with
+            {
+                Waves =
+                [
+                    plan.Waves[0] with
+                    {
+                        Parameters = new SortedDictionary<string, double>(StringComparer.Ordinal)
+                        {
+                            ["unknownParameter"] = 1
+                        }
+                    },
+                    plan.Waves[1]
+                ]
+            }, "complete replay rejects unsupported policy parameters");
+        RejectPlan(plan with
+            {
+                Waves =
+                [
+                    plan.Waves[0] with
+                    {
+                        Parameters = new SortedDictionary<string, double>(StringComparer.Ordinal)
+                        {
+                            ["protocolMinimumEnemies"] = 31
+                        }
+                    },
+                    plan.Waves[1]
+                ]
+            }, "complete replay rejects parameters outside their operational clamps");
+        RejectPlan(plan with
+            {
+                Waves =
+                [
+                    plan.Waves[0] with
+                    {
+                        Parameters = new SortedDictionary<string, double>(StringComparer.Ordinal)
+                        {
+                            ["activePlateLimit"] = 2.5
+                        }
+                    },
+                    plan.Waves[1]
+                ]
+            }, "complete replay rejects fractional values for integer policy controls");
+        RejectPlan(plan with { Waves = [plan.Waves[0]] },
+            "complete replay rejects an incomplete campaign plan");
+        RejectPlan(plan with { Waves = [plan.Waves[0], plan.Waves[1] with { Wave = 3 }] },
+            "complete replay rejects a noncontiguous campaign plan");
+        RejectPlan(plan with
+            {
+                Waves = [plan.Waves[0] with { PolicyId = "experienced" }, plan.Waves[1]]
+            }, "complete replay rejects obsolete policy IDs");
+    }
+
+    private static GameContent ReplayTestContent(int waveCount)
+    {
+        var map = new MapDefinition
+        {
+            Id = "replay_test",
+            DisplayName = "Replay Test",
+            WaveSet = "replay_test_waves",
+            StartingCredits = 120,
+            StartingLives = 20,
+            Spawn = new PointData { X = 0, Y = 50 },
+            Goal = new PointData { X = 500, Y = 50 },
+            Path = [new PointData { X = 0, Y = 50 }, new PointData { X = 500, Y = 50 }],
+            BuildableRegions = [new RectangleData { X = 20, Y = 110, Width = 440, Height = 260 }]
+        };
+        var waves = new WaveSetDefinition
+        {
+            Id = map.WaveSet,
+            MapId = map.Id,
+            Waves = Enumerable.Range(1, waveCount).Select(wave => new WaveDefinition
+            {
+                Number = wave,
+                Groups = [new WaveGroupDefinition { EnemyId = "replay_enemy", Count = 1, SpawnInterval = 0.1f }]
+            }).ToList()
+        };
+        var tower = new TowerDefinition
+        {
+            Id = "needle_turret",
+            DisplayName = "Replay Needle",
+            Behavior = "single_projectile",
+            PurchaseCost = 10,
+            DefaultTargetMode = "First",
+            Levels =
+            [
+                new TowerLevelDefinition
+                    { Range = 600, Damage = 1_000, AttacksPerSecond = 10, ProjectileSpeed = 2_000, UpgradeCost = 10 },
+                new TowerLevelDefinition
+                    { Range = 600, Damage = 1_200, AttacksPerSecond = 10, ProjectileSpeed = 2_000, UpgradeCost = 10 },
+                new TowerLevelDefinition
+                    { Range = 600, Damage = 1_500, AttacksPerSecond = 10, ProjectileSpeed = 2_000 }
+            ]
+        };
+        var hard = new DifficultyDefinition { Id = DifficultyCatalog.LegacyId, StartingLives = 20 };
+        var bastion = new DifficultyDefinition { Id = "bastion", StartingLives = 1 };
+        var standard = new ChallengeDefinition { Id = ChallengeCatalog.DefaultId };
+        return new GameContent
+        {
+            Towers = new Dictionary<string, TowerDefinition>(StringComparer.OrdinalIgnoreCase)
+                { [tower.Id] = tower },
+            Enemies = new Dictionary<string, EnemyDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["replay_enemy"] = new EnemyDefinition
+                {
+                    Id = "replay_enemy",
+                    DisplayName = "Replay Enemy",
+                    MaxHealth = 1,
+                    Speed = 50,
+                    Reward = 5,
+                    LivesLost = 1
+                }
+            },
+            Map = map,
+            Waves = waves,
+            Maps = new Dictionary<string, MapDefinition>(StringComparer.OrdinalIgnoreCase) { [map.Id] = map },
+            WaveSets = new Dictionary<string, WaveSetDefinition>(StringComparer.OrdinalIgnoreCase)
+                { [waves.Id] = waves },
+            Difficulties = new Dictionary<string, DifficultyDefinition>(StringComparer.OrdinalIgnoreCase)
+                { [hard.Id] = hard, [bastion.Id] = bastion },
+            Challenges = new Dictionary<string, ChallengeDefinition>(StringComparer.OrdinalIgnoreCase)
+                { [standard.Id] = standard },
+            Tactics = new TacticsDefinition()
+        };
+    }
+
+    private static StrategyPlan ReplayTestPlan(int waveCount) => new()
+    {
+        ArtifactId = $"fresh-replay-{waveCount}",
+        MapId = "replay_test",
+        DifficultyId = DifficultyCatalog.LegacyId,
+        ChallengeId = ChallengeCatalog.DefaultId,
+        BaseSeed = 9127,
+        DefaultStrategy = AutoPlayerStrategy.Experienced,
+        Waves = Enumerable.Range(1, waveCount).Select(wave => new WavePlan
+        {
+            Wave = wave,
+            DecisionSeed = 9127 + wave * 101,
+            PolicyId = StrategyReplayValidation.SupportedPolicyId,
+            EconomyProfileId = "balanced",
+            PlacementProfileId = "coverage",
+            TargetingProfileId = "split",
+            TacticalProfileId = "adaptive"
+        }).ToArray()
+    };
+
+    private static CampaignSimulationSettings ReplayTestSettings() => new(
+        0.1f,
+        120,
+        null,
+        null,
+        null,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false);
+
     private static void SimulationFootprintHold()
     {
         var session = SessionWithWave();
@@ -5456,6 +7303,102 @@ internal static class Program
         Check.Equal(Snapshot(atomic.Session, atomic.Trace), Snapshot(atomicRepeat.Session, atomicRepeat.Trace),
             "saleLimit one preparation is deterministic");
 
+        var multiApex = SaleBehaviorCheckpointSession(apexUpgradeCost: 150, weakTowerCount: 2);
+        var multiApexIds = multiApex.Towers.Where(tower => tower.Definition.Id == "frost_spire")
+            .Select(tower => tower.Id)
+            .ToArray();
+        var multiApexTarget = multiApex.Towers.Single(tower => tower.Definition.Id == "apex_candidate");
+        var multiApexSales = new List<int>();
+        multiApex.TowerSold += (tower, _) => multiApexSales.Add(tower.Id);
+        var multiApexOptions = Options(2);
+        new AutoPlayer(multiApex, multiApexOptions.Strategy, multiApexOptions.Seed, multiApexOptions)
+            .PrepareForWave(multiApex);
+        Check.True(multiApexTarget.IsApex && multiApexIds.All(id => multiApex.Towers.All(tower => tower.Id != id)),
+            "two weak towers jointly bridge an Apex shortfall that no single refund can cover");
+        Check.True(multiApexSales.SequenceEqual(multiApexIds) &&
+                   multiApex.Economy.SaleCreditsRecovered == 120 && multiApex.Economy.Credits == 10,
+            "multi-tower Apex funding follows the deterministic sale order and exact credit accounting");
+
+        var competingBatches = SaleBehaviorCheckpointSession(apexUpgradeCost: 150, weakTowerCount: 2);
+        var competingWeakIds = competingBatches.Towers.Where(tower => tower.Definition.Id == "frost_spire")
+            .Select(tower => tower.Id)
+            .ToArray();
+        var bulkRefund = new TowerDefinition
+        {
+            Id = "bulk_refund",
+            DisplayName = "Bulk Refund",
+            PurchaseCost = 1_000,
+            Levels =
+            [
+                new TowerLevelDefinition { Range = 10, Damage = 5, AttacksPerSecond = 1 }
+            ]
+        };
+        competingBatches.Content.Towers.Add(bulkRefund.Id, bulkRefund);
+        competingBatches.Economy.AddCredits(bulkRefund.PurchaseCost);
+        Check.True(competingBatches.TryPlaceTower(bulkRefund.Id, new Vector2(850, 650), selectPlaced: false),
+            "place the competing single-sale refund candidate");
+        var bulkRefundId = competingBatches.Towers.Single(tower => tower.Definition.Id == bulkRefund.Id).Id;
+        var competingOptions = Options(2);
+        new AutoPlayer(competingBatches, competingOptions.Strategy, competingOptions.Seed, competingOptions)
+            .PrepareForWave(competingBatches);
+        Check.True(competingBatches.Towers.Any(tower => tower.Id == bulkRefundId) &&
+                   competingWeakIds.All(id => competingBatches.Towers.All(tower => tower.Id != id)),
+            "competing sale batches preserve the higher-value single tower and sell two lower-value investments");
+        Check.True(competingBatches.Economy.SaleCreditsRecovered == 120 &&
+                   competingBatches.Towers.Single(tower => tower.Definition.Id == "apex_candidate").IsApex,
+            "aggregate forward value outranks the tempting larger one-tower refund");
+
+        var refundSearch = SaleBehaviorCheckpointSession(apexUpgradeCost: 105, weakTowerCount: 2);
+        var refundCandidates = refundSearch.Towers.Where(tower => tower.Definition.Id == "frost_spire")
+            .OrderBy(tower => tower.Id)
+            .ToArray();
+        Check.True(refundCandidates[1].TryUpgrade(), "prepare the larger-refund sale candidate");
+        var refundSearchOptions = Options(1);
+        new AutoPlayer(refundSearch, refundSearchOptions.Strategy, refundSearchOptions.Seed, refundSearchOptions)
+            .PrepareForWave(refundSearch);
+        Check.True(refundSearch.Towers.Any(tower => tower.Id == refundCandidates[0].Id) &&
+                   refundSearch.Towers.All(tower => tower.Id != refundCandidates[1].Id),
+            "sale search skips an insufficient weaker refund and selects the least-cost sufficient alternative");
+        Check.True(refundSearch.Towers.Single(tower => tower.Definition.Id == "apex_candidate").IsApex &&
+                   refundSearch.Economy.SaleCreditsRecovered == 66 && refundSearch.Economy.Credits == 1,
+            "the sufficient alternative closes the Apex shortfall without exceeding the sale limit");
+
+        var insufficient = SaleBehaviorCheckpointSession(apexUpgradeCost: 170, weakTowerCount: 2);
+        var insufficientIds = insufficient.Towers.Where(tower => tower.Definition.Id == "frost_spire")
+            .Select(tower => tower.Id)
+            .ToArray();
+        var insufficientTarget = insufficient.Towers.Single(tower => tower.Definition.Id == "apex_candidate");
+        var insufficientOptions = Options(2);
+        new AutoPlayer(insufficient, insufficientOptions.Strategy, insufficientOptions.Seed, insufficientOptions)
+            .PrepareForWave(insufficient);
+        Check.True(!insufficientTarget.IsApex &&
+                   insufficientIds.All(id => insufficient.Towers.Any(tower => tower.Id == id)),
+            "an insufficient aggregate refund leaves every eligible tower unsold");
+        Check.True(insufficient.Economy.SaleCreditsRecovered == 0 && insufficient.Economy.Credits == 40,
+            "failed multi-sale planning performs no partial economy transaction");
+
+        var retargeted = SaleBehaviorCheckpointSession(
+            apexUpgradeCost: 100,
+            weakTowerCount: 3,
+            weakTowerId: "needle_turret");
+        var needlePeers = retargeted.Towers.Where(tower => tower.Definition.Id == "needle_turret")
+            .OrderBy(tower => tower.Id)
+            .ToArray();
+        Check.True(needlePeers[1].TryUpgrade() && needlePeers[2].TryUpgrade(),
+            "prepare survivor retargeting value order");
+        var retargetOptions = Options(1);
+        new AutoPlayer(retargeted, retargetOptions.Strategy, retargetOptions.Seed, retargetOptions)
+            .PrepareForWave(retargeted);
+        var survivingNeedles = retargeted.Towers.Where(tower => tower.Definition.Id == "needle_turret")
+            .OrderBy(tower => tower.Id)
+            .ToArray();
+        Check.True(retargeted.Towers.All(tower => tower.Id != needlePeers[0].Id) && survivingNeedles.Length == 2,
+            "the structurally weakest indexed peer is sold");
+        Check.Equal(TargetMode.First, survivingNeedles[0].TargetMode,
+            "the first survivor immediately leaves its stale SUPPORT index after a sale");
+        Check.Equal(TargetMode.Support, survivingNeedles[1].TargetMode,
+            "the next survivor immediately inherits the vacated SUPPORT index after a sale");
+
         (GameSession Session, int ReplacementId, List<string> Trace) AdvanceToPlatePressure(bool blockCapacity)
         {
             var prepared = Prepare(2);
@@ -5463,7 +7406,7 @@ internal static class Program
             Check.True(prepared.Session.TryPlaceTower("frost_spire", new Vector2(850, 620), selectPlaced: false),
                 "place deterministic post-Apex replacement");
             var replacementId = prepared.Session.Towers.Max(tower => tower.Id);
-            prepared.Session.Economy.AddCredits(75);
+            prepared.Session.Economy.AddCredits(15);
             if (blockCapacity)
             {
                 prepared.Session.EmergencyDefenses.Add(new PulsePlateInstance(
@@ -5476,16 +7419,13 @@ internal static class Program
             for (var update = 0; update < 30; update++) prepared.Session.Update(0.1f);
             var lead = prepared.Session.Enemies.Single(enemy => !enemy.IsDead && !enemy.HasEscaped);
             var nextPlateCost = prepared.Session.CurrentEmergencyDirectPurchaseCost;
-            var requiredCredits = nextPlateCost + 75;
+            var requiredCredits = nextPlateCost;
             var replacement = prepared.Session.Towers.Single(tower => tower.Id == replacementId);
-            Check.True(lead.PathProgress >= 0.5f && prepared.Session.Economy.Credits >= nextPlateCost &&
+            Check.True(lead.PathProgress >= 0.5f &&
                        prepared.Session.Economy.Credits < requiredCredits &&
                        prepared.Session.Economy.Credits + replacement.SellValue >= requiredCredits,
-                "replacement sale is otherwise eligible to fund the Plate reserve");
-            var reactionOptions = Options(2, useApexUpgrades: false);
-            var reactionPlayer = new AutoPlayer(prepared.Session, reactionOptions.Strategy,
-                reactionOptions.Seed, reactionOptions);
-            reactionPlayer.ReactDuringWave(prepared.Session);
+                "the remaining sale allowance can bridge the direct Plate shortfall");
+            prepared.Player.ReactDuringWave(prepared.Session);
             return (prepared.Session, replacementId, prepared.Trace);
         }
 
@@ -5512,6 +7452,313 @@ internal static class Program
             "the open-capacity control proves the replacement can fund a direct Plate");
         Check.Equal(Snapshot(open.Session, open.Trace), Snapshot(openRepeat.Session, openRepeat.Trace),
             "open-capacity sale decisions are deterministic");
+
+        var multiPlate = SaleBehaviorCheckpointSession(apexUpgradeCost: 100, weakTowerCount: 2);
+        var multiPlateWeakIds = multiPlate.Towers.Where(tower => tower.Definition.Id == "frost_spire")
+            .Select(tower => tower.Id)
+            .ToArray();
+        var multiPlateApex = multiPlate.Towers.Single(tower => tower.Definition.Id == "apex_candidate");
+        multiPlate.Economy.AddCredits(60);
+        Check.True(multiPlate.TryUpgradeTower(multiPlateApex.Id), "promote the multi-sale Plate fixture Apex");
+        multiPlate.Economy.AddCredits(40);
+        Check.True(multiPlate.StartNextWave(), "start multi-sale Plate pressure");
+        for (var update = 0; update < 30; update++) multiPlate.Update(0.1f);
+        var multiPlateOptions = Options(2, useApexUpgrades: false);
+        new AutoPlayer(multiPlate, multiPlateOptions.Strategy, multiPlateOptions.Seed, multiPlateOptions)
+            .ReactDuringWave(multiPlate);
+        Check.True(multiPlate.EmergencyDefenses.Count == 1 &&
+                   multiPlateWeakIds.All(id => multiPlate.Towers.All(tower => tower.Id != id)),
+            "two jointly sufficient refunds fund and deploy one emergency Plate");
+        Check.True(multiPlate.Economy.SaleCreditsRecovered == 120 &&
+                   multiPlate.EmergencyDirectPurchasesThisWave == 1,
+            "multi-sale Plate funding records both refunds and exactly one direct purchase");
+
+        var activeRetarget = SaleBehaviorCheckpointSession(
+            apexUpgradeCost: 100,
+            weakTowerCount: 4,
+            weakTowerId: "needle_turret");
+        var activeRetargetPeers = activeRetarget.Towers
+            .Where(tower => tower.Definition.Id == "needle_turret")
+            .OrderBy(tower => tower.Id)
+            .ToArray();
+        Check.True(activeRetargetPeers[2].TryUpgrade() && activeRetargetPeers[3].TryUpgrade(),
+            "prepare stronger active-wave retargeting survivors");
+        var activeRetargetApex = activeRetarget.Towers.Single(tower => tower.Definition.Id == "apex_candidate");
+        activeRetarget.Economy.AddCredits(60);
+        Check.True(activeRetarget.TryUpgradeTower(activeRetargetApex.Id),
+            "promote the active retargeting fixture Apex");
+        activeRetarget.Economy.AddCredits(40);
+        Check.True(activeRetarget.StartNextWave(), "start active survivor retargeting pressure");
+        for (var update = 0; update < 30; update++) activeRetarget.Update(0.1f);
+        var activeRetargetOptions = Options(2, useApexUpgrades: false);
+        new AutoPlayer(activeRetarget, activeRetargetOptions.Strategy,
+                activeRetargetOptions.Seed, activeRetargetOptions)
+            .ReactDuringWave(activeRetarget);
+        var activeSurvivors = activeRetarget.Towers
+            .Where(tower => tower.Definition.Id == "needle_turret")
+            .OrderBy(tower => tower.Id)
+            .ToArray();
+        Check.True(activeSurvivors.Select(tower => tower.Id)
+                .SequenceEqual(activeRetargetPeers.Skip(2).Select(tower => tower.Id)),
+            "the active sale batch preserves the two stronger indexed peers");
+        Check.Equal(TargetMode.First, activeSurvivors[0].TargetMode,
+            "the first active-wave survivor leaves its obsolete SUPPORT index after sales");
+        Check.Equal(TargetMode.Support, activeSurvivors[1].TargetMode,
+            "the next active-wave survivor inherits SUPPORT after the sale batch re-indexes peers");
+    }
+
+    private static void ExperiencedTargetingContinuity()
+    {
+        static SimulationOptions Options(
+            int wave,
+            string targetingProfile = "split",
+            SortedDictionary<string, double>? parameters = null,
+            bool useApexUpgrades = false) => new()
+        {
+            Strategy = AutoPlayerStrategy.Experienced,
+            Seed = 8719,
+            UseProtocols = false,
+            UseApexUpgrades = useApexUpgrades,
+            WavePlan = new WavePlan
+            {
+                Wave = wave,
+                DecisionSeed = 8719,
+                TargetingProfileId = targetingProfile,
+                Parameters = parameters ?? new SortedDictionary<string, double>(StringComparer.Ordinal)
+            }
+        };
+
+        static EnemyInstance StartAndSpawn(GameSession session)
+        {
+            Check.True(session.StartNextWave(), "start experienced targeting fixture wave");
+            session.Update(0.01f);
+            return session.Enemies.Single(enemy => !enemy.IsDead && !enemy.HasEscaped);
+        }
+
+        var purchase = TargetingBehaviorSession(
+            "prism_beam",
+            [2, 2],
+            new WaveDefinition
+            {
+                Number = GameConstants.CampaignWaveCount - 1,
+                Archetype = "During-wave purchase",
+                Groups = [new WaveGroupDefinition { EnemyId = "targeting_enemy", Count = 1, SpawnInterval = 0 }]
+            },
+            credits: 200);
+        _ = StartAndSpawn(purchase);
+        var purchasedTowerId = 0;
+        var upgradedTowerIds = new List<int>();
+        purchase.TowerPlaced += tower => purchasedTowerId = tower.Id;
+        purchase.TowerUpgraded += (tower, _) => upgradedTowerIds.Add(tower.Id);
+        var activeOptions = Options(
+            GameConstants.CampaignWaveCount - 1,
+            parameters: new SortedDictionary<string, double>(StringComparer.Ordinal)
+            {
+                ["signalSupportTier"] = 6
+            });
+        new AutoPlayer(purchase, activeOptions.Strategy, activeOptions.Seed, activeOptions)
+            .ReactDuringWave(purchase);
+        var purchasedTower = purchase.Towers.Single(tower => tower.Id == purchasedTowerId);
+        Check.True(purchasedTowerId > 0 && upgradedTowerIds.Contains(purchasedTowerId) && purchasedTower.LevelIndex == 1,
+            "ReactDuringWave purchases and upgrades the same deterministic priority tower");
+        Check.Equal(TargetMode.First, purchasedTower.TargetMode,
+            "a during-wave purchase and its follow-up upgrade use live targeting instead of pre-wave SUPPORT");
+
+        var indexedPurchase = TargetingBehaviorSession(
+            "siege_mortar",
+            [2],
+            new WaveDefinition
+            {
+                Number = 23,
+                Archetype = "Indexed targeting purchase",
+                Groups =
+                [
+                    new WaveGroupDefinition { EnemyId = "targeting_enemy", Count = 1, SpawnInterval = 0 },
+                    new WaveGroupDefinition { EnemyId = "targeting_enemy", Count = 3, SpawnInterval = 10 }
+                ]
+            },
+            credits: 200);
+        _ = StartAndSpawn(indexedPurchase);
+        var existingMortar = indexedPurchase.Towers.Single();
+        var addedMortarId = 0;
+        indexedPurchase.TowerPlaced += tower => addedMortarId = tower.Id;
+        var indexedOptions = Options(23, targetingProfile: "support");
+        new AutoPlayer(indexedPurchase, indexedOptions.Strategy, indexedOptions.Seed, indexedOptions)
+            .ReactDuringWave(indexedPurchase);
+        var addedMortar = indexedPurchase.Towers.Single(tower => tower.Id == addedMortarId);
+        Check.Equal(TargetMode.First, existingMortar.TargetMode,
+            "adding an indexed peer immediately clears the prior tower's stale SUPPORT assignment");
+        Check.Equal(TargetMode.Support, addedMortar.TargetMode,
+            "adding an indexed peer transfers SUPPORT to the new deterministic slot");
+
+        var upgrade = TargetingBehaviorSession(
+            "prism_beam",
+            [2, 2, 1],
+            new WaveDefinition
+            {
+                Number = GameConstants.CampaignWaveCount - 1,
+                Archetype = "During-wave upgrade",
+                Groups = [new WaveGroupDefinition { EnemyId = "targeting_enemy", Count = 1, SpawnInterval = 0 }]
+            },
+            credits: 130);
+        _ = StartAndSpawn(upgrade);
+        var upgradeCandidate = upgrade.Towers.OrderBy(tower => tower.Id).Last();
+        var upgradeOptions = Options(
+            GameConstants.CampaignWaveCount - 1,
+            parameters: new SortedDictionary<string, double>(StringComparer.Ordinal)
+            {
+                ["signalSupportTier"] = 6
+            });
+        new AutoPlayer(upgrade, upgradeOptions.Strategy, upgradeOptions.Seed, upgradeOptions)
+            .ReactDuringWave(upgrade);
+        Check.Equal(2, upgradeCandidate.LevelIndex, "ReactDuringWave completes the only affordable upgrade");
+        Check.Equal(TargetMode.First, upgradeCandidate.TargetMode,
+            "a during-wave upgrade retains live FIRST targeting instead of applying pre-wave SUPPORT");
+
+        var genericUpgrade = TargetingBehaviorSession(
+            "siege_mortar",
+            [1],
+            new WaveDefinition
+            {
+                Number = 23,
+                Archetype = "Generic during-wave upgrade",
+                Groups = [new WaveGroupDefinition { EnemyId = "targeting_enemy", Count = 1, SpawnInterval = 0 }]
+            },
+            credits: 130);
+        _ = StartAndSpawn(genericUpgrade);
+        var genericCandidate = genericUpgrade.Towers.Single();
+        var genericOptions = Options(23, targetingProfile: "support");
+        new AutoPlayer(genericUpgrade, genericOptions.Strategy, genericOptions.Seed, genericOptions)
+            .ReactDuringWave(genericUpgrade);
+        Check.Equal(2, genericCandidate.LevelIndex,
+            "the generic BestUpgrade path completes the only affordable upgrade");
+        Check.Equal(TargetMode.First, genericCandidate.TargetMode,
+            "the generic BestUpgrade path applies live no-Signal targeting");
+
+        var lateApex = TargetingBehaviorSession(
+            "prism_beam",
+            [2],
+            new WaveDefinition
+            {
+                Number = GameConstants.CampaignWaveCount - 1,
+                Archetype = "During-wave Apex investment",
+                Groups = [new WaveGroupDefinition { EnemyId = "targeting_enemy", Count = 1, SpawnInterval = 0 }]
+            },
+            credits: 100,
+            withApex: true);
+        _ = StartAndSpawn(lateApex);
+        var lateApexTower = lateApex.Towers.Single();
+        var lateApexOptions = Options(
+            GameConstants.CampaignWaveCount - 1,
+            parameters: new SortedDictionary<string, double>(StringComparer.Ordinal)
+            {
+                ["apexCandidate"] = 0,
+                ["apexLimit"] = 1,
+                ["apexWave"] = GameConstants.ApexUnlockWave
+            },
+            useApexUpgrades: true);
+        new AutoPlayer(lateApex, lateApexOptions.Strategy, lateApexOptions.Seed, lateApexOptions)
+            .ReactDuringWave(lateApex);
+        Check.True(lateApexTower.IsApex, "TryExperiencedLateInvestment buys the planned Apex during combat");
+        Check.Equal(TargetMode.First, lateApexTower.TargetMode,
+            "TryExperiencedLateInvestment applies live no-Signal targeting to the Apex");
+
+        var queuedSignal = TargetingBehaviorSession(
+            "needle_turret",
+            [2],
+            new WaveDefinition
+            {
+                Number = 2,
+                Archetype = "Queued Signal",
+                Groups = [new WaveGroupDefinition { EnemyId = "targeting_enemy", Count = 3, SpawnInterval = 10 }]
+            },
+            credits: 0);
+        var ordinaryLead = StartAndSpawn(queuedSignal);
+        Check.True(ordinaryLead.SignalRole == EnemySignalRole.None &&
+                   queuedSignal.Waves.CaptureQueuedEnemies(queuedSignal)
+                       .Any(group => group.SignalRole != EnemySignalRole.None),
+            "queued Signal fixture has no live carrier but retains an incoming carrier");
+        var queuedOptions = Options(2);
+        new AutoPlayer(queuedSignal, queuedOptions.Strategy, queuedOptions.Seed, queuedOptions)
+            .ReactDuringWave(queuedSignal);
+        Check.Equal(TargetMode.Support, queuedSignal.Towers.Single().TargetMode,
+            "SUPPORT targeting remains armed while a Signal-role enemy is still queued");
+
+        var queuedOnlySignal = TargetingBehaviorSession(
+            "needle_turret",
+            [2],
+            new WaveDefinition
+            {
+                Number = GameConstants.CampaignWaveCount,
+                Archetype = "Queued-only Signal",
+                Groups = [new WaveGroupDefinition { EnemyId = "targeting_enemy", Count = 1, SpawnInterval = 0 }]
+            },
+            credits: 0);
+        Check.True(queuedOnlySignal.StartNextWave(), "start queued-only Signal fixture");
+        Check.True(queuedOnlySignal.Enemies.Count == 0 &&
+                   queuedOnlySignal.Waves.CaptureQueuedEnemies(queuedOnlySignal)
+                       .Any(group => group.SignalRole != EnemySignalRole.None),
+            "queued-only fixture has incoming Signal pressure with an empty live field");
+        var queuedOnlyOptions = Options(GameConstants.CampaignWaveCount);
+        new AutoPlayer(queuedOnlySignal, queuedOnlyOptions.Strategy,
+                queuedOnlyOptions.Seed, queuedOnlyOptions)
+            .ReactDuringWave(queuedOnlySignal);
+        Check.Equal(TargetMode.Support, queuedOnlySignal.Towers.Single().TargetMode,
+            "queued-only Signal pressure retains SUPPORT without requiring a live-progress sample");
+
+        var explicitProfile = TargetingBehaviorSession(
+            "needle_turret",
+            [2],
+            new WaveDefinition
+            {
+                Number = 10,
+                Archetype = "Explicit cleanup profile",
+                Groups =
+                [
+                    new WaveGroupDefinition
+                    {
+                        EnemyId = "targeting_enemy",
+                        Rank = "Elite",
+                        Count = 1,
+                        SpawnInterval = 0
+                    }
+                ]
+            },
+            credits: 0);
+        var signalLead = StartAndSpawn(explicitProfile);
+        while (signalLead.PathProgress < 0.88f)
+            signalLead.UpdateMovement(0.1f, explicitProfile.Map.Path);
+        var supportOptions = Options(10, targetingProfile: "support");
+        new AutoPlayer(explicitProfile, supportOptions.Strategy, supportOptions.Seed, supportOptions)
+            .ReactDuringWave(explicitProfile);
+        Check.Equal(TargetMode.Support, explicitProfile.Towers.Single().TargetMode,
+            "an explicit SUPPORT profile takes precedence over the pre-wave-28 cleanup shortcut");
+
+        var frostCleanup = TargetingBehaviorSession(
+            "frost_spire",
+            [2, 2],
+            new WaveDefinition
+            {
+                Number = 10,
+                Archetype = "Frost cleanup split",
+                Groups = [new WaveGroupDefinition { EnemyId = "targeting_enemy", Count = 1, SpawnInterval = 0 }]
+            },
+            credits: 0);
+        var escapeLead = StartAndSpawn(frostCleanup);
+        while (escapeLead.PathProgress < 0.88f)
+            escapeLead.UpdateMovement(0.1f, frostCleanup.Map.Path);
+        var frostOptions = Options(10);
+        new AutoPlayer(frostCleanup, frostOptions.Strategy, frostOptions.Seed, frostOptions)
+            .ReactDuringWave(frostCleanup);
+        var frostPeers = frostCleanup.Towers.OrderBy(tower => tower.Id).ToArray();
+        var nearestFrost = frostPeers.OrderBy(tower => Vector2.DistanceSquared(tower.Position, escapeLead.Position))
+            .ThenBy(tower => tower.Id)
+            .First();
+        Check.Equal(TargetMode.First, nearestFrost.TargetMode,
+            "the Frost best placed to catch a dangerous cleanup lead switches to FIRST");
+        Check.True(frostPeers.Where(tower => tower != nearestFrost)
+                .All(tower => tower.TargetMode == TargetMode.Fastest),
+            "remaining Frost towers retain FASTEST coverage during the escape response");
     }
 
     private static void PulsePlateDeploymentTelemetry()
@@ -8035,13 +10282,119 @@ internal static class Program
         return content;
     }
 
-    private static GameSession SaleBehaviorCheckpointSession()
+    private static GameSession TargetingBehaviorSession(
+        string towerId,
+        IReadOnlyList<int> towerLevels,
+        WaveDefinition wave,
+        int credits,
+        bool withApex = false)
+    {
+        var tower = new TowerDefinition
+        {
+            Id = towerId,
+            DisplayName = "Targeting Fixture Tower",
+            PurchaseCost = 50,
+            DefaultTargetMode = towerId == "frost_spire" ? "Fastest" : "First",
+            Levels =
+            [
+                new TowerLevelDefinition { Range = 180, Damage = 1, AttacksPerSecond = 1, UpgradeCost = 10 },
+                new TowerLevelDefinition { Range = 190, Damage = 2, AttacksPerSecond = 1, UpgradeCost = 10 },
+                new TowerLevelDefinition { Range = 200, Damage = 3, AttacksPerSecond = 1 }
+            ],
+            Apex = withApex
+                ? new TowerApexDefinition
+                {
+                    UpgradeCost = 50,
+                    DamageMultiplier = 1.2f,
+                    AttackSpeedMultiplier = 1.2f,
+                    RangeMultiplier = 1.1f
+                }
+                : null
+        };
+        var enemy = Enemy("targeting_enemy", 1_000_000, 100, 0, 0, 0);
+        var signalGauntlet = new ChallengeDefinition
+        {
+            Id = ChallengeCatalog.SignalGauntletId,
+            DisplayName = "Signal Gauntlet",
+            StartingCreditsMultiplier = 1,
+            SellingEnabled = true,
+            CounterPressureEnabled = true
+        };
+        var content = new GameContent
+        {
+            Towers = new Dictionary<string, TowerDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                [tower.Id] = tower
+            },
+            Enemies = new Dictionary<string, EnemyDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                [enemy.Id] = enemy
+            },
+            Map = new MapDefinition
+            {
+                Id = "targeting_behavior",
+                DisplayName = "Targeting Behavior",
+                Path = [Point(0, 30), Point(1_000, 30)],
+                PathWidth = 56,
+                BuildableRegions = [new RectangleData { X = 20, Y = 100, Width = 960, Height = 600 }],
+                StartingCredits = 1_000,
+                StartingLives = 20,
+                Background = new BackgroundData()
+            },
+            Waves = new WaveSetDefinition
+            {
+                Waves = Enumerable.Range(1, GameConstants.CampaignWaveCount)
+                    .Select(number => number == wave.Number
+                        ? wave
+                        : new WaveDefinition
+                        {
+                            Number = number,
+                            Archetype = "Targeting fixture filler",
+                            Groups =
+                            [
+                                new WaveGroupDefinition
+                                {
+                                    EnemyId = enemy.Id,
+                                    Count = 1,
+                                    SpawnInterval = 0
+                                }
+                            ]
+                        })
+                    .ToList()
+            },
+            Challenges = new Dictionary<string, ChallengeDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                [signalGauntlet.Id] = signalGauntlet
+            },
+            Tactics = new TacticsDefinition()
+        };
+        var setup = new GameSession(content, challengeId: signalGauntlet.Id);
+        for (var index = 0; index < towerLevels.Count; index++)
+        {
+            var position = new Vector2(120 + index * 320, 150);
+            Check.True(setup.TryPlaceTower(tower.Id, position, selectPlaced: false),
+                "place targeting fixture tower");
+            var placed = setup.Towers[^1];
+            for (var level = 0; level < towerLevels[index]; level++)
+                Check.True(placed.TryUpgrade(), "advance targeting fixture tower level");
+        }
+
+        var checkpoint = setup.CaptureSaveGame();
+        checkpoint.Economy.Credits = credits;
+        checkpoint.Waves.CurrentWaveNumber = wave.Number - 1;
+        return GameSession.RestoreSaveGame(content, checkpoint);
+    }
+
+    private static GameSession SaleBehaviorCheckpointSession(
+        int apexUpgradeCost = 100,
+        int weakTowerCount = 1,
+        string weakTowerId = "frost_spire")
     {
         static List<TowerLevelDefinition> Levels() =>
         [
             new TowerLevelDefinition { Range = 10, Damage = 1, AttacksPerSecond = 1, UpgradeCost = 10 },
-            new TowerLevelDefinition { Range = 10, Damage = 1, AttacksPerSecond = 1, UpgradeCost = 10 },
-            new TowerLevelDefinition { Range = 10, Damage = 1, AttacksPerSecond = 1 }
+            new TowerLevelDefinition { Range = 10, Damage = 5, AttacksPerSecond = 1, UpgradeCost = 10 },
+            new TowerLevelDefinition { Range = 10, Damage = 10, AttacksPerSecond = 1 }
         ];
 
         var apexCandidate = new TowerDefinition
@@ -8064,16 +10417,16 @@ internal static class Program
             ],
             Apex = new TowerApexDefinition
             {
-                UpgradeCost = 100,
+                UpgradeCost = apexUpgradeCost,
                 DamageMultiplier = 1.2f,
                 AttackSpeedMultiplier = 1.2f,
                 RangeMultiplier = 1.1f
             }
         };
-        var frost = new TowerDefinition
+        var weakTower = new TowerDefinition
         {
-            Id = "frost_spire",
-            DisplayName = "Checkpoint Frost",
+            Id = weakTowerId,
+            DisplayName = "Checkpoint Weak Tower",
             PurchaseCost = 100,
             Levels = Levels()
         };
@@ -8085,12 +10438,22 @@ internal static class Program
             Levels = Levels()
         };
         var enemy = Enemy("sale_target", 1_000_000, 180, 0, 0, 0);
+        var signalGauntlet = new ChallengeDefinition
+        {
+            Id = ChallengeCatalog.SignalGauntletId,
+            DisplayName = "Signal Gauntlet",
+            StartingCreditsMultiplier = 1,
+            TacticalSystemsEnabled = true,
+            ProtocolsEnabled = true,
+            SellingEnabled = true,
+            CounterPressureEnabled = true
+        };
         var content = new GameContent
         {
             Towers = new Dictionary<string, TowerDefinition>(StringComparer.OrdinalIgnoreCase)
             {
                 [apexCandidate.Id] = apexCandidate,
-                [frost.Id] = frost,
+                [weakTower.Id] = weakTower,
                 [filler.Id] = filler
             },
             Enemies = new Dictionary<string, EnemyDefinition>(StringComparer.OrdinalIgnoreCase)
@@ -8116,9 +10479,13 @@ internal static class Program
                     Archetype = "Sale fixture",
                     Groups = [new WaveGroupDefinition { EnemyId = enemy.Id, Count = 1, SpawnInterval = 0 }]
                 }).ToList()
+            },
+            Challenges = new Dictionary<string, ChallengeDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                [signalGauntlet.Id] = signalGauntlet
             }
         };
-        var setup = new GameSession(content);
+        var setup = new GameSession(content, challengeId: signalGauntlet.Id);
         var positions = Enumerable.Range(0, 24)
             .Select(index => new Vector2(60 + index % 8 * 105, 150 + index / 8 * 180))
             .ToArray();
@@ -8127,9 +10494,10 @@ internal static class Program
         var apexTower = setup.Towers.Single();
         Check.True(apexTower.TryUpgrade() && apexTower.TrySpecialize("alpha"),
             "prepare sale fixture Apex candidate");
-        Check.True(setup.TryPlaceTower(frost.Id, positions[1], selectPlaced: false),
-            "place sale fixture Frost");
-        foreach (var position in positions.Skip(2))
+        foreach (var position in positions.Skip(1).Take(weakTowerCount))
+            Check.True(setup.TryPlaceTower(weakTower.Id, position, selectPlaced: false),
+                "place sale fixture weak tower");
+        foreach (var position in positions.Skip(1 + weakTowerCount))
         {
             Check.True(setup.TryPlaceTower(filler.Id, position, selectPlaced: false),
                 "place established sale fixture tower");

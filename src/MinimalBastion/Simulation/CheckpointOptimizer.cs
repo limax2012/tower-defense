@@ -21,8 +21,17 @@ public sealed record CheckpointStateScore(
     int MatureTowerCount,
     int ApexTowerCount,
     int PoweredTowerCount,
+    double DefenseForwardValue,
+    double StructuralStrength,
+    double WholeMapCoverage,
+    int EmergencyInventory,
+    int PulsePlateCharges,
+    int GeneratorLevel,
+    double GeneratorProgress,
+    double GeneratorForwardValue,
+    double TacticalForwardValue,
     int Credits,
-    double LifetimeContributionPerCredit,
+    double StructuralValuePerCredit,
     int InvestedCredits);
 
 public sealed class CheckpointSearchState
@@ -30,6 +39,7 @@ public sealed class CheckpointSearchState
     public required StrategyPlan Strategy { get; init; }
     public required SaveGameData Checkpoint { get; init; }
     public required string CheckpointFingerprint { get; init; }
+    public string StrategicFingerprint { get; init; } = "";
     public required CheckpointStateScore Score { get; init; }
 
     public static CheckpointSearchState Create(GameContent content, StrategyPlan strategy, SaveGameData checkpoint)
@@ -43,7 +53,8 @@ public sealed class CheckpointSearchState
             Strategy = strategy,
             Checkpoint = checkpoint,
             CheckpointFingerprint = StrategyArtifactStore.Fingerprint(checkpoint),
-            Score = CheckpointBeamOptimizer.Rank(content, checkpoint)
+            StrategicFingerprint = CheckpointStrategicFingerprint.Compute(session),
+            Score = CheckpointBeamOptimizer.Rank(session)
         };
     }
 }
@@ -83,7 +94,7 @@ public sealed class CheckpointCampaignCompletion
 
 public sealed class CheckpointSearchResult
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 4;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public required int TargetWave { get; init; }
@@ -127,6 +138,8 @@ public static class CheckpointBeamOptimizer
             parent.Strategy.ValidatePrefixForCheckpoint(parent.Checkpoint);
             if (!StrategyArtifactStore.Fingerprint(parent.Checkpoint)
                     .Equals(parent.CheckpointFingerprint, StringComparison.Ordinal) ||
+                !CheckpointStrategicFingerprint.Compute(content, parent.Checkpoint)
+                    .Equals(parent.StrategicFingerprint, StringComparison.Ordinal) ||
                 Rank(content, parent.Checkpoint) != parent.Score)
                 throw new InvalidDataException("Checkpoint search frontier identity or ranking score is invalid.");
             if (parent.Checkpoint.Waves.CurrentWaveNumber + 1 != targetWave)
@@ -178,9 +191,11 @@ public static class CheckpointBeamOptimizer
         }
 
         var retained = RankStates(successes
-            .GroupBy(success => $"{success.State.CheckpointFingerprint}|{success.State.Strategy.DefaultStrategy}",
-                StringComparer.Ordinal)
-            .Select(group => group.OrderBy(success => success.WavePlan.StableKey, StringComparer.Ordinal).First().State),
+            .GroupBy(success => StrategicIdentity(success.State), StringComparer.Ordinal)
+            .Select(group => group
+                .OrderBy(success => success.WavePlan.StableKey, StringComparer.Ordinal)
+                .ThenBy(success => success.State.CheckpointFingerprint, StringComparer.Ordinal)
+                .First().State),
             beamWidth);
 
         return new CheckpointSearchResult
@@ -212,34 +227,51 @@ public static class CheckpointBeamOptimizer
         return states
             .OrderByDescending(state => state.Score.CompletedWave)
             .ThenByDescending(state => state.Score.Lives)
-            .ThenByDescending(state => state.Score.PoweredNodeCount)
+            .ThenByDescending(state => state.Score.DefenseForwardValue)
+            .ThenByDescending(state => state.Score.StructuralStrength)
+            .ThenByDescending(state => state.Score.WholeMapCoverage)
+            .ThenByDescending(state => state.Score.TacticalForwardValue)
+            .ThenByDescending(state => state.Score.EmergencyInventory)
+            .ThenByDescending(state => state.Score.PulsePlateCharges)
+            .ThenByDescending(state => state.Score.GeneratorLevel)
+            .ThenByDescending(state => state.Score.GeneratorProgress)
+            .ThenByDescending(state => state.Score.GeneratorForwardValue)
+            .ThenByDescending(state => state.Score.StructuralValuePerCredit)
+            .ThenByDescending(state => state.Score.Credits)
+            .ThenByDescending(state => state.Score.ApexTowerCount)
             .ThenByDescending(state => state.Score.MaturePoweredTowerCount)
             .ThenByDescending(state => state.Score.MatureTowerCount)
-            .ThenByDescending(state => state.Score.ApexTowerCount)
+            .ThenByDescending(state => state.Score.PoweredNodeCount)
             .ThenByDescending(state => state.Score.PoweredTowerCount)
-            .ThenByDescending(state => state.Score.LifetimeContributionPerCredit)
-            .ThenByDescending(state => state.Score.Credits)
             .ThenByDescending(state => state.Score.InvestedCredits)
             .ThenBy(state => state.CheckpointFingerprint, StringComparer.Ordinal)
             .Take(limit)
             .ToArray();
     }
 
-    public static CheckpointStateScore Rank(GameContent content, SaveGameData checkpoint)
+    public static string StrategicIdentity(CheckpointSearchState state)
     {
-        if (!content.Maps.TryGetValue(checkpoint.MapId, out var map) &&
-            !content.Map.Id.Equals(checkpoint.MapId, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException($"Checkpoint map '{checkpoint.MapId}' is not available.");
-        map ??= content.Map;
+        ArgumentNullException.ThrowIfNull(state);
+        if (!CheckpointStrategicFingerprint.IsValid(state.StrategicFingerprint))
+            throw new InvalidDataException("Checkpoint strategic fingerprint is invalid.");
+        return $"{state.StrategicFingerprint}|{state.Strategy.DefaultStrategy}";
+    }
+
+    public static CheckpointStateScore Rank(GameContent content, SaveGameData checkpoint) =>
+        Rank(GameSession.RestoreSaveGame(content, checkpoint));
+
+    internal static CheckpointStateScore Rank(GameSession session)
+    {
+        var map = session.Map.Definition;
         var occupiedNodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var poweredTowers = 0;
         var maturePoweredTowers = 0;
-        foreach (var tower in checkpoint.Towers)
+        foreach (var tower in session.Towers)
         {
             foreach (var node in map.PowerNodes)
             {
-                var deltaX = tower.X - node.Position.X;
-                var deltaY = tower.Y - node.Position.Y;
+                var deltaX = tower.Position.X - node.Position.X;
+                var deltaY = tower.Position.Y - node.Position.Y;
                 if (deltaX * deltaX + deltaY * deltaY > node.Radius * node.Radius) continue;
                 poweredTowers++;
                 if (tower.LevelIndex >= 2) maturePoweredTowers++;
@@ -248,21 +280,33 @@ public static class CheckpointBeamOptimizer
             }
         }
 
-        var investedCredits = checkpoint.Towers.Sum(tower => tower.InvestedCredits) +
-                              (checkpoint.Generator?.InvestedCredits ?? 0);
-        var lifetimeContribution = checkpoint.Towers.Sum(tower =>
-            (double)tower.LifetimeDamage + tower.LifetimeSupportDamageEquivalent +
-            tower.LifetimeExposeDamageEquivalent + tower.LifetimeArmorBreakDamageEquivalent);
+        var investedCredits = session.Towers.Sum(tower => tower.InvestedCredits) +
+                              (session.Generator?.InvestedCredits ?? 0);
+        var threat = ThreatProfile.From(session.Waves.NextWave, session.Content.Enemies);
+        var tactical = StructuralTowerEvaluator.TacticalValue(session, threat);
+        var structure = StructuralTowerEvaluator.MapValue(session, threat);
+        var structuralValue = structure.ForwardValue + tactical.ForwardValue;
+        var defenseForwardValue = structure.ForwardValue *
+                                  (0.7d + structure.WholeMapCoverage * 0.3d) + tactical.ForwardValue;
         return new CheckpointStateScore(
-            checkpoint.Waves.CurrentWaveNumber,
-            checkpoint.Economy.Lives,
+            session.Waves.CurrentWaveNumber,
+            session.Economy.Lives,
             occupiedNodes.Count,
             maturePoweredTowers,
-            checkpoint.Towers.Count(tower => tower.LevelIndex >= 2),
-            checkpoint.Towers.Count(tower => tower.IsApex),
+            session.Towers.Count(tower => tower.LevelIndex >= 2),
+            session.Towers.Count(tower => tower.IsApex),
             poweredTowers,
-            checkpoint.Economy.Credits,
-            investedCredits <= 0 ? 0 : lifetimeContribution / investedCredits,
+            defenseForwardValue,
+            structure.ForwardValue,
+            structure.WholeMapCoverage,
+            tactical.EmergencyInventory,
+            tactical.PulsePlateCharges,
+            tactical.GeneratorLevel,
+            tactical.GeneratorProgress,
+            tactical.GeneratorForwardValue,
+            tactical.ForwardValue,
+            session.Economy.Credits,
+            investedCredits <= 0 ? 0 : structuralValue / investedCredits,
             investedCredits);
     }
 }
