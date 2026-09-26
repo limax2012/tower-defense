@@ -1,6 +1,6 @@
 # Deterministic Balance Harness
 
-Minimal Bastion includes a headless simulation CLI in `tests/MinimalBastion.Tests`. It uses the production content loader, map geometry, placement validation, tower/enemy systems, wave manager, economy, tactical systems, and fixed gameplay rules. It is designed for repeatable comparisons and regression detection, not as a literal prediction of human win probability.
+Maximal Bastion includes a headless simulation CLI in `tests/MaximalBastion.Tests`. It uses the production content loader, map geometry, placement validation, tower/enemy systems, wave manager, economy, tactical systems, and fixed gameplay rules. It is designed for repeatable comparisons and regression detection, not as a literal prediction of human win probability.
 
 ## Running the harness
 
@@ -9,8 +9,8 @@ Build and run from the repository root:
 ```powershell
 $dotnet = if (Test-Path .\.dotnet\dotnet.exe) { (Resolve-Path .\.dotnet\dotnet.exe).Path } else { (Get-Command dotnet -ErrorAction Stop).Source }
 $env:Path = "$(Split-Path $dotnet);$env:Path"
-& $dotnet build MinimalBastion.sln -c Release
-& $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --runs 5
+& $dotnet build MaximalBastion.sln -c Release
+& $dotnet run --project tests\MaximalBastion.Tests -c Release --no-build -- --simulate-full --runs 5
 ```
 
 Reports are written to `.build\balance` unless `--output` selects another path.
@@ -43,11 +43,11 @@ Reports are written to `.build\balance` unless `--output` selects another path.
 Examples:
 
 ```powershell
-& $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate --strategy Experienced --seed 1337
-& $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --strategy Experienced --difficulty hard --challenge all --max-wave 30 --runs 10
-& $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --strategy Experienced --difficulty bastion --challenge all --max-wave 30 --runs 10
-& $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --difficulty hard --force-build siege_mortar:all --runs 10
-& $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build -- --simulate-full --save-file C:\path\checkpoint.json --max-wave 50 --hold-footprint
+& $dotnet run --project tests\MaximalBastion.Tests -c Release --no-build -- --simulate --strategy Experienced --seed 1337
+& $dotnet run --project tests\MaximalBastion.Tests -c Release --no-build -- --simulate-full --strategy Experienced --difficulty hard --challenge all --max-wave 30 --runs 10
+& $dotnet run --project tests\MaximalBastion.Tests -c Release --no-build -- --simulate-full --strategy Experienced --difficulty bastion --challenge all --max-wave 30 --runs 10
+& $dotnet run --project tests\MaximalBastion.Tests -c Release --no-build -- --simulate-full --difficulty hard --force-build siege_mortar:all --runs 10
+& $dotnet run --project tests\MaximalBastion.Tests -c Release --no-build -- --simulate-full --save-file C:\path\checkpoint.json --max-wave 50 --hold-footprint
 ```
 
 Internal content IDs include `normal` for Medium, `close_quarters` for Signal Gauntlet, `no_reserves` for Entrenched, and `relay_divide` for Surge Divide.

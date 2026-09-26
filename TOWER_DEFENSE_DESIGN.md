@@ -1,4 +1,4 @@
-# Minimal Bastion — Technical Design
+# Maximal Bastion — Technical Design
 
 This document describes the implemented architecture and runtime invariants. Gameplay values are authored in JSON and should be read from the current content files rather than duplicated in code.
 
@@ -6,9 +6,9 @@ This document describes the implemented architecture and runtime invariants. Gam
 
 - Runtime: .NET 10.
 - Framework: MonoGame DesktopGL 3.8.5.
-- Game project: `src/MinimalBastion/MinimalBastion.csproj`.
-- Deterministic test/simulation executable: `tests/MinimalBastion.Tests`.
-- Content: runtime JSON under `src/MinimalBastion/ContentData`; the interface font is compiled through MonoGame Content Builder.
+- Game project: `src/MaximalBastion/MaximalBastion.csproj`.
+- Deterministic test/simulation executable: `tests/MaximalBastion.Tests`.
+- Content: runtime JSON under `src/MaximalBastion/ContentData`; the bundled Barlow and Oxanium fonts are compiled through MonoGame Content Builder.
 - Supported packaged target: self-contained Windows x64.
 
 The architecture is conventional object-oriented C#. It intentionally avoids an ECS, physics engine, networking framework, and dependency-injection container.
@@ -167,11 +167,21 @@ See [docs/co-op-architecture.md](docs/co-op-architecture.md) for the connection 
 
 ## UI and input
 
-`UIManager` owns screen layout, hit testing, setup flows, pause/library/save/history/settings/results screens, Tower Workshop/Intel, tactical controls, co-op lobby/status, medals/achievements, and Sandbox controls.
+`UIManager` owns screen layout, hit testing, setup flows, pause/save/history/settings/results screens, Tower Workshop/Intel, tactical controls, co-op lobby/status, medals/achievements, and Sandbox controls.
 
 Input is processed only while the game window is active. Resolution/fullscreen changes update both viewport mapping and hit testing together. Mouse-driven menus do not retain hidden keyboard focus. Text fields explicitly own copy/paste/backspace behavior.
 
-The Tactical Library uses left/right page navigation and exposes the complete authored planning reference. In co-op it is a local overlay: network polling and simulation continue while local world input is blocked.
+## Rendering
+
+`ColorPalette` owns resolution-independent theme values. `NightGridArt` draws procedural hardware with the same silhouettes in the field, Workshop, Intel, and placement previews. Authored tower visual colors match the centralized hardware accents so projectiles and Protocol effects retain their weapon identity.
+
+`MapEnvironmentRenderer` draws the ground, scenery, build decks, routes, and selector emblems for four environment families. `ColorPalette.Environment` centralizes their surface and lighting colors. Map IDs and path-style keys remain stable for persistence; display names describe the current locations. Furnace machinery, elevated utility decks and cooling housings, floating wire structures, and circular reactors use separate geometry beneath the shared node and combat layers. Environmental animation reads session time without mutating it, and Reduced Effects fixes its phase at zero. See [map art direction](docs/map-art-direction.md) for the visual conventions.
+
+`CommandSurfaceArt` separates layered graphite surfaces from asymmetric peripheral service infrastructure and bounded signal motion. HUD and nested panels use only the static material. `UiTypography` supplies separate interface and high-resolution display assets; `UIManager.Typography` applies consistent font measurement and drawing. `DefenseTerminalArt` composes the command environment, surveillance framing, and setup map previews from authored routes and shared environment palettes. `UIManager.MainMenuActions` supplies the visible actions and their hit rectangles; Play enters solo setup. `SetupCardRectangle` supplies both setup rendering and selection bounds. Ambient menu time is presentation-only; Reduced Effects freezes it and is also forwarded to the live battle renderer.
+
+`UIManager.Presentation` holds menu theme constants, tab geometry, and overview rendering. Shared panel, button, and selection helpers give menus, dialogs, and setup consistent surfaces and interaction states. Settings visibility guards match the active tab. Tower and result detail flags belong only to the interface; Escape dismisses the detail layer first. See [interface design](docs/interface-design.md) for screen hierarchy and component conventions.
+
+`PrimitiveRenderer` shares one premultiplied radial texture across all glow sizes, and disposes it with its other cached resources. Light pools, trails, spark rays, and beam cores use the existing bounded transient-effect collection. Rendering reads recoil and damage feedback timers without modifying the simulation. Decorative motion and HUD credit pulses are presentation state; they are excluded from snapshots and checksums. Reduced Effects suppresses decorative combat layers while preserving targeting, health, status, ownership, and selection indicators.
 
 ## Audio
 
@@ -194,7 +204,7 @@ The test executable covers content loading/validation, maps/waves, placement, co
 ## Project layout
 
 ```text
-src/MinimalBastion/
+src/MaximalBastion/
   Analytics/      career, medals, achievements, run statistics
   Audio/          procedural music and synthesized effects
   Combat/         targeting, buffs, projectiles, damage
@@ -203,18 +213,18 @@ src/MinimalBastion/
   Data/           definitions and content loading
   Diagnostics/    crash and hidden visual verification
   Economy/        credits, lives, rewards, sales
-  Effects/        geometric effects and statuses
+  Effects/        bounded combat effects and statuses
   Enemies/        runtime enemies and signal roles
   Maps/           route/build/node runtime
   Multiplayer/    transport, commands, fixed ticks, snapshots
   Persistence/    saves, history, settings
-  Rendering/      palette and all geometric rendering
+  Rendering/      Night Grid hardware, infrastructure, palette, and primitives
   Simulation/     deterministic agents and reports
   Tactics/        Plates and Charge Forge
   Towers/         tower state, behaviors, progression
   UI/             screens and Tower Intel
   Waves/          authored flow, intel, Endless generation
-tests/MinimalBastion.Tests/
+tests/MaximalBastion.Tests/
   deterministic regression and simulation CLI
 ```
 

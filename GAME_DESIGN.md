@@ -1,8 +1,8 @@
-# Minimal Bastion — Current Game Design
+# Maximal Bastion — Current Game Design
 
 ## Design goals
 
-Minimal Bastion is a tactical tower-defense game about readable positioning, permanent build decisions, complementary tower roles, and adapting to deliberate enemy compositions. Its presentation uses flat geometric forms and a restrained tactical palette so target priority, tower identity, range, routes, statuses, and multiplayer intent remain legible in dense late waves.
+Maximal Bastion is a tactical tower-defense game about readable positioning, permanent build decisions, complementary tower roles, and adapting to deliberate enemy compositions. Its industrial presentation places a municipal defense network among besieged fabrication, transit, archive, and power districts. Mechanical silhouettes and restrained neon accents keep target priority, tower identity, range, routes, statuses, and multiplayer intent legible in dense late waves.
 
 The core campaign is intended to be learnable without being solved by one universal build. Maps, difficulty profiles, and modes change which openings, coverage patterns, and support combinations are efficient. The final ten campaign waves and Endless convert an established defense into a reinvestment and scaling problem rather than a separate match.
 
@@ -13,7 +13,7 @@ The core campaign is intended to be learnable without being solved by one univer
 3. Spend shared credits on continuous legal placement inside the arena's build areas.
 4. Start or ready the next campaign wave. Manual early calls and automatic starts chosen in advance can award 20 credits.
 5. Defeat enemies before they traverse the complete route. Escapes remove lives according to enemy rank/type.
-6. Between waves, add, upgrade, specialize, retarget, sell, save, or inspect the Tactical Library as the selected mode permits.
+6. Between waves, add, upgrade, specialize, retarget, sell, save, or inspect Tower Intel as the selected mode permits.
 7. Secure the campaign by completing all 30 waves. Wave 21 begins the final escalation and unlocks Apex promotions.
 8. Continue into Endless waves beginning at 31.
 
@@ -21,10 +21,10 @@ Defeat occurs when lives reach zero. Victory/results preserve a read-only final 
 
 ## Arenas
 
-- **Foundry Loop** is the baseline route with eight broad build areas and a 400-credit opening.
-- **Crosswind Basin** uses a long earth trail and compact crossfire opportunities. It starts at 390 credits.
-- **Prism Circuit** compresses placement into six areas around three Surge Nodes and starts at 380 credits.
-- **Surge Divide** is the most demanding arena. Its low 360-credit opening and stronger late pressure are offset by nine small specialized Surge Nodes that reward deliberate placement.
+- **Cinderworks** is the baseline route with eight broad build areas and a 400-credit opening.
+- **Rainline Heights** uses long rooftop skybridges and compact crossfire opportunities. It starts at 390 credits.
+- **Prism Nullspace** compresses placement into six areas around three Surge Nodes and starts at 380 credits.
+- **Helix Reactor** is the most demanding arena. Its low 360-credit opening and stronger late pressure are offset by nine small specialized Surge Nodes that reward deliberate placement.
 
 Every arena owns its complete campaign wave data. Route length, build geometry, node access, economy, enemy order, density, and scaling are balanced together rather than applying one universal wave list.
 
@@ -38,7 +38,7 @@ Modes change available decisions:
 - **Signal Gauntlet** adds enemy support and disruption roles while preserving the full defensive toolset.
 - **Core Six** restricts the roster to Needle, Frost, Shard, Ember, Breaker, and Beacon with the standard opening economy.
 - **Entrenched** preserves all permanent towers but removes Plates, Forge, Protocols, and selling.
-- **Sandbox Lab** exposes real combat and campaign waves in a noncompetitive test environment. Wave signals are optional and off by default.
+- **Sandbox Lab** exposes real combat and campaign waves in a noncompetitive test environment. Pulse Plates deploy freely with normal placement and active-field limits; Reset Test clears them. Wave signals are optional and off by default.
 
 Competitive modes use the selected difficulty's opening economy without compensating credits. They never change tower damage or utility over time.
 
@@ -104,11 +104,11 @@ Signal Gauntlet adds visible signal roles to ordinary enemies:
 - **Jammer:** weakens the rate and damage of every combat tower in its pulse radius for a short duration.
 - **Disruptor:** every five seconds, pauses the highest-investment tower in reach. Rank increases its single-target pause and reach; a recovery lockout prevents multiple Disruptors from repeatedly disabling the same tower at once.
 
-Each arena owns its campaign wave composition. Difficulty profiles scale that same enemy lineup, while Signal Gauntlet deterministically assigns signal roles: Accelerator appears on wave 2, Restorer on wave 3, Bulwark on wave 4, Jammer on wave 5, and later formations alternate signal enemies. Wave 20 narrows the ordinary formation to one Restorer and one Jammer around its boss Disruptor; other elite or boss groups use Disruptor. The Campaign Library marks the exact affected enemies with bracketed signal codes and counts. Sandbox wave replays can enable these assignments for unlimited-resource formation tests; manual Sandbox spawning remains the controlled way to isolate any enemy, rank, health scale, or signal role.
+Each arena owns its campaign wave composition. Difficulty profiles scale that same enemy lineup, while Signal Gauntlet deterministically assigns signal roles: Accelerator appears on wave 2, Restorer on wave 3, Bulwark on wave 4, Jammer on wave 5, and later formations alternate signal enemies. Wave 20 narrows the ordinary formation to one Restorer and one Jammer around its boss Disruptor; other elite or boss groups use Disruptor. Sandbox wave replays can enable these assignments for unlimited-resource formation tests; manual Sandbox spawning remains the controlled way to isolate any enemy, rank, health scale, or signal role.
 
 Shield is a separate temporary durability pool above health. Ordinary hits remove raw shield before armor mitigation is evaluated; shield-bypassing attacks skip that pool and damage health through the normal armor calculation.
 
-Signal enemies render above ordinary enemies, use the same in-body glyphs in combat and the Tactical Library, and show their support relationship through aura/recipient feedback.
+Signal enemies render above ordinary enemies, use distinct in-body glyphs, and show their support relationship through aura/recipient feedback.
 
 Core statuses are Slow, Stun, Expose, and Armor Break. Their glyphs are distinct and can coexist. Damage resolution applies armor, shields, pierce, rank modifiers, Expose, Armor Break, burn, splash caps, and source attribution deterministically.
 
@@ -128,13 +128,17 @@ The host sequences authoritative commands. Both peers run the deterministic simu
 
 The game maintains one rolling autosave and expandable manual slots. Manual slots can be duplicated or deleted. Run History is independent from saves and stores a single evolving record when a completed campaign continues into Endless.
 
-The Tactical Library is a complete planning reference. Exact towers, branches, enemies, waves, profiles, modes, and system rules are available before a run so difficulty comes from execution and strategic commitment rather than concealed counters. Medals reward notable single-run constraints and outcomes; achievements combine progression, repeated accomplishments, profile clears, and long-term records so the player retains visible goals after learning the campaign.
+Tower Intel exposes complete current statistics and exact upgrade comparisons when selecting or placing a tower. Mode and difficulty descriptions appear in run setup. Medals reward notable single-run constraints and outcomes; achievements combine progression, repeated accomplishments, profile clears, and long-term records so the player retains visible goals after learning the campaign.
 
 ## Presentation
 
-The simulation uses a 1280×720 logical canvas rendered internally at 2560×1440 and fitted into a clipped 16:9 viewport. Palette constants are independent from scaling. The battlefield uses desaturated teal/navy foundations, slate routes or arena-specific channels, off-white panels, and controlled semantic accents.
+The main menu has one primary Play action and two live defense feeds. Play opens a single setup screen with illustrated map cards, difficulty, mode, and Start Run. Selecting a map only changes the setup selection. Menus share a layered command-deck environment, restrained cyan selection accents, clear primary actions, and compact labels. Peripheral furnace banks, linked decks, virtual planes, and reactor rings connect the interface to all four districts. Moving edge signals and slow holographic rotation add atmosphere; Reduced Effects freezes decorative motion. Difficulty and mode descriptions appear only on hover, while underlines preserve selection feedback.
 
-Shapes, motion, line treatment, and glyphs carry identity. Effects use bounded expanding rings, flashes, recoil, beams, and geometric shatters instead of particle-heavy spectacle. The most important range, status, placement, node, ownership, and co-op cues retain priority under dense load.
+The HUD keeps lives, credits, wave state, and run controls visible. Tower and tactical information appears on selection or hover. Selected and placement-preview towers show complete current statistics. Upgrade comparisons use the same grid, and placed towers always show lifetime contribution beneath it. Wave hover reveals secondary wave information. Placement guidance takes priority over announcements. Results offer overview and statistics views. History lists run identity and outcome, with statistics and final layouts on a separate detail screen. Save rows show slot, map, difficulty, wave, and timestamp. Settings and career screens divide their information into tabs. Escape closes an expanded detail layer before leaving its screen. See [interface design](docs/interface-design.md).
+
+The simulation uses a 1280×720 logical canvas rendered internally at 2560×1440 and fitted into a clipped 16:9 viewport. Palette constants are independent from scaling. Four cyberpunk environments share clear route edges, bracketed build surfaces, and dark tactical panels with ice-white text. Cinderworks uses copper furnace machinery and grated work decks; Rainline Heights uses rain-slick utility decks and raised causeways above an automated cooling and data complex; Prism Nullspace uses violet hard-light lanes and suspended armored archives; Helix Reactor uses green containment rings and coolant channels. Ceramic armor and graphite chassis unify the machines. Cyan marks precision and control hardware; amber marks kinetic and thermal weapons; violet marks focused beam hardware; green marks support; magenta identifies hostile machine optics.
+
+Twin-barrel sentries, long railguns, spread launchers, cryo rotors, thermal coils, capacitor relays, mortar apertures, prism emitters, and holographic beacons share a modular armored chassis. Enemies use walking legs, swept drone hulls, armor, and illuminated optics. Towers aim and recoil; hit flashes, beam cores, trails, expanding shockwaves, and short-lived sparks communicate combat. Rising embers, rain and distant air traffic, floating data crystals, and rotating reactor rings give each location its own ambient motion. Hover brackets, translucent hardware placement previews, and brief credit-change readouts provide interaction feedback. Reduced Effects freezes environmental animation and removes decorative combat light, projectile trails, sparks, and rotor motion. The most important range, status, placement, node, ownership, and co-op cues retain priority under dense load.
 
 ## Balance intent
 

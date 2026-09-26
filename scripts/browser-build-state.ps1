@@ -6,8 +6,8 @@ function Get-BrowserBuildFingerprint {
 
     $files = @()
     foreach ($sourceRoot in @(
-        (Join-Path $Repository "src\MinimalBastion"),
-        (Join-Path $Repository "src\MinimalBastion.Web")
+        (Join-Path $Repository "src\MaximalBastion"),
+        (Join-Path $Repository "src\MaximalBastion.Web")
     )) {
         $files += Get-ChildItem -LiteralPath $sourceRoot -File -Recurse |
             Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' }

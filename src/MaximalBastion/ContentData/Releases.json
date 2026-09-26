@@ -1,0 +1,16 @@
+{
+  "releases": [
+    {
+      "version": "0.2.0",
+      "changes": [
+        "Overhauled graphics."
+      ]
+    },
+    {
+      "version": "0.1.0",
+      "changes": [
+        "Rebalanced campaigns and added music."
+      ]
+    }
+  ]
+}

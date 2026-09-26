@@ -4,7 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
-$audioRoot = Join-Path $repository "src\MinimalBastion\Content\Audio"
+$audioRoot = Join-Path $repository "src\MaximalBastion\Content\Audio"
 
 if ([string]::IsNullOrWhiteSpace($Ffmpeg)) {
     $command = Get-Command ffmpeg -ErrorAction Stop

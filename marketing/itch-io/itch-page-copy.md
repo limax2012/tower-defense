@@ -6,7 +6,7 @@ A colorful tactical tower-defense game with branching upgrades, four campaigns, 
 
 ## Description
 
-**Minimal Bastion** is a colorful geometric tower-defense game about building compact kill zones, adapting under pressure, and holding the line with a defense that is entirely your own.
+**Maximal Bastion** is a colorful geometric tower-defense game about building compact kill zones, adapting under pressure, and holding the line with a defense that is entirely your own.
 
 Every arena asks a different strategic question. Fold short-range towers around tight corners, cover isolated lanes with long-range fire, exploit powerful Surge Nodes, and rebuild your plan as armored, shielded, regenerating, elite, and boss enemies enter the formation.
 

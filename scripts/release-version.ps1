@@ -1,4 +1,4 @@
-function Get-MinimalBastionVersion {
+function Get-MaximalBastionVersion {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Repository

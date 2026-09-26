@@ -9,8 +9,8 @@ Set-StrictMode -Version Latest
 $repository = Split-Path -Parent $PSScriptRoot
 $releasesRoot = Join-Path $repository ".build\releases"
 . (Join-Path $PSScriptRoot "release-version.ps1")
-$version = Get-MinimalBastionVersion -Repository $repository
-$releaseNotesPath = Join-Path $releasesRoot "MinimalBastion-$version-ReleaseNotes.md"
+$version = Get-MaximalBastionVersion -Repository $repository
+$releaseNotesPath = Join-Path $releasesRoot "MaximalBastion-$version-ReleaseNotes.md"
 
 & (Join-Path $PSScriptRoot "export-release-notes.ps1")
 & (Join-Path $PSScriptRoot "export-release-notes.ps1") -OutputPath $releaseNotesPath -Format Release
@@ -18,8 +18,8 @@ $releaseNotesPath = Join-Path $releasesRoot "MinimalBastion-$version-ReleaseNote
 & (Join-Path $PSScriptRoot "publish-browser.ps1") -Configuration $Configuration
 
 $artifacts = @(
-    (Join-Path $releasesRoot "MinimalBastion-$version-Windows.zip"),
-    (Join-Path $releasesRoot "MinimalBastion-$version-Browser.zip"),
+    (Join-Path $releasesRoot "MaximalBastion-$version-Windows.zip"),
+    (Join-Path $releasesRoot "MaximalBastion-$version-Browser.zip"),
     $releaseNotesPath
 )
 $checksumPath = Join-Path $releasesRoot "SHA256SUMS.txt"

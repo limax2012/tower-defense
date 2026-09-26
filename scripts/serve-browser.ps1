@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
 $siteRoot = Join-Path $repository ".build\releases\browser"
 $statePath = Join-Path $repository ".build\releases\.browser-build-state.json"
-$projectPath = Join-Path $repository "src\MinimalBastion.Web\MinimalBastion.Web.csproj"
+$projectPath = Join-Path $repository "src\MaximalBastion.Web\MaximalBastion.Web.csproj"
 $localDotnet = Join-Path $repository ".dotnet\dotnet.exe"
 $dotnet = if (Test-Path -LiteralPath $localDotnet) { $localDotnet } else { (Get-Command dotnet).Source }
 $address = "http://127.0.0.1:$Port/"
@@ -26,7 +26,7 @@ if (-not $Publish) {
     try {
         $env:ASPNETCORE_URLS = $address.TrimEnd("/")
         Write-Host "Serving the browser development build at $address"
-        Write-Host "Use -Publish only when rebuilding the optimized release package."
+        Write-Host "Use -Publish for optimized gameplay and frame-rate testing; Debug builds run more slowly."
         Write-Host "Press Ctrl+C to stop."
         & $dotnet run --project $projectPath -c Debug --no-launch-profile
         if ($LASTEXITCODE -ne 0) { throw "Browser development server failed with exit code $LASTEXITCODE." }

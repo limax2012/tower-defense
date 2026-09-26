@@ -1,6 +1,6 @@
 # Two-Player Co-op Architecture
 
-Minimal Bastion uses direct two-player TCP with host-authoritative command order and deterministic simulation on both peers. The goal is responsive private friend-to-friend play without matchmaking or dedicated infrastructure.
+Maximal Bastion uses direct two-player TCP with host-authoritative command order and deterministic simulation on both peers. The goal is responsive private friend-to-friend play without matchmaking or dedicated infrastructure.
 
 ## Connection model
 
@@ -81,13 +81,11 @@ Valid inbound traffic resets a 15-second heartbeat timer. The sidebar distinguis
 
 Relevant wave, enemies, defenses, credits, lives, timers, pause, ready, tactical, Protocol animation, and progression state are restored. The host can keep the preserved session indefinitely or explicitly leave it.
 
-## Pause and library
+## Shared pause
 
 Escape, P, or the HUD control requests a shared pause. Both peers stop on the same fixed tick. While paused, placement, upgrades, sales, targeting, tactical systems, speed, and ready commands are locked. Combat, spawning, Forge production, cooldowns, and effects freeze.
 
 An already-running early-call deadline continues during shared pause so pausing cannot create extra rewarded planning time. Both peers must ready before the deadline to earn the co-op early bonus.
-
-Tab toggles the Tactical Library at any time in co-op. This is a local overlay: network polling and the shared simulation continue, but local battlefield input is blocked until the library closes.
 
 ## Presentation-only collaboration
 

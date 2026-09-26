@@ -1,6 +1,6 @@
 # Tower-Defense Design Principles
 
-This reference records the durable design reasoning used to evaluate Minimal Bastion. Exact values and implemented rules belong in the current JSON/content and canonical design documents.
+This reference records the durable design reasoning used to evaluate Maximal Bastion. Exact values and implemented rules belong in the current JSON/content and canonical design documents.
 
 ## Coverage is a resource
 
@@ -31,13 +31,13 @@ An upgrade branch is meaningful when the preferred choice changes with geometry 
 - immediate damage versus control/support
 - local strength versus wider field reach
 
-Upgrade previews should expose the exact affected values. Strategic strengths/limits belong in the library, while live Tower Intel should prioritize current facts and concise deltas.
+Upgrade previews should expose the exact affected values. Live Tower Intel should prioritize current facts and concise deltas, with deeper contribution data available on demand.
 
 ## Support needs attributable value
 
 Kills and raw damage underrate slow, stun, Expose, Armor Break, aura support, and target disruption. Analytics should record recipient time, damage-equivalent contribution, control seconds, affected targets, and source attribution. Support stacking rules must be explicit and bounded.
 
-Enemy support roles also need legible relationships. Their body glyph, aura, and affected-recipient feedback should agree with the Tactical Library so players can learn them during play.
+Enemy support roles also need legible relationships. Their body glyph, aura, and affected-recipient feedback should use consistent cues so players can learn them during play.
 
 ## Manual tactics versus automation
 
@@ -84,7 +84,7 @@ Shape, line pattern, position, motion, and opacity should distinguish these syst
 
 One rolling autosave protects ordinary progress. Independent manual slots let players preserve deep runs and test alternatives. Run history should remain separate from loadable state, update one continuing run identity, and retain final layouts/statistics for analysis.
 
-Discovery gating gives exploration value to the Tactical Library. It should conceal future details without hiding information the player currently needs to understand an active mechanic.
+Contextual information should explain an active mechanic without requiring players to leave the battlefield. Exact upgrade comparisons support experimentation before resources are committed.
 
 ## Balance-agent evidence
 

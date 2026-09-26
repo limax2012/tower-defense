@@ -1,6 +1,6 @@
 # Strategy Guide
 
-Minimal Bastion rewards route coverage, counter timing, and completed upgrade roles more than raw tower count. A strong defense normally starts with inexpensive overlapping fire, adds control and armor/shield answers before those threats become dominant, and only then invests in support fields and remote coverage.
+Maximal Bastion rewards route coverage, counter timing, and completed upgrade roles more than raw tower count. A strong defense normally starts with inexpensive overlapping fire, adds control and armor/shield answers before those threats become dominant, and only then invests in support fields and remote coverage.
 
 ## Core principles
 
@@ -10,7 +10,7 @@ Minimal Bastion rewards route coverage, counter timing, and completed upgrade ro
 4. **Use control to multiply the whole defense.** Slow and stun create more firing time for every tower that covers the affected route. Arc Relay no longer receives a hidden damage bonus against slowed enemies; Frost and Arc still combine naturally through extra time on target.
 5. **Do not stack Signal Beacons.** Overlapping auras use the strongest applicable value rather than adding together. Place a Beacon only when it supports a meaningful cluster, then put later Beacons on separate clusters.
 6. **Treat targeting as part of the build.** Frost should usually stay on Fastest, anti-armor fire should use Armored, and priority damage should use Strongest. Signal Gauntlet also provides Support for focusing signal carriers.
-7. **Spend before the reserve becomes dead weight.** Complete doctrines and final roles, improve weak coverage, then use remote Watchtower/Mortar positions. Waves 21–30 unlock Apex promotions and are balanced around reinvesting in the established defense.
+7. **Spend before the reserve becomes dead weight.** Complete doctrines and final roles, improve weak coverage, then use remote Watchtower and Siege Mortar positions. Waves 21–30 unlock Apex promotions and are balanced around reinvesting in the established defense.
 
 ## Tower guide
 
@@ -107,19 +107,19 @@ Prism applies focused pressure and Expose, increasing incoming damage from the e
 
 ## Arena planning
 
-### Foundry Loop
+### Cinderworks
 
 Use the central switchbacks for multi-segment coverage, then fill remote footprints with long-range towers. It is the cleanest arena for comparing tower roles because it has no Surge Nodes.
 
-### Crosswind Basin
+### Rainline Heights
 
 Opening coverage is deliberately exacting. Favor corners and positions that barely reach adjacent straight lanes; scattering cheap towers along single lanes wastes the limited early economy.
 
-### Prism Circuit
+### Prism Nullspace
 
 The small number of build regions rewards compact completed roles and Beacon efficiency. Its three nodes are valuable but do not replace armor, shield, crowd, and control coverage.
 
-### Surge Divide
+### Helix Reactor
 
 The lower starting economy assumes early node use. Large nodes can geometrically fit four standard towers at roughly 24 units diagonally from the center when the surrounding build region permits it; smaller or clipped nodes may support only one or two. Fill useful node footprints with combat towers before adding unboosted expansion. A winning opening that ignores the node network is intentionally inefficient.
 

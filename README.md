@@ -1,6 +1,6 @@
-# Minimal Bastion
+# Maximal Bastion
 
-Minimal Bastion is a colorful geometric tower-defense game built with C# and .NET 10. The Windows build uses MonoGame DesktopGL, and the solo browser build uses WebAssembly and WebGL. Both versions combine 30-wave campaigns, Endless play, branching tower upgrades, tactical devices, persistent progression, and deterministic balance tools. The Windows build also supports direct two-player online co-op.
+Maximal Bastion is an industrial cyberpunk tower-defense game built with C# and .NET 10. Windows uses MonoGame DesktopGL; the browser and Flutter mobile application use the same C# engine through WebAssembly and WebGL. The Flutter app adds a touch interface for phones. The game combines 30-wave campaigns, Endless play, branching tower upgrades, tactical devices, persistent progression, and deterministic balance tools. The Windows build also supports direct two-player online co-op.
 
 ## Current feature set
 
@@ -11,40 +11,40 @@ Minimal Bastion is a colorful geometric tower-defense game built with C# and .NE
 - Seven general targeting modes: First, Last, Strongest, Weakest, Nearest, Fastest, and Armored. Signal Gauntlet adds Support targeting for its signal enemies, and Sandbox exposes it for signal testing.
 - Pulse Plates, a three-level Charge Forge, Surge Nodes, automatic Protocol activation, and configurable wave auto-start.
 - One rolling autosave, expandable manual save slots, save duplication/deletion, recovery generations, run history, final-layout inspection, medals, achievements, and career records.
-- A complete Tactical Library for researching towers, upgrades, enemies, signal roles, maps, waves, profiles, modes, statuses, and game systems before committing resources.
+- Contextual Tower Intel with complete live statistics, upgrade comparisons, Protocol controls, and lifetime contributions.
 - Direct two-player Windows co-op with host-authoritative commands, deterministic local simulation, reconnect repair, shared defenses, and visible remote cursor/placement state.
-- Runtime-generated vector-like visuals, a shuffled gameplay soundtrack, menu music, and synthesized sound effects.
+- Night Grid art direction: furnace works, rain-soaked rooftop skybridges, virtual hard-light platforms, reactor infrastructure, mechanical defense hardware, hostile drones, dark tactical panels, and bounded energy effects. All art is generated at runtime; no external asset downloads are required. A shuffled gameplay soundtrack, menu music, and synthesized effects accompany combat.
 - Headless deterministic agents, isolated regression tests, and a hidden UI renderer for verification without taking desktop focus.
 
-The title screen includes two small live combat scenes. They use normal enemy and tower behavior with randomized groups of three to five enemies and three to five non-Beacon towers at varied levels.
+Play opens one run setup containing illustrated map selection, difficulty, mode, and Start Run. The main menu presents Play, Co-op, Load, History, Settings, and Quit where supported in one evenly spaced column, with a taller Play control. Two framed live defense feeds flank its action list. Menus share graphite command surfaces, peripheral service infrastructure, Barlow/Oxanium typography, and restrained ambient motion. Action buttons use subdued accents; cyan highlights identify selected run options. Solo and co-op pause controls follow the same evenly spaced column structure. The animated title uses an armored prism tower emblem. Mode and difficulty explanations appear consistently on hover. Settings use Display, Audio, and Gameplay tabs. Selected towers show complete current statistics with optional lifetime details, and results offer overview and statistics views; achievements, medals, and records have separate tabs. See the [interface design system](docs/interface-design.md). Reduced Effects freezes decorative menu motion and suppresses decorative combat lighting in the feeds.
 
 ## Build and run
 
 Install the .NET 10 SDK, open PowerShell in the repository root, and run:
 
 ```powershell
-dotnet restore MinimalBastion.sln
-dotnet run --project src\MinimalBastion\MinimalBastion.csproj -c Release
+dotnet restore MaximalBastion.sln
+dotnet run --project src\MaximalBastion\MaximalBastion.csproj -c Release
 ```
 
 This workspace may also contain a local SDK at `.dotnet\dotnet.exe`. MonoGame's content build invokes `dotnet`, so add that directory to `PATH` when using it:
 
 ```powershell
 $env:Path = "$PWD\.dotnet;$env:Path"
-.\.dotnet\dotnet.exe restore MinimalBastion.sln
-.\.dotnet\dotnet.exe run --project src\MinimalBastion\MinimalBastion.csproj -c Release
+.\.dotnet\dotnet.exe restore MaximalBastion.sln
+.\.dotnet\dotnet.exe run --project src\MaximalBastion\MaximalBastion.csproj -c Release
 ```
 
-A Release build creates `src\MinimalBastion\bin\Release\net10.0\MinimalBastion.exe`.
+A Release build creates `src\MaximalBastion\bin\Release\net10.0\MaximalBastion.exe`.
 
 Create a self-contained Windows x64 package with:
 
 ```powershell
-dotnet restore MinimalBastion.sln -r win-x64 --disable-build-servers
+dotnet restore MaximalBastion.sln -r win-x64 --disable-build-servers
 powershell -ExecutionPolicy Bypass -File scripts\publish-windows.ps1
 ```
 
-The published application is `.build\releases\windows\MinimalBastion.exe`, and the distributable archive is `.build\releases\MinimalBastion-0.1.0-Windows.zip`.
+The published application is `.build\releases\windows\MaximalBastion.exe`, and the distributable archive is `.build\releases\MaximalBastion-0.1.0-Windows.zip`.
 
 ### Browser build
 
@@ -60,13 +60,15 @@ Run the solo WebAssembly version locally with:
 powershell -ExecutionPolicy Bypass -File scripts\serve-browser.ps1
 ```
 
-Open `http://127.0.0.1:5080/`. This command uses a non-AOT Debug build for quick local iteration. The browser build must be served over HTTP or HTTPS; opening `index.html` directly from the filesystem is not supported by WebAssembly asset loading.
+Open `http://127.0.0.1:5080/`. This command uses a non-AOT Debug build for quick local iteration. Use the optimized release below for playing and measuring frame rates. The browser build must be served over HTTP or HTTPS; opening `index.html` directly from the filesystem is not supported by WebAssembly asset loading.
 
 To test the optimized AOT release locally, run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\serve-browser.ps1 -Publish
 ```
+
+Full effects use a shared prebuilt primitive atlas to batch WebGL draws and avoid generating ring textures during combat. Browser acceleration, CPU/GPU speed, output resolution, and background load still affect the achievable frame rate. Developer frame timings are available through `maximalBastion.diagnostics.read()` in the browser console; measure with the tab visible, after loading finishes, and without a build running.
 
 The command reuses the optimized release while its source files are unchanged and rebuilds it when necessary. Add `-Rebuild` to force a fresh package. Release publishing performs WebAssembly ahead-of-time compilation and can take several minutes. Use the command without `-Publish` during normal development.
 
@@ -76,7 +78,7 @@ Create a static browser package with:
 powershell -ExecutionPolicy Bypass -File scripts\publish-browser.ps1
 ```
 
-The script writes the static site to `.build\releases\browser` and creates `.build\releases\MinimalBastion-0.1.0-Browser.zip`. The archive has `index.html` at its root and can be uploaded as an HTML game to a static host such as itch.io. Browser saves, records, and settings are retained in browser storage for the site origin and are separate from the Windows files under `%LocalAppData%`. They persist across ordinary browser sessions, but do not transfer between browsers, devices, or different host origins and are removed when that site's stored data is cleared.
+The script writes the static site to `.build\releases\browser` and creates `.build\releases\MaximalBastion-0.1.0-Browser.zip`. The archive has `index.html` at its root and can be uploaded as an HTML game to a static host such as itch.io. Browser saves, records, and settings are retained in browser storage for the site origin and are separate from the Windows files under `%LocalAppData%`. They persist across ordinary browser sessions, but do not transfer between browsers, devices, or different host origins and are removed when that site's stored data is cleared.
 
 Build both release packages with:
 
@@ -86,7 +88,21 @@ powershell -ExecutionPolicy Bypass -File scripts\publish-releases.ps1
 
 The combined release script also creates matching release notes and SHA-256 checksums under `.build\releases`.
 
-The browser build contains the complete solo campaign, Endless, Sandbox, persistence, library, records, audio, settings, and fullscreen flow. Online co-op remains a Windows feature.
+The browser build contains the complete solo campaign, Endless, Sandbox, persistence, Tower Intel, records, audio, settings, and fullscreen flow. Online co-op remains a Windows feature.
+
+### Flutter mobile application
+
+The mobile app shares C# gameplay, authored JSON, save schemas, statistics and battlefield rendering with the existing game. Flutter owns the adaptive phone interface: an icon-and-price tower dock, touch placement, contextual tower controls, readable upgrade comparisons, zoom, and scrollable reference screens. It bundles the runtime for offline solo play.
+
+With Flutter and Android SDK/JDK tools installed, build a development APK from the repository root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build-mobile.ps1 -Debug
+```
+
+Omit `-Debug` to build optimized Flutter and AOT C#/WebAssembly. Output packages are under `.build/releases`. Both variants currently use development signing. The iOS project is included and requires macOS/Xcode for native compilation and device verification.
+
+See [mobile architecture, build and verification](docs/mobile-architecture.md) for ownership boundaries, controls, native persistence, web preview, and device tests. After a shared mechanics/content edit, rebuild the runtime and mobile package; there is no Dart gameplay copy to update.
 
 ## Campaign structure
 
@@ -94,10 +110,10 @@ Each arena contains one 30-wave campaign on every difficulty. Waves 21–30 form
 
 | Arena | Base credits | Build areas | Surge Nodes | Campaign enemies |
 | --- | ---: | ---: | ---: | ---: |
-| Foundry Loop | 400 | 8 | 0 | 2,158 |
-| Crosswind Basin | 390 | 9 | 0 | 2,173 |
-| Prism Circuit | 380 | 6 | 3 | 2,336 |
-| Surge Divide | 360 | 6 | 9 | 2,383 |
+| Cinderworks | 400 | 8 | 0 | 2,158 |
+| Rainline Heights | 390 | 9 | 0 | 2,173 |
+| Prism Nullspace | 380 | 6 | 3 | 2,336 |
+| Helix Reactor | 360 | 6 | 9 | 2,383 |
 
 Surge Nodes grant focused attack-rate, range, damage, or armor-piercing bonuses. The active node is shown during placement and in Tower Intel; effective node and Signal Beacon modifiers are included in displayed stats.
 
@@ -118,7 +134,7 @@ Tower statistics do not change with difficulty, wave number, map, or elapsed tim
 - **Signal Gauntlet** introduces Accelerator, Restorer, Bulwark, Jammer, and Disruptor signal enemies from the early campaign onward without bonus opening credits. Accelerators raise formation speed by 20%; Restorers repair 10% maximum health every 5 seconds; Bulwarks grant 10% maximum-health shielding every 5 seconds up to a 20% reserve; Jammers suppress every combat tower in their pulse radius; and Disruptors pause one high-investment tower in reach every 5 seconds. The Support targeting mode prioritizes signal enemies and otherwise selects the strongest available target.
 - **Core Six** restricts the roster to Needle Turret, Frost Spire, Shard Fan, Ember Coil, Breaker Cannon, and Signal Beacon with the standard opening economy.
 - **Entrenched** disables Pulse Plates, Charge Forge, manual and armed Protocol controls, and selling without compensating credits. Apex towers retain their permanent self-activating Protocol system.
-- **Sandbox Lab** provides unlimited resources and lives for controlled tower, upgrade, Protocol, status, enemy-rank, selectable signal-role, and campaign-wave experiments. Wave signals are off by default and can be toggled before a replay; when enabled, waves use the same signal assignments as Signal Gauntlet. Sandbox sessions do not create competitive saves or run-history records.
+- **Sandbox Lab** provides unlimited resources and lives for controlled tower, upgrade, Protocol, status, enemy-rank, selectable signal-role, and campaign-wave experiments. Pulse Plates deploy freely from the Plates control or `Q`, with normal placement and field limits; Reset Test clears them. Wave signals are off by default and can be toggled before a replay; when enabled, waves use the same signal assignments as Signal Gauntlet. Sandbox sessions do not create competitive saves or run-history records.
 
 ## Towers and tactical systems
 
@@ -145,27 +161,29 @@ The Charge Forge costs 300 credits and creates stored Plates only while a wave i
 
 - Left click selects, places, or activates a control. Right click cancels placement.
 - `1`-`0` prepares the corresponding tower.
-- `Q` prepares a stored Pulse Plate or buys one during an active wave.
+- `Q` prepares a stored Pulse Plate or buys one during an active wave. Sandbox allows free deployment at any time.
 - `G` prepares or selects the Charge Forge.
 - `E` activates or resets the selected tower's Protocol.
-- `A` arms or disarms automatic Protocol use.
+- `A` arms or disarms automatic Protocol use for the selected tower. With no tower selected, it selects the armed tower. The Protocol row stays visible and shows the shared manual cooldown.
 - `U` and `I` choose the upper/first and lower/second upgrade paths.
 - `X` applies an eligible Apex promotion.
 - `T` opens the targeting menu without changing the current mode; press its displayed `1`-`8` hotkey or click a replacement to apply it.
-- `Delete` sells the selected tower or Forge where selling is permitted.
+- `Delete` or numpad `Del` (with Num Lock on or off) sells the selected tower or Forge where selling is permitted, or removes the selected tower in Sandbox.
 - `D` enables or disables a selected tower in Sandbox.
 - `Space` starts/readies a wave. `S` toggles 1x/2x speed.
-- `Escape` or `P` pauses solo play. `Tab` toggles the Tactical Library during co-op.
+- `Escape` or `P` pauses solo play or requests a shared pause in co-op.
 - Middle click sends a co-op location ping.
 - `F11` toggles borderless desktop fullscreen. `F4` toggles the debug overlay in Debug builds.
 
-Settings can hide hotkey badges without disabling any keyboard shortcuts. Sandbox adds compact hotkeys for enemy selection, group/rank/health selection, spawning, test reset, tower clearing, campaign-wave selection, and the `L` wave-signal toggle; the active controls are shown in its interface and Tactical Library.
+Settings can hide hotkey badges without disabling any keyboard shortcuts. Sandbox adds compact hotkeys for enemy selection, group/rank/health selection, spawning, test reset, tower clearing, campaign-wave selection, and the `L` wave-signal toggle; the active controls are shown in its interface.
 
 Placement remains continuous rather than grid-based. Tower, Forge, and Plate previews snap to the nearest legal point inside a small assistance radius, display the resolved position and range, and do not alter co-op state until placement is confirmed.
 
-## Saves, library, and records
+## Saves and records
 
-Persistent data lives under `%LocalAppData%\MinimalBastion`:
+On first use, existing settings, saves, and history from `%LocalAppData%\MinimalBastion` are copied without overwriting newer data. Browser storage and native mobile application identifiers remain stable so updates retain existing player data.
+
+Persistent data lives under `%LocalAppData%\MaximalBastion`:
 
 - `Saves\autosave.json` is the single rolling autosave.
 - `Saves\slot-n.json` files are expandable manual slots.
@@ -174,8 +192,6 @@ Persistent data lives under `%LocalAppData%\MinimalBastion`:
 - `Logs\latest-crash.log` stores the latest unexpected top-level failure.
 
 Save and settings writes are atomic and retain one bounded `.bak` recovery generation. Saves can be duplicated into a manual slot, including the autosave, and deleted with confirmation. A co-op checkpoint can be reopened as a host or continued alone; the original tower placer remains recorded but does not restrict control.
-
-The Tactical Library is a complete planning reference from the first launch. It exposes every tower and upgrade path, exact Protocol and Apex effects, enemy and signal rules, campaign enemy lineups, profiles, modes, statuses, and systems so difficult runs can be planned with complete information. Campaign lineups mark the exact enemies receiving Signal Gauntlet roles with compact bracketed codes and counts.
 
 Run History records campaign, Endless, victory, and defeat outcomes under one persistent run identity. Continuing beyond wave 30 updates that run instead of creating a second campaign record. Records include tower contributions, economy, tactical-system use, the complete enemy field remaining at defeat, medals, achievements, and a path-cleared final layout whose towers can be inspected. The current career contains 28 run medals and 56 broader achievements, plus best-result records by profile.
 
@@ -212,12 +228,12 @@ powershell -ExecutionPolicy Bypass -File scripts\verify-audio-mix.ps1
 Representative headless commands:
 
 ```powershell
-dotnet run --project tests\MinimalBastion.Tests -c Release -- --balance
-dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate --strategy Experienced --seed 1337
-dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --difficulty all --runs 3
-dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --strategy Experienced --difficulty hard --challenge all --max-wave 30 --runs 3
-dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --strategy Experienced --difficulty bastion --challenge all --max-wave 30 --runs 3
-dotnet run --project tests\MinimalBastion.Tests -c Release -- --simulate-full --map relay_divide --max-wave 40 --runs 10
+dotnet run --project tests\MaximalBastion.Tests -c Release -- --balance
+dotnet run --project tests\MaximalBastion.Tests -c Release -- --simulate --strategy Experienced --seed 1337
+dotnet run --project tests\MaximalBastion.Tests -c Release -- --simulate-full --difficulty all --runs 3
+dotnet run --project tests\MaximalBastion.Tests -c Release -- --simulate-full --strategy Experienced --difficulty hard --challenge all --max-wave 30 --runs 3
+dotnet run --project tests\MaximalBastion.Tests -c Release -- --simulate-full --strategy Experienced --difficulty bastion --challenge all --max-wave 30 --runs 3
+dotnet run --project tests\MaximalBastion.Tests -c Release -- --simulate-full --map relay_divide --max-wave 40 --runs 10
 ```
 
 Reports are written under `.build\balance`. Filters include strategy, seed, run count, map, difficulty, mode, target wave, forced tower paths, checkpoint continuation, Protocol/Apex controls, Signal Gauntlet counter-pressure controls, build/footprint holds, summary output, and output path. Defeat reports include every surviving enemy group, its remaining health and shield, and enemies still queued. See [AUTONOMOUS_BALANCE.md](AUTONOMOUS_BALANCE.md) for the full harness and interpretation guidance.

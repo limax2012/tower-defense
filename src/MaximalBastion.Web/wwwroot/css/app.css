@@ -1,0 +1,246 @@
+@font-face {
+    font-family: "Barlow Interface";
+    src: url("../fonts/BarlowSemiCondensed-Medium.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Oxanium Display";
+    src: url("../fonts/Oxanium-SemiBold.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+}
+
+:root {
+    color-scheme: dark;
+    --canvas: #060b16;
+    --panel: #0d1726;
+    --ceramic: #e2f4fa;
+    --muted: #89a0b5;
+    --cyan: #43ded8;
+    --copper: #f19e47;
+    --error: #ff537e;
+    background: var(--canvas);
+    font-family: "Barlow Interface", sans-serif;
+    font-weight: 500;
+}
+
+html, body, #app, .game-shell {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--canvas);
+}
+
+.game-shell {
+    position: relative;
+}
+
+#canvasHolder:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    background: var(--canvas);
+}
+
+body {
+    overscroll-behavior: none;
+}
+
+#theCanvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    min-height: 100%;
+    color: var(--ceramic);
+    background:
+        radial-gradient(ellipse at 50% 44%, #43ded810, transparent 46%),
+        radial-gradient(ellipse at 80% 85%, #f19e4708, transparent 44%),
+        linear-gradient(135deg, #101b27, var(--canvas) 58%);
+    transition: opacity 240ms ease;
+}
+
+.loading-screen::before {
+    position: absolute;
+    inset: 24px;
+    border: 1px solid #2b3f8050;
+    border-image: linear-gradient(135deg, #43ded826, transparent 38%, transparent 62%, #f19e4726) 1;
+    content: "";
+    pointer-events: none;
+}
+
+.loading-screen.complete {
+    pointer-events: none;
+    opacity: 0;
+}
+
+.loading-mark {
+    width: clamp(84px, 14vw, 120px);
+    height: auto;
+    margin-bottom: 26px;
+    overflow: visible;
+}
+
+.mark-recess, .mark-frame, .mark-signal, .mark-base {
+    fill: none;
+    stroke-linejoin: bevel;
+}
+
+.mark-recess {
+    stroke: #43ded814;
+    stroke-width: 13;
+}
+
+.mark-frame {
+    stroke: var(--cyan);
+    stroke-width: 3;
+    animation: relay-breathe 3.6s ease-in-out infinite;
+}
+
+.mark-pylon {
+    fill: var(--ceramic);
+}
+
+.mark-signal {
+    stroke: var(--copper);
+    stroke-width: 4;
+}
+
+.mark-base {
+    stroke: #2b3f50;
+    stroke-width: 2;
+}
+
+.loading-title {
+    padding: 0 24px;
+    color: var(--ceramic);
+    font-family: "Oxanium Display", sans-serif;
+    font-size: clamp(24px, 5vw, 38px);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    line-height: 1.2;
+    text-align: center;
+    text-shadow: 0 2px 0 #02060c, 0 0 32px #43ded818;
+}
+
+.loading-copy {
+    margin: 14px 24px 0;
+    color: var(--muted);
+    font-size: 16px;
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+
+.loading-activity {
+    display: flex;
+    gap: 5px;
+    margin-top: 26px;
+}
+
+.loading-activity span {
+    width: 34px;
+    height: 2px;
+    background: var(--cyan);
+    animation: relay-transfer 1.8s ease-in-out infinite;
+}
+
+.loading-activity span:nth-child(2) {
+    animation-delay: 180ms;
+}
+
+.loading-activity span:nth-child(3) {
+    animation-delay: 360ms;
+}
+
+#blazor-error-ui {
+    display: none;
+    position: fixed;
+    left: 24px;
+    right: 24px;
+    bottom: 24px;
+    z-index: 1000;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 18px 20px;
+    border: 1px solid #ff537e50;
+    border-left: 3px solid var(--error);
+    background: linear-gradient(110deg, #211a2c, var(--panel) 50%);
+    box-shadow: 0 8px 36px #0006;
+    color: var(--ceramic);
+    font-size: 17px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+#blazor-error-ui.visible {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+#blazor-error-ui a {
+    flex: 0 0 auto;
+    padding: 8px 18px;
+    border: 1px solid #43ded880;
+    color: var(--cyan);
+    font-family: "Oxanium Display", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 140ms ease, background 140ms ease;
+}
+
+#blazor-error-ui a:hover, #blazor-error-ui a:focus-visible {
+    background: #43ded81a;
+    color: var(--ceramic);
+}
+
+#blazor-error-ui a:focus-visible {
+    outline: 2px solid var(--ceramic);
+    outline-offset: 3px;
+}
+
+@keyframes relay-breathe {
+    0%, 100% { opacity: 0.65; }
+    50% { opacity: 1; }
+}
+
+@keyframes relay-transfer {
+    0%, 75%, 100% { opacity: 0.2; }
+    35% { opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mark-frame, .loading-activity span {
+        animation: none;
+        opacity: 0.8;
+    }
+
+    .loading-screen, #blazor-error-ui a {
+        transition: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .loading-screen::before { inset: 12px; }
+    #blazor-error-ui { left: 12px; right: 12px; bottom: 12px; padding: 14px; }
+    #blazor-error-ui.visible { flex-direction: column; align-items: flex-start; gap: 12px; }
+}

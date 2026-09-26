@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Minimal Bastion is a .NET 10 / MonoGame DesktopGL tower-defense game. Source code, authored JSON, deterministic tests, balance agents, and documentation are maintained together in this repository.
+Maximal Bastion is a .NET 10 / MonoGame DesktopGL tower-defense game. Source code, authored JSON, deterministic tests, balance agents, and documentation are maintained together in this repository.
 
 Documentation and code comments must describe the current implementation and surrounding context. Do not add task history, prompt-specific notes, removed behavior, or transient implementation narration.
 
@@ -19,9 +19,9 @@ Implementation and JSON content are the source of truth when documentation disag
 
 ## Repository layout
 
-- `src/MinimalBastion`: game source.
-- `src/MinimalBastion/ContentData`: tower, enemy, map, wave, profile, directive, and tactical JSON.
-- `tests/MinimalBastion.Tests`: deterministic regression executable and simulation CLI.
+- `src/MaximalBastion`: game source.
+- `src/MaximalBastion/ContentData`: tower, enemy, map, wave, profile, directive, and tactical JSON.
+- `tests/MaximalBastion.Tests`: deterministic regression executable and simulation CLI.
 - `scripts/verify.ps1`: isolated build/test/hidden-render workflow.
 - `.build`, `.artifacts`, and `.verification`: generated local outputs; do not commit them.
 
@@ -32,9 +32,9 @@ Prefer the workspace-local SDK when present and make it available on `PATH` for 
 ```powershell
 $dotnet = if (Test-Path .\.dotnet\dotnet.exe) { (Resolve-Path .\.dotnet\dotnet.exe).Path } else { (Get-Command dotnet -ErrorAction Stop).Source }
 $env:Path = "$(Split-Path $dotnet);$env:Path"
-& $dotnet restore MinimalBastion.sln
-& $dotnet build MinimalBastion.sln -c Release --disable-build-servers /nodeReuse:false /p:UseSharedCompilation=false
-& $dotnet run --project tests\MinimalBastion.Tests -c Release --no-build
+& $dotnet restore MaximalBastion.sln
+& $dotnet build MaximalBastion.sln -c Release --disable-build-servers /nodeReuse:false /p:UseSharedCompilation=false
+& $dotnet run --project tests\MaximalBastion.Tests -c Release --no-build
 ```
 
 For routine validation, including a hidden UI render that does not take desktop focus:
@@ -67,7 +67,7 @@ Use `-SkipVisuals` only when a change cannot affect layout, rendering, data-load
 - Difficulties: Easy, Medium (`normal` internally), Hard, Bastion.
 - Competitive directives: Standard, Signal Gauntlet (`close_quarters`), Core Six, Entrenched (`no_reserves`).
 - Sandbox Lab is noncompetitive and solo-only.
-- Maps: Foundry Loop, Crosswind Basin, Prism Circuit, Surge Divide (`relay_divide`).
+- Maps: Cinderworks, Rainline Heights, Prism Nullspace, Helix Reactor (`relay_divide`).
 - Co-op: direct TCP 28741, two players, shared defenses, host-command authority, deterministic 60 Hz simulation.
 
 ## Editing guidance

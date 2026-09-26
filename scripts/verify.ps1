@@ -20,7 +20,7 @@ if ([string]::IsNullOrWhiteSpace($ArtifactDirectory)) {
     $ArtifactDirectory = Join-Path $repositoryRoot ".artifacts\verification"
 }
 $ArtifactDirectory = [System.IO.Path]::GetFullPath($ArtifactDirectory)
-$isolatedBuildRoot = Join-Path $env:TEMP "MinimalBastionVerification"
+$isolatedBuildRoot = Join-Path $env:TEMP "MaximalBastionVerification"
 $isolatedOutput = Join-Path $isolatedBuildRoot "bin\"
 $testLog = Join-Path $ArtifactDirectory "tests.txt"
 $uiDirectory = Join-Path $ArtifactDirectory "ui"
@@ -31,12 +31,12 @@ $env:PATH = "$(Split-Path -Parent $dotnetExecutable);$env:PATH"
 
 Push-Location $repositoryRoot
 try {
-    & $dotnetExecutable build "MinimalBastion.sln" -c Debug "-p:BaseOutputPath=$isolatedOutput"
+    & $dotnetExecutable build "MaximalBastion.sln" -c Debug "-p:BaseOutputPath=$isolatedOutput"
     if ($LASTEXITCODE -ne 0) { throw "Isolated verification build failed." }
 
     $outputDirectory = Join-Path $isolatedOutput "Debug\net10.0"
-    $testAssembly = Join-Path $outputDirectory "MinimalBastion.Tests.dll"
-    $gameAssembly = Join-Path $outputDirectory "MinimalBastion.dll"
+    $testAssembly = Join-Path $outputDirectory "MaximalBastion.Tests.dll"
+    $gameAssembly = Join-Path $outputDirectory "MaximalBastion.dll"
 
     & $dotnetExecutable $testAssembly 2>&1 | Tee-Object -FilePath $testLog
     if ($LASTEXITCODE -ne 0) { throw "Regression tests failed." }

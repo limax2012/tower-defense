@@ -1,0 +1,82 @@
+#----------------------------- Global Properties ----------------------------#
+
+/outputDir:bin/$(Platform)/Content
+/intermediateDir:obj/$(Platform)/Content
+/platform:BlazorGL
+/config:
+/quiet
+
+#---------------------------------- Content ---------------------------------#
+
+#begin Fonts/Interface.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/build:Fonts/Interface.spritefont
+
+#begin Fonts/Display.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/build:Fonts/Display.spritefont
+
+#begin ../../MaximalBastion/Content/Fonts/Barlow-OFL.txt
+/copy:../../MaximalBastion/Content/Fonts/Barlow-OFL.txt;Fonts/Barlow-OFL.txt
+
+#begin ../../MaximalBastion/Content/Fonts/Oxanium-OFL.txt
+/copy:../../MaximalBastion/Content/Fonts/Oxanium-OFL.txt;Fonts/Oxanium-OFL.txt
+
+
+#begin ../../MaximalBastion/Content/Audio/MainMenuLoop.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:../../MaximalBastion/Content/Audio/MainMenuLoop.wav;Audio/MainMenuLoop.wav
+
+#begin ../../MaximalBastion/Content/Audio/Music/BassyRollIn.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MaximalBastion/Content/Audio/Music/BassyRollIn.ogg;Audio/Music/BassyRollIn.ogg
+
+#begin ../../MaximalBastion/Content/Audio/Music/ChillStroll.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MaximalBastion/Content/Audio/Music/ChillStroll.ogg;Audio/Music/ChillStroll.ogg
+
+#begin ../../MaximalBastion/Content/Audio/Music/FocusedDanceParty.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MaximalBastion/Content/Audio/Music/FocusedDanceParty.ogg;Audio/Music/FocusedDanceParty.ogg
+
+#begin ../../MaximalBastion/Content/Audio/Music/IcyInvestigation.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MaximalBastion/Content/Audio/Music/IcyInvestigation.ogg;Audio/Music/IcyInvestigation.ogg
+
+#begin ../../MaximalBastion/Content/Audio/Music/KickbackHall.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MaximalBastion/Content/Audio/Music/KickbackHall.ogg;Audio/Music/KickbackHall.ogg
+
+#begin ../../MaximalBastion/Content/Audio/Music/MildlyUpbeatArpeggios.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MaximalBastion/Content/Audio/Music/MildlyUpbeatArpeggios.ogg;Audio/Music/MildlyUpbeatArpeggios.ogg
+
+#begin ../../MaximalBastion/Content/Audio/Music/NightclubHalo.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MaximalBastion/Content/Audio/Music/NightclubHalo.ogg;Audio/Music/NightclubHalo.ogg
+
+#begin ../../MaximalBastion/Content/Audio/Music/QuietInvestigation.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MaximalBastion/Content/Audio/Music/QuietInvestigation.ogg;Audio/Music/QuietInvestigation.ogg
+
+#begin ../../MaximalBastion/Content/Audio/Music/SneakFocusMission.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MaximalBastion/Content/Audio/Music/SneakFocusMission.ogg;Audio/Music/SneakFocusMission.ogg
+
+#begin ../../MaximalBastion/Content/Audio/Music/XylophoneBallad.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/build:../../MaximalBastion/Content/Audio/Music/XylophoneBallad.ogg;Audio/Music/XylophoneBallad.ogg

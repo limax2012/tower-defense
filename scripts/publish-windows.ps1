@@ -7,12 +7,12 @@ $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
 $releasesRoot = Join-Path $repository ".build\releases"
 $publishRoot = Join-Path $releasesRoot "windows"
-$projectPath = Join-Path $repository "src\MinimalBastion\MinimalBastion.csproj"
+$projectPath = Join-Path $repository "src\MaximalBastion\MaximalBastion.csproj"
 $localDotnet = Join-Path $repository ".dotnet\dotnet.exe"
 $dotnet = if (Test-Path -LiteralPath $localDotnet) { $localDotnet } else { (Get-Command dotnet).Source }
 . (Join-Path $PSScriptRoot "release-version.ps1")
-$version = Get-MinimalBastionVersion -Repository $repository
-$archivePath = Join-Path $releasesRoot "MinimalBastion-$version-Windows.zip"
+$version = Get-MaximalBastionVersion -Repository $repository
+$archivePath = Join-Path $releasesRoot "MaximalBastion-$version-Windows.zip"
 
 New-Item -ItemType Directory -Path $releasesRoot -Force | Out-Null
 if ([System.IO.Path]::GetFullPath((Split-Path -Parent $publishRoot)) -ne

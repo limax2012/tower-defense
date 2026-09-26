@@ -5,10 +5,11 @@ obj/
 *.user
 *.suo
 *.pdb
-src/MinimalBastion/Content/bin/
-src/MinimalBastion/Content/obj/
-src/MinimalBastion.Web/wwwroot/Content/
+src/MaximalBastion/Content/bin/
+src/MaximalBastion/Content/obj/
+src/MaximalBastion.Web/wwwroot/Content/
 .dotnet/
 .build/
 .artifacts/
 .verification/
+src/MaximalBastion.Mobile/assets/runtime/

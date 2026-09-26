@@ -10,13 +10,13 @@ $releasesRoot = Join-Path $buildRoot "releases"
 $publishRoot = Join-Path $releasesRoot ".browser-publish"
 $siteRoot = Join-Path $releasesRoot "browser"
 $statePath = Join-Path $releasesRoot ".browser-build-state.json"
-$projectPath = Join-Path $repository "src\MinimalBastion.Web\MinimalBastion.Web.csproj"
+$projectPath = Join-Path $repository "src\MaximalBastion.Web\MaximalBastion.Web.csproj"
 $localDotnet = Join-Path $repository ".dotnet\dotnet.exe"
 $dotnet = if (Test-Path -LiteralPath $localDotnet) { $localDotnet } else { (Get-Command dotnet).Source }
 . (Join-Path $PSScriptRoot "browser-build-state.ps1")
 . (Join-Path $PSScriptRoot "release-version.ps1")
-$version = Get-MinimalBastionVersion -Repository $repository
-$archivePath = Join-Path $releasesRoot "MinimalBastion-$version-Browser.zip"
+$version = Get-MaximalBastionVersion -Repository $repository
+$archivePath = Join-Path $releasesRoot "MaximalBastion-$version-Browser.zip"
 $requiredContent = @(
     "Content\Fonts\Interface.xnb",
     "Content\Audio\MainMenuLoop.xnb",
