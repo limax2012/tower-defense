@@ -499,7 +499,7 @@ public sealed class GameRenderer
                 if (effect.SourceTowerId != 0 && ActivePrismBeam(session, effect.SourceTowerId, presentation) != effect)
                     continue;
                 PrismBeamArt.Draw(batch, p, PrismBeamOrigin(session, effect, presentation), effect.End, effect.Color, effect.Radius,
-                    progress, 1 - progress, ReducedEffects, effect.SourceTowerId != 0);
+                    progress, ReducedEffects, effect.SourceTowerId != 0);
                 continue;
             }
             if (!ReducedEffects && effect.Kind != EffectKind.Ping)

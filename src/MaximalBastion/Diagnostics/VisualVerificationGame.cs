@@ -1931,44 +1931,25 @@ public sealed partial class VisualVerificationGame : Game
         var accent = content.Towers["prism_beam"].Visual.PrimaryColor;
         var start = new Vector2(40, 60);
         var end = new Vector2(280, 60);
-        var first = PixelsAt(.8f, 0, false, start, end);
-        var later = PixelsAt(.8f, .19f, false, start, end);
-        var brighter = 0;
-        var dimmer = 0;
-        for (var y = 100; y < 140; y++)
-        for (var x = 120; x < 520; x++)
+        var first = PixelsAt(.8f, false, start, end);
+        var quiet = PixelsAt(.8f, true, start, end);
+        foreach (var (pixels, mode) in new[] { (first, "Full"), (quiet, "Reduced") })
         {
-            var a = first[y * 640 + x];
-            var b = later[y * 640 + x];
-            var change = b.R + b.G + b.B - a.R - a.G - a.B;
-            if (change > 15) brighter++;
-            if (change < -15) dimmer++;
+            var uniform = true;
+            for (var y = 100; y < 140; y++)
+            for (var x = 140; x < 500; x++)
+                uniform &= pixels[y * 640 + x] == pixels[y * 640 + 320];
+            Require(uniform && pixels[120 * 640 + 320] != ColorPalette.Canvas,
+                $"{mode} Prism effects retain a luminous, uniform beam between the endpoint glows.", assertions);
         }
-        Require(brighter > 60 && dimmer > 60,
-            "Prism highlights travel along the beam rather than changing only its overall brightness.", assertions);
-        var quiet = PixelsAt(.8f, 0, true, start, end);
-        var quietLater = PixelsAt(.8f, .19f, true, start, end);
-        var quietBrighter = 0;
-        var quietDimmer = 0;
-        for (var y = 114; y < 127; y++)
-        for (var x = 120; x < 520; x++)
-        {
-            var a = quiet[y * 640 + x];
-            var b = quietLater[y * 640 + x];
-            var change = b.R + b.G + b.B - a.R - a.G - a.B;
-            if (change > 15) quietBrighter++;
-            if (change < -15) quietDimmer++;
-        }
-        Require(quietBrighter > 40 && quietDimmer > 40,
-            "Reduced Effects retains moving Prism bulges around its straight aiming core.", assertions);
         Require(first.Zip(quiet, (a, b) => a != b).Count(changed => changed) > 200,
-            "Full Prism effects add visible bloom and moving light around the aiming core.", assertions);
-        var faded = PixelsAt(0, .9f, false, start, end);
+            "Full Prism effects add visible bloom around the aiming core.", assertions);
+        var faded = PixelsAt(0, false, start, end);
         Require(faded.All(pixel => pixel == ColorPalette.Canvas),
             "Expired Prism effects leave no luminous residue.", assertions);
         foreach (var length in new[] { 0f, .1f })
         {
-            var pixels = PixelsAt(.8f, .4f, false, new Vector2(160, 60), new Vector2(160 + length, 60));
+            var pixels = PixelsAt(.8f, false, new Vector2(160, 60), new Vector2(160 + length, 60));
             Require(pixels.Where((pixel, index) => pixel != ColorPalette.Canvas &&
                     (Math.Abs(index % 640 - 320) > 40 || Math.Abs(index / 640 - 120) > 40)).Count() == 0 &&
                     pixels.Any(pixel => pixel != ColorPalette.Canvas),
@@ -1995,7 +1976,7 @@ public sealed partial class VisualVerificationGame : Game
                 _primitives.FillRect(_batch, new Rectangle(24, y, 752, 56), ColorPalette.Panel);
                 Label(index == 3 ? "REDUCED" : $"{age * 150:0} ms", new Vector2(36, y + 18), .4f);
                 PrismBeamArt.Draw(_batch, _primitives, new Vector2(160, y + 28), new Vector2(735, y + 28),
-                    accent, 2, 1 - age, age, index == 3);
+                    accent, 2, 1 - age, index == 3);
             }
             _batch.End();
             GraphicsDevice.SetRenderTarget(null);
@@ -2067,7 +2048,7 @@ public sealed partial class VisualVerificationGame : Game
         void Label(string text, Vector2 position, float scale) => _batch.DrawString(font, text, position,
             ColorPalette.Paper, 0, Vector2.Zero, scale * GameConstants.FontDrawScale, SpriteEffects.None, 0);
 
-        Color[] PixelsAt(float progress, float age, bool quiet, Vector2 from, Vector2 to)
+        Color[] PixelsAt(float progress, bool quiet, Vector2 from, Vector2 to)
         {
             using var target = new RenderTarget2D(GraphicsDevice, 640, 240,
                 false, SurfaceFormat.Color, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
@@ -2075,7 +2056,7 @@ public sealed partial class VisualVerificationGame : Game
             GraphicsDevice.Clear(ColorPalette.Canvas);
             _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp,
                 null, null, null, Matrix.CreateScale(2));
-            PrismBeamArt.Draw(_batch, _primitives, from, to, accent, 2, progress, age, quiet);
+            PrismBeamArt.Draw(_batch, _primitives, from, to, accent, 2, progress, quiet);
             _batch.End();
             GraphicsDevice.SetRenderTarget(null);
             var pixels = new Color[target.Width * target.Height];
