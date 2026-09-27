@@ -95,37 +95,7 @@ body {
     width: clamp(84px, 14vw, 120px);
     height: auto;
     margin-bottom: 26px;
-    overflow: visible;
-}
-
-.mark-recess, .mark-frame, .mark-signal, .mark-base {
-    fill: none;
-    stroke-linejoin: bevel;
-}
-
-.mark-recess {
-    stroke: #43ded814;
-    stroke-width: 13;
-}
-
-.mark-frame {
-    stroke: var(--cyan);
-    stroke-width: 3;
-    animation: relay-breathe 3.6s ease-in-out infinite;
-}
-
-.mark-pylon {
-    fill: var(--ceramic);
-}
-
-.mark-signal {
-    stroke: var(--copper);
-    stroke-width: 4;
-}
-
-.mark-base {
-    stroke: #2b3f50;
-    stroke-width: 2;
+    filter: drop-shadow(0 0 18px #a489ea26);
 }
 
 .loading-title {
@@ -218,18 +188,13 @@ body {
     outline-offset: 3px;
 }
 
-@keyframes relay-breathe {
-    0%, 100% { opacity: 0.65; }
-    50% { opacity: 1; }
-}
-
 @keyframes relay-transfer {
     0%, 75%, 100% { opacity: 0.2; }
     35% { opacity: 0.9; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .mark-frame, .loading-activity span {
+    .loading-activity span {
         animation: none;
         opacity: 0.8;
     }

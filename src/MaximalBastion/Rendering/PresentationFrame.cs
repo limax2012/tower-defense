@@ -9,7 +9,7 @@ namespace MaximalBastion.Rendering;
 
 /// <summary>
 /// Produces a smooth, local-only view of the next fraction of a deterministic
-/// co-op tick. Presented values never mutate simulation state, enter snapshots,
+/// simulation tick. Presented values never mutate simulation state, enter snapshots,
 /// or contribute to checksums.
 /// </summary>
 public readonly struct PresentationFrame

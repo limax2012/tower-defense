@@ -51,9 +51,9 @@ internal sealed class MainMenuBattleScene
     {
         _renderer.ReducedEffects = reducedEffects;
         primitives.DrawClipped(batch, new Rectangle(21, 60, 278, 608), transform,
-            () => _renderer.DrawCombatShowcase(batch, primitives, _left.Session));
+            () => _renderer.DrawCombatShowcase(batch, primitives, _left.Session, _accumulator));
         primitives.DrawClipped(batch, new Rectangle(981, 60, 278, 608), transform,
-            () => _renderer.DrawCombatShowcase(batch, primitives, _right.Session));
+            () => _renderer.DrawCombatShowcase(batch, primitives, _right.Session, _accumulator));
     }
 
     private void UpdateLane(ref LaneBattle lane, bool leftLane)

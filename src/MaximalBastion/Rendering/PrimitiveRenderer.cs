@@ -257,6 +257,18 @@ public sealed class PrimitiveRenderer : IDisposable
             }
     }
 
+    public void DrawDiamond(SpriteBatch batch, Vector2 center, float radius, Color color, float rotation = 0)
+    {
+        var size = new Vector2(radius * MathF.Sqrt(2));
+#if BLAZORGL
+        batch.Draw(_atlas.Texture, center, _atlas.Pixel, color, rotation + MathHelper.PiOver4,
+            new Vector2(.5f), size, SpriteEffects.None, 0);
+#else
+        batch.Draw(Pixel, center, null, color, rotation + MathHelper.PiOver4,
+            new Vector2(.5f), size, SpriteEffects.None, 0);
+#endif
+    }
+
     public void DrawPolygon(SpriteBatch batch, Vector2 center, float radius, int sides, bool star, Color color, float rotation = 0)
     {
 #if BLAZORGL

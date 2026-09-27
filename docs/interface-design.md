@@ -12,6 +12,8 @@ The title pairs an armored prism tower emblem with a violet diamond core with a 
 
 `UiTypography` loads bundled Barlow Semi Condensed Medium for controls, prose, tooltips, and small labels, and Oxanium SemiBold for headings, tower names, branding, and key HUD values. Mixed-case headings use pale lettering and a subtle depth shadow, contrasting with compact uppercase control labels. Display glyphs are rasterized at 96 points and normalized to the common size system, keeping the large wordmark sharp. Measurement uses the same font and normalized scale as drawing. Font binaries and SIL OFL notices ship with both desktop and browser builds; the browser loading shell references the same source assets.
 
+The main-menu defense lanes run fixed 60 Hz simulations. Rendering advances enemies, projectiles, and effect lifetimes by the remaining fraction of the simulation tick, keeping browser frame pacing smooth without changing combat timing. The browser loading screen reuses the prism emblem SVG used for the app icon.
+
 ## Shared components
 
 The interface uses the 1280×720 logical canvas and the same coordinate conversion as the battlefield. `ColorPalette` owns dark surfaces, ice-white text, muted secondary text, and functional accent colors. Output resolution does not change these values.

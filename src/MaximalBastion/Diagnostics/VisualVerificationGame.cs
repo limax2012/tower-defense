@@ -101,10 +101,18 @@ public sealed partial class VisualVerificationGame : Game
         AssertPrismBeamPresentation(content, font, typography.Display, assertions, scenes);
         scenes.Add(CaptureTowerMountGallery(content, font));
         scenes.Add(CaptureTowerUpgradeGallery(content, font));
+        scenes.Add(CaptureTowerRotationGallery(content, font));
         AssertTowerProtocolPresentation(content, font, assertions, scenes);
         scenes.Add(CaptureHealthBarGallery(font));
-        AssertStunPresentation(content, font, assertions, scenes);
         AssertCombatFeedClipping(content, assertions, scenes);
+        var smoothMenu = new UIManager(font, typography.Display);
+        ConfigureUi(smoothMenu, content);
+        var beforeFraction = RenderPixels(smoothMenu, GameState.MainMenu, null);
+        smoothMenu.AdvanceMainMenuBattle(1f / 120f);
+        var afterFraction = RenderPixels(smoothMenu, GameState.MainMenu, null);
+        Require(CountChangedPixels(beforeFraction, afterFraction, UIManager.MainMenuLeftDefenseBounds) > 20 &&
+                CountChangedPixels(beforeFraction, afterFraction, UIManager.MainMenuRightDefenseBounds) > 20,
+            "Both menu lanes advance visually during a fraction of a fixed simulation tick.", assertions);
         ui.AdvanceVisualTime(0.45f);
         ui.AdvanceMainMenuBattle(0.45f);
         var mainMenuInMotion = RenderPixels(ui, GameState.MainMenu, null);
@@ -1939,8 +1947,20 @@ public sealed partial class VisualVerificationGame : Game
         Require(brighter > 60 && dimmer > 60,
             "Prism highlights travel along the beam rather than changing only its overall brightness.", assertions);
         var quiet = PixelsAt(.8f, 0, true, start, end);
-        Require(quiet.SequenceEqual(PixelsAt(.8f, .65f, true, start, end)),
-            "Reduced Effects preserves a stable Prism core at a fixed lifetime fade.", assertions);
+        var quietLater = PixelsAt(.8f, .19f, true, start, end);
+        var quietBrighter = 0;
+        var quietDimmer = 0;
+        for (var y = 114; y < 127; y++)
+        for (var x = 120; x < 520; x++)
+        {
+            var a = quiet[y * 640 + x];
+            var b = quietLater[y * 640 + x];
+            var change = b.R + b.G + b.B - a.R - a.G - a.B;
+            if (change > 15) quietBrighter++;
+            if (change < -15) quietDimmer++;
+        }
+        Require(quietBrighter > 40 && quietDimmer > 40,
+            "Reduced Effects retains moving Prism bulges around its straight aiming core.", assertions);
         Require(first.Zip(quiet, (a, b) => a != b).Count(changed => changed) > 200,
             "Full Prism effects add visible bloom and moving light around the aiming core.", assertions);
         var faded = PixelsAt(0, .9f, false, start, end);
@@ -2017,8 +2037,11 @@ public sealed partial class VisualVerificationGame : Game
         var shotAngle = MathF.Atan2(shotDirection.Y, shotDirection.X);
         Require(MathF.Abs(MathHelper.WrapAngle(GameRenderer.TowerAim(session, emitter, presentation) - shotAngle)) < .0001f,
             "A visible Prism beam holds its barrel on the fired ray after target movement.", assertions);
-        Require(beam.Start == emitter.Position,
-            "The Prism beam and its light sheath begin at the tower core.", assertions);
+        var expectedMuzzle = emitter.Position + shotDirection * emitter.Definition.Visual.Radius *
+            presentation.TowerScale(emitter) * PrismBeamArt.BarrelLength;
+        Require(Vector2.Distance(GameRenderer.PrismBeamOrigin(session, beam, presentation), expectedMuzzle) < .001f &&
+                beam.Start == emitter.Position,
+            "The visible Prism ray begins at the scaled barrel tip without changing its stored shot.", assertions);
         scenes.Add(Capture("31a-prism-retargeting.png", beamUi, GameState.Playing, session));
         beam.Remaining = 0;
         var nextAngle = MathF.Atan2(target.Position.Y - emitter.Position.Y, target.Position.X - emitter.Position.X);
@@ -2032,7 +2055,7 @@ public sealed partial class VisualVerificationGame : Game
         scenes.Add(Capture("31c-prism-after-target-death.png", beamUi, GameState.Playing, session));
         session.Effects.AddBeam(beam.End, beam.End + new Vector2(30, 40), accent, .12f, BeamStyle.Prism);
         var chained = session.Effects.Effects.Last();
-        Require(chained.Start == beam.End &&
+        Require(chained.Start == beam.End && GameRenderer.PrismBeamOrigin(session, chained, presentation) == chained.Start &&
                 GameRenderer.ActivePrismBeam(session, emitter.Id, presentation) == beam,
             "Prism chain links keep their enemy origins and do not redirect the emitter.", assertions);
         session.Effects.AddBeam(emitter.Position, emitter.Position + Vector2.UnitX * 100, accent, .15f,

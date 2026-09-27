@@ -1,6 +1,6 @@
-# Desktop icon
+# Brand emblem
 
-The armored MB monogram matches the main-menu logo in `Rendering/BastionBrandMark.cs`. A cyan M and pale B sit inside symmetric ceramic shoulders and a recessed keel. All materials use colors from `Rendering/ColorPalette.cs`.
+The armored prism emblem matches the main-menu logo in `Rendering/BastionBrandMark.cs`. Concentric violet and white diamonds sit inside symmetric ceramic shoulders and a recessed keel. The barrel meets the core beneath its complete diamond outline. All materials use colors from `Rendering/ColorPalette.cs`.
 
 `MaximalBastion.ico` supplies the Windows executable icon at 16, 20, 24, 32, 40, 48, 64, 128, and 256 pixels. `MaximalBastion.bmp` is embedded as `MaximalBastion.Icon.bmp`, the resource MonoGame DesktopGL loads for the active window and taskbar. Both retain transparent edges. The SVG and PNG are reusable copies of the same geometry.
 
@@ -11,3 +11,5 @@ python scripts/generate-game-icon.py
 ```
 
 The generator checks that all ICO sizes and the embedded BMP preserve the expected RGBA pixels. A normal game build embeds both Windows resources; no runtime icon files are required beside the executable.
+
+The same generator writes the browser favicon used by the loading screen, mobile web and PWA icons, Android launcher icons, and iOS app icons. Maskable icons have safe padding, and iOS icons use an opaque canvas background. The runtime diamonds use centered square geometry; SVG and exported icons use the same exact diamond vertices.

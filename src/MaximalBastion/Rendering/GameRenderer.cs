@@ -36,9 +36,9 @@ public sealed class GameRenderer
     }
 
     internal void DrawCombatShowcase(SpriteBatch batch, PrimitiveRenderer primitives,
-        MaximalBastion.GameSession session)
+        MaximalBastion.GameSession session, float presentationLeadSeconds = 0)
     {
-        var presentation = PresentationFrame.Create(session, 0);
+        var presentation = PresentationFrame.Create(session, presentationLeadSeconds);
         DrawPath(batch, primitives, session);
         DrawTowers(batch, primitives, session, presentation);
         DrawEnemies(batch, primitives, session, presentation);
@@ -217,6 +217,18 @@ public sealed class GameRenderer
         return target is null ? -MathHelper.PiOver2 : MathF.Atan2(target.Position.Y - tower.Position.Y, target.Position.X - tower.Position.X);
     }
 
+    internal static Vector2 PrismBeamOrigin(GameSession session, EffectInstance effect, PresentationFrame presentation)
+    {
+        if (effect.SourceTowerId == 0) return effect.Start;
+        var tower = session.Towers.FirstOrDefault(candidate => candidate.Id == effect.SourceTowerId);
+        if (tower is null) return effect.Start;
+        var ray = effect.End - tower.Position;
+        var length = ray.Length();
+        if (length < .001f) return tower.Position;
+        var barrel = tower.Definition.Visual.Radius * presentation.TowerScale(tower) * PrismBeamArt.BarrelLength;
+        return tower.Position + ray / length * MathF.Min(barrel, length);
+    }
+
     private void DrawTower(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session,
         PresentationFrame presentation, TowerInstance tower, float time, bool groundEffects = true)
     {
@@ -234,21 +246,9 @@ public sealed class GameRenderer
                 tower == session.SelectedTower ? ColorPalette.Gold : ColorPalette.Cyan, 8);
         }
         if (tower.IsDisrupted)
-        {
-            var barHalfHeight = tower.Definition.Visual.Radius * 0.42f;
-            p.Line(batch, tower.Position + new Vector2(-4, -barHalfHeight),
-                tower.Position + new Vector2(-4, barHalfHeight), ColorPalette.Violet, 3);
-            p.Line(batch, tower.Position + new Vector2(4, -barHalfHeight),
-                tower.Position + new Vector2(4, barHalfHeight), ColorPalette.Violet, 3);
-        }
+            StatusGlyphRenderer.DrawDisrupted(batch, p, tower.Position, tower.Definition.Visual.Radius);
         else if (tower.IsSuppressed)
-        {
-            var halfWidth = tower.Definition.Visual.Radius * 0.34f;
-            p.Line(batch, tower.Position + new Vector2(-halfWidth, 5),
-                tower.Position + new Vector2(-2, 1), ColorPalette.Orange, 3);
-            p.Line(batch, tower.Position + new Vector2(2, 1),
-                tower.Position + new Vector2(halfWidth, 5), ColorPalette.Orange, 3);
-        }
+            StatusGlyphRenderer.DrawSuppressed(batch, p, tower.Position, tower.Definition.Visual.Radius);
         if (tower.IsSandboxDisabled)
         {
             var slash = tower.Definition.Visual.Radius * 0.58f;
@@ -257,17 +257,6 @@ public sealed class GameRenderer
             if (tower == session.SelectedTower)
                 p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 8, ColorPalette.Gold, 3);
             return;
-        }
-        if (tower.Specialization is { } specialization)
-        {
-            var branchIndex = tower.Definition.Specializations.IndexOf(specialization);
-            // The first and second specialization choices are stacked in Tower Intel,
-            // so matching up/down glyphs communicate the chosen branch more clearly
-            // than the old, otherwise unexplained circle/diamond pair.
-            if (branchIndex == 0)
-                p.DrawPolygon(batch, tower.Position, 5f, 3, false, ColorPalette.Paper, -MathHelper.PiOver2);
-            else
-                p.DrawPolygon(batch, tower.Position, 5f, 3, false, ColorPalette.Paper, MathHelper.PiOver2);
         }
         if (session.Map.GetPowerBuff(tower.Position).IsPowered)
             p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 10, ColorPalette.WithAlpha(ColorPalette.Gold, 190), 12, 2);
@@ -423,9 +412,6 @@ public sealed class GameRenderer
             }
             if (enemy.StatusEffects.ArmorReduction > 0)
                 StatusGlyphRenderer.DrawArmorBreak(batch, p, position, enemy.Radius);
-            if (enemy.StatusEffects.IsStunned)
-                StatusGlyphRenderer.DrawStun(batch, p, position, enemy.Radius,
-                    time + enemy.Id * .37f, ReducedEffects, headingAngle);
             if (enemy.Definition.RegenerationPerSecond > 0)
                 p.Ring(batch, position, enemy.Radius + 11, ColorPalette.Lime, 2);
         }
@@ -512,8 +498,8 @@ public sealed class GameRenderer
             {
                 if (effect.SourceTowerId != 0 && ActivePrismBeam(session, effect.SourceTowerId, presentation) != effect)
                     continue;
-                PrismBeamArt.Draw(batch, p, effect.Start, effect.End, effect.Color, effect.Radius,
-                    progress, 1 - progress, ReducedEffects);
+                PrismBeamArt.Draw(batch, p, PrismBeamOrigin(session, effect, presentation), effect.End, effect.Color, effect.Radius,
+                    progress, 1 - progress, ReducedEffects, effect.SourceTowerId != 0);
                 continue;
             }
             if (!ReducedEffects && effect.Kind != EffectKind.Ping)

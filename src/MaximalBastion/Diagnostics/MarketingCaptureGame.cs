@@ -24,6 +24,7 @@ public sealed class MarketingCaptureGame : Game
     private PrimitiveRenderer _primitives = null!;
     private GameRenderer _renderer = null!;
     private SpriteFont _font = null!;
+    private SpriteFont _display = null!;
     private Texture2D _pixel = null!;
     private bool _complete;
 
@@ -65,6 +66,7 @@ public sealed class MarketingCaptureGame : Game
         _primitives = new PrimitiveRenderer(GraphicsDevice);
         _renderer = new GameRenderer { ReducedEffects = false };
         _font = Content.Load<SpriteFont>("Fonts/Interface");
+        _display = Content.Load<SpriteFont>(UiTypography.DisplayAsset);
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData([Color.White]);
 
@@ -72,48 +74,41 @@ public sealed class MarketingCaptureGame : Game
         var ui = new UIManager(_font, Content.Load<SpriteFont>(UiTypography.DisplayAsset));
         ConfigureUi(ui, content);
 
-        var foundry = BuildActiveSession(content, "foundry_loop", "hard", "standard",
-            AutoPlayerStrategy.Adaptive, 1421, 17, minimumSeconds: 12f);
-        SelectTower(foundry, "breaker_cannon");
-        CaptureGameplay("01-foundry-loop-battle.png", ui, foundry);
+        var foundry = BuildActiveSession(content, "foundry_loop", "normal", "standard",
+            AutoPlayerStrategy.Experienced, 1421, 17, minimumSeconds: 12f);
+        ClearSelection(foundry);
+        CaptureGameplay("01-cinderworks-crossfire.png", ui, foundry);
         ClearSelection(foundry);
         CaptureCover("cover-630x500.png", foundry);
+        CaptureBattlefield("06-cinderworks-action-detail.png", foundry, new Rectangle(40, 55, 880, 495));
 
-        var crosswind = BuildActiveSession(content, "crosswind_basin", "hard", "standard",
-            AutoPlayerStrategy.Conservative, 2917, 15, minimumSeconds: 12f);
-        SelectTower(crosswind, "frost_spire");
-        CaptureGameplay("02-crosswind-basin-battle.png", ui, crosswind);
+        var crosswind = BuildActiveSession(content, "crosswind_basin", "normal", "standard",
+            AutoPlayerStrategy.Experienced, 2917, 19, minimumSeconds: 12f);
+        ClearSelection(crosswind);
+        CaptureGameplay("02-rainline-heights-battle.png", ui, crosswind);
 
-        var prism = BuildActiveSession(content, "prism_circuit", "hard", "core_six",
-            AutoPlayerStrategy.AntiArmor, 4759, 18, minimumSeconds: 12f);
+        var prism = BuildActiveSession(content, "prism_circuit", "normal", "core_six",
+            AutoPlayerStrategy.Experienced, 4759, 18, minimumSeconds: 12f);
         SelectTower(prism, "ember_coil");
-        CaptureGameplay("03-prism-circuit-core-six.png", ui, prism);
+        CaptureGameplay("03-prism-nullspace-core-six.png", ui, prism);
 
-        var surge = BuildActiveSession(content, "relay_divide", "hard", "standard",
-            AutoPlayerStrategy.Synergy, 9256, 19, minimumSeconds: 12f,
-            minimumLeadingProgress: 0.45f, minimumMiddleEnemies: 8);
-        var featuredProtocolTower = StageActiveSystems(surge);
-        CaptureGameplay("04-surge-divide-nodes.png", ui, surge);
-        ClearActiveSystems(surge, featuredProtocolTower.Id);
+        var surge = BuildActiveSession(content, "relay_divide", "normal", "standard",
+            AutoPlayerStrategy.Experienced, 9256, 19, minimumSeconds: 12f);
+        SelectTower(surge, "prism_beam");
+        CaptureGameplay("04-helix-reactor-defense.png", ui, surge);
+        ClearSelection(surge);
+        CaptureBattlefield("07-helix-reactor-action-detail.png", surge, new Rectangle(15, 130, 900, 506));
+
 
         var gauntlet = BuildActiveSession(content, "foundry_loop", "normal", "close_quarters",
-            AutoPlayerStrategy.Synergy, 6841, 14, minimumSeconds: 12f, requireSignalCarrier: true);
-        gauntlet.ConfigureCoOp(1);
-        ui.SetCoOpConnectionState(true);
-        ui.SetCoOpWaveReadyState(0, false);
-        var remoteTower = gauntlet.Towers
-            .Where(tower => !tower.IsSupport)
-            .OrderByDescending(tower => tower.LevelIndex)
-            .ThenBy(tower => tower.Id)
-            .First();
-        ui.SetRemoteCoOpCursor(new Vector2(840, 345), 2, selectedTowerId: remoteTower.Id);
+            AutoPlayerStrategy.Experienced, 6841, 14, minimumSeconds: 12f, requireSignalCarrier: true);
         SelectTower(gauntlet, "arc_relay");
-        CaptureGameplay("05-online-coop-signal-gauntlet.png", ui, gauntlet);
-        ui.SetRemoteCoOpCursor(null, 0);
+        CaptureGameplay("05-cinderworks-signal-gauntlet.png", ui, gauntlet);
+
 
 
         HideAndDisableActivation();
-        Console.WriteLine($"Marketing capture complete: 1 cover and 5 gameplay screenshots.");
+        Console.WriteLine($"Marketing capture complete: 1 cover, 5 gameplay screenshots, and 2 battlefield details.");
         Console.WriteLine(_outputDirectory);
         _complete = true;
         Exit();
@@ -138,68 +133,73 @@ public sealed class MarketingCaptureGame : Game
 
     private static GameSession BuildActiveSession(GameContent content, string mapId, string difficultyId,
         string challengeId, AutoPlayerStrategy strategy, int seed, int waveNumber, float minimumSeconds,
-        bool requireSignalCarrier = false, float minimumLeadingProgress = 0.58f, int minimumMiddleEnemies = 10)
+        bool requireSignalCarrier = false)
     {
         if (waveNumber < 2) throw new ArgumentOutOfRangeException(nameof(waveNumber));
-        var options = new SimulationOptions
+        for (var attempt = 0; attempt < 6; attempt++)
         {
-            MapId = mapId,
-            DifficultyId = difficultyId,
-            ChallengeId = challengeId,
-            Strategy = strategy,
-            Seed = seed,
-            MaximumWave = waveNumber - 1
-        };
-        var execution = HeadlessSimulation.RunForDiagnostics(content, options);
-        var session = execution.Session;
-        if (session.IsDefeat || session.CurrentWave != waveNumber - 1)
-            throw new InvalidOperationException(
-                $"Could not prepare {mapId} wave {waveNumber}: {execution.Result.Result} at wave {session.CurrentWave}.");
-
-        var player = new AutoPlayer(session, strategy, seed + 10_003, options);
-        player.PrepareForWave(session);
-        if (!session.StartNextWave(true))
-            throw new InvalidOperationException($"Could not start {mapId} wave {waveNumber}.");
-
-        const float step = 0.05f;
-        var elapsed = 0f;
-        var reaction = 0f;
-        var frameReady = false;
-        while (session.Waves.IsActive && elapsed < 55f)
-        {
-            session.Update(step);
-            elapsed += step;
-            reaction += step;
-            if (reaction >= 1f)
+            var candidateSeed = seed + attempt * 7919;
+            var options = new SimulationOptions
             {
-                player.ReactDuringWave(session);
-                reaction = 0f;
+                MapId = mapId, DifficultyId = difficultyId, ChallengeId = challengeId,
+                Strategy = strategy, Seed = candidateSeed, MaximumWave = waveNumber - 1
+            };
+            var execution = HeadlessSimulation.RunForDiagnostics(content, options);
+            if (execution.Session.IsDefeat || execution.Session.CurrentWave != waveNumber - 1) continue;
+            // Replay the selected combat tick from the same checkpoint to preserve live effects.
+            var checkpoint = execution.Session.CaptureSaveGame();
+            var session = GameSession.RestoreSaveGame(content, checkpoint);
+            var player = Prepare(session);
+            const float step = 1f / 60;
+            var bestTick = -1;
+            var bestScore = float.MinValue;
+            for (var tick = 0; tick < 55 * 60 && session.Waves.IsActive && !session.IsDefeat; tick++)
+            {
+                Advance(session, player, tick);
+                if (tick * step < minimumSeconds || session.AnnouncementRemaining > 0) continue;
+                var enemies = session.Enemies.Where(enemy => !enemy.IsDead).ToArray();
+                var middle = enemies.Count(enemy => enemy.PathProgress is >= .20f and <= .85f);
+                var central = enemies.Count(enemy => enemy.Position.X is >= 160 and <= 800 &&
+                    enemy.Position.Y is >= 150 and <= 630);
+                var attacking = session.Towers.Count(tower => !tower.IsSupport && enemies.Any(enemy =>
+                    Vector2.DistanceSquared(tower.Position, enemy.Position) <=
+                    session.GetEffectiveRange(tower) * session.GetEffectiveRange(tower)));
+                if (middle < 4 || central < 4 || attacking < Math.Min(5, session.Towers.Count) ||
+                    (requireSignalCarrier && !enemies.Any(enemy => enemy.SignalRole != EnemySignalRole.None))) continue;
+                var beams = session.Effects.Effects.Count(effect => effect.Kind == MaximalBastion.Effects.EffectKind.Beam);
+                var firing = session.Towers.Count(tower => tower.RecoilAnimationRemaining > .025f);
+                if (firing < 6 || session.Projectiles.Projectiles.Count < 10) continue;
+                var score = firing * 18 + attacking * 2 + Math.Min(enemies.Length, 28) +
+                    Math.Min(session.Projectiles.Projectiles.Count, 28) * 5 + Math.Min(beams, 8) * 9 +
+                    Math.Min(session.Effects.Effects.Count, 24) - Math.Max(0, enemies.Length - 45) * 2;
+                if (score <= bestScore) continue;
+                bestScore = score;
+                bestTick = tick;
+            }
+            if (bestTick < 0) continue;
+            session = GameSession.RestoreSaveGame(content, checkpoint);
+            player = Prepare(session);
+            for (var tick = 0; tick <= bestTick; tick++) Advance(session, player, tick);
+            Console.WriteLine($"{mapId} W{waveNumber}: seed {candidateSeed}, {session.Towers.Count} towers, " +
+                $"{session.Enemies.Count} enemies, {session.Projectiles.Projectiles.Count} projectiles, " +
+                $"{session.Towers.Count(tower => tower.RecoilAnimationRemaining > .025f)} firing, {session.Effects.Effects.Count} effects at {(bestTick + 1) * step:0.00}s; action score {bestScore}.");
+            return session;
+
+            AutoPlayer Prepare(GameSession run)
+            {
+                var auto = new AutoPlayer(run, strategy, candidateSeed + 10_003, options);
+                auto.PrepareForWave(run);
+                if (!run.StartNextWave(true)) throw new InvalidOperationException($"Cannot start {mapId} W{waveNumber}.");
+                return auto;
             }
 
-            var middleEnemies = session.Enemies.Count(enemy => enemy.PathProgress is >= 0.35f and <= 0.78f);
-            var centralEnemies = session.Enemies.Count(enemy =>
-                enemy.Position.X is >= 240f and <= 720f && enemy.Position.Y is >= 100f and <= 630f);
-            var leadingProgress = session.Enemies.Count == 0 ? 0 : session.Enemies.Max(enemy => enemy.PathProgress);
-            var attackingTowers = session.Towers.Count(tower => !tower.IsSupport && session.Enemies.Any(enemy =>
-                Vector2.DistanceSquared(tower.Position, enemy.Position) <=
-                session.GetEffectiveRange(tower) * session.GetEffectiveRange(tower)));
-            var hasCombatArt = session.Projectiles.Projectiles.Count >= 2 || session.Effects.Effects.Count >= 4;
-            var hasSignalCarrier = !requireSignalCarrier || session.Enemies.Any(enemy => enemy.SignalRole != EnemySignalRole.None);
-            if (elapsed >= minimumSeconds && middleEnemies >= minimumMiddleEnemies && centralEnemies >= 6 &&
-                leadingProgress >= minimumLeadingProgress &&
-                attackingTowers >= 8 && hasCombatArt && hasSignalCarrier && session.AnnouncementRemaining <= 0)
+            static void Advance(GameSession run, AutoPlayer auto, int tick)
             {
-                Console.WriteLine($"{mapId} W{waveNumber}: {session.Enemies.Count} enemies, " +
-                                  $"{middleEnemies} mid-route, {centralEnemies} central, " +
-                                  $"{attackingTowers} towers in range at {elapsed:0.0}s.");
-                frameReady = true;
-                break;
+                run.Update(step);
+                if (tick % 60 == 59) auto.ReactDuringWave(run);
             }
         }
-
-        if (!frameReady)
-            throw new InvalidOperationException($"{mapId} wave {waveNumber} ended before a mid-route combat frame was available.");
-        return session;
+        throw new InvalidOperationException($"No active {mapId} W{waveNumber} composition found in six seeded runs.");
     }
 
     private static void SelectTower(GameSession session, string preferredTowerId)
@@ -212,35 +212,11 @@ public sealed class MarketingCaptureGame : Game
         session.HandleInspectionInput(Pointer(tower.Position, leftPressed: true));
     }
 
-    private static Towers.TowerInstance StageActiveSystems(GameSession session)
-    {
-        var tower = session.Towers
-            .Where(candidate => !candidate.IsSupport)
-            .OrderByDescending(candidate => candidate.IsOverdriven)
-            .ThenByDescending(candidate => session.Map.GetPowerBuff(candidate.Position).IsPowered)
-            .ThenByDescending(candidate => candidate.LevelIndex)
-            .ThenBy(candidate => candidate.Id)
-            .First();
-        tower.ActivateOverdrive();
-        if (session.AutoOverdriveTowerId != tower.Id)
-            session.TryToggleAutoProtocol(tower.Id);
-        session.HandleInspectionInput(Pointer(tower.Position, leftPressed: true));
-        return tower;
-    }
-
-    private static void ClearActiveSystems(GameSession session, int autoTowerId)
-    {
-        if (session.AutoOverdriveTowerId == autoTowerId)
-            session.TryToggleAutoProtocol(autoTowerId);
-        foreach (var tower in session.Towers)
-            tower.ClearOverdrive();
-    }
-
     private static void ClearSelection(GameSession session) =>
         session.HandleInspectionInput(default(InputSnapshot) with
         {
             MousePosition = Vector2.Zero,
-            EscapePressed = true,
+            RightPressed = true,
             TextEntered = ""
         });
 
@@ -270,6 +246,26 @@ public sealed class MarketingCaptureGame : Game
         SavePng(target, path, GameConstants.RenderWidth, GameConstants.RenderHeight);
     }
 
+    private void CaptureBattlefield(string fileName, GameSession session, Rectangle crop)
+    {
+        using var battlefield = new RenderTarget2D(GraphicsDevice, GameConstants.RenderWidth, GameConstants.RenderHeight);
+        GraphicsDevice.SetRenderTarget(battlefield);
+        GraphicsDevice.Clear(ColorPalette.Navy);
+        _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp,
+            null, null, null, Matrix.CreateScale(GameConstants.RenderScale));
+        _renderer.Draw(_batch, _primitives, session);
+        _batch.End();
+        using var detail = new RenderTarget2D(GraphicsDevice, GameConstants.RenderWidth, GameConstants.RenderHeight);
+        GraphicsDevice.SetRenderTarget(detail);
+        _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp);
+        _batch.Draw(battlefield, new Rectangle(0, 0, detail.Width, detail.Height),
+            new Rectangle(crop.X * GameConstants.RenderScale, crop.Y * GameConstants.RenderScale,
+                crop.Width * GameConstants.RenderScale, crop.Height * GameConstants.RenderScale), Color.White);
+        _batch.End();
+        GraphicsDevice.SetRenderTarget(null);
+        SavePng(detail, Path.Combine(_outputDirectory, fileName), detail.Width, detail.Height);
+    }
+
     private void CaptureCover(string fileName, GameSession session)
     {
         using var battlefield = new RenderTarget2D(GraphicsDevice, GameConstants.RenderWidth, GameConstants.RenderHeight,
@@ -285,32 +281,29 @@ public sealed class MarketingCaptureGame : Game
             false, SurfaceFormat.Color, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
         GraphicsDevice.SetRenderTarget(cover);
         GraphicsDevice.Clear(ColorPalette.Navy);
-        var cropWidth = (int)MathF.Round(GameConstants.LogicalHeight * (CoverWidth / (float)CoverHeight));
-        var cropX = (GameConstants.MapWidth - cropWidth) / 2;
-        var source = new Rectangle(cropX * GameConstants.RenderScale, 0,
-            cropWidth * GameConstants.RenderScale, GameConstants.RenderHeight);
+        var source = new Rectangle(40 * GameConstants.RenderScale, 55 * GameConstants.RenderScale,
+            880 * GameConstants.RenderScale, 525 * GameConstants.RenderScale);
         _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp);
-        _batch.Draw(battlefield, new Rectangle(0, 0, CoverWidth, CoverHeight), source, Color.White);
-        _batch.Draw(_pixel, new Rectangle(0, 0, CoverWidth, 128), ColorPalette.WithAlpha(ColorPalette.Navy, 236));
-        _batch.Draw(_pixel, new Rectangle(0, 128, CoverWidth, 4), ColorPalette.Cyan);
-        _batch.Draw(_pixel, new Rectangle(0, CoverHeight - 52, CoverWidth, 52),
-            ColorPalette.WithAlpha(ColorPalette.Navy, 224));
-        DrawCenteredFitted("MAXIMAL BASTION", new Rectangle(28, 23, CoverWidth - 56, 62), ColorPalette.Paper, 1.25f);
-        DrawCenteredFitted("TACTICAL TOWER DEFENSE", new Rectangle(40, 86, CoverWidth - 80, 28),
-            ColorPalette.Gold, 0.58f);
-        DrawCenteredFitted("BUILD  •  ADAPT  •  HOLD", new Rectangle(36, CoverHeight - 42, CoverWidth - 72, 30),
-            ColorPalette.Paper, 0.48f);
+        _batch.Draw(battlefield, new Rectangle(0, 124, CoverWidth, CoverHeight - 124), source, Color.White);
+        _batch.Draw(_pixel, new Rectangle(0, 0, CoverWidth, 124), ColorPalette.Panel);
+        _batch.Draw(_pixel, new Rectangle(22, 122, CoverWidth - 44, 2), ColorPalette.Metal);
+        DrawCenteredFitted("MAXIMAL", new Rectangle(170, 25, 415, 40), ColorPalette.Cyan, .30f, _display);
+        DrawCenteredFitted("BASTION", new Rectangle(160, 55, 435, 66), ColorPalette.Paper, .54f, _display);
+        _batch.End();
+        _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp,
+            null, null, null, Matrix.CreateScale(1.45f));
+        BastionBrandMark.Draw(_batch, _primitives, new Vector2(65, 40), 0);
         _batch.End();
         GraphicsDevice.SetRenderTarget(null);
         SavePng(cover, Path.Combine(_outputDirectory, fileName), CoverWidth, CoverHeight);
     }
 
-    private void DrawCenteredFitted(string text, Rectangle bounds, Color color, float preferredScale)
+    private void DrawCenteredFitted(string text, Rectangle bounds, Color color, float preferredScale, SpriteFont font)
     {
-        var measured = _font.MeasureString(text);
+        var measured = font.MeasureString(text);
         var scale = MathF.Min(preferredScale, MathF.Min(bounds.Width / measured.X, bounds.Height / measured.Y));
         var position = bounds.Center.ToVector2();
-        _batch.DrawString(_font, text, position, color, 0, measured * 0.5f, scale, SpriteEffects.None, 0);
+        _batch.DrawString(font, text, position, color, 0, measured * 0.5f, scale, SpriteEffects.None, 0);
     }
 
     private static void SavePng(RenderTarget2D target, string path, int width, int height)

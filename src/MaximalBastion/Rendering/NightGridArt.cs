@@ -57,20 +57,22 @@ public static class NightGridArt
         p.DrawPolygon(b, center, mountRadius, mountSides, false, metal, mountRotation);
         p.DrawPolygon(b, center, r * 0.88f, mountSides, false, dark, mountRotation);
         p.Ring(b, center, r * .57f, metal, Math.Max(1, (int)(r * .1f)));
-        for (var side = -1; side <= 1; side += 2)
-        {
-            // Replaceable ceramic outriggers protect the common municipal mounting socket.
-            Rail(-.7f, side * .58f, -.22f, side * .72f, ceramic, .17f);
-            Rail(-.66f, side * .58f, -.48f, side * .63f, white * .65f, .05f);
-            Rail(.23f, side * .7f, .52f, side * .6f, metal, .20f);
-            Rail(-.55f, side * .57f, -.40f, side * .61f, dark, .06f);
-        }
         p.Line(b, center + new Vector2(-r * .76f, -r * .38f),
             center + new Vector2(0, -r * .84f), ColorPalette.CardOutline * opacity, 1);
         p.Line(b, center + new Vector2(r * .76f, r * .38f),
             center + new Vector2(0, r * .84f), ColorPalette.Ink * opacity, 2);
         p.Line(b, center - new Vector2(0, r * .80f), center - new Vector2(0, r), metal, 3);
         if (apex) DrawApexSocket(b, p, center, r, accent, time, opacity, lights, groundEffects);
+        DrawTierIndicators(b, p, center, r, level, accent, opacity, lights && groundEffects);
+
+        // Rotating armor and weapons occlude the mounting plate's tier lights.
+        for (var side = -1; side <= 1; side += 2)
+        {
+            Rail(-.7f, side * .58f, -.22f, side * .72f, ceramic, .17f);
+            Rail(-.66f, side * .58f, -.48f, side * .63f, white * .65f, .05f);
+            Rail(.23f, side * .7f, .52f, side * .6f, metal, .20f);
+            Rail(-.55f, side * .57f, -.40f, side * .61f, dark, .06f);
+        }
 
         switch (id)
         {
@@ -158,9 +160,9 @@ public static class NightGridArt
                     p.Line(b, center + v * r * .42f, center + v * r * .86f, accent, r * .19f);
                     p.Circle(b, center + v * r * .89f, r * .10f, ceramic);
                 }
-                p.DrawPolygon(b, center, r * .48f, 4, false, ceramic, time * .3f);
-                p.DrawPolygon(b, center, r * .36f, 4, false, dark, time * .3f);
-                p.DrawPolygon(b, center, r * .27f, 4, false, accent, time * .3f);
+                p.DrawDiamond(b, center, r * .48f, ceramic, time * .3f);
+                p.DrawDiamond(b, center, r * .36f, dark, time * .3f);
+                p.DrawDiamond(b, center, r * .27f, accent, time * .3f);
                 break;
             case "ember_coil":
                 p.Ring(b, center, r * .66f, metal, 4);
@@ -192,13 +194,22 @@ public static class NightGridArt
                 for (var i = -1; i <= 1; i += 2) Rail(-.55f, i * .62f, .5f, i * .62f, accent, .10f);
                 break;
             case "prism_beam":
+                var prismFrame = ColorPalette.Muted * opacity;
+                Rail(-.55f, -.5f, .7f, -.5f, prismFrame, .32f);
+                Rail(-.55f, .5f, .7f, .5f, prismFrame, .32f);
                 Rail(-.55f, -.5f, .7f, -.5f, ceramic, .23f);
                 Rail(-.55f, .5f, .7f, .5f, ceramic, .23f);
                 Rail(-.2f, -.5f, .35f, -.5f, dark, .08f);
                 Rail(-.2f, .5f, .35f, .5f, dark, .08f);
-                p.DrawPolygon(b, center, r * .58f, 4, false, accent, angle);
-                p.DrawPolygon(b, center, r * .3f, 4, false, white, angle);
-                Rail(.48f, 0, PrismBeamArt.BarrelLength, 0, accent, .17f);
+                Rail(-.5f, -.5f, -.25f, -.5f, white, .06f);
+                Rail(-.5f, .5f, -.25f, .5f, white, .06f);
+                Rail(.45f, 0, PrismBeamArt.BarrelLength, 0, metal, .26f);
+                Rail(.48f, 0, PrismBeamArt.BarrelLength, 0, accent, .13f);
+                // The diamond's perpendicular border width matches each barrel edge.
+                p.DrawDiamond(b, center, r * (.58f + .065f * MathF.Sqrt(2)), metal, angle);
+                p.DrawDiamond(b, center, r * .58f, accent, angle);
+                p.DrawDiamond(b, center, r * .3f, white, angle);
+                p.DrawDiamond(b, center, r * .12f, accent, angle);
                 break;
             case "signal_beacon":
                 p.Ring(b, center, r * .64f, accent, 2);
@@ -209,7 +220,6 @@ public static class NightGridArt
                 p.Line(b, center + new Vector2(0, r * .2f), center - new Vector2(0, r * .7f), white, 2);
                 break;
         }
-        DrawTierIndicators(b, p, center, r, level, accent, opacity, lights && groundEffects);
         if (recoil > .02f && lights && id != "prism_beam")
         {
             var muzzle = At(1.2f - recoil, 0);

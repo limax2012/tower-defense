@@ -54,7 +54,6 @@ public static class ColorPalette
     public static readonly Color Slow = new(130, 229, 245);
     public static readonly Color Burn = new(255, 69, 64);
     public static readonly Color ArmorBreak = Gold;
-    public static readonly Color Stun = Cyan;
 
     public static readonly Color NeedleShot = Cyan;
     public static readonly Color PrecisionShot = new(186, 202, 255);

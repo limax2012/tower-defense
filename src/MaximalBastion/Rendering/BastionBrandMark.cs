@@ -26,15 +26,18 @@ internal static class BastionBrandMark
 
         Rail(0, -31, 0, -6, ColorPalette.Metal, 8);
         Rail(0, -31, 0, -6, ColorPalette.Violet, 4);
-        Polygon(0, 3, 16, 4, ColorPalette.Metal);
+        Polygon(0, 1, 16, 4, ColorPalette.Metal);
         primitives.Glow(batch, center + new Vector2(0, 1), 22, ColorPalette.Violet, .2f);
         Polygon(0, 1, 13, 4, ColorPalette.Violet);
         Polygon(0, 1, 6.5f, 4, ColorPalette.Paper);
         Polygon(0, 1, 2.5f, 4, ColorPalette.Violet);
 
-        void Polygon(float x, float y, float radius, int sides, Color color) =>
-            primitives.DrawPolygon(batch, center + new Vector2(x, y), radius, sides, false,
-                color, -MathF.PI / 2);
+        void Polygon(float x, float y, float radius, int sides, Color color)
+        {
+            var at = center + new Vector2(x, y);
+            if (sides == 4) primitives.DrawDiamond(batch, at, radius, color, -MathHelper.PiOver2);
+            else primitives.DrawPolygon(batch, at, radius, sides, false, color, -MathHelper.PiOver2);
+        }
 
         void Rail(float x1, float y1, float x2, float y2, Color color, float width) =>
             primitives.Line(batch, center + new Vector2(x1, y1), center + new Vector2(x2, y2), color, width);

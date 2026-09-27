@@ -1,7 +1,8 @@
-"""Build the desktop crest assets. Requires Python 3 and Pillow."""
+"""Build the shared desktop, browser, and mobile emblem assets. Requires Python 3 and Pillow."""
 
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 import re
@@ -43,6 +44,10 @@ def crest() -> list[tuple[list[tuple[float, float]], tuple[int, ...]]]:
                   cy + math.sin(rotation + math.tau * i / sides) * radius)
                  for i in range(sides)], fill)
 
+    def diamond(cx, cy, radius, fill):
+        polygon([(cx, cy - radius), (cx + radius, cy),
+                 (cx, cy + radius), (cx - radius, cy)], fill)
+
     ink, metal, muted, paper, cyan, navy, violet = map(color,
         ("Ink", "Metal", "Muted", "Paper", "Cyan", "Navy", "Violet"))
     ceramic = tuple(int(a + (b - a) * .56) for a, b in zip(metal[:3], paper[:3])) + (255,)
@@ -58,10 +63,10 @@ def crest() -> list[tuple[list[tuple[float, float]], tuple[int, ...]]]:
         line((side * 16, -11), (side * 16, 3), paper, 1.4)
     line((0, -31), (0, -6), metal, 8)
     line((0, -31), (0, -6), violet, 4)
-    regular(0, 3, 16, 4, -math.pi / 2, metal)
-    regular(0, 1, 13, 4, -math.pi / 2, violet)
-    regular(0, 1, 6.5, 4, -math.pi / 2, paper)
-    regular(0, 1, 2.5, 4, -math.pi / 2, violet)
+    diamond(0, 1, 16, metal)
+    diamond(0, 1, 13, violet)
+    diamond(0, 1, 6.5, paper)
+    diamond(0, 1, 2.5, violet)
     return faces
 
 
@@ -106,6 +111,35 @@ def save_ico(images: list[Image.Image], destination: Path):
     destination.write_bytes(struct.pack("<HHH", 0, 1, len(images)) + b"".join(entries) + b"".join(payloads))
 
 
+def save_mobile_icons(faces, svg: str):
+    def opaque_icon(size, fraction):
+        image = Image.new("RGBA", (size, size), color("Canvas"))
+        mark = rasterize(faces, round(size * fraction))
+        at = (size - mark.width) // 2
+        image.alpha_composite(mark, (at, at))
+        return image.convert("RGB")
+
+    mobile = ROOT / "src/MaximalBastion.Mobile"
+    if not mobile.exists():
+        return
+    web = mobile / "web"
+    (web / "favicon.svg").write_text(svg, encoding="utf-8")
+    rasterize(faces, 32).save(web / "favicon.png")
+    for size in (192, 512):
+        rasterize(faces, size).save(web / "icons" / f"Icon-{size}.png")
+        opaque_icon(size, .72).save(web / "icons" / f"Icon-maskable-{size}.png")
+    android = mobile / "android/app/src/main/res"
+    for density, size in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96), ("xxhdpi", 144), ("xxxhdpi", 192)):
+        rasterize(faces, size).save(android / f"mipmap-{density}" / "ic_launcher.png")
+    ios = mobile / "ios/Runner/Assets.xcassets/AppIcon.appiconset"
+    manifest = json.loads((ios / "Contents.json").read_text(encoding="utf-8"))
+    for entry in manifest["images"]:
+        if "filename" not in entry:
+            continue
+        size = round(float(entry["size"].split("x")[0]) * float(entry["scale"].removesuffix("x")))
+        opaque_icon(size, .86).save(ios / entry["filename"])
+
+
 def main():
     OUTPUT.mkdir(parents=True, exist_ok=True)
     faces = crest()
@@ -123,6 +157,7 @@ def main():
     images[-1].save(OUTPUT / "MaximalBastion.png")
     save_bmp(images[-1], OUTPUT / "MaximalBastion.bmp")
     save_ico(images, OUTPUT / "MaximalBastion.ico")
+    save_mobile_icons(faces, svg)
     with Image.open(OUTPUT / "MaximalBastion.ico") as icon:
         assert icon.ico.sizes() == {(size, size) for size in SIZES}
         for image in images:

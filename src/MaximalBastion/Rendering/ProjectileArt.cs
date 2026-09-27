@@ -106,10 +106,17 @@ public static class ProjectileArt
             case "breaker_cannon":
                 Halo(22, accent, 1);
                 Wake(15, 8, accent);
-                for (var sign = -1; sign <= 1; sign += 2)
+                for (var slice = 0; slice < 32; slice++)
                 {
-                    p.Line(batch, At(-4.5f, sign * 5), At(4, 0), accent, 4.5f * size);
-                    p.Line(batch, At(-3.5f, sign * 4), At(4, 0), ColorPalette.Paper, 2 * size);
+                    var t = (slice + .5f) / 32;
+                    Line(-5 + slice * 11f / 32, -5 + (slice + 1) * 11f / 32 + .015f,
+                        accent, 11 * (1 - t));
+                }
+                for (var slice = 0; slice < 24; slice++)
+                {
+                    var t = (slice + .5f) / 24;
+                    Line(-3.3f + slice * 7.2f / 24, -3.3f + (slice + 1) * 7.2f / 24 + .015f,
+                        ColorPalette.Paper, 5.8f * (1 - t));
                 }
                 break;
 
