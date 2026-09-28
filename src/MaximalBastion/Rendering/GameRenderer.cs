@@ -500,6 +500,12 @@ public sealed class GameRenderer
                     continue;
                 PrismBeamArt.Draw(batch, p, PrismBeamOrigin(session, effect, presentation), effect.End, effect.Color, effect.Radius,
                     progress, ReducedEffects, effect.SourceTowerId != 0);
+                if (!ReducedEffects && session.Towers.FirstOrDefault(t => t.Id == effect.SourceTowerId) is { } emitter)
+                {
+                    var recoil = MathF.Max(0, emitter.RecoilAnimationRemaining - presentation.LeadSeconds) / .12f * .2f;
+                    NightGridArt.DrawMuzzleFlash(batch, p, PrismBeamOrigin(session, effect, presentation),
+                        emitter.Definition.Visual.Radius * presentation.TowerScale(emitter), effect.Color, recoil);
+                }
                 continue;
             }
             if (!ReducedEffects && effect.Kind != EffectKind.Ping)

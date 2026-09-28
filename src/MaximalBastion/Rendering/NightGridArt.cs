@@ -220,12 +220,16 @@ public static class NightGridArt
                 p.Line(b, center + new Vector2(0, r * .2f), center - new Vector2(0, r * .7f), white, 2);
                 break;
         }
-        if (recoil > .02f && lights && id != "prism_beam")
-        {
-            var muzzle = At(1.2f - recoil, 0);
-            p.Glow(b, muzzle, r * 1.8f, accent, recoil * 2);
-            p.Circle(b, muzzle, 2 + recoil * 7, white);
-        }
+        if (lights && id != "prism_beam")
+            DrawMuzzleFlash(b, p, At(1.2f - recoil, 0), r, accent, recoil, opacity);
+    }
+
+    public static void DrawMuzzleFlash(SpriteBatch b, PrimitiveRenderer p, Vector2 muzzle,
+        float radius, Color accent, float recoil, float opacity = 1)
+    {
+        if (recoil <= .02f) return;
+        p.Glow(b, muzzle, radius * 1.8f, accent, recoil * 2);
+        p.Circle(b, muzzle, 2 + recoil * 7, ColorPalette.Paper * opacity);
     }
 
     private static void DrawTierIndicators(SpriteBatch b, PrimitiveRenderer p, Vector2 center,

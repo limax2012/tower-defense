@@ -30,14 +30,9 @@ public static class PrismBeamArt
             Sheath(width + 14, accent * (.08f * fade));
             Sheath(width + 8, accent * (.22f * fade));
         }
-        p.Line(batch, start, end, accent * fade, 5.5f);
+        p.Line(batch, start, end, accent * fade, 5.2f);
         p.Line(batch, start, end, Color.Lerp(accent, ColorPalette.Paper, .26f) * fade, 3.4f);
         p.Line(batch, start, end, Color.Lerp(accent, ColorPalette.Paper, .50f) * fade, 2.0f);
-        if (emitter)
-        {
-            p.Ring(batch, start, width + 3.5f, accent * (.85f * fade), 1);
-            p.Circle(batch, start, 1.8f, hot * fade);
-        }
         if (!reducedEffects)
         {
             p.Glow(batch, start, emitter ? 18 : 11, accent, fade * .7f);
