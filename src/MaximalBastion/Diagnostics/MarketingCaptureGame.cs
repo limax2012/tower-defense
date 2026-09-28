@@ -287,12 +287,13 @@ public sealed class MarketingCaptureGame : Game
         _batch.Draw(battlefield, new Rectangle(0, 124, CoverWidth, CoverHeight - 124), source, Color.White);
         _batch.Draw(_pixel, new Rectangle(0, 0, CoverWidth, 124), ColorPalette.Panel);
         _batch.Draw(_pixel, new Rectangle(22, 122, CoverWidth - 44, 2), ColorPalette.Metal);
-        DrawCenteredFitted("MAXIMAL", new Rectangle(170, 25, 415, 40), ColorPalette.Cyan, .30f, _display);
-        DrawCenteredFitted("BASTION", new Rectangle(160, 55, 435, 66), ColorPalette.Paper, .54f, _display);
+        DrawCenteredFitted("MAXIMAL", new Rectangle(145, 25, 340, 40), ColorPalette.Cyan, .30f, _display);
+        DrawCenteredFitted("BASTION", new Rectangle(135, 55, 360, 66), ColorPalette.Paper, .54f, _display);
         _batch.End();
         _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp,
             null, null, null, Matrix.CreateScale(1.45f));
         BastionBrandMark.Draw(_batch, _primitives, new Vector2(65, 40), 0);
+        BastionBrandMark.Draw(_batch, _primitives, new Vector2(CoverWidth / 1.45f - 65, 40), 0);
         _batch.End();
         GraphicsDevice.SetRenderTarget(null);
         SavePng(cover, Path.Combine(_outputDirectory, fileName), CoverWidth, CoverHeight);
