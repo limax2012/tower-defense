@@ -43,10 +43,15 @@ Build and camera instructions are in `unity/MaximalBastion3D/README.md`. Editabl
 
 `final-03-performance` measures the normal Direct3D11 Windows player at 1920x1080 on the RTX 4060, with 22 towers and up to 143 enemies. The dedicated dense-combat window records 2,521 frames over 25.02 seconds: mean 9.92 ms (about 101 FPS), median 9.60 ms, 95th percentile 12.14 ms and maximum 63.46 ms. Counters confirm one game-camera render per frame. GPU timers are unavailable; these are observed frame timings, not isolated GPU costs. The sample has zero runtime errors and an unchanged player manifest. The maximum records an isolated hitch, so this is not a claim that every frame exceeds 60 FPS.
 
-Packaging requires the exact release's successful interface manifest and rechecks every runtime file and ZIP entry by SHA-256. Final capture/recording manifests will identify the reviewed player.
+The Windows package contains 191 verified files in `Packages/MaximalBastion3D-Cinderworks-Windows-x64.zip` (50,835,067 bytes). Packaging checks the exact release against its successful interface manifest, then verifies every ZIP entry by SHA-256. The package hash is `e4caaa6cf7729f2dd5969bae851cf7b5f6d9cb6d928b1ef68371c010b9b65ac5`.
 
-## Limits and remaining acceptance
+`final-03-art` contains nine fresh 3840x2160 renders from the exact release, with clean startup logs, camera-overlap checks and an unchanged player manifest. `final-03-tour` contains a 900-frame, 1920x1080, 30 FPS camera orbit with actual mixed game audio. H.264 video and stereo 48 kHz AAC both run for 30.000 seconds; the captured audio is non-silent (RMS 0.0220), with only the fractional final DSP block padded during muxing. Encoded samples cover both sides, high views and ground-level combat. The recording also passes full-log and immutable-player checks.
+
+The `Review/index.html` gallery presents the release images and tour with launch and camera controls. Its linked files are local and require no server. The source and art implementation is committed as `149dca7`; documentation records the final evidence separately.
+
+## Limits and follow-up priorities
 
 - This client contains Cinderworks on Windows. Other maps, online co-op and the browser client remain available in the original 2D game; they are not implemented in this Unity slice.
 - Performance is measured on the development RTX 4060 at 1080p using the normal Windows graphics backend. Batch-mode runs and video readback are not performance evidence. GPU timer availability is reported separately from observed frame timing.
-- Refreshed release footage and verified packaging remain before handoff. The complete authored campaign is verified separately from funded UI fixtures and Sandbox footage.
+- The complete authored campaign is verified separately from funded UI fixtures and Sandbox footage. Cross-runtime network parity must be designed and validated before adding 3D co-op.
+- Larger maps or denser encounters should receive additional batching/LOD and allocation profiling. The current measurements establish this Cinderworks slice on the tested hardware, not every future map or device.

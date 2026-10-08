@@ -37,7 +37,7 @@ powershell -ExecutionPolicy Bypass -File unity/MaximalBastion3D/Tools/Review-Pla
 powershell -ExecutionPolicy Bypass -File unity/MaximalBastion3D/Tools/Package-Windows.ps1 -VerificationDirectory .artifacts/3d-development/release-interface
 ```
 
-Packaging requires a successful interface test of that exact release executable and checks every player file against the review's SHA-256 manifest. The ZIP contains the runtime, controls README and font licenses. Diagnostic backend fixtures, logs, symbols and Unity's explicitly non-shipping folders are excluded; the development build retains them. The script verifies every ZIP entry against its source checksum and writes a SHA-256 sidecar under `.artifacts/3d-development/Packages`. Keep the development build for full backend conformance checks, since the distributable omits those fixtures.
+Packaging requires a successful interface test of that exact release executable and checks every player file against the review's SHA-256 manifest. The ZIP contains the runtime, controls README and font licenses. Diagnostic backend fixtures, logs, symbols and Unity's explicitly non-shipping folders are excluded. The script verifies every ZIP entry against its source checksum and writes a SHA-256 sidecar under `.artifacts/3d-development/Packages`. Keep an unpackaged development or release build for full backend conformance checks, since the distributable omits those fixtures.
 
 `Invoke-Unity.ps1` runs the editor in a hidden batch process and returns an error for a failed Unity exit. Logs go to `.artifacts/3d-development/unity-<task>.log`. It calls the corresponding `Bastion3D.Editor.BuildAutomation` method. `-NoGraphics` is available for import-only checks; keep graphics enabled for rendering validation.
 
