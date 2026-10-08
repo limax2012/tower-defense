@@ -12,7 +12,11 @@ using MaximalBastion.Rendering;
 using MaximalBastion.Towers;
 using MaximalBastion.Tactics;
 using MaximalBastion.Waves;
+#if PORTABLE_GAMEPLAY
+using MaximalBastion.Gameplay;
+#else
 using Microsoft.Xna.Framework;
+#endif
 using EconomyService = MaximalBastion.Economy.Economy;
 
 namespace MaximalBastion;
@@ -1700,6 +1704,9 @@ public sealed class GameSession
             var rankHealthMultiplier = savedEnemy.Rank switch { EnemyRank.Elite => 1.85f, EnemyRank.Boss => 4.5f, _ => 1f };
             var maximumHealth = definition.MaxHealth * savedEnemy.HealthMultiplier * rankHealthMultiplier;
             var maximumShield = definition.Shield + (savedEnemy.Rank == EnemyRank.Boss ? maximumHealth * 0.12f : 0);
+            if (session.CounterPressureEnabled)
+                maximumShield = MathF.Max(maximumShield,
+                    definition.Shield + maximumHealth * session.Challenge.CounterShieldCapacityFraction);
             if (!float.IsFinite(maximumHealth) || savedEnemy.Health > maximumHealth + 0.01f ||
                 savedEnemy.Shield > maximumShield + 0.01f)
                 throw new InvalidDataException("Network enemy health or shield exceeds its allowed maximum.");

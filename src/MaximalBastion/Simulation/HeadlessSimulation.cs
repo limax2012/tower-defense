@@ -4,7 +4,11 @@ using MaximalBastion.Core;
 using MaximalBastion.Persistence;
 using MaximalBastion.Tactics;
 using MaximalBastion.Towers;
+#if PORTABLE_GAMEPLAY
+using MaximalBastion.Gameplay;
+#else
 using Microsoft.Xna.Framework;
+#endif
 
 namespace MaximalBastion.Simulation;
 

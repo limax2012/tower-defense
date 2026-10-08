@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <DefineConstants>$(DefineConstants);PORTABLE_GAMEPLAY</DefineConstants>
+    <AssemblyName>MaximalBastion.Gameplay</AssemblyName>
+    <RootNamespace>MaximalBastion</RootNamespace>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../MaximalBastion/GameSession.cs" Link="GameSession.cs" />
+    <Compile Include="../MaximalBastion/Analytics/*.cs;../MaximalBastion/Combat/*.cs;../MaximalBastion/Data/*.cs;../MaximalBastion/Economy/*.cs;../MaximalBastion/Effects/*.cs;../MaximalBastion/Enemies/*.cs;../MaximalBastion/Maps/*.cs;../MaximalBastion/Persistence/*.cs;../MaximalBastion/Simulation/*.cs;../MaximalBastion/Tactics/*.cs;../MaximalBastion/Towers/*.cs;../MaximalBastion/Waves/*.cs" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../MaximalBastion/Multiplayer/*.cs" Exclude="../MaximalBastion/Multiplayer/LanCoOpTransport.cs" Link="Multiplayer/%(Filename)%(Extension)" />
+    <Compile Include="../MaximalBastion/Core/GameTypes.cs;../MaximalBastion/Core/MetricMath.cs;../MaximalBastion/Core/BuildInfo.cs;../MaximalBastion/Core/PlatformServices.cs;../MaximalBastion/Core/PlatformCapabilities.cs;../MaximalBastion/Core/RuntimeCompat.cs" Link="Core/%(Filename)%(Extension)" />
+    <Compile Include="../MaximalBastion/Rendering/ColorPalette.cs;../MaximalBastion/Rendering/PresentationFrame.cs" Link="Presentation/%(Filename)%(Extension)" />
+    <Compile Include="../MaximalBastion/UI/TowerInfo.cs;../MaximalBastion/UI/SessionLabels.cs;../MaximalBastion/Mobile/MobileSessionController.cs" Link="Adapters/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

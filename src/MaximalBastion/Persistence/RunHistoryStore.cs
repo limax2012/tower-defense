@@ -425,7 +425,7 @@ public sealed class RunHistoryRepository
                 throw new InvalidOperationException("Run history is too large to store safely.");
             File.WriteAllBytes(temporaryPath, payload);
             if (File.Exists(HistoryPath) && IsReadableHistory(HistoryPath)) File.Copy(HistoryPath, BackupPath, true);
-            File.Move(temporaryPath, HistoryPath, true);
+            MaximalBastion.Core.RuntimeCompat.MoveFile(temporaryPath, HistoryPath, true);
         }
         finally
         {

@@ -342,21 +342,8 @@ public sealed partial class UIManager
     }
 
     public static string SoloWaveButtonLabel(MaximalBastion.GameSession session, bool autoStartWaves,
-        int autoStartDelaySeconds = 0)
-    {
-        if (!session.CanStartWave) return "IN WAVE";
-        if (session.IntermissionRemaining <= 0)
-            return autoStartWaves && session.CurrentWave > 0 ? "AUTO STARTING" : "START WAVE";
-        if (!autoStartWaves || session.CurrentWave <= 0)
-            return $"EARLY +{GameConstants.EarlyStartBonus}  {MathF.Ceiling(session.IntermissionRemaining):0}s";
-
-        var boundedDelay = Math.Clamp(autoStartDelaySeconds, 0, (int)GameConstants.IntermissionSeconds);
-        var elapsedIntermission = GameConstants.IntermissionSeconds - session.IntermissionRemaining;
-        var automaticRemaining = MathF.Max(0, boundedDelay - elapsedIntermission);
-        return automaticRemaining <= 0.001f
-            ? "AUTO STARTING"
-            : $"AUTO {MathF.Ceiling(automaticRemaining):0}s | +{GameConstants.EarlyStartBonus} NOW";
-    }
+        int autoStartDelaySeconds = 0) =>
+        SessionLabels.SoloWaveButtonLabel(session, autoStartWaves, autoStartDelaySeconds);
 
     public static string CoOpReadyStatusLabel(int currentWave, int readyMask, bool startQueued,
         bool earlyBonusQueued, float intermissionRemaining)
@@ -394,23 +381,8 @@ public sealed partial class UIManager
         return $"STALLED {MathF.Ceiling(silence):0}s";
     }
 
-    public static string PulsePlateButtonLabel(MaximalBastion.GameSession session)
-    {
-        var definition = session.Content.Tactics.EmergencyDefense;
-        var field = $"FIELD {session.EmergencyDefenses.Count}/{definition.MaximumActive}";
-        if (session.EmergencyDefenses.Count >= definition.MaximumActive)
-            return $"{field} | FULL";
-        if (session.EmergencyInventory > 0)
-        {
-            var stock = session.Generator is { } forge
-                ? $"{session.EmergencyInventory}/{forge.Level.Capacity}"
-                : session.EmergencyInventory.ToString();
-            return $"DEPLOY {stock} | {field}";
-        }
-        if (session.Waves.IsActive)
-            return $"BUY {session.CurrentEmergencyDirectPurchaseCost} | {field}";
-        return $"PLATES 0 | {field}";
-    }
+    public static string PulsePlateButtonLabel(MaximalBastion.GameSession session) =>
+        SessionLabels.PulsePlateButtonLabel(session);
 
     private static string EarlyCallStatus(int currentWave, float intermissionRemaining) =>
         currentWave <= 0 ? "" : intermissionRemaining > 0

@@ -3,7 +3,11 @@ using MaximalBastion.Effects;
 using MaximalBastion.Enemies;
 using MaximalBastion.Multiplayer;
 using MaximalBastion.Towers;
+#if PORTABLE_GAMEPLAY
+using MaximalBastion.Gameplay;
+#else
 using Microsoft.Xna.Framework;
+#endif
 
 namespace MaximalBastion.Rendering;
 

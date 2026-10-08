@@ -92,7 +92,7 @@ public sealed class UserSettingsRepository
 
     public void Save(UserSettings settings)
     {
-        ArgumentNullException.ThrowIfNull(settings);
+        MaximalBastion.Core.RuntimeCompat.ThrowIfNull(settings, nameof(settings));
         settings.Normalize();
         Directory.CreateDirectory(RootDirectory);
         var temporaryPath = SettingsPath + ".tmp";
@@ -100,7 +100,7 @@ public sealed class UserSettingsRepository
         {
             File.WriteAllText(temporaryPath, JsonSerializer.Serialize(settings, JsonOptions));
             if (TryRead(SettingsPath, out _)) File.Copy(SettingsPath, BackupPath, true);
-            File.Move(temporaryPath, SettingsPath, true);
+            MaximalBastion.Core.RuntimeCompat.MoveFile(temporaryPath, SettingsPath, true);
         }
         finally
         {

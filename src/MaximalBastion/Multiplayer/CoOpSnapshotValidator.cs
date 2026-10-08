@@ -18,7 +18,7 @@ internal static class CoOpSnapshotValidator
 
     public static void Validate(CoOpStateSnapshot snapshot)
     {
-        ArgumentNullException.ThrowIfNull(snapshot);
+        MaximalBastion.Core.RuntimeCompat.ThrowIfNull(snapshot, nameof(snapshot));
         if (snapshot.SchemaVersion != CoOpStateSnapshot.CurrentSchemaVersion)
             throw new InvalidDataException($"Unsupported co-op state schema {snapshot.SchemaVersion}.");
         if (string.IsNullOrWhiteSpace(snapshot.RunId) || snapshot.RunId.Length > MaximumRunIdLength ||

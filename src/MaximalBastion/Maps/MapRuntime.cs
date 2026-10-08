@@ -1,5 +1,9 @@
 using MaximalBastion.Data;
+#if PORTABLE_GAMEPLAY
+using MaximalBastion.Gameplay;
+#else
 using Microsoft.Xna.Framework;
+#endif
 
 namespace MaximalBastion.Maps;
 

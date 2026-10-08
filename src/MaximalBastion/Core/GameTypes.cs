@@ -1,5 +1,11 @@
+#if PORTABLE_GAMEPLAY
+using MaximalBastion.Gameplay;
+#else
 using Microsoft.Xna.Framework;
+#endif
+#if !PORTABLE_GAMEPLAY
 using Microsoft.Xna.Framework.Input;
+#endif
 
 namespace MaximalBastion.Core;
 
@@ -159,6 +165,7 @@ public readonly record struct InputSnapshot(
     bool LeftDown = false,
     bool SandboxWaveSignalsPressed = false);
 
+#if !PORTABLE_GAMEPLAY
 public sealed class ViewportTransform
 {
     public float Scale { get; private set; } = 1f;
@@ -400,3 +407,5 @@ public sealed class InputRouter
         return new string(characters.ToArray());
     }
 }
+
+#endif

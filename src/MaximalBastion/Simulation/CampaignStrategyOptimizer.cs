@@ -182,7 +182,12 @@ public static class CampaignWavePlanGenerator
 {
     private sealed record ParameterMutationDomain(string Name, IReadOnlyList<double> Values, int Stride);
 
-    public static readonly IReadOnlySet<string> SupportedParameterNames = new HashSet<string>(StringComparer.Ordinal)
+#if PORTABLE_GAMEPLAY
+    public static readonly IReadOnlyCollection<string> SupportedParameterNames =
+#else
+    public static readonly IReadOnlySet<string> SupportedParameterNames =
+#endif
+        new HashSet<string>(StringComparer.Ordinal)
     {
         "purchaseBias", "upgradeBias", "reserveMultiplier", "reserveCredits", "coverageWeight", "nodeWeight",
         "clusterWeight", "plateProgressOffset", "plateClusterWeight", "plateLeadWeight", "activePlateLimit",
@@ -512,7 +517,7 @@ public static class CampaignStrategyOptimizer
         searchOptions.Validate();
         if (initialFrontier.Count == 0)
             throw new ArgumentException("Campaign search requires at least one checkpoint state.", nameof(initialFrontier));
-        ArgumentNullException.ThrowIfNull(evaluator);
+        MaximalBastion.Core.RuntimeCompat.ThrowIfNull(evaluator, nameof(evaluator));
 
         var rankedInitial = RankDistinctStates(initialFrontier);
         var startingWave = rankedInitial[0].Checkpoint.Waves.CurrentWaveNumber;
@@ -834,7 +839,7 @@ public static class CampaignStrategyOptimizer
     private static string EvaluationFingerprint(CheckpointSearchState parent, WavePlan candidate)
     {
         var payload = Encoding.UTF8.GetBytes(parent.CheckpointFingerprint + "\n" + candidate.StableKey);
-        return Convert.ToHexString(SHA256.HashData(payload));
+        return MaximalBastion.Core.RuntimeCompat.ToHexString(MaximalBastion.Core.RuntimeCompat.Sha256(payload));
     }
 
     private static IReadOnlyList<CheckpointSearchState> RankDistinctStates(
@@ -1114,7 +1119,7 @@ public static class CampaignSearchArtifactStore
         try
         {
             File.WriteAllBytes(temporaryPath, payload);
-            File.Move(temporaryPath, fullPath, true);
+            MaximalBastion.Core.RuntimeCompat.MoveFile(temporaryPath, fullPath, true);
         }
         finally
         {

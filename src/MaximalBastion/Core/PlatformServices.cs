@@ -40,7 +40,7 @@ public static class PlatformServices
 
     internal static void PlayWithImmediateOneShotAudioParameters(Action playback)
     {
-        ArgumentNullException.ThrowIfNull(playback);
+        MaximalBastion.Core.RuntimeCompat.ThrowIfNull(playback, nameof(playback));
         var setter = ImmediateOneShotAudioParametersSetter;
         if (setter is null)
         {
@@ -97,8 +97,8 @@ public static class PlatformServices
         Action<string, string> writeFile,
         Action<string> deleteFile)
     {
-        ArgumentNullException.ThrowIfNull(writeFile);
-        ArgumentNullException.ThrowIfNull(deleteFile);
+        MaximalBastion.Core.RuntimeCompat.ThrowIfNull(writeFile, nameof(writeFile));
+        MaximalBastion.Core.RuntimeCompat.ThrowIfNull(deleteFile, nameof(deleteFile));
         _writePersistentFile = writeFile;
         _deletePersistentFile = deleteFile;
         KnownPersistentFiles.Clear();

@@ -9,7 +9,11 @@ using MaximalBastion.Persistence;
 using MaximalBastion.Towers;
 using MaximalBastion.UI;
 using MaximalBastion.Waves;
+#if PORTABLE_GAMEPLAY
+using MaximalBastion.Gameplay;
+#else
 using Microsoft.Xna.Framework;
+#endif
 
 namespace MaximalBastion.Mobile;
 
@@ -283,7 +287,7 @@ public sealed class MobileSessionController
             session.CurrentWave, session.TotalWaves, credits = session.Economy.Credits, lives = session.Economy.Lives,
             session.Economy.StartingLives, session.EnemiesRemaining, session.CanStartWave,
             session.CanSaveCheckpoint, session.IntermissionRemaining, session.Speed,
-            waveButtonLabel = UIManager.SoloWaveButtonLabel(session, Settings.AutoStartWaves, Settings.AutoStartDelaySeconds),
+            waveButtonLabel = SessionLabels.SoloWaveButtonLabel(session, Settings.AutoStartWaves, Settings.AutoStartDelaySeconds),
             waveActive = session.Waves.IsActive, paused = Paused, suspended = Suspended,
             mutable = CanMutate, notice = Notice, settings = Settings,
             selected = SelectedTower(session),
@@ -301,7 +305,7 @@ public sealed class MobileSessionController
             {
                 session.TacticalSystemsEnabled, session.PulsePlatesEnabled, session.ProtocolsEnabled, session.SellingEnabled,
                 session.EmergencyInventory, session.CurrentEmergencyDirectPurchaseCost, session.CanDirectPurchaseEmergencyDefense,
-                plateLabel = UIManager.PulsePlateButtonLabel(session),
+                plateLabel = SessionLabels.PulsePlateButtonLabel(session),
                 plateCount = session.EmergencyDefenses.Count, plateCapacity = _content.Tactics.EmergencyDefense.MaximumActive,
                 session.OverdriveCooldownRemaining, session.AutoOverdriveTowerId, session.ApexUpgradesUnlocked
             },

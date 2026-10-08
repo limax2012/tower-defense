@@ -1,7 +1,11 @@
 using System.Text.Json;
 using MaximalBastion.Core;
 using MaximalBastion.Effects;
+#if PORTABLE_GAMEPLAY
+using MaximalBastion.Gameplay;
+#else
 using Microsoft.Xna.Framework;
+#endif
 
 namespace MaximalBastion.Data;
 
@@ -250,7 +254,7 @@ public static class DataValidator
             throw new InvalidDataException($"Invalid restricted region in map: {map.Id}");
         if (map.Path.Any(point => point.X < -map.PathWidth || point.X > map.LogicalSize.Width + map.PathWidth ||
                 point.Y < 0 || point.Y > map.LogicalSize.Height) ||
-            map.Path.Zip(map.Path.Skip(1)).Any(segment => Vector2.DistanceSquared(segment.First.ToVector2(), segment.Second.ToVector2()) < 1f) ||
+            map.Path.Zip(map.Path.Skip(1), (first, second) => (First: first, Second: second)).Any(segment => Vector2.DistanceSquared(segment.First.ToVector2(), segment.Second.ToVector2()) < 1f) ||
             Vector2.DistanceSquared(map.Spawn.ToVector2(), map.Path[0].ToVector2()) > 1f ||
             Vector2.DistanceSquared(map.Goal.ToVector2(), map.Path[^1].ToVector2()) > 1f)
             throw new InvalidDataException($"Invalid route geometry in map: {map.Id}");

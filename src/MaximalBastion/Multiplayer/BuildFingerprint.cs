@@ -24,7 +24,7 @@ public static class BuildFingerprint
             Append(hash, Path.GetRelativePath(contentDirectory, file).Replace('\\', '/').ToLowerInvariant());
             hash.AppendData(File.ReadAllBytes(file));
         }
-        return Convert.ToHexString(hash.GetHashAndReset());
+        return MaximalBastion.Core.RuntimeCompat.ToHexString(hash.GetHashAndReset());
     }
 
     private static void Append(IncrementalHash hash, string value)

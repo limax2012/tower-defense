@@ -78,7 +78,7 @@ public sealed class SaveSlotRepository
 
     public GameSession Load(GameContent content, int slot = 1)
     {
-        ArgumentNullException.ThrowIfNull(content);
+        MaximalBastion.Core.RuntimeCompat.ThrowIfNull(content, nameof(content));
         ValidateSlot(slot);
         var path = GetSlotPath(slot);
         var backupPath = GetSlotBackupPath(slot);
@@ -246,7 +246,7 @@ public sealed class SaveSlotRepository
         {
             File.WriteAllBytes(temporaryPath, payload);
             if (File.Exists(path) && IsReadableSave(path)) File.Copy(path, backupPath, true);
-            File.Move(temporaryPath, path, true);
+            MaximalBastion.Core.RuntimeCompat.MoveFile(temporaryPath, path, true);
         }
         finally
         {
@@ -402,8 +402,8 @@ public static class SaveGameStore
     public static SaveGameData LoadData(int slot) => DefaultRepository.LoadData(slot);
     public static bool IsRetryCheckpointFor(SaveGameData checkpoint, GameSession session)
     {
-        ArgumentNullException.ThrowIfNull(checkpoint);
-        ArgumentNullException.ThrowIfNull(session);
+        MaximalBastion.Core.RuntimeCompat.ThrowIfNull(checkpoint, nameof(checkpoint));
+        MaximalBastion.Core.RuntimeCompat.ThrowIfNull(session, nameof(session));
         return session.IsDefeat && !session.IsSandbox && session.CurrentWave > 0 && checkpoint.Waves is not null &&
             !string.IsNullOrWhiteSpace(checkpoint.RunId) &&
             string.Equals(checkpoint.RunId, session.RunId, StringComparison.OrdinalIgnoreCase) &&

@@ -218,7 +218,7 @@ public static class StrategyArtifactStore
         canonical.Remove("savedAtUtc");
         canonical.Remove("runId");
         var payload = JsonSerializer.SerializeToUtf8Bytes(canonical, JsonOptions);
-        return Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
+        return MaximalBastion.Core.RuntimeCompat.ToHexString(MaximalBastion.Core.RuntimeCompat.Sha256(payload)).ToLowerInvariant();
     }
 
     internal static JsonSerializerOptions CreateJsonOptions()
@@ -325,7 +325,7 @@ public static class StrategyArtifactStore
         try
         {
             File.WriteAllBytes(temporaryPath, payload);
-            File.Move(temporaryPath, fullPath, true);
+            MaximalBastion.Core.RuntimeCompat.MoveFile(temporaryPath, fullPath, true);
         }
         finally
         {

@@ -2,7 +2,11 @@ using MaximalBastion.Core;
 using MaximalBastion.Data;
 using MaximalBastion.Enemies;
 using MaximalBastion.Towers;
+#if PORTABLE_GAMEPLAY
+using MaximalBastion.Gameplay;
+#else
 using Microsoft.Xna.Framework;
+#endif
 
 namespace MaximalBastion.Simulation;
 

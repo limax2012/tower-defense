@@ -1,6 +1,10 @@
 using System.Text.Json;
 using MaximalBastion.Core;
+#if PORTABLE_GAMEPLAY
+using MaximalBastion.Gameplay;
+#else
 using Microsoft.Xna.Framework;
+#endif
 
 namespace MaximalBastion.Data;
 

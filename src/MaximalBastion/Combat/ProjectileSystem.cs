@@ -1,5 +1,9 @@
 using MaximalBastion.Enemies;
+#if PORTABLE_GAMEPLAY
+using MaximalBastion.Gameplay;
+#else
 using Microsoft.Xna.Framework;
+#endif
 using MaximalBastion.Multiplayer;
 
 namespace MaximalBastion.Combat;

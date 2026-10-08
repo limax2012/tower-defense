@@ -1,7 +1,11 @@
 using MaximalBastion.Effects;
 using MaximalBastion.Enemies;
 using MaximalBastion.Multiplayer;
+#if PORTABLE_GAMEPLAY
+using MaximalBastion.Gameplay;
+#else
 using Microsoft.Xna.Framework;
+#endif
 
 namespace MaximalBastion.Combat;
 

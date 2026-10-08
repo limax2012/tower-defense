@@ -132,7 +132,7 @@ public sealed class WaveManager
 
     public IReadOnlyList<QueuedEnemyGroup> CaptureQueuedEnemies(MaximalBastion.GameSession session)
     {
-        ArgumentNullException.ThrowIfNull(session);
+        MaximalBastion.Core.RuntimeCompat.ThrowIfNull(session, nameof(session));
         if (_activeDefinition is null || _groupIndex >= _activeDefinition.Groups.Count)
             return Array.Empty<QueuedEnemyGroup>();
 

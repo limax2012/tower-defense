@@ -30,7 +30,7 @@ internal static class ProductStorageMigration
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                 var temporary = destination + ".migration.tmp";
                 File.Copy(source, temporary, overwrite: true);
-                File.Move(temporary, destination, overwrite: false);
+                MaximalBastion.Core.RuntimeCompat.MoveFile(temporary, destination, overwrite: false);
             }
             File.WriteAllText(marker, "1");
         }

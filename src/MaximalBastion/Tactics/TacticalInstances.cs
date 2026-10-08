@@ -1,7 +1,11 @@
 using MaximalBastion.Data;
 using MaximalBastion.Core;
 using MaximalBastion.Persistence;
+#if PORTABLE_GAMEPLAY
+using MaximalBastion.Gameplay;
+#else
 using Microsoft.Xna.Framework;
+#endif
 
 namespace MaximalBastion.Tactics;
 

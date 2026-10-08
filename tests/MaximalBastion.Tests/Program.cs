@@ -131,6 +131,7 @@ internal static class Program
             ("co-op tower path reconstruction", CoOpTowerPathReconstruction),
             ("co-op tactical state reconstruction", CoOpTacticalStateReconstruction),
             ("co-op malformed snapshot rejection", CoOpMalformedSnapshotRejection),
+            ("co-op Bulwark shield snapshot bounds", CoOpBulwarkShieldSnapshotBounds),
             ("co-op checksum coverage", CoOpChecksumCoverage),
             ("co-op reconnect combat soak", CoOpReconnectCombatSoak),
             ("co-op wave ready", CoOpWaveReady),
@@ -2896,6 +2897,37 @@ internal static class Program
         peerRunner.RunTicks(80);
         Check.Equal(SessionChecksum.Compute(host, runner.Tick), SessionChecksum.Compute(peer, peerRunner.Tick),
             "reconnected tactical systems remain deterministic through rearming and production");
+    }
+
+    private static void CoOpBulwarkShieldSnapshotBounds()
+    {
+        var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        foreach (var rank in new[] { "Standard", "Elite", "Boss" })
+        {
+            var session = new GameSession(content, "foundry_loop", "normal", "close_quarters");
+            session.ConfigureCoOp(1);
+            session.SpawnEnemy("t1_crawler", 1, 1, signalRole: EnemySignalRole.Bulwark);
+            session.SpawnEnemy("t1_crawler", 1, 1, rank);
+            for (var tick = 0; tick < 300; tick++) session.Update(1f / 60f);
+            var target = session.Enemies[1];
+            Check.True(target.Shield > target.Definition.Shield, "Bulwark grants an authored shield pool");
+            var snapshot = session.CaptureCoOpState(300, 0, false);
+            var restored = GameSession.RestoreCoOpState(content, snapshot, 2);
+            Check.Equal(SessionChecksum.Compute(session, 300), SessionChecksum.Compute(restored, 300),
+                "valid signal shields survive reconnect without changing combat state");
+            var maximum = target.Definition.Shield + target.MaxHealth *
+                MathF.Max(target.IsBoss ? 0.12f : 0, session.Challenge.CounterShieldCapacityFraction);
+            snapshot.Enemies[1].Shield = maximum + 1;
+            Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(content, snapshot, 2),
+                "signal shields above the authored cap are rejected");
+        }
+
+        var standard = new GameSession(content, "foundry_loop", "normal", "standard");
+        standard.SpawnEnemy("t1_crawler", 1, 1);
+        var invalid = standard.CaptureCoOpState(0, 0, false);
+        invalid.Enemies[0].Shield = 1;
+        Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(content, invalid, 2),
+            "ordinary campaigns do not accept unearned signal shields");
     }
 
     private static void CoOpMalformedSnapshotRejection()

@@ -1,3 +1,8 @@
+#if PORTABLE_GAMEPLAY
+using Vector2 = MaximalBastion.Gameplay.Vector2;
+#else
+using Vector2 = Microsoft.Xna.Framework.Vector2;
+#endif
 using MaximalBastion.Core;
 using MaximalBastion.Data;
 using MaximalBastion.Towers;
@@ -369,5 +374,5 @@ internal readonly record struct ThreatProfile(
     }
 }
 
-internal readonly record struct PurchaseOption(Data.TowerDefinition Definition, Microsoft.Xna.Framework.Vector2 Position, float Score);
+internal readonly record struct PurchaseOption(Data.TowerDefinition Definition, Vector2 Position, float Score);
 internal readonly record struct UpgradeOption(Towers.TowerInstance Tower, string? DoctrineId, string? SpecializationId, float Score);

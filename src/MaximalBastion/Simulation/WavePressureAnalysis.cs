@@ -31,8 +31,8 @@ public static class WavePressureAnalysis
         float difficultySpeedMultiplier = 1f,
         float pressureWindowSeconds = DefaultPressureWindowSeconds)
     {
-        ArgumentNullException.ThrowIfNull(wave);
-        ArgumentNullException.ThrowIfNull(enemies);
+        MaximalBastion.Core.RuntimeCompat.ThrowIfNull(wave, nameof(wave));
+        MaximalBastion.Core.RuntimeCompat.ThrowIfNull(enemies, nameof(enemies));
         if (!float.IsFinite(difficultyHealthMultiplier) || difficultyHealthMultiplier <= 0)
             throw new ArgumentOutOfRangeException(nameof(difficultyHealthMultiplier));
         if (!float.IsFinite(difficultySpeedMultiplier) || difficultySpeedMultiplier <= 0)

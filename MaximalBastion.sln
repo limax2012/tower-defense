@@ -8,6 +8,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaximalBastion.Tests", "tes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaximalBastion.Web", "src\MaximalBastion.Web\MaximalBastion.Web.csproj", "{4FA6E8B3-7A48-472C-B695-8B6E5B405A0F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaximalBastion.Gameplay", "src\MaximalBastion.Gameplay\MaximalBastion.Gameplay.csproj", "{D9E50059-A819-4087-ABF6-5D8CE510F81D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaximalBastion.Gameplay.Tests", "tests\MaximalBastion.Gameplay.Tests\MaximalBastion.Gameplay.Tests.csproj", "{64C0B757-2522-44E4-881B-EF588B8A569C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,5 +30,13 @@ Global
 		{4FA6E8B3-7A48-472C-B695-8B6E5B405A0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4FA6E8B3-7A48-472C-B695-8B6E5B405A0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4FA6E8B3-7A48-472C-B695-8B6E5B405A0F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9E50059-A819-4087-ABF6-5D8CE510F81D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9E50059-A819-4087-ABF6-5D8CE510F81D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9E50059-A819-4087-ABF6-5D8CE510F81D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9E50059-A819-4087-ABF6-5D8CE510F81D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64C0B757-2522-44E4-881B-EF588B8A569C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64C0B757-2522-44E4-881B-EF588B8A569C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64C0B757-2522-44E4-881B-EF588B8A569C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64C0B757-2522-44E4-881B-EF588B8A569C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

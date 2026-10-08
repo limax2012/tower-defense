@@ -23,6 +23,7 @@ $ArtifactDirectory = [System.IO.Path]::GetFullPath($ArtifactDirectory)
 $isolatedBuildRoot = Join-Path $env:TEMP "MaximalBastionVerification"
 $isolatedOutput = Join-Path $isolatedBuildRoot "bin\"
 $testLog = Join-Path $ArtifactDirectory "tests.txt"
+$portableTestLog = Join-Path $ArtifactDirectory "portable-gameplay-tests.txt"
 $uiDirectory = Join-Path $ArtifactDirectory "ui"
 
 New-Item -ItemType Directory -Force -Path $ArtifactDirectory | Out-Null
@@ -40,6 +41,10 @@ try {
 
     & $dotnetExecutable $testAssembly 2>&1 | Tee-Object -FilePath $testLog
     if ($LASTEXITCODE -ne 0) { throw "Regression tests failed." }
+
+    $portableTestAssembly = Join-Path $outputDirectory "MaximalBastion.Gameplay.Tests.dll"
+    & $dotnetExecutable $portableTestAssembly 2>&1 | Tee-Object -FilePath $portableTestLog
+    if ($LASTEXITCODE -ne 0) { throw "Portable gameplay parity tests failed." }
 
     if (-not $SkipVisuals) {
         & $dotnetExecutable $gameAssembly --verify-ui $uiDirectory
