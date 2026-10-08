@@ -37,6 +37,16 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: Energy_Receiving
+    second: {fileID: 2100000, guid: 73c0fb4dbacc8844a80fdf93aae46c9f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Foundry_Concrete
+    second: {fileID: 2100000, guid: da76ddc8493069b46b08463b9ea0d999, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: Foundry_Copper
     second: {fileID: 2100000, guid: 2718dd94a9debcc4c8f5a2cd646e6572, type: 2}
   - first:
@@ -59,6 +69,31 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: Foundry_Oxide
     second: {fileID: 2100000, guid: bf8a43a02a479bd41a3f156e158eff3b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Foundry_PaintedWall
+    second: {fileID: 2100000, guid: 07bc6046b485f784fbbbf831fe8bbedf, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Foundry_ReturnPipe
+    second: {fileID: 2100000, guid: 6a67a0ff81852bd428bd11d5be87db62, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Foundry_Roof
+    second: {fileID: 2100000, guid: 3a3463f4204b56448acee0648a284f3b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Foundry_StatusAmber
+    second: {fileID: 2100000, guid: 3ba0047a4d376a545949a77f4f10ae22, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Foundry_WorkLight
+    second: {fileID: 2100000, guid: b84e5bca231c20c4ea83eb06c4581991, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

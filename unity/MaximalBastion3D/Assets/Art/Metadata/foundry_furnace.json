@@ -466,7 +466,7 @@
       ]
     },
     {
-      "name": "Heat",
+      "name": "Heat_Furnace",
       "parent": "foundry_furnace",
       "localPosition": [
         0.0,

@@ -8,7 +8,8 @@ namespace Bastion3D
         public Func<bool> PointerOverInterface;
         public SimulationHost Host;
         public float Sensitivity = 1;
-        public Vector3 Focus = new Vector3(0, .5f, -3);
+        public static readonly Vector3 OverviewFocus = new Vector3(2, .5f, 7);
+        public Vector3 Focus = OverviewFocus;
         public float Distance = 65;
         public float Yaw = 210;
         public float Pitch = 52;
@@ -22,7 +23,7 @@ namespace Bastion3D
 
         public void Overview()
         {
-            SetView(new Vector3(0, .5f, -3), 210, 52, 65, true);
+            SetView(OverviewFocus, 210, 52, 65, true);
         }
 
         public void SetView(Vector3 focus, float yaw, float pitch, float distance, bool immediate = false)

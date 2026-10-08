@@ -1,24 +1,291 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "textures": [
     {
-      "name": "Alloy_Roughness",
-      "file": "Alloy_Roughness.png",
+      "name": "Bastion_Graphite_Roughness",
+      "file": "Bastion_Graphite_Roughness.png",
       "colorSpace": "Linear",
-      "channels": "RGB roughness"
+      "channels": "RGB perceptual roughness",
+      "finish": "coated",
+      "meanRoughness": 0.56,
+      "roughnessRange": [
+        0.5440232740272216,
+        0.5759305573161059
+      ]
     },
     {
-      "name": "Alloy_MetallicSmoothness",
-      "file": "Alloy_MetallicSmoothness.png",
+      "name": "Bastion_Graphite_MetallicSmoothness",
+      "file": "Bastion_Graphite_MetallicSmoothness.png",
       "colorSpace": "Linear",
-      "channels": "RGB metallic; A smoothness",
-      "metallic": 0.72
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "coated",
+      "metallic": 0.16
+    },
+    {
+      "name": "Bastion_Gunmetal_Roughness",
+      "file": "Bastion_Gunmetal_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "brushed",
+      "meanRoughness": 0.39000000000000007,
+      "roughnessRange": [
+        0.37632342304234584,
+        0.4041156955326233
+      ]
+    },
+    {
+      "name": "Bastion_Gunmetal_MetallicSmoothness",
+      "file": "Bastion_Gunmetal_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "brushed",
+      "metallic": 0.82
+    },
+    {
+      "name": "Bastion_Ceramic_Roughness",
+      "file": "Bastion_Ceramic_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "ceramic",
+      "meanRoughness": 0.4699999999999999,
+      "roughnessRange": [
+        0.46001454626701344,
+        0.4799565983225661
+      ]
+    },
+    {
+      "name": "Bastion_Ceramic_MetallicSmoothness",
+      "file": "Bastion_Ceramic_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "ceramic",
+      "metallic": 0.0
+    },
+    {
+      "name": "Bastion_EdgeAlloy_Roughness",
+      "file": "Bastion_EdgeAlloy_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "brushed",
+      "meanRoughness": 0.2700000000000001,
+      "roughnessRange": [
+        0.25827721975058215,
+        0.2820991675993914
+      ]
+    },
+    {
+      "name": "Bastion_EdgeAlloy_MetallicSmoothness",
+      "file": "Bastion_EdgeAlloy_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "brushed",
+      "metallic": 0.9
+    },
+    {
+      "name": "Bastion_Recess_Roughness",
+      "file": "Bastion_Recess_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "coated",
+      "meanRoughness": 0.8,
+      "roughnessRange": [
+        0.7840232740272216,
+        0.8159305573161059
+      ]
+    },
+    {
+      "name": "Bastion_Recess_MetallicSmoothness",
+      "file": "Bastion_Recess_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "coated",
+      "metallic": 0.0
+    },
+    {
+      "name": "Bastion_Rubber_Roughness",
+      "file": "Bastion_Rubber_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "rubber",
+      "meanRoughness": 0.8600000000000001,
+      "roughnessRange": [
+        0.8400290925340269,
+        0.8799131966451322
+      ]
+    },
+    {
+      "name": "Bastion_Rubber_MetallicSmoothness",
+      "file": "Bastion_Rubber_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "rubber",
+      "metallic": 0.0
+    },
+    {
+      "name": "Foundry_Copper_Roughness",
+      "file": "Foundry_Copper_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "brushed",
+      "meanRoughness": 0.3800000000000001,
+      "roughnessRange": [
+        0.3604620329176369,
+        0.40016527933231893
+      ]
+    },
+    {
+      "name": "Foundry_Copper_MetallicSmoothness",
+      "file": "Foundry_Copper_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "brushed",
+      "metallic": 0.85
+    },
+    {
+      "name": "Foundry_Oxide_Roughness",
+      "file": "Foundry_Oxide_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "oxide",
+      "meanRoughness": 0.8399999999999999,
+      "roughnessRange": [
+        0.8140602394883886,
+        0.8658167674926245
+      ]
+    },
+    {
+      "name": "Foundry_Oxide_MetallicSmoothness",
+      "file": "Foundry_Oxide_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "oxide",
+      "metallic": 0.03
+    },
+    {
+      "name": "Foundry_Deck_Roughness",
+      "file": "Foundry_Deck_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "coated",
+      "meanRoughness": 0.6700000000000002,
+      "roughnessRange": [
+        0.6480320017874296,
+        0.6919045163096454
+      ]
+    },
+    {
+      "name": "Foundry_Deck_MetallicSmoothness",
+      "file": "Foundry_Deck_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "coated",
+      "metallic": 0.3
+    },
+    {
+      "name": "Foundry_Hazard_Roughness",
+      "file": "Foundry_Hazard_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "coated",
+      "meanRoughness": 0.6100000000000001,
+      "roughnessRange": [
+        0.5980174555204161,
+        0.6219479179870793
+      ]
+    },
+    {
+      "name": "Foundry_Hazard_MetallicSmoothness",
+      "file": "Foundry_Hazard_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "coated",
+      "metallic": 0.0
+    },
+    {
+      "name": "Foundry_PaintedWall_Roughness",
+      "file": "Foundry_PaintedWall_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "coated",
+      "meanRoughness": 0.6599999999999999,
+      "roughnessRange": [
+        0.6420261832806242,
+        0.677921876980619
+      ]
+    },
+    {
+      "name": "Foundry_PaintedWall_MetallicSmoothness",
+      "file": "Foundry_PaintedWall_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "coated",
+      "metallic": 0.1
+    },
+    {
+      "name": "Foundry_Roof_Roughness",
+      "file": "Foundry_Roof_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "coated",
+      "meanRoughness": 0.6000000000000001,
+      "roughnessRange": [
+        0.5800290925340269,
+        0.6199131966451322
+      ]
+    },
+    {
+      "name": "Foundry_Roof_MetallicSmoothness",
+      "file": "Foundry_Roof_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "coated",
+      "metallic": 0.22
+    },
+    {
+      "name": "Foundry_Concrete_Roughness",
+      "file": "Foundry_Concrete_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "concrete",
+      "meanRoughness": 0.8599999999999999,
+      "roughnessRange": [
+        0.8280741409087861,
+        0.8917744830678456
+      ]
+    },
+    {
+      "name": "Foundry_Concrete_MetallicSmoothness",
+      "file": "Foundry_Concrete_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "concrete",
+      "metallic": 0.0
+    },
+    {
+      "name": "Foundry_ReturnPipe_Roughness",
+      "file": "Foundry_ReturnPipe_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB perceptual roughness",
+      "finish": "coated",
+      "meanRoughness": 0.6000000000000001,
+      "roughnessRange": [
+        0.5810276379073255,
+        0.6189175368128755
+      ]
+    },
+    {
+      "name": "Foundry_ReturnPipe_MetallicSmoothness",
+      "file": "Foundry_ReturnPipe_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "R metallic; A perceptual smoothness (1 - roughness)",
+      "finish": "coated",
+      "metallic": 0.12
     },
     {
       "name": "FoundryFloor_BaseColor",
       "file": "FoundryFloor_BaseColor.png",
       "colorSpace": "sRGB",
-      "channels": "RGB neutral albedo; multiply by material tint",
+      "channels": "RGB neutral mineral albedo; multiply by material tint",
       "tileMeters": 8
     },
     {
@@ -32,58 +299,9 @@
       "name": "FoundryFloor_MetallicSmoothness",
       "file": "FoundryFloor_MetallicSmoothness.png",
       "colorSpace": "Linear",
-      "channels": "RGB metallic; A smoothness",
-      "metallic": 0.3,
+      "channels": "R metallic; A perceptual smoothness",
+      "metallic": 0,
       "tileMeters": 8
-    },
-    {
-      "name": "Alloy_Metallic035_Smoothness",
-      "file": "Alloy_Metallic035_Smoothness.png",
-      "colorSpace": "Linear",
-      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
-      "metallic": 0.35
-    },
-    {
-      "name": "Alloy_Metallic042_Smoothness",
-      "file": "Alloy_Metallic042_Smoothness.png",
-      "colorSpace": "Linear",
-      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
-      "metallic": 0.42
-    },
-    {
-      "name": "Alloy_Metallic058_Smoothness",
-      "file": "Alloy_Metallic058_Smoothness.png",
-      "colorSpace": "Linear",
-      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
-      "metallic": 0.58
-    },
-    {
-      "name": "Alloy_Metallic065_Smoothness",
-      "file": "Alloy_Metallic065_Smoothness.png",
-      "colorSpace": "Linear",
-      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
-      "metallic": 0.65
-    },
-    {
-      "name": "Alloy_Metallic072_Smoothness",
-      "file": "Alloy_Metallic072_Smoothness.png",
-      "colorSpace": "Linear",
-      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
-      "metallic": 0.72
-    },
-    {
-      "name": "Alloy_Metallic074_Smoothness",
-      "file": "Alloy_Metallic074_Smoothness.png",
-      "colorSpace": "Linear",
-      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
-      "metallic": 0.74
-    },
-    {
-      "name": "Alloy_Metallic078_Smoothness",
-      "file": "Alloy_Metallic078_Smoothness.png",
-      "colorSpace": "Linear",
-      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
-      "metallic": 0.78
     }
   ]
 }

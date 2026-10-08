@@ -32,6 +32,7 @@ namespace Bastion3D
             if (args.Contains("--record-backend")) { StartCoroutine(RecordBackend()); return; }
             _capture = ReviewCapture.Initialize(app.CameraRig.GetComponent<Camera>(), app.Interface);
             Application.logMessageReceived += CaptureLog;
+            if (args.Contains("--beam-lifecycle-only")) { StartCoroutine(VerifyBeamLifecycle()); return; }
             _autoplay = args.Contains("--autoplay");
             StartCoroutine(Run(args.Contains("--tour")));
         }
@@ -57,6 +58,12 @@ namespace Bastion3D
         {
             if (type == LogType.Error || type == LogType.Exception || type == LogType.Assert) _errors.Add(message + "\n" + stack);
         }
+        private IEnumerator VerifyBeamLifecycle()
+        {
+            yield return new WaitForSecondsRealtime(1);
+            yield return BeamLifecycleVerification.Run(_app, Require, _directory, _capture);
+            Application.Quit(_errors.Count == 0 ? 0 : 1);
+        }
         private IEnumerator Run(bool tour)
         {
             yield return new WaitForSecondsRealtime(2);
@@ -81,6 +88,7 @@ namespace Bastion3D
                     "Cross-runtime lockstep is not supported.\n" + string.Join("\n", comparison.FinalOutcomeDifferences.Concat(comparison.Failures)));
                 Require(comparison.FinalOutcomesMatch, "Native and Mono scenario final outcomes");
             }
+            if (!tour && !_autoplay) yield return BeamLifecycleVerification.Run(_app, Require, _directory, _capture);
             host.NewRun("easy", "standard");
             if (_autoplay)
             {

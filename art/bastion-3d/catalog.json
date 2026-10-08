@@ -2480,17 +2480,17 @@
       "up": "+Y",
       "bounds": {
         "min": [
-          -30.0,
-          -0.10000000894069672,
-          -29.899999618530273
+          -92.0,
+          -2.0149998664855957,
+          -92.0
         ],
         "max": [
-          32.28542709350586,
-          8.66349983215332,
-          25.399999618530273
+          92.0,
+          28.89209747314453,
+          84.0
         ],
-        "meshCount": 1711,
-        "triangles": 217540
+        "meshCount": 2415,
+        "triangles": 325016
       },
       "hierarchy": [
         {
@@ -2505,209 +2505,6 @@
             0.0,
             0.0,
             -0.0
-          ],
-          "worldForward": [
-            0.0,
-            0.0,
-            1.0
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ]
-        },
-        {
-          "name": "BackwallServiceBay_00",
-          "parent": "cinderworks_dressing",
-          "localPosition": [
-            -24.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldPosition": [
-            -24.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldForward": [
-            0.0,
-            0.0,
-            1.0
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ]
-        },
-        {
-          "name": "BackwallServiceBay_01",
-          "parent": "cinderworks_dressing",
-          "localPosition": [
-            -16.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldPosition": [
-            -16.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldForward": [
-            0.0,
-            0.0,
-            1.0
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ]
-        },
-        {
-          "name": "BackwallServiceBay_02",
-          "parent": "cinderworks_dressing",
-          "localPosition": [
-            -8.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldPosition": [
-            -8.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldForward": [
-            0.0,
-            0.0,
-            1.0
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ]
-        },
-        {
-          "name": "BackwallServiceBay_03",
-          "parent": "cinderworks_dressing",
-          "localPosition": [
-            0.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldPosition": [
-            0.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldForward": [
-            0.0,
-            0.0,
-            1.0
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ]
-        },
-        {
-          "name": "BackwallServiceBay_04",
-          "parent": "cinderworks_dressing",
-          "localPosition": [
-            8.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldPosition": [
-            8.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldForward": [
-            0.0,
-            0.0,
-            1.0
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ]
-        },
-        {
-          "name": "BackwallServiceBay_05",
-          "parent": "cinderworks_dressing",
-          "localPosition": [
-            16.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldPosition": [
-            16.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldForward": [
-            0.0,
-            0.0,
-            1.0
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ]
-        },
-        {
-          "name": "BackwallServiceBay_06",
-          "parent": "cinderworks_dressing",
-          "localPosition": [
-            24.0,
-            -0.10000000149011612,
-            -28.0
-          ],
-          "worldPosition": [
-            24.0,
-            -0.10000000149011612,
-            -28.0
           ],
           "worldForward": [
             0.0,
@@ -2813,16 +2610,190 @@
           ]
         },
         {
+          "name": "CoolingVessel",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "CoolingVessel.001",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "CoolingVessel.002",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "CoreControl",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "WorkLight_CoreControl_front",
+          "parent": "CoreControl",
+          "localPosition": [
+            35.5,
+            2.9100000858306885,
+            18.479999542236328
+          ],
+          "worldPosition": [
+            35.5,
+            2.9100000858306885,
+            18.479999542236328
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "WorkLight_CoreControl_rear",
+          "parent": "CoreControl",
+          "localPosition": [
+            35.5,
+            2.9100000858306885,
+            9.720000267028809
+          ],
+          "worldPosition": [
+            35.5,
+            2.9100000858306885,
+            9.720000267028809
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
           "name": "DefendedCore",
           "parent": "cinderworks_dressing",
           "localPosition": [
             28.0,
-            0.0,
+            0.07500000298023224,
             14.100000381469727
           ],
           "worldPosition": [
             28.0,
-            0.0,
+            0.07500000298023224,
             14.100000381469727
           ],
           "worldForward": [
@@ -2851,7 +2822,7 @@
           ],
           "worldPosition": [
             28.0,
-            0.0,
+            0.07500000298023224,
             14.100000381469727
           ],
           "worldForward": [
@@ -2880,7 +2851,7 @@
           ],
           "worldPosition": [
             28.0,
-            0.0,
+            0.07500000298023224,
             14.100000381469727
           ],
           "worldForward": [
@@ -2909,7 +2880,7 @@
           ],
           "worldPosition": [
             28.0,
-            0.0,
+            0.07500000298023224,
             14.100000381469727
           ],
           "worldForward": [
@@ -2938,7 +2909,7 @@
           ],
           "worldPosition": [
             28.0,
-            0.0,
+            0.07500000298023224,
             14.100000381469727
           ],
           "worldForward": [
@@ -2967,7 +2938,7 @@
           ],
           "worldPosition": [
             28.0,
-            2.200000047683716,
+            2.2750000953674316,
             14.100000381469727
           ],
           "worldForward": [
@@ -2996,8 +2967,356 @@
           ],
           "worldPosition": [
             28.0,
-            3.0399999618530273,
+            3.115000009536743,
             14.100000381469727
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "DistantWorks_00",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "DistantWorks_01",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "DistantWorks_02",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "DistantWorks_03",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "DistantWorks_04",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "DistantWorks_05",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "DistantWorks_06",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "DistantWorks_07",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "DistantWorks_08",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "DistantWorks_09",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "DistantWorks_10",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "DistantWorks_11",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
           ],
           "worldForward": [
             0.0,
@@ -3103,7 +3422,7 @@
           ]
         },
         {
-          "name": "Heat",
+          "name": "Heat.004",
           "parent": "HeatExchanger_00",
           "localPosition": [
             0.0,
@@ -3161,7 +3480,7 @@
           ]
         },
         {
-          "name": "Heat.001",
+          "name": "Heat.005",
           "parent": "HeatExchanger_01",
           "localPosition": [
             0.0,
@@ -3219,7 +3538,7 @@
           ]
         },
         {
-          "name": "Heat.002",
+          "name": "Heat.006",
           "parent": "HeatExchanger_02",
           "localPosition": [
             0.0,
@@ -3277,7 +3596,7 @@
           ]
         },
         {
-          "name": "Heat.003",
+          "name": "Heat.007",
           "parent": "HeatExchanger_03",
           "localPosition": [
             0.0,
@@ -3751,7 +4070,7 @@
           ]
         },
         {
-          "name": "Heat.004",
+          "name": "Heat_Furnace",
           "parent": "PerimeterFurnace_00",
           "localPosition": [
             0.0,
@@ -4225,7 +4544,7 @@
           ]
         },
         {
-          "name": "Heat.005",
+          "name": "Heat_Furnace.001",
           "parent": "PerimeterFurnace_01",
           "localPosition": [
             0.0,
@@ -4257,23 +4576,23 @@
           "name": "PerimeterFurnace_02",
           "parent": "cinderworks_dressing",
           "localPosition": [
-            18.0,
+            19.0,
             -0.10000000149011612,
             -23.0
           ],
           "worldPosition": [
-            18.0,
+            19.0,
             -0.10000000149011612,
             -23.0
           ],
           "worldForward": [
             0.0,
             0.0,
-            1.0
+            0.8199999928474426
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4291,18 +4610,18 @@
             -0.0
           ],
           "worldPosition": [
-            16.600000381469727,
-            7.460000038146973,
+            17.851999282836914,
+            6.0991997718811035,
             -23.0
           ],
           "worldForward": [
             0.0,
             0.0,
-            1.0
+            0.8199999928474426
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4320,18 +4639,18 @@
             -0.0
           ],
           "worldPosition": [
-            19.399999618530273,
-            7.460000038146973,
+            20.148000717163086,
+            6.0991997718811035,
             -23.0
           ],
           "worldForward": [
             0.0,
             0.0,
-            1.0
+            0.8199999928474426
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4349,18 +4668,18 @@
             -0.0
           ],
           "worldPosition": [
-            16.600000381469727,
-            7.300000190734863,
+            17.851999282836914,
+            5.9679999351501465,
             -23.0
           ],
           "worldForward": [
             0.0,
             0.0,
-            1.0
+            0.8199999928474426
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4383,18 +4702,18 @@
             -0.0
           ],
           "worldPosition": [
-            16.600000381469727,
-            7.300000190734863,
+            17.851999282836914,
+            5.9679999351501465,
             -23.0
           ],
           "worldForward": [
             0.0,
             0.0,
-            1.0
+            0.8199999928474426
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4412,18 +4731,18 @@
             -0.0
           ],
           "worldPosition": [
-            16.600000381469727,
-            7.300000190734863,
+            17.851999282836914,
+            5.9679999351501465,
             -23.0
           ],
           "worldForward": [
-            0.9510565400123596,
+            0.7798663377761841,
             0.0,
-            0.30901697278022766
+            0.25339391827583313
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4441,18 +4760,18 @@
             -0.0
           ],
           "worldPosition": [
-            16.600000381469727,
-            7.300000190734863,
+            17.851999282836914,
+            5.9679999351501465,
             -23.0
           ],
           "worldForward": [
-            0.5877851843833923,
+            0.48198384046554565,
             0.0,
-            -0.8090170621871948
+            -0.6633939743041992
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4470,18 +4789,18 @@
             -0.0
           ],
           "worldPosition": [
-            16.600000381469727,
-            7.300000190734863,
+            17.851999282836914,
+            5.9679999351501465,
             -23.0
           ],
           "worldForward": [
-            -0.5877853631973267,
+            -0.4819839894771576,
             0.0,
-            -0.8090169429779053
+            -0.6633939146995544
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4499,18 +4818,18 @@
             -0.0
           ],
           "worldPosition": [
-            16.600000381469727,
-            7.300000190734863,
+            17.851999282836914,
+            5.9679999351501465,
             -23.0
           ],
           "worldForward": [
-            -0.9510564804077148,
+            -0.7798662781715393,
             0.0,
-            0.3090171217918396
+            0.2533940374851227
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4528,18 +4847,18 @@
             -0.0
           ],
           "worldPosition": [
-            19.399999618530273,
-            7.300000190734863,
+            20.148000717163086,
+            5.9679999351501465,
             -23.0
           ],
           "worldForward": [
             0.0,
             0.0,
-            1.0
+            0.8199999928474426
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4562,18 +4881,18 @@
             -0.0
           ],
           "worldPosition": [
-            19.399999618530273,
-            7.300000190734863,
+            20.148000717163086,
+            5.9679999351501465,
             -23.0
           ],
           "worldForward": [
             0.0,
             0.0,
-            1.0
+            0.8199999928474426
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4591,18 +4910,18 @@
             -0.0
           ],
           "worldPosition": [
-            19.399999618530273,
-            7.300000190734863,
+            20.148000717163086,
+            5.9679999351501465,
             -23.0
           ],
           "worldForward": [
-            0.9510565400123596,
+            0.7798663377761841,
             0.0,
-            0.30901697278022766
+            0.25339391827583313
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4620,18 +4939,18 @@
             -0.0
           ],
           "worldPosition": [
-            19.399999618530273,
-            7.300000190734863,
+            20.148000717163086,
+            5.9679999351501465,
             -23.0
           ],
           "worldForward": [
-            0.5877851843833923,
+            0.48198384046554565,
             0.0,
-            -0.8090170621871948
+            -0.6633939743041992
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4649,18 +4968,18 @@
             -0.0
           ],
           "worldPosition": [
-            19.399999618530273,
-            7.300000190734863,
+            20.148000717163086,
+            5.9679999351501465,
             -23.0
           ],
           "worldForward": [
-            -0.5877853631973267,
+            -0.4819839894771576,
             0.0,
-            -0.8090169429779053
+            -0.6633939146995544
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4678,18 +4997,18 @@
             -0.0
           ],
           "worldPosition": [
-            19.399999618530273,
-            7.300000190734863,
+            20.148000717163086,
+            5.9679999351501465,
             -23.0
           ],
           "worldForward": [
-            -0.9510564804077148,
+            -0.7798662781715393,
             0.0,
-            0.3090171217918396
+            0.2533940374851227
           ],
           "worldUp": [
             0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -4699,7 +5018,7 @@
           ]
         },
         {
-          "name": "Heat.006",
+          "name": "Heat_Furnace.002",
           "parent": "PerimeterFurnace_02",
           "localPosition": [
             0.0,
@@ -4707,492 +5026,18 @@
             2.049999952316284
           ],
           "worldPosition": [
-            18.0,
-            2.9600000381469727,
-            -20.950000762939453
+            19.0,
+            2.4091999530792236,
+            -21.319000244140625
           ],
           "worldForward": [
             0.0,
             0.0,
-            1.0
+            0.8199999928474426
           ],
           "worldUp": [
             0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ]
-        },
-        {
-          "name": "PerimeterFurnace_03",
-          "parent": "cinderworks_dressing",
-          "localPosition": [
-            29.0,
-            -0.10000000149011612,
-            4.0
-          ],
-          "worldPosition": [
-            29.0,
-            -0.10000000149011612,
-            4.0
-          ],
-          "worldForward": [
-            -1.0,
-            0.0,
-            -4.371138828673793e-08
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            -90.00000250447816,
-            -0.0
-          ]
-        },
-        {
-          "name": "Exhaust_L.003",
-          "parent": "PerimeterFurnace_03",
-          "localPosition": [
-            -1.399999976158142,
-            7.559999942779541,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.460000038146973,
-            2.5999999046325684
-          ],
-          "worldForward": [
-            -1.0,
-            0.0,
-            -4.371138828673793e-08
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ]
-        },
-        {
-          "name": "Exhaust_R.003",
-          "parent": "PerimeterFurnace_03",
-          "localPosition": [
-            1.399999976158142,
-            7.559999942779541,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.460000038146973,
-            5.400000095367432
-          ],
-          "worldForward": [
-            -1.0,
-            0.0,
-            -4.371138828673793e-08
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ]
-        },
-        {
-          "name": "FanRotor_L.003",
-          "parent": "PerimeterFurnace_03",
-          "localPosition": [
-            -1.399999976158142,
-            7.400000095367432,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.300000190734863,
-            2.5999999046325684
-          ],
-          "worldForward": [
-            -1.0,
-            0.0,
-            -4.371138828673793e-08
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "animation": {
-            "type": "continuous",
-            "axis": "Y",
-            "degreesPerSecond": 90
-          }
-        },
-        {
-          "name": "FanBlade_00.006",
-          "parent": "FanRotor_L.003",
-          "localPosition": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.300000190734863,
-            2.5999999046325684
-          ],
-          "worldForward": [
-            -1.0,
-            0.0,
-            -4.371138828673793e-08
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ]
-        },
-        {
-          "name": "FanBlade_01.006",
-          "parent": "FanRotor_L.003",
-          "localPosition": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.300000190734863,
-            2.5999999046325684
-          ],
-          "worldForward": [
-            -0.30901700258255005,
-            0.0,
-            0.9510565400123596
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            72.00000200358254,
-            -0.0
-          ]
-        },
-        {
-          "name": "FanBlade_02.006",
-          "parent": "FanRotor_L.003",
-          "localPosition": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.300000190734863,
-            2.5999999046325684
-          ],
-          "worldForward": [
-            0.8090170621871948,
-            0.0,
-            0.5877852439880371
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            144.00000400716507,
-            -0.0
-          ]
-        },
-        {
-          "name": "FanBlade_03.006",
-          "parent": "FanRotor_L.003",
-          "localPosition": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.300000190734863,
-            2.5999999046325684
-          ],
-          "worldForward": [
-            0.8090169429779053,
-            0.0,
-            -0.5877853035926819
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            216.0000060107476,
-            -0.0
-          ]
-        },
-        {
-          "name": "FanBlade_04.006",
-          "parent": "FanRotor_L.003",
-          "localPosition": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.300000190734863,
-            2.5999999046325684
-          ],
-          "worldForward": [
-            -0.3090170919895172,
-            0.0,
-            -0.9510564804077148
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            288.00000801433015,
-            -0.0
-          ]
-        },
-        {
-          "name": "FanRotor_R.003",
-          "parent": "PerimeterFurnace_03",
-          "localPosition": [
-            1.399999976158142,
-            7.400000095367432,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.300000190734863,
-            5.400000095367432
-          ],
-          "worldForward": [
-            -1.0,
-            0.0,
-            -4.371138828673793e-08
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "animation": {
-            "type": "continuous",
-            "axis": "Y",
-            "degreesPerSecond": -90
-          }
-        },
-        {
-          "name": "FanBlade_00.007",
-          "parent": "FanRotor_R.003",
-          "localPosition": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.300000190734863,
-            5.400000095367432
-          ],
-          "worldForward": [
-            -1.0,
-            0.0,
-            -4.371138828673793e-08
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ]
-        },
-        {
-          "name": "FanBlade_01.007",
-          "parent": "FanRotor_R.003",
-          "localPosition": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.300000190734863,
-            5.400000095367432
-          ],
-          "worldForward": [
-            -0.30901700258255005,
-            0.0,
-            0.9510565400123596
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            72.00000200358254,
-            -0.0
-          ]
-        },
-        {
-          "name": "FanBlade_02.007",
-          "parent": "FanRotor_R.003",
-          "localPosition": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.300000190734863,
-            5.400000095367432
-          ],
-          "worldForward": [
-            0.8090170621871948,
-            0.0,
-            0.5877852439880371
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            144.00000400716507,
-            -0.0
-          ]
-        },
-        {
-          "name": "FanBlade_03.007",
-          "parent": "FanRotor_R.003",
-          "localPosition": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.300000190734863,
-            5.400000095367432
-          ],
-          "worldForward": [
-            0.8090169429779053,
-            0.0,
-            -0.5877853035926819
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            216.0000060107476,
-            -0.0
-          ]
-        },
-        {
-          "name": "FanBlade_04.007",
-          "parent": "FanRotor_R.003",
-          "localPosition": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "worldPosition": [
-            29.0,
-            7.300000190734863,
-            5.400000095367432
-          ],
-          "worldForward": [
-            -0.3090170919895172,
-            0.0,
-            -0.9510564804077148
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            288.00000801433015,
-            -0.0
-          ]
-        },
-        {
-          "name": "Heat.007",
-          "parent": "PerimeterFurnace_03",
-          "localPosition": [
-            0.0,
-            3.059999942779541,
-            2.049999952316284
-          ],
-          "worldPosition": [
-            26.950000762939453,
-            2.9600000381469727,
-            4.0
-          ],
-          "worldForward": [
-            -1.0,
-            0.0,
-            -4.371138828673793e-08
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
+            0.8199999928474426,
             -0.0
           ],
           "localEulerDegrees": [
@@ -5294,70 +5139,12 @@
           "localPosition": [
             -29.0,
             0.0,
-            -8.0
-          ],
-          "worldPosition": [
-            -29.0,
-            0.0,
-            -8.0
-          ],
-          "worldForward": [
-            1.0,
-            0.0,
-            -4.371138828673793e-08
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            90.00000250447816,
-            -0.0
-          ]
-        },
-        {
-          "name": "PerimeterPipeRack_04",
-          "parent": "cinderworks_dressing",
-          "localPosition": [
-            -29.0,
-            0.0,
             5.0
           ],
           "worldPosition": [
             -29.0,
             0.0,
             5.0
-          ],
-          "worldForward": [
-            1.0,
-            0.0,
-            -4.371138828673793e-08
-          ],
-          "worldUp": [
-            0.0,
-            1.0,
-            -0.0
-          ],
-          "localEulerDegrees": [
-            0.0,
-            90.00000250447816,
-            -0.0
-          ]
-        },
-        {
-          "name": "PerimeterPipeRack_05",
-          "parent": "cinderworks_dressing",
-          "localPosition": [
-            29.0,
-            0.0,
-            -7.0
-          ],
-          "worldPosition": [
-            29.0,
-            0.0,
-            -7.0
           ],
           "worldForward": [
             1.0,
@@ -5379,14 +5166,14 @@
           "name": "PerimeterStack_00",
           "parent": "cinderworks_dressing",
           "localPosition": [
-            -28.0,
-            -0.10000000149011612,
-            -22.0
+            -24.0,
+            13.979999542236328,
+            -34.0
           ],
           "worldPosition": [
-            -28.0,
-            -0.10000000149011612,
-            -22.0
+            -24.0,
+            13.979999542236328,
+            -34.0
           ],
           "worldForward": [
             0.0,
@@ -5395,7 +5182,7 @@
           ],
           "worldUp": [
             0.0,
-            1.0,
+            1.7999999523162842,
             -0.0
           ],
           "localEulerDegrees": [
@@ -5413,9 +5200,9 @@
             -0.0
           ],
           "worldPosition": [
-            -28.0,
-            8.219999313354492,
-            -22.0
+            -24.0,
+            28.955997467041016,
+            -34.0
           ],
           "worldForward": [
             0.0,
@@ -5424,7 +5211,7 @@
           ],
           "worldUp": [
             0.0,
-            1.0,
+            1.7999999523162842,
             -0.0
           ],
           "localEulerDegrees": [
@@ -5434,7 +5221,7 @@
           ]
         },
         {
-          "name": "Heat.008",
+          "name": "Heat",
           "parent": "PerimeterStack_00",
           "localPosition": [
             0.0,
@@ -5442,9 +5229,9 @@
             -0.0
           ],
           "worldPosition": [
-            -28.0,
-            8.179999351501465,
-            -22.0
+            -24.0,
+            28.88399887084961,
+            -34.0
           ],
           "worldForward": [
             0.0,
@@ -5453,7 +5240,7 @@
           ],
           "worldUp": [
             0.0,
-            1.0,
+            1.7999999523162842,
             -0.0
           ],
           "localEulerDegrees": [
@@ -5466,14 +5253,14 @@
           "name": "PerimeterStack_01",
           "parent": "cinderworks_dressing",
           "localPosition": [
-            -3.0,
-            -0.10000000149011612,
-            -24.0
+            -19.0,
+            13.979999542236328,
+            -35.0
           ],
           "worldPosition": [
-            -3.0,
-            -0.10000000149011612,
-            -24.0
+            -19.0,
+            13.979999542236328,
+            -35.0
           ],
           "worldForward": [
             0.0,
@@ -5482,7 +5269,7 @@
           ],
           "worldUp": [
             0.0,
-            1.0,
+            1.5499999523162842,
             -0.0
           ],
           "localEulerDegrees": [
@@ -5500,9 +5287,9 @@
             -0.0
           ],
           "worldPosition": [
-            -3.0,
-            8.219999313354492,
-            -24.0
+            -19.0,
+            26.875999450683594,
+            -35.0
           ],
           "worldForward": [
             0.0,
@@ -5511,7 +5298,7 @@
           ],
           "worldUp": [
             0.0,
-            1.0,
+            1.5499999523162842,
             -0.0
           ],
           "localEulerDegrees": [
@@ -5521,7 +5308,7 @@
           ]
         },
         {
-          "name": "Heat.009",
+          "name": "Heat.001",
           "parent": "PerimeterStack_01",
           "localPosition": [
             0.0,
@@ -5529,9 +5316,9 @@
             -0.0
           ],
           "worldPosition": [
-            -3.0,
-            8.179999351501465,
-            -24.0
+            -19.0,
+            26.81399917602539,
+            -35.0
           ],
           "worldForward": [
             0.0,
@@ -5540,7 +5327,7 @@
           ],
           "worldUp": [
             0.0,
-            1.0,
+            1.5499999523162842,
             -0.0
           ],
           "localEulerDegrees": [
@@ -5553,14 +5340,14 @@
           "name": "PerimeterStack_02",
           "parent": "cinderworks_dressing",
           "localPosition": [
-            25.0,
+            -3.0,
             -0.10000000149011612,
-            -23.0
+            -25.0
           ],
           "worldPosition": [
-            25.0,
+            -3.0,
             -0.10000000149011612,
-            -23.0
+            -25.0
           ],
           "worldForward": [
             0.0,
@@ -5587,9 +5374,9 @@
             -0.0
           ],
           "worldPosition": [
-            25.0,
+            -3.0,
             8.219999313354492,
-            -23.0
+            -25.0
           ],
           "worldForward": [
             0.0,
@@ -5608,7 +5395,7 @@
           ]
         },
         {
-          "name": "Heat.010",
+          "name": "Heat.002",
           "parent": "PerimeterStack_02",
           "localPosition": [
             0.0,
@@ -5616,9 +5403,9 @@
             -0.0
           ],
           "worldPosition": [
-            25.0,
+            -3.0,
             8.179999351501465,
-            -23.0
+            -25.0
           ],
           "worldForward": [
             0.0,
@@ -5640,14 +5427,14 @@
           "name": "PerimeterStack_03",
           "parent": "cinderworks_dressing",
           "localPosition": [
-            31.0,
+            24.0,
             -0.10000000149011612,
-            20.0
+            -29.0
           ],
           "worldPosition": [
-            31.0,
+            24.0,
             -0.10000000149011612,
-            20.0
+            -29.0
           ],
           "worldForward": [
             0.0,
@@ -5656,7 +5443,7 @@
           ],
           "worldUp": [
             0.0,
-            1.0,
+            1.0499999523162842,
             -0.0
           ],
           "localEulerDegrees": [
@@ -5674,9 +5461,67 @@
             -0.0
           ],
           "worldPosition": [
-            31.0,
-            8.219999313354492,
-            20.0
+            24.0,
+            8.635998725891113,
+            -29.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0499999523162842,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "Heat.003",
+          "parent": "PerimeterStack_03",
+          "localPosition": [
+            0.0,
+            8.279999732971191,
+            -0.0
+          ],
+          "worldPosition": [
+            24.0,
+            8.593998908996582,
+            -29.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0499999523162842,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "PumpControl",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
           ],
           "worldForward": [
             0.0,
@@ -5695,17 +5540,133 @@
           ]
         },
         {
-          "name": "Heat.011",
-          "parent": "PerimeterStack_03",
+          "name": "WorkLight_PumpControl_front",
+          "parent": "PumpControl",
+          "localPosition": [
+            8.75,
+            2.9100000858306885,
+            -26.6200008392334
+          ],
+          "worldPosition": [
+            8.75,
+            2.9100000858306885,
+            -26.6200008392334
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "WorkLight_PumpControl_rear",
+          "parent": "PumpControl",
+          "localPosition": [
+            8.75,
+            2.9100000858306885,
+            -35.380001068115234
+          ],
+          "worldPosition": [
+            8.75,
+            2.9100000858306885,
+            -35.380001068115234
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "PumpCoolingShed",
+          "parent": "cinderworks_dressing",
           "localPosition": [
             0.0,
-            8.279999732971191,
+            0.0,
             -0.0
           ],
           "worldPosition": [
-            31.0,
-            8.179999351501465,
-            20.0
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "WorkLight_PumpCoolingShed_front",
+          "parent": "PumpCoolingShed",
+          "localPosition": [
+            24.0,
+            2.9100000858306885,
+            -28.6200008392334
+          ],
+          "worldPosition": [
+            24.0,
+            2.9100000858306885,
+            -28.6200008392334
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "WorkLight_PumpCoolingShed_rear",
+          "parent": "PumpCoolingShed",
+          "localPosition": [
+            24.0,
+            2.9100000858306885,
+            -41.380001068115234
+          ],
+          "worldPosition": [
+            24.0,
+            2.9100000858306885,
+            -41.380001068115234
           ],
           "worldForward": [
             0.0,
@@ -5909,6 +5870,209 @@
             24.0,
             0.0,
             -20.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "SmelterClerestory",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "SmelterHall",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "WorkLight_SmelterHall_front",
+          "parent": "SmelterHall",
+          "localPosition": [
+            -20.75,
+            2.9100000858306885,
+            -24.6200008392334
+          ],
+          "worldPosition": [
+            -20.75,
+            2.9100000858306885,
+            -24.6200008392334
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "WorkLight_SmelterHall_rear",
+          "parent": "SmelterHall",
+          "localPosition": [
+            -20.75,
+            2.9100000858306885,
+            -39.380001068115234
+          ],
+          "worldPosition": [
+            -20.75,
+            2.9100000858306885,
+            -39.380001068115234
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "SouthUtility",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "WorkLight_SouthUtility_front",
+          "parent": "SouthUtility",
+          "localPosition": [
+            -13.5,
+            2.9100000858306885,
+            37.880001068115234
+          ],
+          "worldPosition": [
+            -13.5,
+            2.9100000858306885,
+            37.880001068115234
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "WorkLight_SouthUtility_rear",
+          "parent": "SouthUtility",
+          "localPosition": [
+            -13.5,
+            2.9100000858306885,
+            30.1200008392334
+          ],
+          "worldPosition": [
+            -13.5,
+            2.9100000858306885,
+            30.1200008392334
           ],
           "worldForward": [
             0.0,
@@ -6141,6 +6305,209 @@
             22.0,
             0.0,
             25.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "UtilityTank_0",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "UtilityTank_1",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "UtilityTank_2",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "UtilityTank_3",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "WestSubstation",
+          "parent": "cinderworks_dressing",
+          "localPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldPosition": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "WorkLight_WestSubstation_front",
+          "parent": "WestSubstation",
+          "localPosition": [
+            -41.0,
+            2.9100000858306885,
+            11.380000114440918
+          ],
+          "worldPosition": [
+            -41.0,
+            2.9100000858306885,
+            11.380000114440918
+          ],
+          "worldForward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "worldUp": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "localEulerDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        {
+          "name": "WorkLight_WestSubstation_rear",
+          "parent": "WestSubstation",
+          "localPosition": [
+            -41.0,
+            2.9100000858306885,
+            -3.380000114440918
+          ],
+          "worldPosition": [
+            -41.0,
+            2.9100000858306885,
+            -3.380000114440918
           ],
           "worldForward": [
             0.0,
@@ -8110,7 +8477,7 @@
           ]
         },
         {
-          "name": "Heat",
+          "name": "Heat_Furnace",
           "parent": "foundry_furnace",
           "localPosition": [
             0.0,
@@ -10361,11 +10728,11 @@
         ],
         "max": [
           1.037670612335205,
-          1.9844999313354492,
+          2.064499855041504,
           1.593999981880188
         ],
         "meshCount": 83,
-        "triangles": 10744
+        "triangles": 10768
       },
       "hierarchy": [
         {
@@ -12391,8 +12758,8 @@
           2.4437339305877686,
           1.2649191617965698
         ],
-        "meshCount": 75,
-        "triangles": 10744
+        "meshCount": 76,
+        "triangles": 11924
       },
       "hierarchy": [
         {
@@ -14004,12 +14371,12 @@
       "up": "+Y",
       "bounds": {
         "min": [
-          -0.597823977470398,
+          -0.6600109338760376,
           -0.005000010132789612,
           -0.7144219875335693
         ],
         "max": [
-          0.6203239560127258,
+          0.6600109338760376,
           1.0199999809265137,
           0.7144219875335693
         ],
@@ -14728,12 +15095,12 @@
       "up": "+Y",
       "bounds": {
         "min": [
-          -0.7759999632835388,
+          -0.816464364528656,
           -0.02957642823457718,
-          -0.7028226852416992
+          -0.7160876989364624
         ],
         "max": [
-          0.796999990940094,
+          0.8162497878074646,
           1.441771149635315,
           0.9800987243652344
         ],
@@ -15104,12 +15471,12 @@
       "up": "+Y",
       "bounds": {
         "min": [
-          -1.1855000257492065,
+          -1.2323375940322876,
           -0.005000010132789612,
           -1.204352617263794
         ],
         "max": [
-          1.2100000381469727,
+          1.2323375940322876,
           1.6050000190734863,
           1.204352617263794
         ],
@@ -16813,17 +17180,17 @@
       "up": "+Y",
       "bounds": {
         "min": [
-          -1.4429999589920044,
+          -1.4898375272750854,
           -0.005000010132789612,
           -1.4446747303009033
         ],
         "max": [
-          1.4674999713897705,
+          1.4898375272750854,
           2.1399998664855957,
           1.4446747303009033
         ],
-        "meshCount": 72,
-        "triangles": 13432
+        "meshCount": 103,
+        "triangles": 18688
       },
       "hierarchy": [
         {

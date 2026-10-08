@@ -24,6 +24,7 @@ unity/**/*.sln
 unity/**/*.slnx
 art/**/*.blend1
 art/bastion-3d/review/
+art/bastion-3d/tools/__pycache__/
 unity/**/Assets/Plugins/Gameplay/
 unity/**/Assets/Plugins/Gameplay.meta
 unity/**/Assets/StreamingAssets/ContentData/

@@ -33,6 +33,7 @@ namespace Bastion3D
             var road = new MeshBatch(); var copper = new MeshBatch(); var marks = new MeshBatch(); var seams = new MeshBatch();
             Vector3[] outerLeft = Offset(path, halfWidth), outerRight = Offset(path, -halfWidth);
             Vector3[] innerLeft = Offset(path, halfWidth - .10f), innerRight = Offset(path, -halfWidth + .10f);
+            float pathDistance = 0;
             for (int i = 0; i < path.Length - 1; i++)
             {
                 road.Quad(outerRight[i], outerRight[i + 1], outerLeft[i + 1], outerLeft[i]);
@@ -52,16 +53,20 @@ namespace Bastion3D
                     foreach (int sign in new[] { -1, 1 })
                     {
                         Vector3 marker = center + side * (halfWidth - .23f) * sign + Vector3.up * .005f;
-                        marks.FlatRect(marker, side * .045f, direction * .14f);
+                        marks.FlatRect(marker, side * .045f, direction * .14f, pathDistance + d);
                     }
                 }
+                pathDistance += length;
             }
             road.Quad(outerLeft[0], outerLeft[0] - Vector3.up * .22f, outerRight[0] - Vector3.up * .22f, outerRight[0]);
             int last = path.Length - 1;
             road.Quad(outerRight[last], outerRight[last] - Vector3.up * .22f, outerLeft[last] - Vector3.up * .22f, outerLeft[last]);
             road.Create("Continuous transfer lane", root, catalog.road, true);
             copper.Create("Inset copper lane guides", root, catalog.copper);
-            marks.Create("Transfer lane marker lamps", root, catalog.laneLights);
+            var laneShader = Shader.Find("Bastion/LaneSignal");
+            var laneSignal = laneShader ? new Material(laneShader) { name = "Amber transfer guidance", enableInstancing = true } : catalog.laneLights;
+            if (laneShader) laneSignal.SetVector("_BaseColor", new Color(1, .64f, .26f).linear * 1.5f);
+            marks.Create("Transfer lane marker lamps", root, laneSignal, ownsMaterial: laneShader != null);
             seams.Create("Transfer lane expansion joints", root, catalog.steel);
         }
 
@@ -85,22 +90,29 @@ namespace Bastion3D
         {
             private readonly List<Vector3> _vertices = new List<Vector3>();
             private readonly List<Vector2> _uvs = new List<Vector2>();
+            private readonly List<Vector2> _pathDistances = new List<Vector2>();
             private readonly List<int> _indices = new List<int>();
-            public void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+            public void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, float pathDistance = 0)
             {
                 int n = _vertices.Count;
                 _vertices.AddRange(new[] { a, b, c, d });
-                foreach (var p in new[] { a, b, c, d }) _uvs.Add(new Vector2(p.x * .25f, p.z * .25f));
+                foreach (var p in new[] { a, b, c, d })
+                {
+                    _uvs.Add(new Vector2(p.x * .25f, p.z * .25f));
+                    _pathDistances.Add(new Vector2(pathDistance, 0));
+                }
                 _indices.AddRange(new[] { n, n + 1, n + 2, n, n + 2, n + 3 });
             }
-            public void FlatRect(Vector3 center, Vector3 side, Vector3 along) => Quad(center - side - along, center - side + along, center + side + along, center + side - along);
-            public void Create(string name, Transform parent, Material material, bool collide = false)
+            public void FlatRect(Vector3 center, Vector3 side, Vector3 along, float pathDistance = 0) => Quad(center - side - along, center - side + along, center + side + along, center + side - along, pathDistance);
+            public void Create(string name, Transform parent, Material material, bool collide = false, bool ownsMaterial = false)
             {
                 var mesh = new Mesh { name = name, indexFormat = IndexFormat.UInt32 };
                 mesh.SetVertices(_vertices); mesh.SetUVs(0, _uvs); mesh.SetTriangles(_indices, 0);
+                mesh.SetUVs(1, _pathDistances);
                 mesh.RecalculateNormals(); mesh.RecalculateBounds();
                 var obj = new GameObject(name); obj.transform.SetParent(parent); obj.layer = 8;
-                obj.AddComponent<OwnedSurfaceMesh>().mesh = mesh;
+                var owned = obj.AddComponent<OwnedSurfaceMesh>(); owned.mesh = mesh;
+                if (ownsMaterial) owned.material = material;
                 obj.AddComponent<MeshFilter>().sharedMesh = mesh;
                 obj.AddComponent<MeshRenderer>().sharedMaterial = material;
                 if (collide) obj.AddComponent<MeshCollider>().sharedMesh = mesh;
@@ -111,6 +123,7 @@ namespace Bastion3D
     public sealed class OwnedSurfaceMesh : MonoBehaviour
     {
         public Mesh mesh;
-        private void OnDestroy() { if (mesh) Destroy(mesh); }
+        public Material material;
+        private void OnDestroy() { if (mesh) Destroy(mesh); if (material) Destroy(material); }
     }
 }

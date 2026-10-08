@@ -18,6 +18,10 @@ import bpy
 import bmesh
 from mathutils import Vector, Quaternion, Matrix
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from material_surfaces import SURFACES, build_texture_maps, create_material, describe_material
+from asset_io import write_json
+
 ROOT = Path(__file__).resolve().parents[3]
 ART = ROOT / 'art/bastion-3d'
 UNITY = ROOT / 'unity/MaximalBastion3D/Assets/Art'
@@ -34,132 +38,17 @@ def rgb(hex_color):
     return tuple(v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4 for v in a)
 
 def texture_maps():
-    """A shared physically neutral micro-surface, with UVs retained on meshes."""
-    import numpy as np
-    size = 512
-    rng = np.random.default_rng(74219)
-    noise = rng.random((size, size))
-    brush = rng.random((size, 1))
-    roughness = np.clip(.52 + .09 * noise + .045 * brush, 0, 1)
-    for name, channel in [('Alloy_Roughness', roughness), ('Alloy_Metallic', np.ones_like(noise) * .72)]:
-        image = bpy.data.images.new(name, size, size, alpha=False)
-        image.colorspace_settings.name = 'Non-Color'
-        pixels = np.ones((size, size, 4), dtype=np.float32)
-        pixels[:, :, :3] = channel[:, :, None]
-        image.pixels.foreach_set(pixels.ravel())
-        image.update()
-        image.filepath_raw = str(ART / 'textures' / (name + '.png'))
-        image.file_format = 'PNG'
-        image.save()
-        shutil.copy2(image.filepath_raw, UNITY / 'Textures' / (name + '.png'))
-    # A Unity-ready packed metal/smoothness map (R metallic, A smoothness).
-    packed = bpy.data.images.new('Alloy_MetallicSmoothness', size, size, alpha=True)
-    packed.colorspace_settings.name = 'Non-Color'
-    pixels = np.ones((size, size, 4), dtype=np.float32)
-    pixels[:, :, :3] = .72
-    pixels[:, :, 3] = 1 - roughness
-    packed.pixels.foreach_set(pixels.ravel())
-    packed.update()
-    packed.filepath_raw = str(ART / 'textures/Alloy_MetallicSmoothness.png')
-    packed.file_format = 'PNG'
-    packed.save()
-    shutil.copy2(packed.filepath_raw, UNITY / 'Textures/Alloy_MetallicSmoothness.png')
-    metal_values = [.35, .42, .58, .65, .72, .74, .78]
-    for metallic in metal_values:
-        name = f'Alloy_Metallic{round(metallic*100):03d}_Smoothness'
-        image = bpy.data.images.new(name, size, size, alpha=True)
-        image.colorspace_settings.name = 'Non-Color'
-        pixels = np.ones((size, size, 4), dtype=np.float32)
-        pixels[:, :, :3] = metallic
-        pixels[:, :, 3] = 1 - roughness
-        image.pixels.foreach_set(pixels.ravel())
-        image.update()
-        image.filepath_raw = str(ART / 'textures' / (name + '.png'))
-        image.file_format = 'PNG'
-        image.save()
-        shutil.copy2(image.filepath_raw, UNITY / 'Textures' / (name + '.png'))
-    # Neutral tileable floor finish; the material supplies its industrial tint.
-    size=1024
-    y,x=np.mgrid[0:size,0:size]/size
-    coarse=(np.sin(x*PI*2+np.sin(y*PI*4)*.43)+np.cos(y*PI*2-x*PI*4)*.6)/1.6
-    medium=(np.sin(x*PI*14+y*PI*10)*.45+np.cos(y*PI*18-x*PI*8)*.35)
-    grain=rng.random((size,size))-.5
-    tone=np.clip(.84+.065*coarse+.027*medium+.018*grain,.70,.96)
-    height=.012*coarse+.002*medium+.00045*grain
-    dx=(np.roll(height,-1,axis=1)-np.roll(height,1,axis=1))*size/16
-    dy=(np.roll(height,-1,axis=0)-np.roll(height,1,axis=0))*size/16
-    normal=np.stack((-dx,-dy,np.ones_like(dx)),axis=2)
-    normal/=np.linalg.norm(normal,axis=2)[:,:,None]
-    normal=normal*.5+.5
-    floor_rough=np.clip(.66+.075*coarse+.035*medium+.025*grain,.50,.80)
-    pixels_by_name={
-        'FoundryFloor_BaseColor':np.concatenate((np.repeat(tone[:,:,None],3,axis=2),np.ones((size,size,1))),axis=2),
-        'FoundryFloor_Normal':np.concatenate((normal,np.ones((size,size,1))),axis=2),
-        'FoundryFloor_MetallicSmoothness':np.concatenate((np.full((size,size,3),.30),1-floor_rough[:,:,None]),axis=2),
-    }
-    for name,pixels in pixels_by_name.items():
-        image=bpy.data.images.new(name,size,size,alpha=True)
-        image.colorspace_settings.name='Non-Color'
-        image.pixels.foreach_set(pixels.astype(np.float32).ravel())
-        image.update()
-        image.filepath_raw=str(ART/'textures'/(name+'.png'))
-        image.file_format='PNG'
-        image.save()
-        shutil.copy2(image.filepath_raw,UNITY/'Textures'/(name+'.png'))
-    texture_metadata={'schemaVersion':1,'textures':[
-        {'name':'Alloy_Roughness','file':'Alloy_Roughness.png','colorSpace':'Linear','channels':'RGB roughness'},
-        {'name':'Alloy_MetallicSmoothness','file':'Alloy_MetallicSmoothness.png','colorSpace':'Linear','channels':'RGB metallic; A smoothness','metallic':.72},
-        {'name':'FoundryFloor_BaseColor','file':'FoundryFloor_BaseColor.png','colorSpace':'sRGB','channels':'RGB neutral albedo; multiply by material tint','tileMeters':8},
-        {'name':'FoundryFloor_Normal','file':'FoundryFloor_Normal.png','colorSpace':'NormalMap','channels':'Tangent-space RGB normal, positive green Y','tileMeters':8},
-        {'name':'FoundryFloor_MetallicSmoothness','file':'FoundryFloor_MetallicSmoothness.png','colorSpace':'Linear','channels':'RGB metallic; A smoothness','metallic':.30,'tileMeters':8},
-    ]}
-    for metallic in metal_values:
-        name = f'Alloy_Metallic{round(metallic*100):03d}_Smoothness'
-        texture_metadata['textures'].append({'name':name,'file':name+'.png','colorSpace':'Linear',
-            'channels':'RGB authored metallic; A smoothness from Alloy_Roughness','metallic':metallic})
-    for path in [ART/'textures.json',UNITY/'Metadata/textures.json']:
-        path.write_text(json.dumps(texture_metadata,indent=2),encoding='utf-8')
+    build_texture_maps(ART, UNITY)
 
 def mat(name, color, metallic=.65, roughness=.36, emission=0):
-    if name in MATERIALS:
-        return MATERIALS[name]
-    material = bpy.data.materials.new(name)
-    material.use_nodes = True
-    material.diffuse_color = (*rgb(color), 1)
-    bsdf = material.node_tree.nodes.get('Principled BSDF')
-    bsdf.inputs['Base Color'].default_value = (*rgb(color), 1)
-    bsdf.inputs['Metallic'].default_value = metallic
-    bsdf.inputs['Roughness'].default_value = roughness
-    bsdf.inputs['Emission Color'].default_value = (*rgb(color), 1)
-    bsdf.inputs['Emission Strength'].default_value = emission
-    if emission == 0 and metallic > .3:
-        tex = material.node_tree.nodes.new('ShaderNodeTexImage')
-        tex.name = 'Alloy_Roughness'
-        tex.image = bpy.data.images.get('Alloy_Roughness')
-        if tex.image:
-            material.node_tree.links.new(tex.outputs['Color'], bsdf.inputs['Roughness'])
-    material['baseColorHex'] = color
-    material['metallic'] = metallic
-    material['roughness'] = roughness
-    material['emissionStrength'] = emission
-    MATERIALS[name] = material
-    return material
+    if name not in MATERIALS:
+        MATERIALS[name] = create_material(name, color, metallic, roughness, emission)
+    return MATERIALS[name]
 
 def palette():
-    return {
-        'dark': mat('Bastion_Graphite', '#15202D', .78, .4),
-        'steel': mat('Bastion_Gunmetal', '#40566B', .78, .33),
-        'armor': mat('Bastion_Ceramic', '#AABCC6', .42, .3),
-        'edge': mat('Bastion_EdgeAlloy', '#6F8999', .74, .27),
-        'black': mat('Bastion_Recess', '#09121A', .35, .6),
-        'rubber': mat('Bastion_Rubber', '#111A20', .05, .73),
-        'white': mat('Bastion_WhiteEnergy', '#E3F7FF', .2, .22, 2.3),
-        'copper': mat('Foundry_Copper', '#976545', .72, .38),
-        'rust': mat('Foundry_Oxide', '#422D26', .58, .64),
-        'deck': mat('Foundry_Deck', '#313C43', .65, .51),
-        'hazard': mat('Foundry_Hazard', '#DCAA51', .25, .5),
-        'heat': mat('Foundry_Heat', '#FF7934', .2, .35, 3),
-    }
+    return {key: mat(name, color, metallic, roughness, emission)
+            for key, (name, color, metallic, roughness, finish, amplitude, emission) in SURFACES.items()}
+
 
 P = {}
 
@@ -343,10 +232,20 @@ def prism(spec):
     box('Emitter_lens',recoil,(0,.055,1.583),(.185,.155,.022),e,.008)
     # Every nested diamond shares the same centre and winding.
     diamond=[(0,.75),(.75,0),(0,-.75),(-.75,0)]
-    slab('Diamond_frame',recoil,diamond,.19,.20,P['steel'],.024)
-    slab('Violet_facet',recoil,[(x*.88,z*.88) for x,z in diamond],.306,.054,e,.01)
-    slab('White_inner_diamond',recoil,[(x*.46,z*.46) for x,z in diamond],.34,.025,P['white'],.005)
-    slab('Violet_centre',recoil,[(x*.185,z*.185) for x,z in diamond],.358,.013,e,.004)
+    levels=[(.08,.80),(.28,1.0),(.37,1.0)]
+    vertices=[u((x*scale,y,z*scale)) for y,scale in levels for x,z in diamond]
+    faces=[(3,2,1,0),(8,9,10,11)]
+    faces.extend((level*4+i,level*4+(i+1)%4,(level+1)*4+(i+1)%4,(level+1)*4+i)
+                 for level in range(2) for i in range(4))
+    mesh=bpy.data.meshes.new('Diamond_frame')
+    mesh.from_pydata(vertices,[],faces)
+    mesh.update()
+    frame=bpy.data.objects.new('Diamond_frame',mesh)
+    bpy.context.collection.objects.link(frame)
+    finish(frame,'Diamond_frame',recoil,(0,0,0),P['steel'],.018)
+    slab('Violet_facet',recoil,[(x*.88,z*.88) for x,z in diamond],.386,.054,e,.01)
+    slab('White_inner_diamond',recoil,[(x*.46,z*.46) for x,z in diamond],.42,.025,P['white'],.005)
+    slab('Violet_centre',recoil,[(x*.185,z*.185) for x,z in diamond],.438,.013,e,.004)
     # The core facets form one concentric assembly above the stationary barrel spine.
     mount=empty('CoreMount',recoil,(0,.19,0))
     bpy.context.view_layer.update()
@@ -504,15 +403,16 @@ def mortar(spec):
         cylinder('Elevation_trunnion',yaw,(x,.71,0),.25,.32,P['armor'],12,(1,0,0),.026)
         cylinder('Trunnion_cap',yaw,(x+(.18 if x>0 else -.18),.71,0),.15,.033,P['dark'],12,(1,0,0),.009)
     pitch.rotation_euler.x=-.66
-    cylinder('Launch_tube',recoil,(0,0,.32),.42,1.52,P['dark'],12,(0,0,1),.038)
+    sleeve('Launch_tube',recoil,(0,0,.2375),.42,.37,1.355,P['dark'],segments=12)
     for z in [-.36,.11,.66]:
-        cylinder('Tube_reinforcement',recoil,(0,0,z),.47,.13,P['steel'],12,(0,0,1),.024)
+        sleeve('Tube_reinforcement',recoil,(0,0,z),.47,.42,.13,P['steel'],segments=12)
     sleeve('Armored_muzzle',recoil,(0,0,1.06),.52,.37,.29,P['armor'],segments=12)
-    cylinder('Deep_bore',recoil,(0,0,1.09),.37,.018,P['black'],12,(0,0,1),.005)
-    cylinder('Charged_bore',recoil,(0,0,1.106),.245,.012,e,12,(0,0,1),.005)
-    ring('Muzzle_energy_lip',recoil,(0,0,1.20),.39,.027,e,(0,0,1))
+    cylinder('Deep_bore',recoil,(0,0,.61),.37,.018,P['black'],12,(0,0,1),.005)
+    cylinder('Charge_recess',recoil,(0,0,.627),.205,.025,P['steel'],12,(0,0,1),.007)
+    cylinder('Charged_bore',recoil,(0,0,.646),.15,.014,e,12,(0,0,1),.005)
+    ring('Muzzle_energy_lip',recoil,(0,0,1.20),.39,.016,e,(0,0,1))
     for x in [-.31,.31]:
-        box('Tube_armored_fin',recoil,(x,-.30,.23),(.14,.14,.94),P['steel'],.02)
+        box('Tube_armored_fin',recoil,(x,-.30,.23),(.14,.14,.72),P['steel'],.02)
     box('Breech_cap',recoil,(0,0,-.52),(.60,.59,.15),P['steel'],.052)
     for x in [-.73,.73]:
         cylinder('Siege_power_cell',yaw,(x,.27,-.42),.16,.55,P['dark'],12,(0,0,1),.026)
@@ -543,15 +443,18 @@ def articulated_leg(root, name, hip, knee, foot, width=.11, core=None):
     group=empty(name,root,hip)
     knee_local=Vector(knee)-Vector(hip)
     foot_local=Vector(foot)-Vector(knee)
-    cylinder('Hip_bearing',group,(0,0,0),width*1.36,width*1.9,P['steel'],10,(1,0,0),.018)
+    hinge_axis=knee_local.cross(foot_local).normalized()
+    if hinge_axis.length_squared<.01:
+        hinge_axis=Vector((1,0,0))
+    cylinder('Hip_bearing',group,(0,0,0),width*1.36,width*1.9,P['steel'],10,hinge_axis,.018)
     beam('Upper_link',group,(0,0,0),knee_local,width,P['armor'])
     knee_node=empty('Knee',group,knee_local)
-    cylinder('Knee_bearing',knee_node,(0,0,0),width*1.22,width*1.6,P['dark'],10,(1,0,0),.017)
+    cylinder('Knee_bearing',knee_node,(0,0,0),width*1.22,width*1.6,P['dark'],10,hinge_axis,.017)
     beam('Lower_link',knee_node,(0,0,0),foot_local,width*.66,P['steel'])
     foot_node=empty('Foot',knee_node,foot_local)
     box('Contact_pad',foot_node,(0,.04,0),(width*1.9,.11,width*3.0),P['rubber'],.025)
     if core:
-        cylinder('Joint_light',knee_node,(width*.9,0,0),width*.55,.023,core,8,(1,0,0),.005)
+        cylinder('Joint_light',knee_node,hinge_axis*(width*.9),width*.55,.023,core,8,hinge_axis,.005)
     return group
 
 def enemy(spec):
@@ -615,14 +518,22 @@ def enemy(spec):
                 beam('Shield_conduit',body,(x,h+.415,z),(x*.38,h+.58,z*.38),.047,P['steel'])
                 beam('Shield_feed',body,(x,h+.45,z),(x*.38,h+.615,z*.38),.017,e)
         if id=='t5_regenerator':
+            repair=energy('RegeneratorRepair','#42D392')
             for i in range(5):
                 a=i*PI*2/5
                 node=empty('RepairPod_%02d'%i,body,(0,0,0),rot=(0,a,0))
                 box('Petal_armor',node,(0,h+.33,.78),(.33,.20,.67),P['steel'],.047)
-                cylinder('Repair_cell',node,(0,h+.49,.72),.12,.46,energy('RegeneratorRepair','#42D392'),8,(0,0,1),.016)
+                cylinder('Repair_cell_cage',node,(0,h+.49,.72),.135,.48,P['dark'],8,(0,0,1),.015)
+                box('Repair_window',node,(0,h+.623,.72),(.05,.014,.29),repair,.004)
+                for side in [-1,1]:
+                    box('Cell_side_window',node,(side*.132,h+.49,.72),(.014,.039,.27),repair,.004)
+                for z in [.545,.895]:
+                    cylinder('Cell_clamp',node,(0,h+.49,z),.153,.055,P['steel'],8,(0,0,1),.008)
+                cylinder('Cell_end_lens',node,(0,h+.49,.966),.073,.016,repair,8,(0,0,1),.004)
                 cylinder('Cell_socket',node,(0,h+.49,.43),.145,.095,P['armor'],8,(0,0,1),.014)
             cylinder('Repair_spine',body,(0,h+.61,0),.20,.65,P['dark'],6,bevel=.022,radius2=.13)
-            cylinder('Repair_beacon',body,(0,h+.99,0),.14,.14,energy('RegeneratorRepair','#42D392'),6,bevel=.022)
+            sleeve('Repair_beacon_cage',body,(0,h+.99,0),.16,.104,.14,P['steel'],axis=(0,1,0),segments=6)
+            cylinder('Repair_beacon',body,(0,h+1.052,0),.101,.016,repair,6,bevel=.004)
     empty('HitPoint',body,(0,h+.12,0))
     role_z={'t1_crawler':-.55,'t2_runner':-.57,'t3_brute':-.55,'t4_aegis':-.70,'t5_regenerator':-.85}[id]
     empty('RoleSocket',body,(0,h+.46,role_z))
@@ -642,7 +553,7 @@ def platform(id='foundry_platform'):
         box('Rim_rail',root,(0,.045,z),(3.79,.08,.07),P['edge'],.014)
     for x in [-1.5,-.5,.5,1.5]:
         for z in [-1.5,-.5,.5,1.5]:
-            box('Inlaid_tile',root,(x,.052,z),(.975,.018,.975),P['steel'],.008)
+            box('Inlaid_tile',root,(x,.052,z),(.975,.018,.975),P['deck'],.008)
             for zz in [-.27,-.09,.09,.27]:
                 box('Deck_tread',root,(x,.066,z+zz),(.68,.016,.025),P['deck'],.004)
     for x in [-1.73,1.73]:
@@ -710,7 +621,7 @@ def furnace(id='foundry_furnace'):
         box('Service_handle',root,(x,2.4,-1.72),(.045,.39,.09),P['edge'],.01)
     for x in [-2,-1.3,-.6,.1,.8,1.5,2.2]:
         box('Threshold_hazard',root,(x,.378,1.93),(.28,.025,.30),P['hazard'],.006,rot=(0,.52,0))
-    empty('Heat',root,(0,3.06,2.05))
+    empty('Heat_Furnace',root,(0,3.06,2.05))
     return root
 
 def pipe_rack(id='foundry_pipe_rack'):
@@ -949,94 +860,13 @@ def role_module(id):
     return root
 
 def dressing():
-    root=empty('cinderworks_dressing')
-    templates={}
-    def part(builder,name):
-        if builder not in templates:
-            obj=builder(name)
-            templates[builder]=obj
-            return obj
-        template=templates[builder]
-        copies={}
-        for original in objects_under(template):
-            obj=original.copy()
-            bpy.context.collection.objects.link(obj)
-            copies[original]=obj
-        for original,obj in copies.items():
-            obj.parent=copies.get(original.parent)
-        obj=copies[template]
-        obj.name=name
-        return obj
-    # Local centres use the same logical origin and .05 scale as the simulation.
-    for index,(x,z,sx,sz) in enumerate([(820,424,2.0,2.1),(411,366,1.03,2.0),(97,390,1.05,1.17),(555,671,2.0,.90)]):
-        obj=part(exchanger,'HeatExchanger_%02d'%index)
-        obj.parent=root
-        obj.location=u(((x-480)*.05,0,(z-360)*.05))
-        obj.scale=(sx,sz,1)
-    for index,(x,z,yaw_angle) in enumerate([(-21,-23,0),(-12,-23,0),(18,-23,0),(29,4,-PI/2)]):
-        obj=part(furnace,'PerimeterFurnace_%02d'%index)
-        obj.parent=root
-        obj.location=u((x,-.1,z))
-        obj.rotation_euler.z=yaw_angle
-    for index,(x,z) in enumerate([(-28,-22),(-3,-24),(25,-23),(31,20)]):
-        obj=part(stack,'PerimeterStack_%02d'%index)
-        obj.parent=root
-        obj.location=u((x,-.1,z))
-    for index,(x,z,angle) in enumerate([(-12,22,0),(0,22,0),(12,22,0),(-29,-8,PI/2),(-29,5,PI/2),(29,-7,PI/2)]):
-        obj=part(pipe_rack,'PerimeterPipeRack_%02d'%index)
-        obj.parent=root
-        obj.location=u((x,0,z))
-        obj.rotation_euler.z=angle
-    for index,x in enumerate([-20,-14,-8,-2,4,10,16,22]):
-        obj=part(perimeter_wall,'SouthWall_%02d'%index)
-        obj.parent=root
-        obj.location=u((x,0,25))
-    for index,(x,z) in enumerate([(-25,13),(25,-17),(8,20)]):
-        obj=part(cabinet,'Cabinet_%02d'%index)
-        obj.parent=root
-        obj.location=u((x,0,z))
-    for name,x,z in [('EnemyArrival',-25.6,-12.8),('GoalGate',24.7,14.1)]:
-        obj=part(gantry,name)
-        obj.parent=root
-        obj.location=u((x,0,z))
-        obj.rotation_euler.z=PI/2
-        obj.scale=(.6,.8,.75)
-    obj=defended_core('DefendedCore')
-    obj.parent=root
-    obj.location=u((28,0,14.1))
-    # A connected service spine gives the furnace bank a purpose-built enclosure.
-    for index,x in enumerate([-24,-16,-8,0,8,16,24]):
-        obj=part(service_bay,'BackwallServiceBay_%02d'%index)
-        obj.parent=root
-        obj.location=u((x,-.1,-28))
-    for index,x in enumerate([-24,-16,-8,0,8,16,24]):
-        obj=part(catwalk,'ServiceCatwalk_%02d'%index)
-        obj.parent=root
-        obj.location=u((x,0,-20))
-    for y,z in [(4.7,-20.9),(5.25,-21.4),(6.05,-22.3)]:
-        beam('Foundry_feed_bus',root,(-29,y,z),(29,y,z),.13,P['copper'],12)
-        for x in [-26,-18,-10,-2,6,14,22,28]:
-            ring('Bus_coupling',root,(x,y,z),.14,.031,P['steel'],(1,0,0),12)
-    for x in [-21,-12,18]:
-        beam('Vertical_furnace_feed',root,(x,1.2,-20.9),(x,4.7,-20.9),.13,P['copper'],12)
-    # Surface service runs occupy gaps between authored path/build polygons.
-    service_runs=[((335,310),(335,452)),((680,150),(680,419)),((455,300),(455,675)),
-                  ((153,285),(340,285)),((416,148),(588,148)),((711,341),(913,341))]
-    for index,(start,end) in enumerate(service_runs):
-        a=Vector(((start[0]-480)*.05,.049,(start[1]-360)*.05))
-        b=Vector(((end[0]-480)*.05,.049,(end[1]-360)*.05))
-        direction=(b-a).normalized()
-        side=Vector((-direction.z,0,direction.x))
-        for offset in [-.075,.075]:
-            beam('Surface_conduit_%02d'%index,root,a+side*offset,b+side*offset,.025,P['copper'])
-        steps=max(1,int((b-a).length/.9))
-        for j in range(steps+1):
-            c=a.lerp(b,j/steps)
-            box('Conduit_clamp',root,c,(.28,.04,.08) if abs(direction.z)>.5 else (.08,.04,.28),P['steel'],.009)
-        for point in [a,b]:
-            box('Junction_box',root,(point.x,.065,point.z),(.30,.13,.31),P['dark'],.023)
-            box('Junction_status',root,(point.x,.139,point.z),(.10,.02,.04),P['heat'],.005)
-    return root
+    import importlib.util
+    path = Path(__file__).with_name('environment_geometry.py')
+    spec = importlib.util.spec_from_file_location('bastion_environment', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.build(globals())
+
 
 def objects_under(root):
     return [root]+list(root.children_recursive)
@@ -1160,6 +990,7 @@ def export_asset(root, category, spec=None, render=False):
     target.mkdir(parents=True,exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(source/(id+'.blend')),check_existing=False)
     export_root,restore=batched_export_copy(root)
+    compensate_fbx_handedness(export_root)
     convert_rig_basis(export_root)
     bpy.ops.object.select_all(action='DESELECT')
     for obj in objects_under(export_root):
@@ -1177,13 +1008,34 @@ def export_asset(root, category, spec=None, render=False):
         obj.name=name
     metadata['fbx']='Models/'+category+'/'+id+'.fbx'
     metadata['blend']='models/'+category+'/'+id+'.blend'
-    (UNITY/'Metadata'/(id+'.json')).write_text(json.dumps(metadata,indent=2),encoding='utf-8')
+    write_json(UNITY/'Metadata'/(id+'.json'), metadata)
     CATALOG.append(metadata)
     if render:
         studio(root,ART/'review'/(id+'-front.png'))
         studio(root,ART/'review'/(id+'-rear.png'),PI)
     print('ASSET_READY '+id+' '+str(bounds),flush=True)
     return metadata
+
+def compensate_fbx_handedness(root):
+    """Preserve authored coordinates across Unity's FBX handedness conversion."""
+    objects=objects_under(root)
+    original={obj:obj.matrix_world.copy() for obj in objects}
+    reflection=Matrix.Diagonal((-1,1,1,1))
+    for obj in objects:
+        if obj.type=='MESH':
+            obj.data.transform(reflection)
+            obj.data.flip_normals()
+            obj.data.update()
+    def depth(obj):
+        result=0
+        while obj.parent:
+            result+=1
+            obj=obj.parent
+        return result
+    for obj in sorted(objects,key=depth):
+        obj.matrix_world=reflection@original[obj]@reflection
+    bpy.context.view_layer.update()
+
 
 def convert_rig_basis(root):
     """Give exported nodes Unity-native local axes without moving any surfaces."""
@@ -1253,21 +1105,15 @@ def write_catalog():
             entries.append(data)
     catalog={'schemaVersion':1,'logicalPixelsPerUnit':20,'unityForward':'+Z','unityUp':'+Y','assets':entries}
     for path in [ART/'catalog.json',UNITY/'Metadata/catalog.json']:
-        path.write_text(json.dumps(catalog,indent=2),encoding='utf-8')
+        write_json(path, catalog)
     old=ART/'materials.json'
     material_map={m['name']:m for m in json.loads(old.read_text()).get('materials',[])} if old.exists() else {}
     for name,m in MATERIALS.items():
         if name=='Review_Backdrop':
             continue
-        material_map[name]={'name':name,'color':m['baseColorHex'],'metallic':m['metallic'],
-                           'roughness':m['roughness'],'emission':m['emissionStrength']}
-    for spec in material_map.values():
-        if spec['emission'] == 0 and spec['metallic'] > .3:
-            spec['roughness'] = .5875
-            spec['roughnessTexture'] = 'Alloy_Roughness.png'
-            spec['metallicSmoothnessTexture'] = f"Alloy_Metallic{round(spec['metallic']*100):03d}_Smoothness.png"
+        material_map[name] = describe_material(m)
     for path in [ART/'materials.json',UNITY/'Metadata/materials.json']:
-        path.write_text(json.dumps({'materials':list(material_map.values())},indent=2),encoding='utf-8')
+        write_json(path, {'materials':list(material_map.values())})
 
 def main():
     global P
@@ -1283,11 +1129,11 @@ def main():
     scene.unit_settings.system='METRIC'
     scene.unit_settings.scale_length=1
     texture_maps()
+    P=palette()
     if args.textures_only:
         write_catalog()
         print('TEXTURES_READY',flush=True)
         return
-    P=palette()
     towers=json.loads((CONTENT/'Towers.json').read_text(encoding='utf-8-sig'))
     enemies=json.loads((CONTENT/'Enemies.json').read_text(encoding='utf-8-sig'))
     tactics=json.loads((CONTENT/'Tactics.json').read_text(encoding='utf-8-sig'))

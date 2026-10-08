@@ -148,7 +148,7 @@ namespace Bastion3D
                 }
                 Check(camera.transform.position.y >= .349f, "Free flight cannot descend beneath the ground clearance");
 
-                var overview = new Vector3(0, .5f, -3) - Quaternion.Euler(52, 210, 0) * Vector3.forward * 65;
+                var overview = BattlefieldCamera.OverviewFocus - Quaternion.Euler(52, 210, 0) * Vector3.forward * 65;
                 var resetWall = Block("Verification / reset occluder", Vector3.Lerp(camera.transform.position, overview, .15f), Vector3.one * 4);
                 camera.Overview();
                 yield return null;
@@ -156,6 +156,22 @@ namespace Bastion3D
                     "Overview resets from ground-level free flight despite an intervening obstacle");
                 Check(!Physics.CheckSphere(camera.transform.position, .18f, (1 << 8) | (1 << 9), QueryTriggerInteraction.Ignore),
                     "Overview reset lands outside solid geometry");
+                bool routeVisible = true;
+                foreach (var point in app.Host.Session.Map.Definition.Path)
+                {
+                    var screen = lens.WorldToViewportPoint(Coordinates.World(point.ToVector2()));
+                    routeVisible &= screen.z > 0 && screen.x > .06f && screen.x < .94f && screen.y > .18f && screen.y < .86f;
+                }
+                Check(routeVisible, "Overview keeps every route corner clear of the top and bottom HUD bars");
+                bool decksVisible = true;
+                foreach (var region in app.Host.Session.Map.BuildableRegions)
+                foreach (var point in new[] { new SimVector(region.Left, region.Top), new SimVector(region.Right, region.Top),
+                    new SimVector(region.Left, region.Bottom), new SimVector(region.Right, region.Bottom) })
+                {
+                    var screen = lens.WorldToViewportPoint(Coordinates.World(point));
+                    decksVisible &= screen.z > 0 && screen.x > .06f && screen.x < .94f && screen.y > .18f && screen.y < .86f;
+                }
+                Check(decksVisible, "Overview keeps all build decks inside the unobstructed battlefield");
                 UnityEngine.Object.Destroy(resetWall);
                 File.WriteAllText(Path.Combine(directory, "camera-interaction-verification.txt"), string.Join("\n", checks));
             }

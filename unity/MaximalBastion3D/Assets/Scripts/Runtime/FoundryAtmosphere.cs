@@ -41,11 +41,12 @@ namespace Bastion3D
         private readonly MeshRenderer[] _sparkRenderers = new MeshRenderer[SparkLimit];
         private readonly List<Vent> _vents = new List<Vent>();
         private readonly List<Transform> _heat = new List<Transform>();
+        private readonly List<Transform> _furnaceHeat = new List<Transform>();
         private readonly List<Rotor> _rotors = new List<Rotor>();
         private readonly List<CoreSurface> _coreSurfaces = new List<CoreSurface>();
         private MaterialPropertyBlock _cloudBlock;
         private MaterialPropertyBlock _sparkBlock;
-        private readonly Light[] _heatLights = new Light[2];
+        private readonly Light[] _heatLights = new Light[3];
         private Light _coreLight;
         private Transform _coreSocket;
         private SimulationHost _host;
@@ -82,7 +83,7 @@ namespace Bastion3D
             for (int i = 0; i < CloudLimit; i++) _cloudRenderers[i] = CreateVolume("Steam " + i, volumes);
             for (int i = 0; i < SparkLimit; i++) _sparkRenderers[i] = CreateVolume("Heat spark " + i, volumes);
             BuildSky();
-            for (int i = 0; i < _heatLights.Length; i++) _heatLights[i] = LocalLight("Furnace flicker " + i, 4.5f);
+            for (int i = 0; i < _heatLights.Length; i++) _heatLights[i] = LocalLight("Furnace flicker " + i, 9f);
             _coreLight = LocalLight("Reactor integrity light", 5);
             _machineClip = MachineLoop();
             _machinery = new GameObject("Foundry machinery").AddComponent<AudioSource>();
@@ -119,7 +120,7 @@ namespace Bastion3D
             const int resolution = 128;
             _reflectionSky = new Cubemap(resolution, TextureFormat.RGBAHalf, true)
             {
-                name = "Foundry overcast radiance", wrapMode = TextureWrapMode.Clamp,
+                name = "Foundry industrial radiance", wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Trilinear
             };
             for (int face = 0; face < 6; face++)
@@ -145,18 +146,18 @@ namespace Bastion3D
             _reflectionSky.Apply(true, false);
             _skyMaterial = new Material(shader) { name = "Foundry atmospheric sky" };
             _skyMaterial.SetTexture("_Tex", _reflectionSky);
-            _skyMaterial.SetFloat("_Exposure", .65f);
+            _skyMaterial.SetFloat("_Exposure", 1f);
             RenderSettings.skybox = _skyMaterial;
             RenderSettings.defaultReflectionMode = DefaultReflectionMode.Custom;
             RenderSettings.customReflectionTexture = _reflectionSky;
             RenderSettings.reflectionIntensity = .85f;
             RenderSettings.ambientMode = AmbientMode.Custom;
             var ambient = new SphericalHarmonicsL2();
-            ambient.AddAmbientLight(new Color(.31f, .36f, .43f));
-            ambient.AddDirectionalLight(new Vector3(-.3f, 1, -.2f).normalized, new Color(.48f, .58f, .72f), .30f);
-            ambient.AddDirectionalLight(new Vector3(.4f, .2f, .6f).normalized, new Color(.44f, .29f, .18f), .18f);
+            ambient.AddAmbientLight(new Color(.20f, .25f, .32f));
+            ambient.AddDirectionalLight(new Vector3(-.3f, 1, -.2f).normalized, new Color(.48f, .58f, .72f), .24f);
+            ambient.AddDirectionalLight(new Vector3(.4f, .2f, .6f).normalized, new Color(.44f, .29f, .18f), .10f);
             RenderSettings.ambientProbe = ambient;
-            RenderSettings.fogColor = new Color(.13f, .17f, .205f);
+            RenderSettings.fogColor = new Color(.023f, .043f, .074f).gamma;
             if (_camera)
             {
                 _camera.clearFlags = CameraClearFlags.Skybox;
@@ -169,7 +170,7 @@ namespace Bastion3D
         private static Color SkyRadiance(Vector3 direction)
         {
             float elevation = direction.y;
-            var horizon = new Color(.24f, .30f, .35f);
+            var horizon = new Color(.21f, .28f, .36f);
             var color = elevation >= 0
                 ? Color.Lerp(horizon, new Color(.13f, .205f, .31f), Mathf.Pow(elevation, .55f))
                 : Color.Lerp(horizon, new Color(.105f, .13f, .16f), Mathf.Pow(-elevation, .42f));
@@ -220,12 +221,16 @@ namespace Bastion3D
         private void Rebind()
         {
             _scanAt = Time.unscaledTime + 5;
-            _vents.Clear(); _heat.Clear(); _rotors.Clear(); _coreSurfaces.Clear(); _coreSocket = null;
+            _vents.Clear(); _heat.Clear(); _furnaceHeat.Clear(); _rotors.Clear(); _coreSurfaces.Clear(); _coreSocket = null;
             foreach (var t in FindObjectsByType<Transform>(FindObjectsSortMode.None))
             {
-                if (Socket(t, "Exhaust")) _vents.Add(new Vent { socket = t, clock = Random01() * 1.7f, phase = Random01() * 20 });
+                if (Socket(t, "Exhaust")) _vents.Add(new Vent { socket = t, clock = Random01() * .6f, phase = Random01() * 20 });
                 else if (Socket(t, "DamageSmoke")) _vents.Add(new Vent { socket = t, clock = .1f, phase = Random01() * 20, damaged = true });
-                else if (Socket(t, "Heat")) _heat.Add(t);
+                else if (Socket(t, "Heat"))
+                {
+                    _heat.Add(t);
+                    if (Socket(t, "Heat_Furnace")) _furnaceHeat.Add(t);
+                }
                 else if (Socket(t, "CoreLight")) _coreSocket = t;
                 else if (Socket(t, "FanRotor")) _rotors.Add(new Rotor { transform = t, speed = t.name.Contains("_R") ? -90 : 90 });
                 else if (Socket(t, "ChargeRotor")) _rotors.Add(new Rotor { transform = t, speed = 25 });
@@ -266,7 +271,7 @@ namespace Bastion3D
                 if (!vent.socket || (vent.damaged && _health > .55f)) continue;
                 vent.clock -= dt;
                 if (vent.clock > 0) continue;
-                float rate = vent.damaged ? Mathf.Lerp(1.8f, .55f, 1 - _health) : 1.15f + .6f * Random01();
+                float rate = vent.damaged ? Mathf.Lerp(.9f, .55f, 1 - _health) : .57f + .05f * Random01();
                 vent.clock = rate;
                 SpawnCloud(vent.socket.position, vent.phase, vent.damaged);
             }
@@ -298,7 +303,7 @@ namespace Bastion3D
             {
                 if (!surface.renderer) continue;
                 surface.block.SetColor("_BaseColor", color);
-                surface.block.SetColor("_EmissionColor", color * (1.2f * pulse));
+                surface.block.SetVector("_EmissionColor", color.linear * (1.2f * pulse));
                 surface.renderer.SetPropertyBlock(surface.block, surface.slot);
             }
             if (_coreLight)
@@ -312,11 +317,11 @@ namespace Bastion3D
         {
             _clouds[_cloudCursor++ % CloudLimit] = new Particle
             {
-                active = true, position = position + new Vector3(Random01()-.5f,.12f,Random01()-.5f)*.28f,
-                velocity = new Vector3(.08f + Random01()*.10f, damaged ? .36f : .55f, -.06f + Random01()*.10f),
-                lifetime = 4.6f + Random01()*1.9f, radius = damaged ? .36f : .46f,
-                phase = phase + Random01()*5,
-                color = damaged ? new Color(.28f,.33f,.37f,.32f) : new Color(.62f,.69f,.74f,.28f)
+                active = true, position = position + new Vector3((Random01()-.5f)*.05f,.12f,(Random01()-.5f)*.05f),
+                velocity = new Vector3(.10f + Random01()*.025f, damaged ? .39f : .49f+Random01()*.05f, .025f),
+                lifetime = 4.5f + Random01()*.6f, radius = damaged ? .30f : .34f,
+                phase = phase + Random01()*.4f,
+                color = damaged ? new Color(.13f,.17f,.21f,.19f) : new Color(.28f,.36f,.43f,.15f)
             };
         }
 
@@ -341,14 +346,14 @@ namespace Bastion3D
                 if (!p.active) { renderer.enabled = false; continue; }
                 p.age += dt;
                 if (p.age >= p.lifetime) { p.active = false; renderer.enabled = false; continue; }
-                p.position += (p.velocity + new Vector3(Mathf.Sin(_time*.7f+p.phase)*.07f,0,Mathf.Cos(_time*.6f+p.phase)*.055f))*dt;
+                p.position += (p.velocity + new Vector3(Mathf.Sin(p.age*.55f+p.phase)*.035f,0,Mathf.Cos(p.age*.45f+p.phase)*.025f))*dt;
                 float age = p.age/p.lifetime;
-                float radius = p.radius + p.age*.15f;
-                float opacity = Mathf.SmoothStep(0,1,age*7) * Mathf.Pow(1-age,1.35f);
-                renderer.transform.SetPositionAndRotation(p.position, Quaternion.Euler(0,p.phase*31+_time*6,0));
-                renderer.transform.localScale = new Vector3(radius*2.1f,radius*1.35f,radius*1.7f);
+                float radius = p.radius + p.age*.11f;
+                float opacity = Mathf.SmoothStep(0,1,age*24) * Mathf.Pow(1-age,1.8f);
+                renderer.transform.SetPositionAndRotation(p.position, Quaternion.Euler(0,p.phase*31,0));
+                renderer.transform.localScale = new Vector3(radius*1.8f,radius*2.9f,radius*1.6f);
                 var color = p.color; color.a *= opacity;
-                _cloudBlock.SetVector("_BaseColor", color); _cloudBlock.SetFloat("_Density", 2.1f);
+                _cloudBlock.SetVector("_BaseColor", color); _cloudBlock.SetFloat("_Density", 1.5f);
                 renderer.SetPropertyBlock(_cloudBlock); renderer.enabled = true;
                 count++;
             }
@@ -381,24 +386,14 @@ namespace Bastion3D
 
         private void UpdateHeatLights()
         {
-            var observer = _camera ? _camera.transform.position : Vector3.zero;
-            Transform first = null, second = null;
-            float firstDistance=float.MaxValue, secondDistance=float.MaxValue;
-            foreach(var socket in _heat)
+            for(int i=0;i<_heatLights.Length;i++)
             {
-                if(!socket) continue;
-                float distance=(socket.position-observer).sqrMagnitude;
-                if(distance<firstDistance) { second=first;secondDistance=firstDistance;first=socket;firstDistance=distance; }
-                else if(distance<secondDistance) { second=socket;secondDistance=distance; }
-            }
-            for(int i=0;i<2;i++)
-            {
-                var socket=i==0?first:second;
+                var socket=i<_furnaceHeat.Count?_furnaceHeat[i]:null;
                 var light=_heatLights[i]; light.enabled=socket;
                 if(!socket) continue;
-                light.transform.position=socket.position+Vector3.up*.35f;
-                light.color=new Color(1,.35f,.08f);
-                light.intensity=.42f+.06f*Mathf.Sin(_time*7.3f+i*2.1f)+.035f*Mathf.Sin(_time*12.7f+i);
+                light.transform.position=socket.position+socket.forward*.45f;
+                light.color=new Color(1,.48f,.16f);
+                light.intensity=12f+.26f*Mathf.Sin(_time*7.3f+i*2.1f)+.14f*Mathf.Sin(_time*12.7f+i);
             }
         }
 

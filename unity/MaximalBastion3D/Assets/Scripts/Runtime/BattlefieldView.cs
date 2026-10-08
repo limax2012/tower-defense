@@ -69,6 +69,7 @@ namespace Bastion3D
             _map = new GameObject("Cinderworks / presentation").transform;
             _units = new GameObject("Simulation views").transform;
             var map = Host.Session?.Map.Definition ?? Host.Content.Maps["foundry_loop"];
+            Slab("Industrial ground", new Vector3(0, -1.5f, -4), new Vector3(900, 1, 900), Catalog.ground, true);
             Slab("Foundry foundation", new Vector3(0, -.55f, -2), new Vector3(66, 1, 60), Catalog.ground, true);
             FoundrySurfaces.Build(_map, map, Catalog);
             if (Catalog.dressing)
@@ -86,7 +87,11 @@ namespace Bastion3D
             if (Host.Session != null)
             {
                 var session = Host.Session;
-                session.EnemyKilled += e => { Effects.Defeat(EnemyPosition(e), EnemyColor(e), e.Radius * .05f); };
+                session.EnemyKilled += e =>
+                {
+                    EnemyModels.TryGetValue(e.Id, out var model);
+                    Effects.Defeat(EnemyPosition(e), EnemyColor(e), e.Radius * .05f, model?.Root);
+                };
                 session.EnemyEscaped += e => Effects.Pulse(Coordinates.World(e.Position, .3f), new Color(1, .12f, .15f), 2.2f);
                 session.TowerPlaced += t => Effects.Pulse(Coordinates.World(t.Position, .3f), TowerColor(t), 1.2f);
                 session.TowerUpgraded += (t, _) => Effects.Upgrade(Coordinates.World(t.Position, 1), TowerColor(t));
@@ -312,7 +317,8 @@ namespace Bastion3D
 
         public Vector3 EnemyPosition(EnemyInstance e)
         {
-            if (EnemyModels.TryGetValue(e.Id, out var rig) && rig != null) return rig.Root.position + Vector3.up * rig.Entry.aimHeight * rig.Root.localScale.y;
+            if (EnemyModels.TryGetValue(e.Id, out var rig) && rig != null)
+                return rig.HitPoint ? rig.HitPoint.position : rig.Root.position + Vector3.up * rig.Entry.aimHeight * rig.Root.localScale.y;
             return Coordinates.World(e.Position, .9f);
         }
         public Color EnemyColor(EnemyInstance e) => Coordinates.Color(e.Definition.Visual.PrimaryColor);
@@ -332,19 +338,21 @@ namespace Bastion3D
 
     public sealed class ModelRig
     {
-        public readonly Transform Root, Yaw, Pitch, Recoil, Muzzle;
+        public readonly Transform Root, Yaw, Pitch, Recoil, Muzzle, HitPoint;
         public readonly VisualCatalog.Entry Entry;
+        public IReadOnlyList<Transform> FirePorts => _firePorts;
+        private readonly Transform[] _firePorts;
+        private readonly int[] _portUses;
         public float RecoilAmount, LastRecoil, LastHealth, LastShield, HitRemaining;
         private readonly Transform[] _joints;
-        private readonly Quaternion[] _jointRest;
-        private readonly Transform[] _knees;
-        private readonly Quaternion[] _kneeRest;
+        public readonly MechanicalLocomotion Locomotion;
         private readonly Renderer[] _renderers;
         private readonly Material[][] _originalMaterials;
         private static readonly Dictionary<Material, Material[]> StatusMaterials = new Dictionary<Material, Material[]>();
         private readonly Vector3 _recoilRest;
         private readonly Quaternion _pitchRest;
-        private float _stride;
+        private readonly float _recoilTravel, _recoilRecovery;
+        private float _shotAge = 10, _lastRecoilInput;
         private int _tier = -1;
         private bool _apex;
         private float _statusUpdate;
@@ -360,12 +368,29 @@ namespace Bastion3D
             Pitch = children.FirstOrDefault(t => t.name == "Pitch");
             Recoil = children.FirstOrDefault(t => t.name == "Recoil");
             Muzzle = children.FirstOrDefault(t => t.name == "Muzzle") ?? Pitch ?? Yaw ?? root;
+            _firePorts = entry.id == "shard_fan" ? new[] { Muzzle,
+                children.FirstOrDefault(t => t.name == "Muzzle_0"),
+                children.FirstOrDefault(t => t.name == "Muzzle_2") }.Where(t => t).ToArray() : new[] { Muzzle };
+            _portUses = new int[_firePorts.Length];
+            HitPoint = children.FirstOrDefault(t => t.name == "HitPoint");
             _recoilRest = Recoil ? Recoil.localPosition : Vector3.zero;
             _pitchRest = Pitch ? Pitch.localRotation : Quaternion.identity;
-            _joints = children.Where(t => t.name.StartsWith("Leg_") || t.name.StartsWith("Rotor") || t.name.StartsWith("Track") || t.name.StartsWith("Fan") || t.name.StartsWith("Piston")).ToArray();
-            _jointRest = _joints.Select(t => t.localRotation).ToArray();
-            _knees = _joints.Select(t => t.GetComponentsInChildren<Transform>().FirstOrDefault(k => k.name.StartsWith("Knee"))).ToArray();
-            _kneeRest = _knees.Select(t => t ? t.localRotation : Quaternion.identity).ToArray();
+            _joints = children.Where(t => !t.GetComponent<MeshFilter>() && (t.name.StartsWith("Rotor") ||
+                t.name.StartsWith("Fan") || t.name.StartsWith("ChargeRotor"))).ToArray();
+            var body = children.FirstOrDefault(t => t.name == "Body");
+            if (body) Locomotion = new MechanicalLocomotion(root, body, entry.id);
+            switch (entry.id)
+            {
+                case "siege_mortar": _recoilTravel = .25f; _recoilRecovery = .19f; break;
+                case "breaker_cannon": _recoilTravel = .20f; _recoilRecovery = .15f; break;
+                case "watchtower": _recoilTravel = .16f; _recoilRecovery = .14f; break;
+                case "shard_fan": _recoilTravel = .11f; _recoilRecovery = .11f; break;
+                case "needle_turret": _recoilTravel = .075f; _recoilRecovery = .075f; break;
+                case "ember_coil": _recoilTravel = .06f; _recoilRecovery = .12f; break;
+                case "frost_spire": _recoilTravel = .04f; _recoilRecovery = .10f; break;
+                case "signal_beacon": _recoilTravel = 0; _recoilRecovery = .1f; break;
+                default: _recoilTravel = .025f; _recoilRecovery = .08f; break;
+            }
             _renderers = root.GetComponentsInChildren<Renderer>();
             _originalMaterials = _renderers.Select(r => r.sharedMaterials).ToArray();
         }
@@ -377,10 +402,34 @@ namespace Bastion3D
             return b;
         }
 
+        public void BeginVolley()
+        {
+            System.Array.Clear(_portUses, 0, _portUses.Length);
+        }
+
+        public Transform ProjectileMuzzle(Vector3 target)
+        {
+            int selected = 0;
+            float bestAlignment = float.NegativeInfinity;
+            int minimumUses = int.MaxValue;
+            for (int i = 0; i < _firePorts.Length; i++)
+            {
+                Vector3 direction = target - _firePorts[i].position;
+                float alignment = direction.sqrMagnitude > .0001f ? Vector3.Dot(direction.normalized, _firePorts[i].forward) : 1;
+                if (_portUses[i] < minimumUses || (_portUses[i] == minimumUses && alignment > bestAlignment + .0001f))
+                {
+                    selected = i; minimumUses = _portUses[i]; bestAlignment = alignment;
+                }
+            }
+            _portUses[selected]++;
+            return _firePorts[selected];
+        }
+
         public void Aim(Vector3 target, float dt)
         {
             if (!Yaw) return;
             Vector3 delta = target - Yaw.position;
+            if (new Vector2(delta.x, delta.z).sqrMagnitude < .0001f) return;
             var rotation = Quaternion.LookRotation(new Vector3(delta.x, 0, delta.z));
             Yaw.rotation = Quaternion.RotateTowards(Yaw.rotation, rotation, 720 * dt);
             if (Pitch)
@@ -407,26 +456,20 @@ namespace Bastion3D
             if ((disrupted || suppressed) && !_towerStatus)
                 _towerStatus = TowerStatusDisplay.Create(Root, (Bounds().max.y - Root.position.y) / Root.localScale.y + .55f);
             if (_towerStatus) _towerStatus.SetState(disrupted, suppressed);
+            if (RecoilAmount > _lastRecoilInput + .001f) _shotAge = 0;
+            _shotAge += dt;
             RecoilAmount = Mathf.MoveTowards(RecoilAmount, 0, dt * 7);
-            if (Recoil) Recoil.localPosition = _recoilRest + Vector3.back * RecoilAmount * .14f;
+            _lastRecoilInput = RecoilAmount;
+            // A fast mechanical stroke followed by a slower hydraulic recovery.
+            float stroke = (1 - Mathf.Exp(-_shotAge / .014f)) * Mathf.Exp(-_shotAge / _recoilRecovery) * 1.38f;
+            if (Recoil) Recoil.localPosition = _recoilRest + Vector3.back * stroke * _recoilTravel;
             for (int i = 0; i < _joints.Length; i++)
-                if (_joints[i].name.StartsWith("Rotor") || _joints[i].name.StartsWith("Fan")) _joints[i].Rotate(Vector3.up, dt * (overdrive ? 220 : 65), Space.Self);
+                _joints[i].Rotate(Vector3.up, dt * (overdrive ? 220 : 65), Space.Self);
         }
 
         public void AnimateEnemy(float dt, float speed, bool stunned)
         {
-            if (!stunned) _stride += speed * dt * 3.3f;
-            for (int i = 0; i < _joints.Length; i++)
-            {
-                var joint = _joints[i];
-                if (joint.name.StartsWith("Leg_"))
-                {
-                    float swing = Mathf.Sin(_stride + (i % 2) * Mathf.PI) * 22;
-                    joint.localRotation = _jointRest[i] * Quaternion.Euler(swing, 0, Mathf.Cos(_stride + i * Mathf.PI) * 5);
-                    if (_knees[i]) _knees[i].localRotation = _kneeRest[i] * Quaternion.Euler(Mathf.Max(0, -swing) * .7f, 0, 0);
-                }
-                else joint.Rotate(Vector3.up, dt * 80, Space.Self);
-            }
+            Locomotion?.Update(dt, speed, stunned, HitRemaining / .08f);
             HitRemaining = Mathf.Max(0, HitRemaining - dt);
         }
 

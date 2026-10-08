@@ -54,6 +54,7 @@ namespace Bastion3D
         private Transform _root;
         private Mesh _sphere, _tube, _wedge, _debris, _ring;
         private CombatAudio _audio;
+        private EnemyWreckage _wreckage;
         private uint _visualSeed = 197;
         private float Rand() { _visualSeed ^= _visualSeed << 13; _visualSeed ^= _visualSeed >> 17; _visualSeed ^= _visualSeed << 5; return (_visualSeed & 65535) / 65535f; }
 
@@ -77,13 +78,16 @@ namespace Bastion3D
             }
             _audio = gameObject.AddComponent<CombatAudio>();
             _audio.Initialize();
+            _wreckage = gameObject.AddComponent<EnemyWreckage>();
+            _wreckage.Initialize(view.Host, view.Catalog);
         }
 
         public Material NewMaterial(Color color, bool additive)
         {
             if (additive && _materials.TryGetValue(color, out var cached)) return cached;
             var material = new Material(Shader.Find(additive ? "Bastion/Energy" : "Bastion/Ghost"));
-            material.SetColor("_BaseColor", color);
+            if (additive) material.SetVector("_BaseColor", color.linear);
+            else material.SetColor("_BaseColor", color);
             material.enableInstancing = true;
             if (additive) _materials[color] = material;
             return material;
@@ -95,6 +99,12 @@ namespace Bastion3D
             foreach (var b in _beams.Values) if (b.root) Destroy(b.root);
             foreach (var t in _transients) if (t.root) Destroy(t.root);
             _shots.Clear(); _beams.Clear(); _seen.Clear(); _transients.Clear();
+            for (int i = 0; i < _lights.Length; i++)
+            {
+                _lightTimes[i] = 0;
+                if (_lights[i]) _lights[i].enabled = false;
+            }
+            _wreckage.Clear();
         }
 
         public void CaptureStep()
@@ -107,7 +117,11 @@ namespace Bastion3D
                 var color = source != null ? _view.TowerColor(source) : Coordinates.Color(p.Color);
                 Vector3 pos = Coordinates.World(p.Position, 1);
                 Vector3 muzzle = pos;
-                if (_view.TowerModels.TryGetValue(p.Payload.SourceTowerId, out var rig) && rig != null) muzzle = rig.Muzzle.position;
+                if (_view.TowerModels.TryGetValue(p.Payload.SourceTowerId, out var rig) && rig != null)
+                {
+                    Vector3 target = p.Target != null ? _view.EnemyPosition(p.Target) : Coordinates.World(p.AimPoint, 1);
+                    muzzle = rig.ProjectileMuzzle(target).position;
+                }
                 var obj = MeshObject("Projectile", source?.Definition.Id == "breaker_cannon" ? _wedge : _sphere, Radiant(color, 2.5f));
                 obj.transform.position = muzzle;
                 float radius = Mathf.Clamp(p.Radius * .035f, .05f, .14f);
@@ -157,8 +171,10 @@ namespace Bastion3D
         public void Fire(TowerInstance tower, ModelRig rig)
         {
             if (tower.IsSupport) return;
+            rig.BeginVolley();
             Color color = _view.TowerColor(tower);
-            Particle(rig.Muzzle.position, Vector3.zero, Radiant(Color.white, 2), .11f, .07f, .24f);
+            foreach (var port in rig.FirePorts)
+                Particle(port.position, Vector3.zero, Radiant(Color.white, 2), .11f, .07f, .24f);
             LightAt(rig.Muzzle.position, color, 2, .08f);
             _audio.Play(tower.Definition.Id, rig.Muzzle.position);
         }
@@ -167,10 +183,11 @@ namespace Bastion3D
             Particle(position, Vector3.zero, Radiant(color, 2), .09f, .10f, .28f);
             for (int i = 0; i < 3; i++) Particle(position, new Vector3(Rand() - .5f, Rand(), Rand() - .5f) * 3, new Color(1, .7f, .3f), .035f, .22f, 0, true);
         }
-        public void Defeat(Vector3 position, Color color, float radius)
+        public void Defeat(Vector3 position, Color color, float radius, Transform model)
         {
-            Pulse(position, color, radius * 1.7f);
-            for (int i = 0; i < 7; i++) Particle(position, new Vector3(Rand() - .5f, .35f + Rand(), Rand() - .5f) * 3.5f, color, .05f + Rand() * .10f, .65f, 0, true);
+            _wreckage.BreakApart(model);
+            Pulse(position, color, radius * 1.2f);
+            for (int i = 0; i < 4; i++) Particle(position, new Vector3(Rand() - .5f, .35f + Rand(), Rand() - .5f) * 3, color, .025f + Rand() * .045f, .35f, 0, true);
             _audio.Play("impact", position);
         }
         public void Upgrade(Vector3 position, Color color)
@@ -185,7 +202,7 @@ namespace Bastion3D
         }
         public void Pulse(Vector3 position, Color color, float radius)
         {
-            var obj = MeshObject("Impact shockwave", _ring, new Color(color.r * 1.5f, color.g * 1.5f, color.b * 1.5f, .4f));
+            var obj = MeshObject("Impact shockwave", _ring, Radiant(new Color(color.r, color.g, color.b, .4f), 1.5f));
             obj.transform.position = position; obj.transform.localScale = Vector3.one * .12f;
             AddTransient(obj, Vector3.zero, color, .32f, radius * 2, false);
             Particle(position, Vector3.zero, Radiant(color, 1.8f), .18f, .16f, Mathf.Min(.6f, radius * .3f));
@@ -248,7 +265,9 @@ namespace Bastion3D
             foreach (var entry in _beams)
             {
                 var e = entry.Key; var beam = entry.Value;
-                if (e.Remaining <= 0 || session == null || !session.Effects.Effects.Contains(e)) { _deadBeams.Add(e); continue; }
+                if (e.Remaining <= 0 || session == null || !session.Effects.Effects.Contains(e) ||
+                    (beam.emitter != null && (!beam.emitter.Root || !beam.emitter.Muzzle)))
+                { _deadBeams.Add(e); continue; }
                 Vector3 start = beam.emitter != null ? beam.emitter.Muzzle.position : beam.originEnemy != null ?
                     _view.EnemyPosition(beam.originEnemy) : Coordinates.World(e.Start, 1.1f);
                 Vector3 end = beam.target != null ? _view.EnemyPosition(beam.target) : Coordinates.World(e.End, .8f);
@@ -300,7 +319,13 @@ namespace Bastion3D
             return found;
         }
 
-        private static Color Radiant(Color color, float intensity) => new Color(color.r * intensity, color.g * intensity, color.b * intensity, color.a);
+        private static Color Radiant(Color color, float intensity)
+        {
+            // Keep the public color convention in sRGB while scaling energy in linear light.
+            Color radiance = color.linear * intensity;
+            radiance.a = color.a;
+            return radiance.gamma;
+        }
 
         private static Mesh RingMesh()
         {

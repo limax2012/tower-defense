@@ -34,6 +34,14 @@ namespace Bastion3D
         {
             var capture = camera.GetComponent<ReviewCapture>();
             if (capture != null) return capture;
+            var arguments = Environment.GetCommandLineArgs();
+            int scaleIndex = Array.IndexOf(arguments, "--capture-scale");
+            int scale = 1;
+            if (scaleIndex >= 0 && (scaleIndex + 1 >= arguments.Length ||
+                !int.TryParse(arguments[scaleIndex + 1], out scale) || scale < 1 || scale > 2))
+                throw new ArgumentException("--capture-scale must be 1 or 2.");
+            width = checked(width * scale);
+            height = checked(height * scale);
             capture = camera.gameObject.AddComponent<ReviewCapture>();
             capture._camera = camera;
             capture._interface = gameInterface;
@@ -159,6 +167,7 @@ namespace Bastion3D
                 _camera.enabled = _previousCameraEnabled;
             }
             if (_interface != null) _interface.SetCaptureTarget(null);
+            if (RenderTexture.active == _target || RenderTexture.active == _cameraTarget) RenderTexture.active = null;
             if (_target != null) { _target.Release(); Destroy(_target); }
             if (_cameraTarget != null) { _cameraTarget.Release(); Destroy(_cameraTarget); }
             if (_readback != null) Destroy(_readback);

@@ -47,7 +47,7 @@ namespace Bastion3D
         public void Initialize()
         {
             var args = Environment.GetCommandLineArgs();
-            VerificationMode = Array.Exists(args, a => a == "--verify" || a == "--tour" || a == "--autoplay" || a == "--ui-review" || a == "--ui-verify" || a == "--record-backend" || a == "--combat-review" || a == "--campaign-replay");
+            VerificationMode = Array.Exists(args, a => a == "--verify" || a == "--tour" || a == "--autoplay" || a == "--ui-review" || a == "--ui-verify" || a == "--record-backend" || a == "--combat-review" || a == "--campaign-replay" || a == "--motion-review" || a == "--wreckage-review" || a == "--render-diagnostics" || a == "--audio-diagnostics");
             Content = new ContentLoader(Path.Combine(Application.streamingAssetsPath, "ContentData")).Load();
             var persistenceRoot = VerificationMode
                 ? Path.Combine(Path.GetTempPath(), "MaximalBastion3DVerification", Guid.NewGuid().ToString("N"))

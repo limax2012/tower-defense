@@ -20,7 +20,8 @@ for item in catalog['assets']:
     points=[o.matrix_world@v.co for o in meshes for v in o.data.vertices]
     low=[min(p[k] for p in points) for k in range(3)]
     high=[max(p[k] for p in points) for k in range(3)]
-    bounds={'min':[low[0],low[2],-high[1]],'max':[high[0],high[2],-low[1]]}
+    # Unity changes FBX handedness by reflecting X when importing this axis basis.
+    bounds={'min':[-high[0],low[2],-high[1]],'max':[-low[0],high[2],-low[1]]}
     error=max(abs(bounds[key][i]-item['bounds'][key][i]) for key in ['min','max'] for i in range(3))
     open_edges=0
     degenerate=0
@@ -40,17 +41,17 @@ for item in catalog['assets']:
     socket_error=0
     axis_error=0
     for joint in item['hierarchy']:
-        if joint['name'].startswith(('Muzzle','HitPoint','RoleSocket','RankSocket','OutputSocket','EffectOrigin')):
+        if joint['name'].startswith(('Muzzle','HitPoint','RoleSocket','RankSocket','OutputSocket','EffectOrigin','CoreLight','Heat_','Exhaust','Leg_')):
             obj=next((o for o in objects if o.name==joint['name']),None)
             if not obj:
                 missing.append(joint['name'])
                 continue
             pos=obj.matrix_world.translation
-            measured=[pos.x,pos.z,-pos.y]
+            measured=[-pos.x,pos.z,-pos.y]
             socket_error=max(socket_error,max(abs(measured[i]-joint['worldPosition'][i]) for i in range(3)))
             if 'worldForward' in joint:
                 forward=obj.matrix_world.to_3x3()@Vector((0,0,1))
-                measured_forward=[forward.x,forward.z,-forward.y]
+                measured_forward=[-forward.x,forward.z,-forward.y]
                 axis_error=max(axis_error,max(abs(measured_forward[i]-joint['worldForward'][i]) for i in range(3)))
     record={'id':item['id'],'exportedMeshes':len(meshes),'triangles':sum(sum(len(p.vertices)-2 for p in o.data.polygons) for o in meshes),
             'boundsError':error,'socketError':socket_error,'axisError':axis_error,'nonManifoldEdges':open_edges,'degenerateFaces':degenerate,'missingUv':no_uv,'missingNodes':missing}

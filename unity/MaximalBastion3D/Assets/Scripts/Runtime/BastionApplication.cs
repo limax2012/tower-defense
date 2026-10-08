@@ -13,12 +13,14 @@ namespace Bastion3D
         public BattlefieldCamera CameraRig { get; private set; }
         public GameInterface Interface { get; private set; }
         public string FatalError { get; private set; }
+        private readonly System.Collections.Generic.List<string> _initializationErrors = new System.Collections.Generic.List<string>();
 
         private void Awake()
         {
             Application.targetFrameRate = 120;
             Application.runInBackground = true;
             QualitySettings.vSyncCount = 1;
+            Application.logMessageReceived += CaptureInitializationError;
             try
             {
                 if (!catalog) catalog = Resources.Load<VisualCatalog>("VisualCatalog");
@@ -41,19 +43,26 @@ namespace Bastion3D
                 CameraRig.Host = Host;
                 CameraRig.Sensitivity = PlayerPrefs.GetFloat("CameraSensitivity", 1);
                 BuildLighting();
+                if (Array.IndexOf(Environment.GetCommandLineArgs(), "--audio-diagnostics") >= 0)
+                {
+                    ReviewAudioCapture.StartProbe(gameObject);
+                    return;
+                }
+                if (Array.IndexOf(Environment.GetCommandLineArgs(), "--render-diagnostics") >= 0)
+                {
+                    gameObject.AddComponent<RenderDiagnostics>().Initialize(camera);
+                    return;
+                }
                 Battlefield = new GameObject("Battlefield").AddComponent<BattlefieldView>();
                 Battlefield.Initialize(Host, catalog, camera);
                 var reflections = new GameObject("Foundry reflections").AddComponent<ReflectionProbe>();
                 reflections.transform.position = new Vector3(0, 4, 0);
-                reflections.mode = ReflectionProbeMode.Realtime;
-                reflections.refreshMode = ReflectionProbeRefreshMode.ViaScripting;
-                reflections.timeSlicingMode = ReflectionProbeTimeSlicingMode.IndividualFaces;
+                reflections.mode = ReflectionProbeMode.Custom;
                 reflections.resolution = 128;
                 reflections.size = new Vector3(80, 35, 70);
                 reflections.boxProjection = true;
                 reflections.hdr = true;
                 reflections.cullingMask = (1 << 0) | (1 << 8);
-                reflections.RenderProbe();
                 Interface = gameObject.AddComponent<GameInterface>();
                 Interface.Initialize(Host, CameraRig);
                 CameraRig.PointerOverInterface = Interface.PointerOverInterface;
@@ -62,12 +71,21 @@ namespace Bastion3D
                 gameObject.AddComponent<RuntimeVerification>().Initialize(this);
                 gameObject.AddComponent<CombatReview>().Initialize(this);
                 gameObject.AddComponent<CampaignReplay>().Initialize(this);
+                gameObject.AddComponent<ModelMotionReview>().Initialize(this);
+                if (_initializationErrors.Count > 0) throw new InvalidOperationException("Scene initialization reported errors: " + string.Join("\n", _initializationErrors));
             }
             catch (Exception e)
             {
                 FatalError = e.ToString(); Debug.LogException(e);
                 if (Host != null && Host.VerificationMode) Application.Quit(1);
             }
+            finally { Application.logMessageReceived -= CaptureInitializationError; }
+        }
+
+        private void CaptureInitializationError(string message, string stack, LogType type)
+        {
+            if ((type == LogType.Error || type == LogType.Exception || type == LogType.Assert) && _initializationErrors.Count < 8)
+                _initializationErrors.Add(message);
         }
 
         private void BuildLighting()
@@ -83,23 +101,16 @@ namespace Bastion3D
             RenderSettings.ambientProbe = ambient;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = .006f;
+            RenderSettings.fogDensity = .010f;
             RenderSettings.fogColor = new Color(.046f, .068f, .094f);
             var sun = new GameObject("Cool factory skylight").AddComponent<Light>();
             sun.type = LightType.Directional; sun.color = new Color(.74f, .84f, 1f);
-            sun.intensity = 1.6f; sun.shadows = LightShadows.Soft; sun.shadowBias = .025f; sun.shadowNormalBias = .12f;
+            sun.intensity = 1.25f; sun.shadows = LightShadows.Soft; sun.shadowBias = .025f; sun.shadowNormalBias = .12f;
             sun.transform.rotation = Quaternion.Euler(46, -32, 0);
             RenderSettings.sun = sun;
             var rim = new GameObject("Warm furnace bounce").AddComponent<Light>();
-            rim.type = LightType.Directional; rim.color = new Color(1, .46f, .19f); rim.intensity = .7f;
+            rim.type = LightType.Directional; rim.color = new Color(1, .46f, .19f); rim.intensity = .18f;
             rim.transform.rotation = Quaternion.Euler(22, 148, 0); rim.shadows = LightShadows.None;
-            for (int i = 0; i < 4; i++)
-            {
-                var lamp = new GameObject("Furnace pool " + i).AddComponent<Light>();
-                lamp.type = LightType.Point; lamp.range = 13; lamp.intensity = 5;
-                lamp.color = new Color(1, .37f, .10f);
-                lamp.transform.position = new Vector3(-18 + i * 12, 3, i % 2 == 0 ? -17 : 17);
-            }
             var volume = new GameObject("Foundry grade").AddComponent<Volume>();
             volume.isGlobal = true;
             volume.profile = ScriptableObject.CreateInstance<VolumeProfile>();

@@ -15,7 +15,9 @@ namespace Bastion3D.Editor
     public static class BuildAutomation
     {
         [Serializable] private sealed class MaterialSet { public MaterialSpec[] materials; }
-        [Serializable] private sealed class MaterialSpec { public string name; public string color; public string metallicSmoothnessTexture; public float metallic, roughness, emission; }
+        [Serializable] private sealed class MaterialSpec { public string name; public string color; public string metallicSmoothnessTexture; public float metallic, roughness, emission; public float[] emissionLinear; }
+        [Serializable] private sealed class AssetManifest { public RigNode[] hierarchy; }
+        [Serializable] private sealed class RigNode { public string name, parent; public float[] worldPosition, worldForward, worldUp; }
         private const string ScenePath = "Assets/Scenes/Cinderworks.unity";
         private const string CatalogPath = "Assets/Resources/VisualCatalog.asset";
 
@@ -67,11 +69,20 @@ namespace Bastion3D.Editor
             pipelineSettings.ApplyModifiedPropertiesWithoutUndo();
             GraphicsSettings.defaultRenderPipeline = pipeline;
             QualitySettings.renderPipeline = pipeline;
+            var graphicsSettings = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/GraphicsSettings.asset").First());
+            // Runtime-selected fog needs an explicit retained variant in the player.
+            graphicsSettings.FindProperty("m_FogStripping").intValue = 1;
+            graphicsSettings.FindProperty("m_FogKeepLinear").boolValue = false;
+            graphicsSettings.FindProperty("m_FogKeepExp").boolValue = false;
+            graphicsSettings.FindProperty("m_FogKeepExp2").boolValue = true;
+            graphicsSettings.ApplyModifiedPropertiesWithoutUndo();
             QualitySettings.vSyncCount = 1;
             QualitySettings.shadows = UnityEngine.ShadowQuality.All;
             QualitySettings.shadowResolution = UnityEngine.ShadowResolution.High;
             PlayerSettings.companyName = "Bastion";
             PlayerSettings.productName = "Maximal Bastion 3D";
+            PlayerSettings.bundleVersion = "0.1.0";
+            ConfigureBranding();
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.defaultScreenWidth = 1920;
             PlayerSettings.defaultScreenHeight = 1080;
@@ -104,6 +115,10 @@ namespace Bastion3D.Editor
             catalog.interfaceFont = Resources.Load<Font>("InterfaceFont");
             EditorUtility.SetDirty(catalog);
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogDensity = .010f;
+            RenderSettings.fogColor = new Color(.045f, .070f, .105f);
             var app = new GameObject("Maximal Bastion / Cinderworks").AddComponent<BastionApplication>();
             app.catalog = catalog;
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -113,6 +128,37 @@ namespace Bastion3D.Editor
         }
 
         private static Material Material(string name) => AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/" + name + ".mat");
+        private static void ConfigureBranding()
+        {
+            const string path = "Assets/Resources/Brand/Prism.png";
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (!importer) throw new FileNotFoundException("The Prism brand mark is missing", path);
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Single;
+            importer.alphaIsTransparency = true;
+            importer.mipmapEnabled = false;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            importer.SaveAndReimport();
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (!texture || !sprite) throw new InvalidOperationException("The Prism brand mark could not be imported.");
+            foreach (var target in new[] { NamedBuildTarget.Unknown, NamedBuildTarget.Standalone })
+            {
+                int count = PlayerSettings.GetIconSizes(target, IconKind.Application).Length;
+                if (count == 0) throw new InvalidOperationException("The target exposes no application icon slots: " + target.TargetName);
+                PlayerSettings.SetIcons(target, Enumerable.Repeat(texture, count).ToArray(), IconKind.Application);
+            }
+            PlayerSettings.SplashScreen.show = true;
+            PlayerSettings.SplashScreen.showUnityLogo = false;
+            PlayerSettings.SplashScreen.background = null;
+            PlayerSettings.SplashScreen.backgroundPortrait = null;
+            PlayerSettings.SplashScreen.backgroundColor = new Color(10 / 255f, 20 / 255f, 32 / 255f);
+            PlayerSettings.SplashScreen.overlayOpacity = 0;
+            PlayerSettings.SplashScreen.animationMode = PlayerSettings.SplashScreen.AnimationMode.Static;
+            PlayerSettings.SplashScreen.logos = new[] { PlayerSettings.SplashScreenLogo.Create(2, sprite) };
+            if (PlayerSettings.SplashScreen.showUnityLogo)
+                Debug.LogWarning("The active Unity license retains the Unity logo beside the project splash mark.");
+        }
         private static Material BuildFloorMaterial()
         {
             const string path = "Assets/Art/Materials/FoundryFloor.mat";
@@ -153,14 +199,28 @@ namespace Bastion3D.Editor
                 {
                     string texturePath = "Assets/Art/Textures/" + spec.metallicSmoothnessTexture;
                     var importer = (TextureImporter)AssetImporter.GetAtPath(texturePath);
-                    if (!importer) throw new FileNotFoundException("Missing alloy surface texture", texturePath);
-                    if (importer.sRGBTexture) { importer.sRGBTexture = false; importer.SaveAndReimport(); }
+                    if (!importer) throw new FileNotFoundException("Missing surface finish texture", texturePath);
+                    importer.textureType = TextureImporterType.Default;
+                    importer.sRGBTexture = false; importer.alphaIsTransparency = false;
+                    importer.alphaSource = TextureImporterAlphaSource.FromInput;
+                    importer.textureCompression = TextureImporterCompression.Uncompressed;
+                    importer.wrapMode = TextureWrapMode.Repeat; importer.filterMode = FilterMode.Trilinear;
+                    importer.mipmapEnabled = true; importer.anisoLevel = 4;
+                    importer.SaveAndReimport();
                     mat.SetTexture("_MetallicGlossMap", AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath));
                     mat.SetFloat("_Smoothness", 1); mat.EnableKeyword("_METALLICSPECGLOSSMAP");
                 }
                 else { mat.SetTexture("_MetallicGlossMap", null); mat.DisableKeyword("_METALLICSPECGLOSSMAP"); }
-                if (spec.emission > 0) { mat.EnableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", color * spec.emission); }
-                else mat.DisableKeyword("_EMISSION");
+                if (spec.emission > 0)
+                {
+                    mat.EnableKeyword("_EMISSION");
+                    var radiance = spec.emissionLinear != null && spec.emissionLinear.Length == 3
+                        ? new Color(spec.emissionLinear[0], spec.emissionLinear[1], spec.emissionLinear[2], 1)
+                        : color.linear * spec.emission;
+                    // URP HDR color properties consume linear radiance; ordinary BaseColor is authored sRGB.
+                    mat.SetColor("_EmissionColor", radiance);
+                }
+                else { mat.DisableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", Color.black); }
                 mat.enableInstancing = true;
                 EditorUtility.SetDirty(mat);
             }
@@ -171,7 +231,7 @@ namespace Bastion3D.Editor
                 importer.globalScale = 1;
                 importer.useFileScale = true;
                 importer.importAnimation = false;
-                importer.isReadable = assetPath.Contains("/Environment/");
+                importer.isReadable = assetPath.Contains("/Environment/") || assetPath.Contains("/Enemies/");
                 importer.importCameras = false; importer.importLights = false;
                 foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(assetPath).OfType<Material>())
                 {
@@ -203,6 +263,10 @@ namespace Bastion3D.Editor
             var catalog = AssetDatabase.LoadAssetAtPath<VisualCatalog>(CatalogPath);
             if (!catalog) throw new InvalidOperationException("Configure the project first.");
             var report = new System.Text.StringBuilder();
+            var graphicsSettings = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/GraphicsSettings.asset").First());
+            if (graphicsSettings.FindProperty("m_FogStripping").intValue != 1 || !graphicsSettings.FindProperty("m_FogKeepExp2").boolValue)
+                throw new InvalidOperationException("Exponential-squared fog must be retained for runtime lighting.");
+            report.AppendLine("Exponential-squared fog variant retained explicitly.");
             foreach (var entry in catalog.towers.Concat(catalog.enemies).Concat(catalog.environment).Concat(catalog.tactics).Concat(catalog.enemyModules))
             {
                 if (!entry.prefab) throw new InvalidOperationException("Missing model " + entry.id);
@@ -215,6 +279,14 @@ namespace Bastion3D.Editor
                     if (renderer.sharedMaterials.Any(m => !m || m.shader.name == "Hidden/InternalErrorShader")) throw new InvalidOperationException("Invalid material " + entry.id);
                 }
                 report.AppendLine(entry.id + " | bounds " + bounds + " | renderers " + renderers.Length);
+                VerifyRig(entry.id, obj.transform, report);
+                if (catalog.enemies.Contains(entry))
+                {
+                    var meshes = obj.GetComponentsInChildren<MeshFilter>(true).Select(filter => filter.sharedMesh).Where(mesh => mesh).ToArray();
+                    if (meshes.Length == 0 || meshes.Any(mesh => !mesh.isReadable))
+                        throw new InvalidOperationException("Enemy meshes must be readable for chassis support geometry: " + entry.id);
+                    report.AppendLine("  readable chassis meshes: " + meshes.Length);
+                }
                 if (catalog.towers.Contains(entry) && entry.id != "signal_beacon")
                 {
                     var muzzle = obj.GetComponentsInChildren<Transform>().FirstOrDefault(t => t.name == "Muzzle");
@@ -228,6 +300,39 @@ namespace Bastion3D.Editor
             Directory.CreateDirectory(root);
             File.WriteAllText(Path.Combine(root, "unity-asset-verification.txt"), report.ToString());
             Debug.Log(report.ToString());
+        }
+
+        private static void VerifyRig(string id, Transform root, System.Text.StringBuilder report)
+        {
+            string path = "Assets/Art/Metadata/" + id + ".json";
+            var manifest = JsonUtility.FromJson<AssetManifest>(File.ReadAllText(path));
+            if (manifest.hierarchy == null || manifest.hierarchy.Length == 0)
+                throw new InvalidOperationException("Missing authored rig hierarchy: " + id);
+            var transforms = root.GetComponentsInChildren<Transform>(true);
+            float maximumPositionError = 0, maximumDirectionError = 0;
+            foreach (var node in manifest.hierarchy)
+            {
+                var matches = string.IsNullOrEmpty(node.parent) ? new[] { root } : transforms.Where(t => t.name == node.name).ToArray();
+                if (matches.Length != 1) throw new InvalidOperationException("Missing or ambiguous imported rig node: " + id + "/" + node.name);
+                var actual = matches[0];
+                Vector3 expectedPosition = RigVector(node.worldPosition, id, node.name);
+                Vector3 expectedForward = RigVector(node.worldForward, id, node.name).normalized;
+                Vector3 expectedUp = RigVector(node.worldUp, id, node.name).normalized;
+                float positionError = Vector3.Distance(actual.position, expectedPosition);
+                float directionError = Mathf.Max(Vector3.Distance(actual.forward, expectedForward), Vector3.Distance(actual.up, expectedUp));
+                if (positionError > .002f || directionError > .001f || actual.localToWorldMatrix.determinant <= 0)
+                    throw new InvalidOperationException($"Imported rig basis mismatch: {id}/{node.name}; expected position {expectedPosition:F6}, actual {actual.position:F6}, expected forward {expectedForward:F6}, actual {actual.forward:F6}, expected up {expectedUp:F6}, actual {actual.up:F6}, determinant {actual.localToWorldMatrix.determinant:F6}.");
+                maximumPositionError = Mathf.Max(maximumPositionError, positionError);
+                maximumDirectionError = Mathf.Max(maximumDirectionError, directionError);
+            }
+            report.AppendLine($"  authored rig: {manifest.hierarchy.Length} nodes; maximum position error {maximumPositionError:F6}m; maximum direction error {maximumDirectionError:F6}; positive handedness");
+        }
+
+        private static Vector3 RigVector(float[] value, string id, string node)
+        {
+            if (value == null || value.Length != 3 || value.Any(v => float.IsNaN(v) || float.IsInfinity(v)))
+                throw new InvalidOperationException("Invalid authored rig vector: " + id + "/" + node);
+            return new Vector3(value[0], value[1], value[2]);
         }
 
         [MenuItem("Bastion/Build Windows (development)")]

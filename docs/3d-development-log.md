@@ -1,66 +1,52 @@
 # Cinderworks 3D development
 
-## Delivery target
+## Architecture and scope
 
-One complete Windows Cinderworks campaign in Unity URP, using the existing authored content and C# simulation. Browser support is optional. The MonoGame desktop and browser clients remain independently buildable.
+The Unity 6000.3.25f1 / URP 17.3.0 Windows client runs the authored Cinderworks map through the shared `MaximalBastion.Gameplay` C# library. The original MonoGame desktop and browser clients remain independently buildable targets. Development is on `3d-development`; `2d-before-3d-development` preserves the original reference at `59e5a55`.
 
-Completion requires the actual 30-wave campaign loop, placement and selection, all required tower/enemy interactions, progression, tactical abilities, upgrades, economy, pause/restart, results, and save/load. The Unity client must have finished cohesive assets, functional unrestricted camera controls, readable effects/audio, multiple-angle visual review, and a tested standalone Windows build. Performance is measured at 1080p on the development RTX 4060, targeting 60 FPS during representative dense combat. A working renderer or limited combat demonstration does not satisfy this target.
+The client supports the 30-wave campaign, Endless and Sandbox, all ten towers, enemy chassis and roles, placement, targeting, doctrine/specialization/Apex upgrades, protocols, tactical devices, economy, pause/restart, victory/defeat, history and save/load. Input mutations use validated commands. Camera, animation, lighting and effects are presentation-only. Unity saves use a separate user-data directory.
 
-## Repository
+Build and camera instructions are in `unity/MaximalBastion3D/README.md`. Editable Blender assets and export conventions are in `art/bastion-3d/README.md`. Generated players, images, recordings and evidence are under `.artifacts/3d-development` and are not committed.
 
-- Development branch: `3d-development`.
-- Reference commit/tag: `59e5a55` / `2d-before-3d-development`.
-- Existing uncommitted UI and marketing work is preserved and excluded from development commits unless explicitly incorporated later.
-- JavaScript scene: `prototypes/bastion-3d`; visual reference only.
-- Unity client: `unity/MaximalBastion3D`.
-- Shared simulation extraction is committed in `f131f30`; the original clients and Unity compile the same authoritative gameplay source.
+## Visual implementation
 
-## Verified baseline — 2026-10-07
+- The foundry uses a connected smelter hall, three operating furnaces, service galleries, supply/return pipework, storage vessels, arrival infrastructure and a defended-core yard. Distant industrial buildings and a continuous ground plane support low and reverse views. The dressing has 325,016 triangles across seven batched renderers.
+- Coated graphite, ceramic, steel, alloy, copper, rubber, oxide and architectural finishes have distinct metallic/roughness maps. Blender and Unity share calibrated linear emissive radiance. The palette separates warm furnaces from cool industrial lighting and weapon-specific energy colors.
+- Lighting includes soft cascaded shadows, ambient occlusion, reflections, localized furnace and impact lights, restrained bloom, tone mapping and exponential-squared fog. Four-sample MSAA and SMAA preserve mechanical edges. Fans, charge rotors, road signals and volumetric steam keep the environment active.
+- Tower assemblies have complete backs and undersides, articulated aiming, weapon-specific recoil, actual muzzle origins, upgrade hardware and three independently selected Shard Fan ports. Prism retains a centered nested core; the Mortar has a clear recessed bore; Regenerator energy cells sit within dark containment cages.
+- Enemy locomotion uses distance-driven planted feet, articulated knees, chassis-specific stride and weight. Defeat effects use the actual chassis armor with bounded fragment counts, exact mesh support and raised-surface contact.
+- The perspective camera supports orbit, pan, elevation, zoom and free flight with collision. Its default overview keeps every route corner and build deck between the HUD bars.
+- Beam presentation retires when its emitter is destroyed, even if the simulation's transient effect remains active. Leaving a run clears all impact-light timers and lights.
 
-- Desktop, browser, and test projects built with zero warnings/errors.
-- 103/103 regression tests passed.
-- Hidden UI verification passed: 138 scenes and 438 assertions.
-- Evidence: `.artifacts/3d-development/baseline/`.
-- Preserved reference binaries: `.artifacts/3d-development/baseline-runtime/`.
-- Available hardware: NVIDIA GeForce RTX 4060; approximately 119 GiB free before toolchain installation.
+## Original-client and shared-gameplay verification
 
-## Current work
+- Desktop, browser and test projects build with zero warnings or errors.
+- 104 native regressions, 1,507,921 portable comparisons and 138 hidden interface scenes / 438 assertions pass.
+- Frozen-reference validation covers 4,684,641 comparisons across 64 map/difficulty/directive campaigns under .NET. No gameplay arithmetic was changed for the art pass.
+- The embedded Unity fixture covers nine scenarios, 43,200 ticks, 3,744 state samples and 45 same-runtime snapshot round trips. The final Windows player passes this fixture in `final-03-verify`.
+- .NET and Mono scenario final wave/result/economy/kill outcomes agree. Intermediate floating-point timing and attribution can differ. Cross-runtime raw-checksum lockstep is not supported.
 
-- Refine the real Unity scene using rendered reviews, including continuous road geometry, authored platforms, lighting, atmosphere, combat and camera framing.
-- Verify camera collision, visibility-aware selection and automatic checkpoints in the packaged player.
-- Measure representative rendered combat performance and finish the Windows handoff.
+## Asset and presentation acceptance
 
-## Open issues
+- All 37 FBXs pass closed-surface, UV, nondegenerate-face, bounds, rig and content-coverage checks. The pinned Unity editor checks 620 retained rig nodes with a maximum position error of 0.000012 m, matching directions and positive handedness. Editable Blender sources retain canonical coordinates; export copies compensate for Unity's FBX handedness conversion.
+- The material GPU probe verifies base-color conversion and linear HDR emission. Render diagnostics return 118/255 for linear 18% gray and 0.533 fog attenuation at 80 m against an expected 0.528. Anti-aliasing coverage is measured from rendered pixels.
+- `final-motion` passes 36 contact, scale, turn, recoil and muzzle-selection assertions, with fourteen actual-player images. Maximum planted-foot error is 1.26 mm.
+- `final-wreckage` checks 71 meshes, 26,768 unique vertices and 13,632 arbitrary poses. All five chassis emit and clean up their fragments; raised-deck contact and excluded overhead/entity geometry pass with sub-micrometre measured support error. Seventeen images and a 60 FPS recording accompany the report.
+- The Mortar bore passes 180 off-axis clearance rays and actual low-angle review. Nine 3840x2160 combat/environment views cover overhead, ground, rear, weapon close-up, dense combat, furnace hall, core yard and opposite approaches. Captures reject a camera inside solid geometry.
+- The beam lifecycle regression reproduces failure with the old guard in an isolated copied player and passes all 18 assertions in the fixed release. It uses validated placement/sale for Prism and Arc, waits through Unity's deferred destruction, and confirms both visual retirement and menu-light cleanup.
 
-- Unity 6000.3.25f1 and URP 17.3.0 are installed; the user activated the editor license. The short install path `C:\UnityEditors\6000.3.25f1` avoids the Windows installer path-length defect. No further installers are planned.
-- Portable gameplay passes 4,684,641 frozen-baseline comparisons across 64 map/difficulty/directive campaigns under .NET. Mono retains wider intermediate floating-point values in some expressions. The nine-scenario, 43,200-tick Mono comparison matches final wave/result/economy/kill outcomes and all 45 same-runtime snapshot round trips, but intermediate timing and attribution can differ. Cross-runtime raw-checksum lockstep is not supported or claimed. Gameplay arithmetic remains unchanged.
-- The packaged Unity campaign and expanded UI interaction audit pass. Final dense-combat timing, camera checks and the refined combat recording remain acceptance requirements.
-- The initial hidden-window timing report measured suppressed rendering and is invalid. Performance results must use the explicit rendered capture path or a visible player.
+## Final Windows acceptance — 2026-10-08
 
-## Integration progress — 2026-10-08
+`unity-art-release-03.log` records the non-development build using the pinned editor. `final-03-verify` passes gameplay conformance, persistence, camera interaction/collision/framing and the lifecycle regression with zero runtime errors. `final-03-interface` passes 924 assertions and eight fresh captures covering tower and upgrade paths, protocols, targeting, tactics, checkpoints, settings, results and Sandbox.
 
-- The Unity client hosts the real fixed-step `GameSession`, routes player mutations through validated commands, and uses the existing checkpoint and history repositories in its own user-data directory.
-- Initial UI covers run setup, all ten tower choices, doctrine/specialization/Apex progression, protocols, targets, tactical defenses, pause, saves, history, results, and settings.
-- The scene reads Cinderworks path/build regions directly from authored content; camera and animation transforms remain presentation-only.
-- Editable Blender tower/enemy/environment exports are complete and have round-trip validation. Full-scene review continues as materials, effects and camera behavior are integrated.
-- A runtime verification mode exercises combat, camera directions, frame timing, and the frozen-baseline replay. The first packaged run exposed the rendering/collision/runtime-parity issues above.
-- Core extraction verification passed: solution build with zero warnings/errors, 104/104 native regression tests, 1,406,249 short portable comparisons, and 138 hidden 2D UI scenes with 438 assertions. 135 rendered PNGs are byte-identical to baseline; three differ only in date/time text.
-- Blender asset validation passes for all 37 FBXs, covering ten towers, five enemy bodies, seven role/rank attachments, two tactical devices and thirteen environment assets. Editable source, textures, hierarchy metadata and front/rear reviews are preserved under `art/bastion-3d`.
-- FBX rig nodes use native Unity Y-up/+Z-forward axes; the actual imported Prism muzzle is `(0, 1.68, 1.61)` with forward `(0, 0, 1)`. Environment collision imports are readable.
-- The standalone Windows client builds successfully. Explicit URP render requests produce real 1920×1080 world/UI captures in hidden runs. The capture uses an HDR world target and an sRGB UI/final target. Pixel-content validation rejects blank captures.
-- A missing URP postprocess-data assignment was corrected; the built player now includes bloom, SMAA and tone-mapping shaders. Runtime volume variants are retained.
-- Fourteen actual-player UI captures passed with zero logged errors. The Barlow/Oxanium font assignments, compact current-stat grid, visible protocol controls, populated save rows and dark input controls have been reviewed. Runtime tooltips supplement Unity's editor-only tooltip property.
-- Follow-up shared-code validation passes 104/104 native regressions and 1,507,921 portable comparisons. The optional AutoPlayer command executor matches the direct agent through two complete campaign attempts and 89,885 validated commands.
+`final-03-campaign` completes all 30 authored waves in 93,368 fixed ticks, accepting all 644 commands, winning with four lives and continuing to wave 31. It reaches 111 simultaneous enemies and 37 towers. Six deferred tactical commands and 317 ticks of legal wave-boundary waits accommodate backend timing differences; no commands remain pending and no runtime errors occur. This accelerated acceptance driver is not a performance benchmark.
 
-## Next acceptance gate
+`final-03-performance` measures the normal Direct3D11 Windows player at 1920x1080 on the RTX 4060, with 22 towers and up to 143 enemies. The dedicated dense-combat window records 2,521 frames over 25.02 seconds: mean 9.92 ms (about 101 FPS), median 9.60 ms, 95th percentile 12.14 ms and maximum 63.46 ms. Counters confirm one game-camera render per frame. GPU timers are unavailable; these are observed frame timings, not isolated GPU costs. The sample has zero runtime errors and an unchanged player manifest. The maximum records an isolated hitch, so this is not a claim that every frame exceeds 60 FPS.
 
-Review dense combat under the normal Windows rendering backend, finish collision and checkpoint assertions, and record the final continuous camera tour. Preserve the independently buildable original clients and commit the verified Unity/asset baseline.
+Packaging requires the exact release's successful interface manifest and rechecks every runtime file and ZIP entry by SHA-256. Final capture/recording manifests will identify the reviewed player.
 
-## Packaged-player acceptance
+## Limits and remaining acceptance
 
-- `.artifacts/3d-development/verify-unity-backend-02`: all nine same-backend scenarios pass across 43,200 ticks, 3,744 samples and 45 snapshots. The reference was recorded by a separate embedded Unity process. Standalone Mono is a distinct backend and is not substituted for this reference.
-- The native .NET comparison matches final outcomes while intermediate floating-point state differs; cross-runtime lockstep remains unsupported.
-- `.artifacts/3d-development/campaign-unity-01`: the real fresh Easy/Standard campaign wins after 93,366 fixed ticks, accepting all 644 commands and retaining four lives. It reaches 111 simultaneous enemies and 37 towers, records victory, and continues to wave 31. Legal wave-boundary waits and tactical retries accommodate runtime timing differences. This accelerated acceptance run is not a performance benchmark.
-- `.artifacts/3d-development/interface-interactions-02`: 919 assertions pass, including all 40 doctrine/specialization paths, Apex, protocols, validated placement, saves/load/delete, settings, sandbox and results navigation. Seven new rendered pages show unclipped two-column stat values. Funded late-game UI fixtures are separate from campaign acceptance.
-- Rendered capture calibration returns 118/255 for linear 18% gray. The captured world uses a 1920×1080 HDR target with a single conversion to sRGB.
-- Initial crowded batch-mode capture averaged 31.35 ms at 22 towers and 145 enemies. Batch mode uses a different graphics threading mode from the normal Windows player; final performance claims require the normal backend and profiler counters.
+- This client contains Cinderworks on Windows. Other maps, online co-op and the browser client remain available in the original 2D game; they are not implemented in this Unity slice.
+- Performance is measured on the development RTX 4060 at 1080p using the normal Windows graphics backend. Batch-mode runs and video readback are not performance evidence. GPU timer availability is reported separately from observed frame timing.
+- Refreshed release footage and verified packaging remain before handoff. The complete authored campaign is verified separately from funded UI fixtures and Sandbox footage.

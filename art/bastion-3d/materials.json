@@ -2,285 +2,589 @@
   "materials": [
     {
       "name": "Bastion_Graphite",
-      "color": "#15202D",
-      "metallic": 0.78,
-      "roughness": 0.5875,
+      "color": "#29333D",
+      "metallic": 0.16,
+      "roughness": 0.56,
       "emission": 0,
-      "roughnessTexture": "Alloy_Roughness.png",
-      "metallicSmoothnessTexture": "Alloy_Metallic078_Smoothness.png"
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "coated",
+      "roughnessTexture": "Bastion_Graphite_Roughness.png",
+      "metallicSmoothnessTexture": "Bastion_Graphite_MetallicSmoothness.png"
     },
     {
       "name": "Bastion_Gunmetal",
-      "color": "#40566B",
-      "metallic": 0.78,
-      "roughness": 0.5875,
+      "color": "#596974",
+      "metallic": 0.82,
+      "roughness": 0.39,
       "emission": 0,
-      "roughnessTexture": "Alloy_Roughness.png",
-      "metallicSmoothnessTexture": "Alloy_Metallic078_Smoothness.png"
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "brushed",
+      "roughnessTexture": "Bastion_Gunmetal_Roughness.png",
+      "metallicSmoothnessTexture": "Bastion_Gunmetal_MetallicSmoothness.png"
     },
     {
       "name": "Bastion_Ceramic",
-      "color": "#AABCC6",
-      "metallic": 0.42,
-      "roughness": 0.5875,
+      "color": "#AEBAC1",
+      "metallic": 0.0,
+      "roughness": 0.47,
       "emission": 0,
-      "roughnessTexture": "Alloy_Roughness.png",
-      "metallicSmoothnessTexture": "Alloy_Metallic042_Smoothness.png"
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "ceramic",
+      "roughnessTexture": "Bastion_Ceramic_Roughness.png",
+      "metallicSmoothnessTexture": "Bastion_Ceramic_MetallicSmoothness.png"
     },
     {
       "name": "Bastion_EdgeAlloy",
-      "color": "#6F8999",
-      "metallic": 0.74,
-      "roughness": 0.5875,
+      "color": "#7B8A94",
+      "metallic": 0.9,
+      "roughness": 0.27,
       "emission": 0,
-      "roughnessTexture": "Alloy_Roughness.png",
-      "metallicSmoothnessTexture": "Alloy_Metallic074_Smoothness.png"
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "brushed",
+      "roughnessTexture": "Bastion_EdgeAlloy_Roughness.png",
+      "metallicSmoothnessTexture": "Bastion_EdgeAlloy_MetallicSmoothness.png"
     },
     {
       "name": "Bastion_Recess",
-      "color": "#09121A",
-      "metallic": 0.35,
-      "roughness": 0.5875,
+      "color": "#111922",
+      "metallic": 0.0,
+      "roughness": 0.8,
       "emission": 0,
-      "roughnessTexture": "Alloy_Roughness.png",
-      "metallicSmoothnessTexture": "Alloy_Metallic035_Smoothness.png"
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "coated",
+      "roughnessTexture": "Bastion_Recess_Roughness.png",
+      "metallicSmoothnessTexture": "Bastion_Recess_MetallicSmoothness.png"
     },
     {
       "name": "Bastion_Rubber",
-      "color": "#111A20",
-      "metallic": 0.05,
-      "roughness": 0.73,
-      "emission": 0
+      "color": "#182129",
+      "metallic": 0.0,
+      "roughness": 0.86,
+      "emission": 0,
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "rubber",
+      "roughnessTexture": "Bastion_Rubber_Roughness.png",
+      "metallicSmoothnessTexture": "Bastion_Rubber_MetallicSmoothness.png"
     },
     {
       "name": "Bastion_WhiteEnergy",
       "color": "#E3F7FF",
-      "metallic": 0.2,
+      "metallic": 0.0,
       "roughness": 0.22,
-      "emission": 2.3
+      "emission": 2.3,
+      "emissionLinear": [
+        1.766747638669266,
+        2.1392549742634746,
+        2.3
+      ],
+      "surfaceFinish": "energy"
     },
     {
       "name": "Foundry_Copper",
-      "color": "#976545",
-      "metallic": 0.72,
-      "roughness": 0.5875,
+      "color": "#A06B49",
+      "metallic": 0.85,
+      "roughness": 0.38,
       "emission": 0,
-      "roughnessTexture": "Alloy_Roughness.png",
-      "metallicSmoothnessTexture": "Alloy_Metallic072_Smoothness.png"
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "brushed",
+      "roughnessTexture": "Foundry_Copper_Roughness.png",
+      "metallicSmoothnessTexture": "Foundry_Copper_MetallicSmoothness.png"
     },
     {
       "name": "Foundry_Oxide",
-      "color": "#422D26",
-      "metallic": 0.58,
-      "roughness": 0.5875,
+      "color": "#573D32",
+      "metallic": 0.03,
+      "roughness": 0.84,
       "emission": 0,
-      "roughnessTexture": "Alloy_Roughness.png",
-      "metallicSmoothnessTexture": "Alloy_Metallic058_Smoothness.png"
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "oxide",
+      "roughnessTexture": "Foundry_Oxide_Roughness.png",
+      "metallicSmoothnessTexture": "Foundry_Oxide_MetallicSmoothness.png"
     },
     {
       "name": "Foundry_Deck",
-      "color": "#313C43",
-      "metallic": 0.65,
-      "roughness": 0.5875,
+      "color": "#424C53",
+      "metallic": 0.3,
+      "roughness": 0.67,
       "emission": 0,
-      "roughnessTexture": "Alloy_Roughness.png",
-      "metallicSmoothnessTexture": "Alloy_Metallic065_Smoothness.png"
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "coated",
+      "roughnessTexture": "Foundry_Deck_Roughness.png",
+      "metallicSmoothnessTexture": "Foundry_Deck_MetallicSmoothness.png"
     },
     {
       "name": "Foundry_Hazard",
-      "color": "#DCAA51",
-      "metallic": 0.25,
-      "roughness": 0.5,
-      "emission": 0
+      "color": "#C69A4C",
+      "metallic": 0.0,
+      "roughness": 0.61,
+      "emission": 0,
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "coated",
+      "roughnessTexture": "Foundry_Hazard_Roughness.png",
+      "metallicSmoothnessTexture": "Foundry_Hazard_MetallicSmoothness.png"
     },
     {
       "name": "Foundry_Heat",
       "color": "#FF7934",
-      "metallic": 0.2,
+      "metallic": 0.0,
       "roughness": 0.35,
-      "emission": 3
+      "emission": 3,
+      "emissionLinear": [
+        3.0,
+        0.5736050482223741,
+        0.1030194204260465
+      ],
+      "surfaceFinish": "energy"
     },
     {
       "name": "Energy_prism_beam",
       "color": "#A489EA",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.5011708686401013,
+        0.33771368438543714,
+        1.110760768434983
+      ]
     },
     {
       "name": "Energy_t1_crawler",
       "color": "#3C9FCB",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.06100137592066198,
+        0.46805047607929,
+        0.8062224142910805
+      ]
     },
     {
       "name": "Energy_needle_turret",
       "color": "#43DED8",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.07577346156696013,
+        0.9861219991219775,
+        0.9270251717876733
+      ]
     },
     {
       "name": "Energy_shard_fan",
       "color": "#FF8E37",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        1.35,
+        0.36517201786763887,
+        0.05157590165371778
+      ]
     },
     {
       "name": "Energy_watchtower",
       "color": "#BACAFF",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.6628781472945782,
+        0.7973354352411048,
+        1.35
+      ]
     },
     {
       "name": "Energy_frost_spire",
       "color": "#82E5F5",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.3013577423776915,
+        1.0577760185603613,
+        1.232683179921116
+      ]
     },
     {
       "name": "Energy_ember_coil",
       "color": "#FF4540",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        1.35,
+        0.08034017152002462,
+        0.06921376880495837
+      ]
     },
     {
       "name": "Energy_breaker_cannon",
       "color": "#F3C25C",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        1.2099636270552596,
+        0.7282973101663447,
+        0.1444811890206613
+      ]
     },
     {
       "name": "Energy_arc_relay",
       "color": "#43DED8",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.07577346156696013,
+        0.9861219991219775,
+        0.9270251717876733
+      ]
     },
     {
       "name": "Energy_siege_mortar",
       "color": "#D3F446",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.8793976105167627,
+        1.221292585428052,
+        0.08268217321268377
+      ]
     },
     {
       "name": "Energy_signal_beacon",
       "color": "#46D399",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.08268217321268377,
+        0.8793976105167627,
+        0.43003815046887406
+      ]
     },
     {
       "name": "Energy_t2_runner",
       "color": "#E58A32",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        1.0577760185603613,
+        0.34310532734661614,
+        0.04305964464856557
+      ]
     },
     {
       "name": "Energy_t3_brute",
       "color": "#EC5062",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        1.132378665849999,
+        0.10829675742453225,
+        0.16488734250996254
+      ]
     },
     {
       "name": "Energy_t4_aegis",
       "color": "#7C53DA",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.27210094262243606,
+        0.1167756237493422,
+        0.9464875541095138
+      ]
     },
     {
       "name": "Energy_t5_regenerator",
       "color": "#222A3A",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.021594996043438005,
+        0.031257044340449056,
+        0.05712040433809307
+      ]
     },
     {
       "name": "Energy_RegeneratorRepair",
       "color": "#42D392",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.0735483731972972,
+        0.8793976105167627,
+        0.38804513093133863
+      ]
     },
     {
       "name": "Energy_pulse_plate",
       "color": "#E8B637",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        1.0893855478534897,
+        0.6315081247514147,
+        0.05157590165371778
+      ]
     },
     {
       "name": "Energy_charge_forge",
       "color": "#2AC275",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.031257044340449056,
+        0.7282973101663447,
+        0.24014936157789932
+      ]
     },
     {
       "name": "Energy_enemy_role_accelerator",
       "color": "#E8B637",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        1.0893855478534897,
+        0.6315081247514147,
+        0.05157590165371778
+      ]
     },
     {
       "name": "Energy_enemy_role_restorer",
       "color": "#42D392",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.0735483731972972,
+        0.8793976105167627,
+        0.38804513093133863
+      ]
     },
     {
       "name": "Energy_enemy_role_bulwark",
       "color": "#69CFFF",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.19070544303936673,
+        0.8423465287613529,
+        1.35
+      ]
     },
     {
       "name": "Energy_enemy_role_jammer",
       "color": "#FF4C98",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        1.35,
+        0.0975669984211286,
+        0.4238847630572187
+      ]
     },
     {
       "name": "Energy_enemy_role_disruptor",
       "color": "#A489EA",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.5011708686401013,
+        0.33771368438543714,
+        1.110760768434983
+      ]
     },
     {
       "name": "Energy_enemy_role_elite",
       "color": "#F3C25C",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        1.2099636270552596,
+        0.7282973101663447,
+        0.1444811890206613
+      ]
     },
     {
       "name": "Energy_enemy_role_boss",
       "color": "#FF4C98",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        1.35,
+        0.0975669984211286,
+        0.4238847630572187
+      ]
     },
     {
       "name": "Energy_DefendedCore",
       "color": "#43DED8",
       "metallic": 0.2,
       "roughness": 0.3,
-      "emission": 1.35
+      "emission": 1.35,
+      "emissionLinear": [
+        0.07577346156696013,
+        0.9861219991219775,
+        0.9270251717876733
+      ]
+    },
+    {
+      "name": "Foundry_PaintedWall",
+      "color": "#354149",
+      "metallic": 0.1,
+      "roughness": 0.66,
+      "emission": 0,
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "coated",
+      "roughnessTexture": "Foundry_PaintedWall_Roughness.png",
+      "metallicSmoothnessTexture": "Foundry_PaintedWall_MetallicSmoothness.png"
+    },
+    {
+      "name": "Foundry_Roof",
+      "color": "#25323B",
+      "metallic": 0.22,
+      "roughness": 0.6,
+      "emission": 0,
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "coated",
+      "roughnessTexture": "Foundry_Roof_Roughness.png",
+      "metallicSmoothnessTexture": "Foundry_Roof_MetallicSmoothness.png"
+    },
+    {
+      "name": "Foundry_Concrete",
+      "color": "#444140",
+      "metallic": 0.0,
+      "roughness": 0.86,
+      "emission": 0,
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "concrete",
+      "roughnessTexture": "Foundry_Concrete_Roughness.png",
+      "metallicSmoothnessTexture": "Foundry_Concrete_MetallicSmoothness.png"
+    },
+    {
+      "name": "Foundry_ReturnPipe",
+      "color": "#416564",
+      "metallic": 0.12,
+      "roughness": 0.6,
+      "emission": 0,
+      "emissionLinear": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surfaceFinish": "coated",
+      "roughnessTexture": "Foundry_ReturnPipe_Roughness.png",
+      "metallicSmoothnessTexture": "Foundry_ReturnPipe_MetallicSmoothness.png"
+    },
+    {
+      "name": "Foundry_StatusAmber",
+      "color": "#FF932F",
+      "metallic": 0.0,
+      "roughness": 0.4,
+      "emission": 0.65,
+      "emissionLinear": [
+        0.65,
+        0.18965092238139833,
+        0.018476925677873516
+      ],
+      "surfaceFinish": "energy"
+    },
+    {
+      "name": "Foundry_WorkLight",
+      "color": "#ACD3DE",
+      "metallic": 0.0,
+      "roughness": 0.32,
+      "emission": 0.85,
+      "emissionLinear": [
+        0.3506612214613182,
+        0.5536947918068506,
+        0.6208916290768006
+      ],
+      "surfaceFinish": "energy"
+    },
+    {
+      "name": "Energy_Receiving",
+      "color": "#43DED8",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35,
+      "emissionLinear": [
+        0.07577346156696013,
+        0.9861219991219775,
+        0.9270251717876733
+      ]
     }
   ]
 }
