@@ -13,3 +13,13 @@ src/MaximalBastion.Web/wwwroot/Content/
 .artifacts/
 .verification/
 src/MaximalBastion.Mobile/assets/runtime/
+unity/**/Library/
+unity/**/Temp/
+unity/**/Obj/
+unity/**/Logs/
+unity/**/UserSettings/
+unity/**/Builds/
+unity/**/*.csproj
+unity/**/*.sln
+unity/**/*.slnx
+art/**/*.blend1
