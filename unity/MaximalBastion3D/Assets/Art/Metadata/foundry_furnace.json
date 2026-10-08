@@ -1,0 +1,500 @@
+{
+  "id": "foundry_furnace",
+  "category": "Environment",
+  "displayName": "foundry_furnace",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -3.0999999046325684,
+      0.0,
+      -2.0999999046325684
+    ],
+    "max": [
+      3.0999999046325684,
+      7.463500022888184,
+      2.127337694168091
+    ],
+    "meshCount": 66,
+    "triangles": 7960
+  },
+  "hierarchy": [
+    {
+      "name": "foundry_furnace",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust_L",
+      "parent": "foundry_furnace",
+      "localPosition": [
+        -1.399999976158142,
+        7.559999942779541,
+        -0.0
+      ],
+      "worldPosition": [
+        -1.399999976158142,
+        7.559999942779541,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust_R",
+      "parent": "foundry_furnace",
+      "localPosition": [
+        1.399999976158142,
+        7.559999942779541,
+        -0.0
+      ],
+      "worldPosition": [
+        1.399999976158142,
+        7.559999942779541,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanRotor_L",
+      "parent": "foundry_furnace",
+      "localPosition": [
+        -1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldPosition": [
+        -1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "animation": {
+        "type": "continuous",
+        "axis": "Y",
+        "degreesPerSecond": 90
+      }
+    },
+    {
+      "name": "FanBlade_00",
+      "parent": "FanRotor_L",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_01",
+      "parent": "FanRotor_L",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldForward": [
+        0.9510565400123596,
+        0.0,
+        0.30901697278022766
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        72.00000200358254,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_02",
+      "parent": "FanRotor_L",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldForward": [
+        0.5877851843833923,
+        0.0,
+        -0.8090170621871948
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        144.00000400716507,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_03",
+      "parent": "FanRotor_L",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldForward": [
+        -0.5877853631973267,
+        0.0,
+        -0.8090169429779053
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        216.0000060107476,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_04",
+      "parent": "FanRotor_L",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldForward": [
+        -0.9510564804077148,
+        0.0,
+        0.3090171217918396
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        288.00000801433015,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanRotor_R",
+      "parent": "foundry_furnace",
+      "localPosition": [
+        1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldPosition": [
+        1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "animation": {
+        "type": "continuous",
+        "axis": "Y",
+        "degreesPerSecond": -90
+      }
+    },
+    {
+      "name": "FanBlade_00.001",
+      "parent": "FanRotor_R",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_01.001",
+      "parent": "FanRotor_R",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldForward": [
+        0.9510565400123596,
+        0.0,
+        0.30901697278022766
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        72.00000200358254,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_02.001",
+      "parent": "FanRotor_R",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldForward": [
+        0.5877851843833923,
+        0.0,
+        -0.8090170621871948
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        144.00000400716507,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_03.001",
+      "parent": "FanRotor_R",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldForward": [
+        -0.5877853631973267,
+        0.0,
+        -0.8090169429779053
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        216.0000060107476,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_04.001",
+      "parent": "FanRotor_R",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldForward": [
+        -0.9510564804077148,
+        0.0,
+        0.3090171217918396
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        288.00000801433015,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat",
+      "parent": "foundry_furnace",
+      "localPosition": [
+        0.0,
+        3.059999942779541,
+        2.049999952316284
+      ],
+      "worldPosition": [
+        0.0,
+        3.059999942779541,
+        2.049999952316284
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/foundry_furnace.fbx",
+  "blend": "models/Environment/foundry_furnace.blend"
+}

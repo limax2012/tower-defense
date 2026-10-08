@@ -1,0 +1,84 @@
+{
+  "id": "foundry_heat_exchanger",
+  "category": "Environment",
+  "displayName": "foundry_heat_exchanger",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -2.0,
+      0.0,
+      -1.399999976158142
+    ],
+    "max": [
+      2.0,
+      0.590499997138977,
+      1.399999976158142
+    ],
+    "meshCount": 38,
+    "triangles": 4328
+  },
+  "hierarchy": [
+    {
+      "name": "foundry_heat_exchanger",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat",
+      "parent": "foundry_heat_exchanger",
+      "localPosition": [
+        0.0,
+        0.5699999928474426,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.5699999928474426,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/foundry_heat_exchanger.fbx",
+  "blend": "models/Environment/foundry_heat_exchanger.blend"
+}

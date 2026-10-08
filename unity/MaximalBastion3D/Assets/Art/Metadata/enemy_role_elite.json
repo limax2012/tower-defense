@@ -1,0 +1,55 @@
+{
+  "id": "enemy_role_elite",
+  "category": "EnemyModules",
+  "displayName": "enemy_role_elite",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -0.28066763281822205,
+      0.0,
+      -0.3144693970680237
+    ],
+    "max": [
+      0.28066763281822205,
+      0.4749999940395355,
+      0.3144693970680237
+    ],
+    "meshCount": 15,
+    "triangles": 2124
+  },
+  "hierarchy": [
+    {
+      "name": "enemy_role_elite",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/EnemyModules/enemy_role_elite.fbx",
+  "blend": "models/EnemyModules/enemy_role_elite.blend"
+}

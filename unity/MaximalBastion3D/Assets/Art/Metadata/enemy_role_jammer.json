@@ -1,0 +1,55 @@
+{
+  "id": "enemy_role_jammer",
+  "category": "EnemyModules",
+  "displayName": "enemy_role_jammer",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -0.24275830388069153,
+      0.0,
+      -0.22634804248809814
+    ],
+    "max": [
+      0.24341487884521484,
+      0.5550000071525574,
+      0.22634804248809814
+    ],
+    "meshCount": 6,
+    "triangles": 1236
+  },
+  "hierarchy": [
+    {
+      "name": "enemy_role_jammer",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/EnemyModules/enemy_role_jammer.fbx",
+  "blend": "models/EnemyModules/enemy_role_jammer.blend"
+}

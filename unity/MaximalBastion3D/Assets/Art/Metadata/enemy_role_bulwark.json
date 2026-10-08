@@ -1,0 +1,55 @@
+{
+  "id": "enemy_role_bulwark",
+  "category": "EnemyModules",
+  "displayName": "enemy_role_bulwark",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -0.3355165719985962,
+      0.0,
+      -0.3355165719985962
+    ],
+    "max": [
+      0.3355165719985962,
+      0.43849998712539673,
+      0.3355165719985962
+    ],
+    "meshCount": 4,
+    "triangles": 824
+  },
+  "hierarchy": [
+    {
+      "name": "enemy_role_bulwark",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/EnemyModules/enemy_role_bulwark.fbx",
+  "blend": "models/EnemyModules/enemy_role_bulwark.blend"
+}

@@ -1,0 +1,811 @@
+{
+  "id": "needle_turret",
+  "category": "Towers",
+  "displayName": "Needle Turret",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -0.8876705765724182,
+      0.0,
+      -0.8876705765724182
+    ],
+    "max": [
+      0.8876705765724182,
+      1.940500020980835,
+      1.2549999952316284
+    ],
+    "meshCount": 74,
+    "triangles": 10036
+  },
+  "hierarchy": [
+    {
+      "name": "needle_turret",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Base",
+      "parent": "needle_turret",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Apex_Stabilizers",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Apex_sector_0",
+      "parent": "Apex_Stabilizers",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.7071067690849304,
+        0.0,
+        0.7071067690849304
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        45.00000125223908,
+        -0.0
+      ]
+    },
+    {
+      "name": "Apex_sector_1",
+      "parent": "Apex_Stabilizers",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.7071067690849304,
+        0.0,
+        -0.7071067690849304
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        135.00000034162267,
+        -0.0
+      ]
+    },
+    {
+      "name": "Apex_sector_2",
+      "parent": "Apex_Stabilizers",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -0.7071067094802856,
+        0.0,
+        -0.7071068286895752
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        224.99999601591165,
+        -0.0
+      ]
+    },
+    {
+      "name": "Apex_sector_3",
+      "parent": "Apex_Stabilizers",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -0.70710688829422,
+        0.0,
+        0.7071066498756409
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        314.99999169020066,
+        -0.0
+      ]
+    },
+    {
+      "name": "Armor_sector_00",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Armor_sector_01",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.7071067690849304,
+        0.0,
+        0.7071067690849304
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        45.00000125223908,
+        -0.0
+      ]
+    },
+    {
+      "name": "Tier2_Light_01",
+      "parent": "Armor_sector_01",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.7071067690849304,
+        0.0,
+        0.7071067690849304
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Armor_sector_02",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        90.00000250447816,
+        -0.0
+      ]
+    },
+    {
+      "name": "Tier3_Light_02",
+      "parent": "Armor_sector_02",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Armor_sector_03",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.7071067690849304,
+        0.0,
+        -0.7071067690849304
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        135.00000034162267,
+        -0.0
+      ]
+    },
+    {
+      "name": "Tier3_Light_03",
+      "parent": "Armor_sector_03",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.7071067690849304,
+        0.0,
+        -0.7071067690849304
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Armor_sector_04",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -8.742277657347586e-08,
+        0.0,
+        -1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        180.00000500895632,
+        -0.0
+      ]
+    },
+    {
+      "name": "Armor_sector_05",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -0.7071067094802856,
+        0.0,
+        -0.7071068286895752
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        224.99999601591165,
+        -0.0
+      ]
+    },
+    {
+      "name": "Tier3_Light_05",
+      "parent": "Armor_sector_05",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -0.7071067094802856,
+        0.0,
+        -0.7071068286895752
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Armor_sector_06",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -1.0,
+        0.0,
+        1.1924880638503055e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        270.00000068324533,
+        -0.0
+      ]
+    },
+    {
+      "name": "Tier3_Light_06",
+      "parent": "Armor_sector_06",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -1.0,
+        0.0,
+        1.1924880638503055e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Armor_sector_07",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -0.70710688829422,
+        0.0,
+        0.7071066498756409
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        314.99999169020066,
+        -0.0
+      ]
+    },
+    {
+      "name": "Tier2_Light_07",
+      "parent": "Armor_sector_07",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -0.70710688829422,
+        0.0,
+        0.7071066498756409
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Yaw",
+      "parent": "needle_turret",
+      "localPosition": [
+        0.0,
+        0.5899999737739563,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.5899999737739563,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Pitch",
+      "parent": "Yaw",
+      "localPosition": [
+        0.0,
+        1.0099999904632568,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        1.5999999046325684,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Recoil",
+      "parent": "Pitch",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        1.5999999046325684,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Muzzle",
+      "parent": "Recoil",
+      "localPosition": [
+        0.0,
+        0.0,
+        1.2799999713897705
+      ],
+      "worldPosition": [
+        0.0,
+        1.5999999046325684,
+        1.2799999713897705
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Tier2_Capacitor",
+      "parent": "Yaw",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.5899999737739563,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Tier3_Cooling",
+      "parent": "Yaw",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.5899999737739563,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "energyColor": "#43DED8",
+  "logicalRadius": 18,
+  "fbx": "Models/Towers/needle_turret.fbx",
+  "blend": "models/Towers/needle_turret.blend"
+}

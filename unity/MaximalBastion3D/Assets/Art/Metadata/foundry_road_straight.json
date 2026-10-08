@@ -1,0 +1,55 @@
+{
+  "id": "foundry_road_straight",
+  "category": "Environment",
+  "displayName": "foundry_road_straight",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -1.399999976158142,
+      -0.20000000298023224,
+      -2.0
+    ],
+    "max": [
+      1.399999976158142,
+      0.05550000071525574,
+      2.0
+    ],
+    "meshCount": 18,
+    "triangles": 1944
+  },
+  "hierarchy": [
+    {
+      "name": "foundry_road_straight",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/foundry_road_straight.fbx",
+  "blend": "models/Environment/foundry_road_straight.blend"
+}

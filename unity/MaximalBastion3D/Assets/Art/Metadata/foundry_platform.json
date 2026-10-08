@@ -1,0 +1,55 @@
+{
+  "id": "foundry_platform",
+  "category": "Environment",
+  "displayName": "foundry_platform",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -2.0,
+      -0.3199999928474426,
+      -2.0
+    ],
+    "max": [
+      2.0,
+      0.10100000351667404,
+      2.0
+    ],
+    "meshCount": 90,
+    "triangles": 9944
+  },
+  "hierarchy": [
+    {
+      "name": "foundry_platform",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/foundry_platform.fbx",
+  "blend": "models/Environment/foundry_platform.blend"
+}

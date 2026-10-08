@@ -1,0 +1,177 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 64906dcb6ec0eb44fb1e239980dd01d5, type: 3}
+  m_Name: VisualCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::Bastion3D.VisualCatalog
+  towers:
+  - id: arc_relay
+    prefab: {fileID: 919132149155446097, guid: 461d67e34ef62544a873cd29d2662a4f, type: 3}
+    energy: {r: 0.26274508, g: 0.87058824, b: 0.84705883, a: 1}
+    aimHeight: 1.5
+  - id: breaker_cannon
+    prefab: {fileID: 919132149155446097, guid: 2db8b313f123a3b47b536a6b6982e4a2, type: 3}
+    energy: {r: 0.9529411, g: 0.7607843, b: 0.3607843, a: 1}
+    aimHeight: 1.5
+  - id: ember_coil
+    prefab: {fileID: 919132149155446097, guid: b657a8a4201881a4f9408e89b2f2d2f3, type: 3}
+    energy: {r: 1, g: 0.2705882, b: 0.25098038, a: 1}
+    aimHeight: 1.5
+  - id: frost_spire
+    prefab: {fileID: 919132149155446097, guid: e207d00f7aae9aa4684a092c0ee32681, type: 3}
+    energy: {r: 0.5098039, g: 0.8980392, b: 0.96078426, a: 1}
+    aimHeight: 1.5
+  - id: needle_turret
+    prefab: {fileID: 919132149155446097, guid: a636ccbdd11c16c448cbfe8ccbdb1b4d, type: 3}
+    energy: {r: 0.26274508, g: 0.87058824, b: 0.84705883, a: 1}
+    aimHeight: 1.5
+  - id: prism_beam
+    prefab: {fileID: 919132149155446097, guid: bbdd130d08c04d5498288c2a24e24a03, type: 3}
+    energy: {r: 0.6431373, g: 0.5372549, b: 0.91764706, a: 1}
+    aimHeight: 1.5
+  - id: shard_fan
+    prefab: {fileID: 919132149155446097, guid: 36a01f5252bf064419ede3ad0efc44f2, type: 3}
+    energy: {r: 1, g: 0.5568628, b: 0.2156862, a: 1}
+    aimHeight: 1.5
+  - id: siege_mortar
+    prefab: {fileID: 919132149155446097, guid: a11bca10e2a10674bbb51d6233ae1800, type: 3}
+    energy: {r: 0.827451, g: 0.95686275, b: 0.2745098, a: 1}
+    aimHeight: 1.5
+  - id: signal_beacon
+    prefab: {fileID: 919132149155446097, guid: 152548c245dbb2547ad313f6b898a890, type: 3}
+    energy: {r: 0.2745098, g: 0.827451, b: 0.6, a: 1}
+    aimHeight: 1.5
+  - id: watchtower
+    prefab: {fileID: 919132149155446097, guid: f7d63a85348b92e44a33b8b18d7dbb9d, type: 3}
+    energy: {r: 0.7294118, g: 0.7921569, b: 1, a: 1}
+    aimHeight: 1.5
+  enemies:
+  - id: t1_crawler
+    prefab: {fileID: 919132149155446097, guid: 510858bfac7f69c428b1a00c58c78325, type: 3}
+    energy: {r: 0.23529407, g: 0.62352943, b: 0.79607844, a: 1}
+    aimHeight: 0.65
+  - id: t2_runner
+    prefab: {fileID: 919132149155446097, guid: fbda23807a735034cb87201e1dc1838a, type: 3}
+    energy: {r: 0.8980392, g: 0.5411765, b: 0.19607839, a: 1}
+    aimHeight: 0.65
+  - id: t3_brute
+    prefab: {fileID: 919132149155446097, guid: 505664e14831dda4a88394df708c3d60, type: 3}
+    energy: {r: 0.9254902, g: 0.31372547, b: 0.3843137, a: 1}
+    aimHeight: 1.15
+  - id: t4_aegis
+    prefab: {fileID: 919132149155446097, guid: 000999ae1b73e19469e985ce6ba596b1, type: 3}
+    energy: {r: 0.48627448, g: 0.32549015, b: 0.85490197, a: 1}
+    aimHeight: 1.15
+  - id: t5_regenerator
+    prefab: {fileID: 919132149155446097, guid: 6d6a9c6a7b492d648a44cf9566880bee, type: 3}
+    energy: {r: 0.1333333, g: 0.16470584, b: 0.22745094, a: 1}
+    aimHeight: 1.15
+  environment:
+  - id: cinderworks_dressing
+    prefab: {fileID: 919132149155446097, guid: 03d82aa192a94ba41845b4cf3df21e6b, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  - id: defended_core
+    prefab: {fileID: 919132149155446097, guid: 8f48e21ab1047734081608c2b760b62f, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  - id: foundry_catwalk
+    prefab: {fileID: 919132149155446097, guid: b1e96b9b294a2d1488d3fc97beb4c1cd, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  - id: foundry_furnace
+    prefab: {fileID: 919132149155446097, guid: a0e0507e0691dbb48859bd478f7d9175, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  - id: foundry_gantry
+    prefab: {fileID: 919132149155446097, guid: c2c80bf4fb60b0643824c47790c843e5, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  - id: foundry_heat_exchanger
+    prefab: {fileID: 919132149155446097, guid: e5563b750e190584b9e2bb51a309a57f, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  - id: foundry_perimeter_wall
+    prefab: {fileID: 919132149155446097, guid: 928afd61d931cd049b83c168e543ea1e, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  - id: foundry_pipe_rack
+    prefab: {fileID: 919132149155446097, guid: 8a9dfee6bd0d4be43902de5edc385b5c, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  - id: foundry_platform
+    prefab: {fileID: 919132149155446097, guid: e6a5c8f0f5e99be49b0f1472301b20c6, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  - id: foundry_road_straight
+    prefab: {fileID: 919132149155446097, guid: 7109e6c86042b0842997b8889a6e34da, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  - id: foundry_service_bay
+    prefab: {fileID: 919132149155446097, guid: cb1bd101e3e0cdf479a8f93f01ef7d79, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  - id: foundry_service_cabinet
+    prefab: {fileID: 919132149155446097, guid: 6bd1e7f478a9c704b890889aa1b11cd0, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  - id: foundry_stack
+    prefab: {fileID: 919132149155446097, guid: b85824b6fb6718444a6db5901b588ee6, type: 3}
+    energy: {r: 0.3, g: 0.8, b: 0.7, a: 1}
+    aimHeight: 1.5
+  tactics:
+  - id: charge_forge
+    prefab: {fileID: 919132149155446097, guid: c01aba7fab1932b42b51926e36499a7f, type: 3}
+    energy: {r: 0.16470584, g: 0.7607843, b: 0.45882344, a: 1}
+    aimHeight: 1.5
+  - id: pulse_plate
+    prefab: {fileID: 919132149155446097, guid: 3b9634b0b0cec6745a72966456925aec, type: 3}
+    energy: {r: 0.9098039, g: 0.7137255, b: 0.2156862, a: 1}
+    aimHeight: 1.5
+  enemyModules:
+  - id: enemy_role_accelerator
+    prefab: {fileID: 919132149155446097, guid: e1017b9c86f51bd4ca6a9ac39bba0fb0, type: 3}
+    energy: {r: 0.9098039, g: 0.7137255, b: 0.2156862, a: 1}
+    aimHeight: 1.5
+  - id: enemy_role_boss
+    prefab: {fileID: 919132149155446097, guid: 2ab100b1864fb934c9fc6207d7fc4c84, type: 3}
+    energy: {r: 1, g: 0.2980392, b: 0.5960784, a: 1}
+    aimHeight: 1.5
+  - id: enemy_role_bulwark
+    prefab: {fileID: 919132149155446097, guid: 9f2b34af81a99a4448443c7490181f09, type: 3}
+    energy: {r: 0.41176468, g: 0.8117647, b: 1, a: 1}
+    aimHeight: 1.5
+  - id: enemy_role_disruptor
+    prefab: {fileID: 919132149155446097, guid: 08e8971ce7219064ea4a90eef73cb5ac, type: 3}
+    energy: {r: 0.6431373, g: 0.5372549, b: 0.91764706, a: 1}
+    aimHeight: 1.5
+  - id: enemy_role_elite
+    prefab: {fileID: 919132149155446097, guid: 4313115dd0ddb9d4889be5875e2a3030, type: 3}
+    energy: {r: 0.9529411, g: 0.7607843, b: 0.3607843, a: 1}
+    aimHeight: 1.5
+  - id: enemy_role_jammer
+    prefab: {fileID: 919132149155446097, guid: 427bc300e9256404f852a532ee095924, type: 3}
+    energy: {r: 1, g: 0.2980392, b: 0.5960784, a: 1}
+    aimHeight: 1.5
+  - id: enemy_role_restorer
+    prefab: {fileID: 919132149155446097, guid: 6807f14d3c034774eb16ed008753b17f, type: 3}
+    energy: {r: 0.2588235, g: 0.827451, b: 0.57254905, a: 1}
+    aimHeight: 1.5
+  ground: {fileID: 2100000, guid: 905a44b28dd9f75408f350a01adca45a, type: 2}
+  road: {fileID: 2100000, guid: 597259755850e4f43b0c6771ad2e001f, type: 2}
+  platform: {fileID: 2100000, guid: e049336faa544a44aabf31f86a4226c9, type: 2}
+  steel: {fileID: 2100000, guid: fe9b1e0ed48f29f45b17599e7cd92196, type: 2}
+  trim: {fileID: 2100000, guid: 89fa8b9f1d74f4e4ba4656df40a84933, type: 2}
+  energy: {fileID: 2100000, guid: 0bbb8a509c5abb14a91b9702c9c835d8, type: 2}
+  copper: {fileID: 2100000, guid: 2718dd94a9debcc4c8f5a2cd646e6572, type: 2}
+  laneLights: {fileID: 2100000, guid: 92e008915dbf52c428360a3431a1a2df, type: 2}
+  dressing: {fileID: 919132149155446097, guid: 03d82aa192a94ba41845b4cf3df21e6b, type: 3}
+  interfaceFont: {fileID: 0}

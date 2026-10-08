@@ -1,0 +1,55 @@
+{
+  "id": "foundry_catwalk",
+  "category": "Environment",
+  "displayName": "foundry_catwalk",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -4.0,
+      0.0,
+      -0.6729824542999268
+    ],
+    "max": [
+      4.0,
+      4.202982425689697,
+      0.6729824542999268
+    ],
+    "meshCount": 30,
+    "triangles": 4808
+  },
+  "hierarchy": [
+    {
+      "name": "foundry_catwalk",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/foundry_catwalk.fbx",
+  "blend": "models/Environment/foundry_catwalk.blend"
+}

@@ -1,0 +1,91 @@
+.bastion-ui { color: rgb(217, 231, 237); font-size: 17px; }
+.ui-surface { background-color: rgb(10, 19, 29); border-color: rgb(49, 67, 83); border-width: 1px; border-radius: 4px; }
+.modal-shade { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: rgba(4, 9, 15, 0.38); align-items: center; justify-content: center; }
+.page { width: 880px; max-height: 650px; padding: 28px 32px; }
+.page.narrow { width: 450px; }
+.page-title { font-size: 34px; margin-bottom: 24px; color: rgb(232, 240, 248); -unity-font-style: bold; }
+.eyebrow { font-size: 13px; letter-spacing: 2px; color: rgb(171, 149, 210); margin-bottom: 8px; }
+.brand-lockup { flex-direction: row; align-items: center; margin-bottom: 28px; margin-top: 4px; }
+.brand-emblem { width: 84px; height: 104px; margin-right: 20px; }
+.brand-words { flex-grow: 1; }
+.brand { font-size: 38px; white-space: nowrap; margin-left: 0; margin-right: 0; }
+.section-title { font-size: 13px; color: rgb(140, 164, 182); letter-spacing: 1px; margin-top: 18px; margin-bottom: 10px; }
+.muted { color: rgb(147, 168, 185); font-size: 15px; white-space: normal; }
+.body-copy { white-space: normal; margin-bottom: 12px; }
+.row { flex-direction: row; align-items: center; }
+.grow { flex-grow: 1; }
+.actions { flex-direction: row; margin-top: 22px; }
+.actions > Button { flex-grow: 1; margin-right: 8px; }
+Button { color: rgb(218, 232, 239); font-size: 18px; background-color: rgb(20, 32, 46); border-color: rgb(64, 82, 100); border-width: 1px; border-radius: 3px; padding: 9px 14px; margin: 0 0 8px 0; min-height: 42px; -unity-text-align: middle-center; transition-duration: 0.12s; transition-property: background-color, border-color; }
+Button:hover { background-color: rgb(33, 47, 63); border-color: rgb(131, 153, 176); }
+Button:active { background-color: rgb(44, 61, 78); }
+Button:disabled { opacity: 0.38; }
+Button.primary { min-height: 56px; font-size: 22px; background-color: rgb(40, 37, 33); border-left-width: 4px; border-left-color: rgb(218, 178, 97); }
+Button.blue { border-left-width: 3px; border-left-color: rgb(81, 156, 217); }
+Button.violet { border-left-width: 3px; border-left-color: rgb(161, 132, 220); }
+Button.green { border-left-width: 3px; border-left-color: rgb(93, 188, 149); }
+Button.danger { border-left-width: 3px; border-left-color: rgb(197, 97, 122); }
+Button.selected { border-color: rgb(71, 198, 196); background-color: rgb(26, 57, 66); color: rgb(126, 233, 222); }
+Button.small { min-height: 30px; font-size: 15px; padding: 5px 10px; }
+.choices { flex-direction: row; flex-wrap: wrap; }
+.choices > Button { flex-grow: 1; margin-right: 8px; min-width: 110px; }
+.map-card { padding: 18px 22px; background-color: rgb(34, 28, 26); border-left-width: 4px; border-left-color: rgb(225, 139, 70); margin-bottom: 6px; }
+.map-name { font-size: 25px; margin-bottom: 5px; }
+.list { max-height: 440px; }
+.list-row { margin-bottom: 9px; padding: 12px; background-color: rgb(19, 31, 44); border-bottom-width: 1px; border-bottom-color: rgb(43, 60, 77); }
+.list-row Button { margin: 0 0 0 8px; }
+.stat-row { flex-direction: row; justify-content: space-between; border-bottom-width: 1px; border-bottom-color: rgba(65, 85, 105, 0.4); padding-top: 5px; padding-bottom: 5px; }
+.stat-name { color: rgb(143, 163, 181); font-size: 14px; }
+.stat-value { color: rgb(227, 236, 246); font-size: 17px; }
+.stats-grid { flex-direction: row; flex-wrap: wrap; margin-bottom: 4px; }
+.stat-cell { width: 50%; height: 35px; flex-direction: column; justify-content: center; align-items: flex-start; padding-right: 10px; overflow: hidden; border-bottom-width: 1px; border-bottom-color: rgba(65, 85, 105, 0.35); }
+.stat-cell-label { font-size: 11px; color: rgb(143, 163, 181); flex-shrink: 0; height: 13px; min-height: 13px; margin: 0; padding: 0; -unity-text-align: middle-left; }
+.stat-cell-value { font-size: 14px; color: rgb(227, 236, 246); flex-shrink: 0; height: 18px; min-height: 18px; margin: 0; padding: 0; -unity-text-align: middle-left; white-space: nowrap; }
+.positive { color: rgb(129, 220, 174); }
+.negative { color: rgb(230, 143, 138); }
+.top-bar { position: absolute; left: 18px; top: 16px; right: 18px; height: 60px; padding: 10px 14px; flex-direction: row; align-items: center; }
+.counter { margin-right: 26px; min-width: 95px; }
+.counter-value { font-size: 22px; }
+.counter-label { font-size: 11px; color: rgb(150, 171, 188); letter-spacing: 1px; }
+.top-bar Button { margin: 0 0 0 8px; }
+.build-bar { position: absolute; left: 18px; right: 18px; bottom: 16px; min-height: 87px; padding: 9px; flex-direction: row; align-items: stretch; }
+Button.tower-button { flex-grow: 1; flex-basis: 0; min-width: 0; margin: 0 5px 0 0; padding: 6px 3px; font-size: 13px; white-space: normal; border-top-width: 3px; }
+.tactics { position: absolute; left: 18px; bottom: 113px; flex-direction: row; }
+.tactics Button { margin-right: 7px; }
+.intel { position: absolute; right: 18px; top: 88px; bottom: 113px; width: 300px; padding: 16px; }
+.intel-title { font-size: 22px; margin-bottom: 4px; }
+.intel .section-title { margin-top: 9px; margin-bottom: 4px; }
+.intel Button { font-size: 15px; min-height: 33px; padding-top: 5px; padding-bottom: 5px; margin-bottom: 5px; }
+.intel ScrollView { flex-grow: 1; }
+.protocol-controls { flex-direction: row; margin-top: 8px; }
+.protocol-controls > Button { margin-right: 6px; }
+.notice { position: absolute; top: 89px; left: 250px; right: 335px; -unity-text-align: middle-center; color: rgb(240, 208, 145); font-size: 18px; white-space: normal; background-color: rgba(10, 19, 29, 0.83); padding: 8px 14px; border-radius: 3px; }
+.hint { position: absolute; bottom: 159px; left: 20px; font-size: 14px; color: rgb(176, 191, 203); background-color: rgba(8, 17, 26, 0.78); padding: 6px 10px; }
+.setting-row { flex-direction: row; align-items: center; justify-content: space-between; min-height: 45px; margin-bottom: 9px; }
+.setting-row > Label { width: 210px; }
+.setting-row > Slider, .setting-row > DropdownField { flex-grow: 1; }
+.unity-toggle__label { color: rgb(214, 228, 237); }
+.unity-base-field__label { color: rgb(214, 228, 237); }
+.unity-foldout__text { color: rgb(163, 187, 207); }
+.unity-scroll-view__content-container { padding-right: 7px; }
+.unity-base-field__input { background-color: rgb(20, 32, 46); border-color: rgb(64, 82, 100); border-width: 1px; border-radius: 2px; color: rgb(218, 232, 239); }
+.unity-base-popup-field__input { padding: 6px 9px; min-height: 32px; }
+.unity-base-popup-field__text { color: rgb(218, 232, 239); }
+.unity-base-popup-field__arrow { background-image: none; width: 8px; height: 8px; border-right-width: 2px; border-bottom-width: 2px; border-color: rgb(150, 170, 193); rotate: 45deg; margin-left: 12px; margin-right: 5px; margin-top: -5px; }
+.unity-base-text-field__input, .unity-text-field__input, .unity-integer-field__input { color: rgb(218, 232, 239); background-color: rgb(20, 32, 46); background-image: none; padding: 5px 8px; }
+.unity-base-slider__tracker { height: 3px; background-color: rgb(64, 82, 100); border-width: 0; }
+.unity-base-slider__dragger { background-color: rgb(150, 170, 193); border-color: rgb(32, 46, 62); border-width: 1px; border-radius: 2px; }
+.unity-toggle__checkmark { background-color: rgb(24, 38, 53); border-color: rgb(87, 111, 132); border-width: 1px; -unity-background-image-tint-color: rgb(155, 219, 206); }
+.unity-scroller { background-color: rgba(17, 28, 41, 0.7); width: 8px; }
+.unity-scroller__low-button, .unity-scroller__high-button { display: none; }
+.unity-scroller .unity-base-slider__tracker { background-color: rgb(24, 38, 53); width: 4px; border-width: 0; }
+.unity-scroller .unity-base-slider__dragger { background-color: rgb(68, 89, 111); border-width: 0; border-radius: 2px; width: 6px; min-height: 24px; }
+.unity-scroller .unity-base-field__input { background-color: transparent; border-width: 0; padding: 0; margin: 0; min-width: 0; width: 8px; }
+.separator { height: 1px; margin-top: 14px; margin-bottom: 14px; background-color: rgb(46, 63, 80); }
+.enemy-card { position: absolute; width: 220px; padding: 9px 12px; background-color: rgba(8, 17, 27, 0.94); border-top-width: 2px; border-top-color: rgb(207, 116, 135); }
+.enemy-name { font-size: 16px; color: rgb(237, 220, 229); margin-bottom: 5px; }
+.enemy-health-track { height: 4px; background-color: rgb(48, 38, 52); margin-bottom: 5px; }
+.enemy-health-fill { height: 4px; background-color: rgb(210, 104, 132); }
+.enemy-values { font-size: 12px; color: rgb(178, 198, 215); }
+.enemy-status { font-size: 11px; color: rgb(232, 191, 120); margin-top: 4px; letter-spacing: 1px; }
+.runtime-tooltip { position: absolute; width: 290px; padding: 10px 12px; white-space: normal; font-size: 14px; color: rgb(212, 227, 238); background-color: rgb(17, 28, 41); border-color: rgb(81, 108, 133); border-width: 1px; border-radius: 3px; }

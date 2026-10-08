@@ -1,0 +1,231 @@
+{
+  "id": "pulse_plate",
+  "category": "Tactics",
+  "displayName": "Pulse Plate",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -0.6655024886131287,
+      0.0,
+      -0.6655024886131287
+    ],
+    "max": [
+      0.6655024886131287,
+      0.20550000667572021,
+      0.6655024886131287
+    ],
+    "meshCount": 13,
+    "triangles": 1712
+  },
+  "hierarchy": [
+    {
+      "name": "pulse_plate",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Base",
+      "parent": "pulse_plate",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Plate_segment_00",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Plate_segment_01",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        90.00000250447816,
+        -0.0
+      ]
+    },
+    {
+      "name": "Plate_segment_02",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -8.742277657347586e-08,
+        0.0,
+        -1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        180.00000500895632,
+        -0.0
+      ]
+    },
+    {
+      "name": "Plate_segment_03",
+      "parent": "Base",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -1.0,
+        0.0,
+        1.1924880638503055e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        270.00000068324533,
+        -0.0
+      ]
+    },
+    {
+      "name": "EffectOrigin",
+      "parent": "pulse_plate",
+      "localPosition": [
+        0.0,
+        0.20000000298023224,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.20000000298023224,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "energyColor": "#E8B637",
+  "logicalRadius": 13,
+  "fbx": "Models/Tactics/pulse_plate.fbx",
+  "blend": "models/Tactics/pulse_plate.blend"
+}

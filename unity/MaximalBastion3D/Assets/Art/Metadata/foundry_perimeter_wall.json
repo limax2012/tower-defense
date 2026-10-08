@@ -1,0 +1,55 @@
+{
+  "id": "foundry_perimeter_wall",
+  "category": "Environment",
+  "displayName": "foundry_perimeter_wall",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -3.0,
+      0.0,
+      -0.4000000059604645
+    ],
+    "max": [
+      3.0,
+      2.1449999809265137,
+      0.4000000059604645
+    ],
+    "meshCount": 14,
+    "triangles": 1512
+  },
+  "hierarchy": [
+    {
+      "name": "foundry_perimeter_wall",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/foundry_perimeter_wall.fbx",
+  "blend": "models/Environment/foundry_perimeter_wall.blend"
+}

@@ -1,0 +1,55 @@
+{
+  "id": "foundry_service_bay",
+  "category": "Environment",
+  "displayName": "foundry_service_bay",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -3.9000000953674316,
+      0.0,
+      -1.899999976158142
+    ],
+    "max": [
+      3.9000000953674316,
+      8.763500213623047,
+      1.899999976158142
+    ],
+    "meshCount": 69,
+    "triangles": 7452
+  },
+  "hierarchy": [
+    {
+      "name": "foundry_service_bay",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/foundry_service_bay.fbx",
+  "blend": "models/Environment/foundry_service_bay.blend"
+}

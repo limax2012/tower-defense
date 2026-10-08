@@ -1,0 +1,48 @@
+# Cinderworks 3D client
+
+Unity 6000.3.25f1 LTS / URP 17.3.0. The client runs the authored Cinderworks map through `MaximalBastion.Gameplay`; Unity supplies presentation, input, interface, camera, and audio. The MonoGame desktop and browser clients remain separate build targets in the repository root solution.
+
+## Build and open
+
+Activate the pinned editor through Unity Hub. From the repository root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File unity/MaximalBastion3D/Tools/Sync-Gameplay.ps1
+powershell -ExecutionPolicy Bypass -File unity/MaximalBastion3D/Tools/Invoke-Unity.ps1 -Task BuildWindows
+```
+
+The build is written to `.artifacts/3d-development/Windows/MaximalBastion3D.exe`. `Sync-Gameplay.ps1` builds the portable C# library, copies its required runtime dependencies, and copies the authoritative JSON into `StreamingAssets`. These generated copies are ignored by Git; edit source and content in `src/MaximalBastion`.
+
+For editor work, run `Tools/Open-Unity.ps1` and open `Assets/Scenes/Cinderworks.unity`. The **Bastion** editor menu configures the URP assets, imports the model/material catalog, verifies model bounds and sockets, and builds Windows. `Tools/Compile-Offline.ps1 -Task Editor` checks C# API compatibility without launching the editor; it does not replace an actual Unity import or player test.
+
+## Play
+
+- Choose **Play**, a difficulty and mode, then start the run.
+- Select a tower from the bottom toolbar and click a clear build deck. Hold **Shift** to keep placing. Right-click or **Esc** cancels placement.
+- Click a tower for stats, upgrade choices, targeting, protocols, and selling. Hover an upgrade to compare its values.
+- **Space** starts a wave. The top bar controls speed and pause.
+- Pulse Plates go on the road. The Charge Forge occupies a build deck.
+- **Esc** opens pause. Checkpoints can be saved between waves; save/load uses the shared persistence implementation in a separate 3D user-data directory.
+
+## Camera
+
+- **Right drag:** orbit or look around.
+- **Middle drag:** pan.
+- **Wheel:** zoom; in free flight, move forward/back.
+- **W/A/S/D:** move across the map or through the scene.
+- **Q/E:** lower/raise the camera focus or flight position.
+- **F:** toggle free flight.
+- **Shift:** faster movement.
+- **Home:** return to the overview.
+
+Camera collision is presentation-only. It cannot change enemy paths, damage, placement rules, or targeting. Player input is inactive while the window is unfocused.
+
+## Editable assets
+
+Blender sources and export scripts are under `art/bastion-3d`. Unity FBXs, PBR material metadata, and textures live under `Assets/Art`. One Unity unit represents 20 logical map pixels; logical `(480,360)` maps to world origin on X/Z. Towers expose `Yaw`, `Pitch`, `Recoil`, and `Muzzle` transforms; enemies expose articulated limbs plus role/rank sockets. Mechanical animation lives in the Unity view code and does not alter simulation state.
+
+## Verification
+
+Run the repository's `scripts/verify.ps1` for the original clients, regression tests, portable parity checks, and hidden 2D UI scenes. Unity's **Bastion → Verify assets** checks imported assets. The Windows player accepts `--verify`, `--ui-review`, `--tour`, or `--autoplay` with `--capture-directory <directory>` for repeatable review. Verification runs use isolated temporary save data and permit unattended simulation without enabling unfocused player input.
+
+The development log at `docs/3d-development-log.md` records current acceptance results, runtime compatibility issues, and unfinished work. A successful build alone does not establish visual quality, cross-runtime determinism, or rendered performance.

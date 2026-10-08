@@ -1,0 +1,55 @@
+{
+  "id": "foundry_pipe_rack",
+  "category": "Environment",
+  "displayName": "foundry_pipe_rack",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -4.0,
+      0.0,
+      -1.0
+    ],
+    "max": [
+      4.0,
+      4.696999549865723,
+      1.0
+    ],
+    "meshCount": 27,
+    "triangles": 4388
+  },
+  "hierarchy": [
+    {
+      "name": "foundry_pipe_rack",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/foundry_pipe_rack.fbx",
+  "blend": "models/Environment/foundry_pipe_rack.blend"
+}

@@ -1,0 +1,55 @@
+{
+  "id": "foundry_service_cabinet",
+  "category": "Environment",
+  "displayName": "foundry_service_cabinet",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -0.9599999785423279,
+      0.0,
+      -0.5199999809265137
+    ],
+    "max": [
+      0.9599999785423279,
+      2.509999990463257,
+      0.5449999570846558
+    ],
+    "meshCount": 19,
+    "triangles": 2052
+  },
+  "hierarchy": [
+    {
+      "name": "foundry_service_cabinet",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/foundry_service_cabinet.fbx",
+  "blend": "models/Environment/foundry_service_cabinet.blend"
+}

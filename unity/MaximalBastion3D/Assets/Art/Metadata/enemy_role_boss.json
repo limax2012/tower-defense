@@ -1,0 +1,55 @@
+{
+  "id": "enemy_role_boss",
+  "category": "EnemyModules",
+  "displayName": "enemy_role_boss",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -0.3786150813102722,
+      0.0,
+      -0.4275693893432617
+    ],
+    "max": [
+      0.3786150813102722,
+      0.4749999940395355,
+      0.4275693893432617
+    ],
+    "meshCount": 15,
+    "triangles": 2124
+  },
+  "hierarchy": [
+    {
+      "name": "enemy_role_boss",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/EnemyModules/enemy_role_boss.fbx",
+  "blend": "models/EnemyModules/enemy_role_boss.blend"
+}

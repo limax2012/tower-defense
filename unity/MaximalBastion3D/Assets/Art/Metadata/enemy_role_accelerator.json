@@ -1,0 +1,55 @@
+{
+  "id": "enemy_role_accelerator",
+  "category": "EnemyModules",
+  "displayName": "enemy_role_accelerator",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -0.24730995297431946,
+      0.0,
+      -0.22634804248809814
+    ],
+    "max": [
+      0.24730995297431946,
+      0.45500001311302185,
+      0.22634804248809814
+    ],
+    "meshCount": 6,
+    "triangles": 1152
+  },
+  "hierarchy": [
+    {
+      "name": "enemy_role_accelerator",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/EnemyModules/enemy_role_accelerator.fbx",
+  "blend": "models/EnemyModules/enemy_role_accelerator.blend"
+}

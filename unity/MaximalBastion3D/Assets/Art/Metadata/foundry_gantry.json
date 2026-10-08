@@ -1,0 +1,55 @@
+{
+  "id": "foundry_gantry",
+  "category": "Environment",
+  "displayName": "foundry_gantry",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -4.599999904632568,
+      0.0,
+      -0.800000011920929
+    ],
+    "max": [
+      4.599999904632568,
+      5.949999809265137,
+      0.800000011920929
+    ],
+    "meshCount": 25,
+    "triangles": 2700
+  },
+  "hierarchy": [
+    {
+      "name": "foundry_gantry",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/foundry_gantry.fbx",
+  "blend": "models/Environment/foundry_gantry.blend"
+}

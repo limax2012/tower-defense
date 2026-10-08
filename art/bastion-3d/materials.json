@@ -1,0 +1,286 @@
+{
+  "materials": [
+    {
+      "name": "Bastion_Graphite",
+      "color": "#15202D",
+      "metallic": 0.78,
+      "roughness": 0.5875,
+      "emission": 0,
+      "roughnessTexture": "Alloy_Roughness.png",
+      "metallicSmoothnessTexture": "Alloy_Metallic078_Smoothness.png"
+    },
+    {
+      "name": "Bastion_Gunmetal",
+      "color": "#40566B",
+      "metallic": 0.78,
+      "roughness": 0.5875,
+      "emission": 0,
+      "roughnessTexture": "Alloy_Roughness.png",
+      "metallicSmoothnessTexture": "Alloy_Metallic078_Smoothness.png"
+    },
+    {
+      "name": "Bastion_Ceramic",
+      "color": "#AABCC6",
+      "metallic": 0.42,
+      "roughness": 0.5875,
+      "emission": 0,
+      "roughnessTexture": "Alloy_Roughness.png",
+      "metallicSmoothnessTexture": "Alloy_Metallic042_Smoothness.png"
+    },
+    {
+      "name": "Bastion_EdgeAlloy",
+      "color": "#6F8999",
+      "metallic": 0.74,
+      "roughness": 0.5875,
+      "emission": 0,
+      "roughnessTexture": "Alloy_Roughness.png",
+      "metallicSmoothnessTexture": "Alloy_Metallic074_Smoothness.png"
+    },
+    {
+      "name": "Bastion_Recess",
+      "color": "#09121A",
+      "metallic": 0.35,
+      "roughness": 0.5875,
+      "emission": 0,
+      "roughnessTexture": "Alloy_Roughness.png",
+      "metallicSmoothnessTexture": "Alloy_Metallic035_Smoothness.png"
+    },
+    {
+      "name": "Bastion_Rubber",
+      "color": "#111A20",
+      "metallic": 0.05,
+      "roughness": 0.73,
+      "emission": 0
+    },
+    {
+      "name": "Bastion_WhiteEnergy",
+      "color": "#E3F7FF",
+      "metallic": 0.2,
+      "roughness": 0.22,
+      "emission": 2.3
+    },
+    {
+      "name": "Foundry_Copper",
+      "color": "#976545",
+      "metallic": 0.72,
+      "roughness": 0.5875,
+      "emission": 0,
+      "roughnessTexture": "Alloy_Roughness.png",
+      "metallicSmoothnessTexture": "Alloy_Metallic072_Smoothness.png"
+    },
+    {
+      "name": "Foundry_Oxide",
+      "color": "#422D26",
+      "metallic": 0.58,
+      "roughness": 0.5875,
+      "emission": 0,
+      "roughnessTexture": "Alloy_Roughness.png",
+      "metallicSmoothnessTexture": "Alloy_Metallic058_Smoothness.png"
+    },
+    {
+      "name": "Foundry_Deck",
+      "color": "#313C43",
+      "metallic": 0.65,
+      "roughness": 0.5875,
+      "emission": 0,
+      "roughnessTexture": "Alloy_Roughness.png",
+      "metallicSmoothnessTexture": "Alloy_Metallic065_Smoothness.png"
+    },
+    {
+      "name": "Foundry_Hazard",
+      "color": "#DCAA51",
+      "metallic": 0.25,
+      "roughness": 0.5,
+      "emission": 0
+    },
+    {
+      "name": "Foundry_Heat",
+      "color": "#FF7934",
+      "metallic": 0.2,
+      "roughness": 0.35,
+      "emission": 3
+    },
+    {
+      "name": "Energy_prism_beam",
+      "color": "#A489EA",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_t1_crawler",
+      "color": "#3C9FCB",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_needle_turret",
+      "color": "#43DED8",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_shard_fan",
+      "color": "#FF8E37",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_watchtower",
+      "color": "#BACAFF",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_frost_spire",
+      "color": "#82E5F5",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_ember_coil",
+      "color": "#FF4540",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_breaker_cannon",
+      "color": "#F3C25C",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_arc_relay",
+      "color": "#43DED8",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_siege_mortar",
+      "color": "#D3F446",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_signal_beacon",
+      "color": "#46D399",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_t2_runner",
+      "color": "#E58A32",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_t3_brute",
+      "color": "#EC5062",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_t4_aegis",
+      "color": "#7C53DA",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_t5_regenerator",
+      "color": "#222A3A",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_RegeneratorRepair",
+      "color": "#42D392",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_pulse_plate",
+      "color": "#E8B637",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_charge_forge",
+      "color": "#2AC275",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_enemy_role_accelerator",
+      "color": "#E8B637",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_enemy_role_restorer",
+      "color": "#42D392",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_enemy_role_bulwark",
+      "color": "#69CFFF",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_enemy_role_jammer",
+      "color": "#FF4C98",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_enemy_role_disruptor",
+      "color": "#A489EA",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_enemy_role_elite",
+      "color": "#F3C25C",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_enemy_role_boss",
+      "color": "#FF4C98",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    },
+    {
+      "name": "Energy_DefendedCore",
+      "color": "#43DED8",
+      "metallic": 0.2,
+      "roughness": 0.3,
+      "emission": 1.35
+    }
+  ]
+}

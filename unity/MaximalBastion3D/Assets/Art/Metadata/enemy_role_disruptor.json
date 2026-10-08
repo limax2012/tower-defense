@@ -1,0 +1,55 @@
+{
+  "id": "enemy_role_disruptor",
+  "category": "EnemyModules",
+  "displayName": "enemy_role_disruptor",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -0.20750001072883606,
+      0.0,
+      -0.22634804248809814
+    ],
+    "max": [
+      0.20750001072883606,
+      0.5699999928474426,
+      0.22634804248809814
+    ],
+    "meshCount": 5,
+    "triangles": 820
+  },
+  "hierarchy": [
+    {
+      "name": "enemy_role_disruptor",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/EnemyModules/enemy_role_disruptor.fbx",
+  "blend": "models/EnemyModules/enemy_role_disruptor.blend"
+}

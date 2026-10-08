@@ -18,6 +18,10 @@ Maximal Bastion is an industrial cyberpunk tower-defense game built with C# and 
 
 Play opens one run setup containing illustrated map selection, difficulty, mode, and Start Run. The main menu presents Play, Co-op, Load, History, Settings, and Quit where supported in one evenly spaced column, with a taller Play control. Two framed live defense feeds flank its action list. Menus share graphite command surfaces, peripheral service infrastructure, Barlow/Oxanium typography, and restrained ambient motion. Action buttons use subdued accents; cyan highlights identify selected run options. Solo and co-op pause controls follow the same evenly spaced column structure. The animated title uses an armored prism tower emblem. Mode and difficulty explanations appear consistently on hover. Settings use Display, Audio, and Gameplay tabs. Selected towers show complete current statistics with optional lifetime details, and results offer overview and statistics views; achievements, medals, and records have separate tabs. See the [interface design system](docs/interface-design.md). Reduced Effects freezes decorative menu motion and suppresses decorative combat lighting in the feeds.
 
+## Cinderworks 3D client
+
+The separate [Unity URP client](unity/MaximalBastion3D/README.md) presents Cinderworks in full 3D using the shared C# simulation and authored gameplay data. It includes the ten-tower roster, campaign and Endless, tactical devices, upgrades, checkpoint saves, and an orbit/free-flight camera. Editable Blender assets live in [art/bastion-3d](art/bastion-3d/README.md). Unity build and review tools are documented separately; the original clients retain the build commands below. The 3D client currently targets Windows and Cinderworks solo play.
+
 ## Build and run
 
 Install the .NET 10 SDK, open PowerShell in the repository root, and run:

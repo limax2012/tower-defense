@@ -23,3 +23,10 @@ unity/**/*.csproj
 unity/**/*.sln
 unity/**/*.slnx
 art/**/*.blend1
+art/bastion-3d/review/
+unity/**/Assets/Plugins/Gameplay/
+unity/**/Assets/Plugins/Gameplay.meta
+unity/**/Assets/StreamingAssets/ContentData/
+unity/**/Assets/StreamingAssets/ContentData.meta
+unity/**/Assets/StreamingAssets/Verification/
+unity/**/Assets/StreamingAssets/Verification.meta

@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "textures": [
+    {
+      "name": "Alloy_Roughness",
+      "file": "Alloy_Roughness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB roughness"
+    },
+    {
+      "name": "Alloy_MetallicSmoothness",
+      "file": "Alloy_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB metallic; A smoothness",
+      "metallic": 0.72
+    },
+    {
+      "name": "FoundryFloor_BaseColor",
+      "file": "FoundryFloor_BaseColor.png",
+      "colorSpace": "sRGB",
+      "channels": "RGB neutral albedo; multiply by material tint",
+      "tileMeters": 8
+    },
+    {
+      "name": "FoundryFloor_Normal",
+      "file": "FoundryFloor_Normal.png",
+      "colorSpace": "NormalMap",
+      "channels": "Tangent-space RGB normal, positive green Y",
+      "tileMeters": 8
+    },
+    {
+      "name": "FoundryFloor_MetallicSmoothness",
+      "file": "FoundryFloor_MetallicSmoothness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB metallic; A smoothness",
+      "metallic": 0.3,
+      "tileMeters": 8
+    },
+    {
+      "name": "Alloy_Metallic035_Smoothness",
+      "file": "Alloy_Metallic035_Smoothness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
+      "metallic": 0.35
+    },
+    {
+      "name": "Alloy_Metallic042_Smoothness",
+      "file": "Alloy_Metallic042_Smoothness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
+      "metallic": 0.42
+    },
+    {
+      "name": "Alloy_Metallic058_Smoothness",
+      "file": "Alloy_Metallic058_Smoothness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
+      "metallic": 0.58
+    },
+    {
+      "name": "Alloy_Metallic065_Smoothness",
+      "file": "Alloy_Metallic065_Smoothness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
+      "metallic": 0.65
+    },
+    {
+      "name": "Alloy_Metallic072_Smoothness",
+      "file": "Alloy_Metallic072_Smoothness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
+      "metallic": 0.72
+    },
+    {
+      "name": "Alloy_Metallic074_Smoothness",
+      "file": "Alloy_Metallic074_Smoothness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
+      "metallic": 0.74
+    },
+    {
+      "name": "Alloy_Metallic078_Smoothness",
+      "file": "Alloy_Metallic078_Smoothness.png",
+      "colorSpace": "Linear",
+      "channels": "RGB authored metallic; A smoothness from Alloy_Roughness",
+      "metallic": 0.78
+    }
+  ]
+}

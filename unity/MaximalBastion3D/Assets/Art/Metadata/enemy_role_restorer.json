@@ -1,0 +1,55 @@
+{
+  "id": "enemy_role_restorer",
+  "category": "EnemyModules",
+  "displayName": "enemy_role_restorer",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -0.19918584823608398,
+      0.0,
+      -0.22634804248809814
+    ],
+    "max": [
+      0.19918584823608398,
+      0.6800000071525574,
+      0.22634804248809814
+    ],
+    "meshCount": 4,
+    "triangles": 600
+  },
+  "hierarchy": [
+    {
+      "name": "enemy_role_restorer",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/EnemyModules/enemy_role_restorer.fbx",
+  "blend": "models/EnemyModules/enemy_role_restorer.blend"
+}

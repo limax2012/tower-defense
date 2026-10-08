@@ -1,0 +1,229 @@
+{
+  "id": "defended_core",
+  "category": "Environment",
+  "displayName": "defended_core",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -1.6520662307739258,
+      0.0,
+      -1.6520662307739258
+    ],
+    "max": [
+      1.6520662307739258,
+      2.9860000610351562,
+      1.6520662307739258
+    ],
+    "meshCount": 22,
+    "triangles": 3768
+  },
+  "hierarchy": [
+    {
+      "name": "defended_core",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Core_buttress_0",
+      "parent": "defended_core",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.7071067690849304,
+        0.0,
+        0.7071067690849304
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        45.00000125223908,
+        -0.0
+      ]
+    },
+    {
+      "name": "Core_buttress_1",
+      "parent": "defended_core",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.7071067690849304,
+        0.0,
+        -0.7071067690849304
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        135.00000034162267,
+        -0.0
+      ]
+    },
+    {
+      "name": "Core_buttress_2",
+      "parent": "defended_core",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -0.7071067094802856,
+        0.0,
+        -0.7071068286895752
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        224.99999601591165,
+        -0.0
+      ]
+    },
+    {
+      "name": "Core_buttress_3",
+      "parent": "defended_core",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -0.70710688829422,
+        0.0,
+        0.7071066498756409
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        314.99999169020066,
+        -0.0
+      ]
+    },
+    {
+      "name": "CoreLight",
+      "parent": "defended_core",
+      "localPosition": [
+        0.0,
+        2.200000047683716,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        2.200000047683716,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "DamageSmoke",
+      "parent": "defended_core",
+      "localPosition": [
+        0.0,
+        3.0399999618530273,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        3.0399999618530273,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/defended_core.fbx",
+  "blend": "models/Environment/defended_core.blend"
+}

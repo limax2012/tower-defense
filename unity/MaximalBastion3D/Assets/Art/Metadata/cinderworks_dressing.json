@@ -1,0 +1,3691 @@
+{
+  "id": "cinderworks_dressing",
+  "category": "Environment",
+  "displayName": "cinderworks_dressing",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -30.0,
+      -0.10000000894069672,
+      -29.899999618530273
+    ],
+    "max": [
+      32.28542709350586,
+      8.66349983215332,
+      25.399999618530273
+    ],
+    "meshCount": 1711,
+    "triangles": 217540
+  },
+  "hierarchy": [
+    {
+      "name": "cinderworks_dressing",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "BackwallServiceBay_00",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -24.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldPosition": [
+        -24.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "BackwallServiceBay_01",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -16.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldPosition": [
+        -16.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "BackwallServiceBay_02",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -8.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldPosition": [
+        -8.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "BackwallServiceBay_03",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        0.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldPosition": [
+        0.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "BackwallServiceBay_04",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        8.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldPosition": [
+        8.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "BackwallServiceBay_05",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        16.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldPosition": [
+        16.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "BackwallServiceBay_06",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        24.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldPosition": [
+        24.0,
+        -0.10000000149011612,
+        -28.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Cabinet_00",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -25.0,
+        0.0,
+        13.0
+      ],
+      "worldPosition": [
+        -25.0,
+        0.0,
+        13.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Cabinet_01",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        25.0,
+        0.0,
+        -17.0
+      ],
+      "worldPosition": [
+        25.0,
+        0.0,
+        -17.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Cabinet_02",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        8.0,
+        0.0,
+        20.0
+      ],
+      "worldPosition": [
+        8.0,
+        0.0,
+        20.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "DefendedCore",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        28.0,
+        0.0,
+        14.100000381469727
+      ],
+      "worldPosition": [
+        28.0,
+        0.0,
+        14.100000381469727
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Core_buttress_0",
+      "parent": "DefendedCore",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        28.0,
+        0.0,
+        14.100000381469727
+      ],
+      "worldForward": [
+        0.7071067690849304,
+        0.0,
+        0.7071067690849304
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        45.00000125223908,
+        -0.0
+      ]
+    },
+    {
+      "name": "Core_buttress_1",
+      "parent": "DefendedCore",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        28.0,
+        0.0,
+        14.100000381469727
+      ],
+      "worldForward": [
+        0.7071067690849304,
+        0.0,
+        -0.7071067690849304
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        135.00000034162267,
+        -0.0
+      ]
+    },
+    {
+      "name": "Core_buttress_2",
+      "parent": "DefendedCore",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        28.0,
+        0.0,
+        14.100000381469727
+      ],
+      "worldForward": [
+        -0.7071067094802856,
+        0.0,
+        -0.7071068286895752
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        224.99999601591165,
+        -0.0
+      ]
+    },
+    {
+      "name": "Core_buttress_3",
+      "parent": "DefendedCore",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        28.0,
+        0.0,
+        14.100000381469727
+      ],
+      "worldForward": [
+        -0.70710688829422,
+        0.0,
+        0.7071066498756409
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        314.99999169020066,
+        -0.0
+      ]
+    },
+    {
+      "name": "CoreLight",
+      "parent": "DefendedCore",
+      "localPosition": [
+        0.0,
+        2.200000047683716,
+        -0.0
+      ],
+      "worldPosition": [
+        28.0,
+        2.200000047683716,
+        14.100000381469727
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "DamageSmoke",
+      "parent": "DefendedCore",
+      "localPosition": [
+        0.0,
+        3.0399999618530273,
+        -0.0
+      ],
+      "worldPosition": [
+        28.0,
+        3.0399999618530273,
+        14.100000381469727
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "EnemyArrival",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -25.600000381469727,
+        0.0,
+        -12.800000190734863
+      ],
+      "worldPosition": [
+        -25.600000381469727,
+        0.0,
+        -12.800000190734863
+      ],
+      "worldForward": [
+        0.800000011920929,
+        0.0,
+        -3.4969112050475815e-08
+      ],
+      "worldUp": [
+        0.0,
+        0.75,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        90.00000250447816,
+        -0.0
+      ]
+    },
+    {
+      "name": "GoalGate",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        24.700000762939453,
+        0.0,
+        14.100000381469727
+      ],
+      "worldPosition": [
+        24.700000762939453,
+        0.0,
+        14.100000381469727
+      ],
+      "worldForward": [
+        0.800000011920929,
+        0.0,
+        -3.4969112050475815e-08
+      ],
+      "worldUp": [
+        0.0,
+        0.75,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        90.00000250447816,
+        -0.0
+      ]
+    },
+    {
+      "name": "HeatExchanger_00",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        17.0,
+        0.0,
+        3.200000047683716
+      ],
+      "worldPosition": [
+        17.0,
+        0.0,
+        3.200000047683716
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        2.0999999046325684
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat",
+      "parent": "HeatExchanger_00",
+      "localPosition": [
+        0.0,
+        0.5699999928474426,
+        -0.0
+      ],
+      "worldPosition": [
+        17.0,
+        0.5699999928474426,
+        3.200000047683716
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        2.0999999046325684
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "HeatExchanger_01",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -3.450000047683716,
+        0.0,
+        0.30000001192092896
+      ],
+      "worldPosition": [
+        -3.450000047683716,
+        0.0,
+        0.30000001192092896
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat.001",
+      "parent": "HeatExchanger_01",
+      "localPosition": [
+        0.0,
+        0.5699999928474426,
+        -0.0
+      ],
+      "worldPosition": [
+        -3.450000047683716,
+        0.5699999928474426,
+        0.30000001192092896
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "HeatExchanger_02",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -19.149999618530273,
+        0.0,
+        1.5
+      ],
+      "worldPosition": [
+        -19.149999618530273,
+        0.0,
+        1.5
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.1699999570846558
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat.002",
+      "parent": "HeatExchanger_02",
+      "localPosition": [
+        0.0,
+        0.5699999928474426,
+        -0.0
+      ],
+      "worldPosition": [
+        -19.149999618530273,
+        0.5699999928474426,
+        1.5
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.1699999570846558
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "HeatExchanger_03",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        3.75,
+        0.0,
+        15.550000190734863
+      ],
+      "worldPosition": [
+        3.75,
+        0.0,
+        15.550000190734863
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        0.8999999761581421
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat.003",
+      "parent": "HeatExchanger_03",
+      "localPosition": [
+        0.0,
+        0.5699999928474426,
+        -0.0
+      ],
+      "worldPosition": [
+        3.75,
+        0.5699999928474426,
+        15.550000190734863
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        0.8999999761581421
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterFurnace_00",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -21.0,
+        -0.10000000149011612,
+        -23.0
+      ],
+      "worldPosition": [
+        -21.0,
+        -0.10000000149011612,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust_L",
+      "parent": "PerimeterFurnace_00",
+      "localPosition": [
+        -1.399999976158142,
+        7.559999942779541,
+        -0.0
+      ],
+      "worldPosition": [
+        -22.399999618530273,
+        7.460000038146973,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust_R",
+      "parent": "PerimeterFurnace_00",
+      "localPosition": [
+        1.399999976158142,
+        7.559999942779541,
+        -0.0
+      ],
+      "worldPosition": [
+        -19.600000381469727,
+        7.460000038146973,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanRotor_L",
+      "parent": "PerimeterFurnace_00",
+      "localPosition": [
+        -1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldPosition": [
+        -22.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "animation": {
+        "type": "continuous",
+        "axis": "Y",
+        "degreesPerSecond": 90
+      }
+    },
+    {
+      "name": "FanBlade_00",
+      "parent": "FanRotor_L",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -22.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_01",
+      "parent": "FanRotor_L",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -22.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.9510565400123596,
+        0.0,
+        0.30901697278022766
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        72.00000200358254,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_02",
+      "parent": "FanRotor_L",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -22.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.5877851843833923,
+        0.0,
+        -0.8090170621871948
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        144.00000400716507,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_03",
+      "parent": "FanRotor_L",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -22.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        -0.5877853631973267,
+        0.0,
+        -0.8090169429779053
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        216.0000060107476,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_04",
+      "parent": "FanRotor_L",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -22.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        -0.9510564804077148,
+        0.0,
+        0.3090171217918396
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        288.00000801433015,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanRotor_R",
+      "parent": "PerimeterFurnace_00",
+      "localPosition": [
+        1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldPosition": [
+        -19.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "animation": {
+        "type": "continuous",
+        "axis": "Y",
+        "degreesPerSecond": -90
+      }
+    },
+    {
+      "name": "FanBlade_00.001",
+      "parent": "FanRotor_R",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -19.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_01.001",
+      "parent": "FanRotor_R",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -19.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.9510565400123596,
+        0.0,
+        0.30901697278022766
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        72.00000200358254,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_02.001",
+      "parent": "FanRotor_R",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -19.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.5877851843833923,
+        0.0,
+        -0.8090170621871948
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        144.00000400716507,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_03.001",
+      "parent": "FanRotor_R",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -19.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        -0.5877853631973267,
+        0.0,
+        -0.8090169429779053
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        216.0000060107476,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_04.001",
+      "parent": "FanRotor_R",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -19.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        -0.9510564804077148,
+        0.0,
+        0.3090171217918396
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        288.00000801433015,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat.004",
+      "parent": "PerimeterFurnace_00",
+      "localPosition": [
+        0.0,
+        3.059999942779541,
+        2.049999952316284
+      ],
+      "worldPosition": [
+        -21.0,
+        2.9600000381469727,
+        -20.950000762939453
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterFurnace_01",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -12.0,
+        -0.10000000149011612,
+        -23.0
+      ],
+      "worldPosition": [
+        -12.0,
+        -0.10000000149011612,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust_L.001",
+      "parent": "PerimeterFurnace_01",
+      "localPosition": [
+        -1.399999976158142,
+        7.559999942779541,
+        -0.0
+      ],
+      "worldPosition": [
+        -13.399999618530273,
+        7.460000038146973,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust_R.001",
+      "parent": "PerimeterFurnace_01",
+      "localPosition": [
+        1.399999976158142,
+        7.559999942779541,
+        -0.0
+      ],
+      "worldPosition": [
+        -10.600000381469727,
+        7.460000038146973,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanRotor_L.001",
+      "parent": "PerimeterFurnace_01",
+      "localPosition": [
+        -1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldPosition": [
+        -13.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "animation": {
+        "type": "continuous",
+        "axis": "Y",
+        "degreesPerSecond": 90
+      }
+    },
+    {
+      "name": "FanBlade_00.002",
+      "parent": "FanRotor_L.001",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -13.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_01.002",
+      "parent": "FanRotor_L.001",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -13.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.9510565400123596,
+        0.0,
+        0.30901697278022766
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        72.00000200358254,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_02.002",
+      "parent": "FanRotor_L.001",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -13.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.5877851843833923,
+        0.0,
+        -0.8090170621871948
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        144.00000400716507,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_03.002",
+      "parent": "FanRotor_L.001",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -13.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        -0.5877853631973267,
+        0.0,
+        -0.8090169429779053
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        216.0000060107476,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_04.002",
+      "parent": "FanRotor_L.001",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -13.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        -0.9510564804077148,
+        0.0,
+        0.3090171217918396
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        288.00000801433015,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanRotor_R.001",
+      "parent": "PerimeterFurnace_01",
+      "localPosition": [
+        1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldPosition": [
+        -10.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "animation": {
+        "type": "continuous",
+        "axis": "Y",
+        "degreesPerSecond": -90
+      }
+    },
+    {
+      "name": "FanBlade_00.003",
+      "parent": "FanRotor_R.001",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -10.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_01.003",
+      "parent": "FanRotor_R.001",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -10.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.9510565400123596,
+        0.0,
+        0.30901697278022766
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        72.00000200358254,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_02.003",
+      "parent": "FanRotor_R.001",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -10.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.5877851843833923,
+        0.0,
+        -0.8090170621871948
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        144.00000400716507,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_03.003",
+      "parent": "FanRotor_R.001",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -10.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        -0.5877853631973267,
+        0.0,
+        -0.8090169429779053
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        216.0000060107476,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_04.003",
+      "parent": "FanRotor_R.001",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        -10.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        -0.9510564804077148,
+        0.0,
+        0.3090171217918396
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        288.00000801433015,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat.005",
+      "parent": "PerimeterFurnace_01",
+      "localPosition": [
+        0.0,
+        3.059999942779541,
+        2.049999952316284
+      ],
+      "worldPosition": [
+        -12.0,
+        2.9600000381469727,
+        -20.950000762939453
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterFurnace_02",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        18.0,
+        -0.10000000149011612,
+        -23.0
+      ],
+      "worldPosition": [
+        18.0,
+        -0.10000000149011612,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust_L.002",
+      "parent": "PerimeterFurnace_02",
+      "localPosition": [
+        -1.399999976158142,
+        7.559999942779541,
+        -0.0
+      ],
+      "worldPosition": [
+        16.600000381469727,
+        7.460000038146973,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust_R.002",
+      "parent": "PerimeterFurnace_02",
+      "localPosition": [
+        1.399999976158142,
+        7.559999942779541,
+        -0.0
+      ],
+      "worldPosition": [
+        19.399999618530273,
+        7.460000038146973,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanRotor_L.002",
+      "parent": "PerimeterFurnace_02",
+      "localPosition": [
+        -1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldPosition": [
+        16.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "animation": {
+        "type": "continuous",
+        "axis": "Y",
+        "degreesPerSecond": 90
+      }
+    },
+    {
+      "name": "FanBlade_00.004",
+      "parent": "FanRotor_L.002",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        16.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_01.004",
+      "parent": "FanRotor_L.002",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        16.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.9510565400123596,
+        0.0,
+        0.30901697278022766
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        72.00000200358254,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_02.004",
+      "parent": "FanRotor_L.002",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        16.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.5877851843833923,
+        0.0,
+        -0.8090170621871948
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        144.00000400716507,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_03.004",
+      "parent": "FanRotor_L.002",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        16.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        -0.5877853631973267,
+        0.0,
+        -0.8090169429779053
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        216.0000060107476,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_04.004",
+      "parent": "FanRotor_L.002",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        16.600000381469727,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        -0.9510564804077148,
+        0.0,
+        0.3090171217918396
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        288.00000801433015,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanRotor_R.002",
+      "parent": "PerimeterFurnace_02",
+      "localPosition": [
+        1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldPosition": [
+        19.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "animation": {
+        "type": "continuous",
+        "axis": "Y",
+        "degreesPerSecond": -90
+      }
+    },
+    {
+      "name": "FanBlade_00.005",
+      "parent": "FanRotor_R.002",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        19.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_01.005",
+      "parent": "FanRotor_R.002",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        19.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.9510565400123596,
+        0.0,
+        0.30901697278022766
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        72.00000200358254,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_02.005",
+      "parent": "FanRotor_R.002",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        19.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        0.5877851843833923,
+        0.0,
+        -0.8090170621871948
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        144.00000400716507,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_03.005",
+      "parent": "FanRotor_R.002",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        19.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        -0.5877853631973267,
+        0.0,
+        -0.8090169429779053
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        216.0000060107476,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_04.005",
+      "parent": "FanRotor_R.002",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        19.399999618530273,
+        7.300000190734863,
+        -23.0
+      ],
+      "worldForward": [
+        -0.9510564804077148,
+        0.0,
+        0.3090171217918396
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        288.00000801433015,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat.006",
+      "parent": "PerimeterFurnace_02",
+      "localPosition": [
+        0.0,
+        3.059999942779541,
+        2.049999952316284
+      ],
+      "worldPosition": [
+        18.0,
+        2.9600000381469727,
+        -20.950000762939453
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterFurnace_03",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        29.0,
+        -0.10000000149011612,
+        4.0
+      ],
+      "worldPosition": [
+        29.0,
+        -0.10000000149011612,
+        4.0
+      ],
+      "worldForward": [
+        -1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        -90.00000250447816,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust_L.003",
+      "parent": "PerimeterFurnace_03",
+      "localPosition": [
+        -1.399999976158142,
+        7.559999942779541,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.460000038146973,
+        2.5999999046325684
+      ],
+      "worldForward": [
+        -1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust_R.003",
+      "parent": "PerimeterFurnace_03",
+      "localPosition": [
+        1.399999976158142,
+        7.559999942779541,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.460000038146973,
+        5.400000095367432
+      ],
+      "worldForward": [
+        -1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanRotor_L.003",
+      "parent": "PerimeterFurnace_03",
+      "localPosition": [
+        -1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.300000190734863,
+        2.5999999046325684
+      ],
+      "worldForward": [
+        -1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "animation": {
+        "type": "continuous",
+        "axis": "Y",
+        "degreesPerSecond": 90
+      }
+    },
+    {
+      "name": "FanBlade_00.006",
+      "parent": "FanRotor_L.003",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.300000190734863,
+        2.5999999046325684
+      ],
+      "worldForward": [
+        -1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_01.006",
+      "parent": "FanRotor_L.003",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.300000190734863,
+        2.5999999046325684
+      ],
+      "worldForward": [
+        -0.30901700258255005,
+        0.0,
+        0.9510565400123596
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        72.00000200358254,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_02.006",
+      "parent": "FanRotor_L.003",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.300000190734863,
+        2.5999999046325684
+      ],
+      "worldForward": [
+        0.8090170621871948,
+        0.0,
+        0.5877852439880371
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        144.00000400716507,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_03.006",
+      "parent": "FanRotor_L.003",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.300000190734863,
+        2.5999999046325684
+      ],
+      "worldForward": [
+        0.8090169429779053,
+        0.0,
+        -0.5877853035926819
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        216.0000060107476,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_04.006",
+      "parent": "FanRotor_L.003",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.300000190734863,
+        2.5999999046325684
+      ],
+      "worldForward": [
+        -0.3090170919895172,
+        0.0,
+        -0.9510564804077148
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        288.00000801433015,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanRotor_R.003",
+      "parent": "PerimeterFurnace_03",
+      "localPosition": [
+        1.399999976158142,
+        7.400000095367432,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.300000190734863,
+        5.400000095367432
+      ],
+      "worldForward": [
+        -1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "animation": {
+        "type": "continuous",
+        "axis": "Y",
+        "degreesPerSecond": -90
+      }
+    },
+    {
+      "name": "FanBlade_00.007",
+      "parent": "FanRotor_R.003",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.300000190734863,
+        5.400000095367432
+      ],
+      "worldForward": [
+        -1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_01.007",
+      "parent": "FanRotor_R.003",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.300000190734863,
+        5.400000095367432
+      ],
+      "worldForward": [
+        -0.30901700258255005,
+        0.0,
+        0.9510565400123596
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        72.00000200358254,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_02.007",
+      "parent": "FanRotor_R.003",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.300000190734863,
+        5.400000095367432
+      ],
+      "worldForward": [
+        0.8090170621871948,
+        0.0,
+        0.5877852439880371
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        144.00000400716507,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_03.007",
+      "parent": "FanRotor_R.003",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.300000190734863,
+        5.400000095367432
+      ],
+      "worldForward": [
+        0.8090169429779053,
+        0.0,
+        -0.5877853035926819
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        216.0000060107476,
+        -0.0
+      ]
+    },
+    {
+      "name": "FanBlade_04.007",
+      "parent": "FanRotor_R.003",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        29.0,
+        7.300000190734863,
+        5.400000095367432
+      ],
+      "worldForward": [
+        -0.3090170919895172,
+        0.0,
+        -0.9510564804077148
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        288.00000801433015,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat.007",
+      "parent": "PerimeterFurnace_03",
+      "localPosition": [
+        0.0,
+        3.059999942779541,
+        2.049999952316284
+      ],
+      "worldPosition": [
+        26.950000762939453,
+        2.9600000381469727,
+        4.0
+      ],
+      "worldForward": [
+        -1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterPipeRack_00",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -12.0,
+        0.0,
+        22.0
+      ],
+      "worldPosition": [
+        -12.0,
+        0.0,
+        22.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterPipeRack_01",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        0.0,
+        0.0,
+        22.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        22.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterPipeRack_02",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        12.0,
+        0.0,
+        22.0
+      ],
+      "worldPosition": [
+        12.0,
+        0.0,
+        22.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterPipeRack_03",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -29.0,
+        0.0,
+        -8.0
+      ],
+      "worldPosition": [
+        -29.0,
+        0.0,
+        -8.0
+      ],
+      "worldForward": [
+        1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        90.00000250447816,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterPipeRack_04",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -29.0,
+        0.0,
+        5.0
+      ],
+      "worldPosition": [
+        -29.0,
+        0.0,
+        5.0
+      ],
+      "worldForward": [
+        1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        90.00000250447816,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterPipeRack_05",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        29.0,
+        0.0,
+        -7.0
+      ],
+      "worldPosition": [
+        29.0,
+        0.0,
+        -7.0
+      ],
+      "worldForward": [
+        1.0,
+        0.0,
+        -4.371138828673793e-08
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        90.00000250447816,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterStack_00",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -28.0,
+        -0.10000000149011612,
+        -22.0
+      ],
+      "worldPosition": [
+        -28.0,
+        -0.10000000149011612,
+        -22.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust",
+      "parent": "PerimeterStack_00",
+      "localPosition": [
+        0.0,
+        8.319999694824219,
+        -0.0
+      ],
+      "worldPosition": [
+        -28.0,
+        8.219999313354492,
+        -22.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat.008",
+      "parent": "PerimeterStack_00",
+      "localPosition": [
+        0.0,
+        8.279999732971191,
+        -0.0
+      ],
+      "worldPosition": [
+        -28.0,
+        8.179999351501465,
+        -22.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterStack_01",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -3.0,
+        -0.10000000149011612,
+        -24.0
+      ],
+      "worldPosition": [
+        -3.0,
+        -0.10000000149011612,
+        -24.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust.001",
+      "parent": "PerimeterStack_01",
+      "localPosition": [
+        0.0,
+        8.319999694824219,
+        -0.0
+      ],
+      "worldPosition": [
+        -3.0,
+        8.219999313354492,
+        -24.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat.009",
+      "parent": "PerimeterStack_01",
+      "localPosition": [
+        0.0,
+        8.279999732971191,
+        -0.0
+      ],
+      "worldPosition": [
+        -3.0,
+        8.179999351501465,
+        -24.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterStack_02",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        25.0,
+        -0.10000000149011612,
+        -23.0
+      ],
+      "worldPosition": [
+        25.0,
+        -0.10000000149011612,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust.002",
+      "parent": "PerimeterStack_02",
+      "localPosition": [
+        0.0,
+        8.319999694824219,
+        -0.0
+      ],
+      "worldPosition": [
+        25.0,
+        8.219999313354492,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat.010",
+      "parent": "PerimeterStack_02",
+      "localPosition": [
+        0.0,
+        8.279999732971191,
+        -0.0
+      ],
+      "worldPosition": [
+        25.0,
+        8.179999351501465,
+        -23.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "PerimeterStack_03",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        31.0,
+        -0.10000000149011612,
+        20.0
+      ],
+      "worldPosition": [
+        31.0,
+        -0.10000000149011612,
+        20.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust.003",
+      "parent": "PerimeterStack_03",
+      "localPosition": [
+        0.0,
+        8.319999694824219,
+        -0.0
+      ],
+      "worldPosition": [
+        31.0,
+        8.219999313354492,
+        20.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat.011",
+      "parent": "PerimeterStack_03",
+      "localPosition": [
+        0.0,
+        8.279999732971191,
+        -0.0
+      ],
+      "worldPosition": [
+        31.0,
+        8.179999351501465,
+        20.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "ServiceCatwalk_00",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -24.0,
+        0.0,
+        -20.0
+      ],
+      "worldPosition": [
+        -24.0,
+        0.0,
+        -20.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "ServiceCatwalk_01",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -16.0,
+        0.0,
+        -20.0
+      ],
+      "worldPosition": [
+        -16.0,
+        0.0,
+        -20.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "ServiceCatwalk_02",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -8.0,
+        0.0,
+        -20.0
+      ],
+      "worldPosition": [
+        -8.0,
+        0.0,
+        -20.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "ServiceCatwalk_03",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        0.0,
+        0.0,
+        -20.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -20.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "ServiceCatwalk_04",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        8.0,
+        0.0,
+        -20.0
+      ],
+      "worldPosition": [
+        8.0,
+        0.0,
+        -20.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "ServiceCatwalk_05",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        16.0,
+        0.0,
+        -20.0
+      ],
+      "worldPosition": [
+        16.0,
+        0.0,
+        -20.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "ServiceCatwalk_06",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        24.0,
+        0.0,
+        -20.0
+      ],
+      "worldPosition": [
+        24.0,
+        0.0,
+        -20.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "SouthWall_00",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -20.0,
+        0.0,
+        25.0
+      ],
+      "worldPosition": [
+        -20.0,
+        0.0,
+        25.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "SouthWall_01",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -14.0,
+        0.0,
+        25.0
+      ],
+      "worldPosition": [
+        -14.0,
+        0.0,
+        25.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "SouthWall_02",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -8.0,
+        0.0,
+        25.0
+      ],
+      "worldPosition": [
+        -8.0,
+        0.0,
+        25.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "SouthWall_03",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        -2.0,
+        0.0,
+        25.0
+      ],
+      "worldPosition": [
+        -2.0,
+        0.0,
+        25.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "SouthWall_04",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        4.0,
+        0.0,
+        25.0
+      ],
+      "worldPosition": [
+        4.0,
+        0.0,
+        25.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "SouthWall_05",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        10.0,
+        0.0,
+        25.0
+      ],
+      "worldPosition": [
+        10.0,
+        0.0,
+        25.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "SouthWall_06",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        16.0,
+        0.0,
+        25.0
+      ],
+      "worldPosition": [
+        16.0,
+        0.0,
+        25.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "SouthWall_07",
+      "parent": "cinderworks_dressing",
+      "localPosition": [
+        22.0,
+        0.0,
+        25.0
+      ],
+      "worldPosition": [
+        22.0,
+        0.0,
+        25.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/cinderworks_dressing.fbx",
+  "blend": "models/Environment/cinderworks_dressing.blend"
+}

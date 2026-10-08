@@ -1,0 +1,724 @@
+{
+  "id": "t1_crawler",
+  "category": "Enemies",
+  "displayName": "Crawler",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -0.597823977470398,
+      -0.005000010132789612,
+      -0.7144219875335693
+    ],
+    "max": [
+      0.6203239560127258,
+      1.0199999809265137,
+      0.7144219875335693
+    ],
+    "meshCount": 43,
+    "triangles": 7724
+  },
+  "hierarchy": [
+    {
+      "name": "t1_crawler",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Body",
+      "parent": "t1_crawler",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Carapace_sector_00",
+      "parent": "Body",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Carapace_sector_01",
+      "parent": "Body",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.866025447845459,
+        0.0,
+        0.4999999701976776
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        60.000001669652114,
+        -0.0
+      ]
+    },
+    {
+      "name": "Carapace_sector_02",
+      "parent": "Body",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.8660253882408142,
+        0.0,
+        -0.5000000596046448
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        120.00000333930423,
+        -0.0
+      ]
+    },
+    {
+      "name": "Carapace_sector_03",
+      "parent": "Body",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -8.742277657347586e-08,
+        0.0,
+        -1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        180.00000500895632,
+        -0.0
+      ]
+    },
+    {
+      "name": "Carapace_sector_04",
+      "parent": "Body",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -0.866025447845459,
+        0.0,
+        -0.49999991059303284
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        240.00000667860846,
+        -0.0
+      ]
+    },
+    {
+      "name": "Carapace_sector_05",
+      "parent": "Body",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        -0.866025447845459,
+        0.0,
+        0.49999991059303284
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        299.99999468788224,
+        -0.0
+      ]
+    },
+    {
+      "name": "HitPoint",
+      "parent": "Body",
+      "localPosition": [
+        0.0,
+        0.7599999904632568,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.7599999904632568,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "RankSocket",
+      "parent": "Body",
+      "localPosition": [
+        0.0,
+        1.1200000047683716,
+        0.3499999940395355
+      ],
+      "worldPosition": [
+        0.0,
+        1.1200000047683716,
+        0.3499999940395355
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "RoleSocket",
+      "parent": "Body",
+      "localPosition": [
+        0.0,
+        1.100000023841858,
+        -0.550000011920929
+      ],
+      "worldPosition": [
+        0.0,
+        1.100000023841858,
+        -0.550000011920929
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "GroundContact",
+      "parent": "t1_crawler",
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Leg_00",
+      "parent": "t1_crawler",
+      "localPosition": [
+        0.3167838454246521,
+        0.5099999904632568,
+        0.3167838454246521
+      ],
+      "worldPosition": [
+        0.3167838454246521,
+        0.5099999904632568,
+        0.3167838454246521
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Knee",
+      "parent": "Leg_00",
+      "localPosition": [
+        0.193040132522583,
+        -0.17719998955726624,
+        0.193040132522583
+      ],
+      "worldPosition": [
+        0.5098239779472351,
+        0.3328000009059906,
+        0.5098239779472351
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Foot",
+      "parent": "Knee",
+      "localPosition": [
+        -0.02474871277809143,
+        -0.32280001044273376,
+        0.03959798812866211
+      ],
+      "worldPosition": [
+        0.4850752651691437,
+        0.009999990463256836,
+        0.5494219660758972
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Leg_01",
+      "parent": "t1_crawler",
+      "localPosition": [
+        0.3167838454246521,
+        0.5099999904632568,
+        -0.3167838454246521
+      ],
+      "worldPosition": [
+        0.3167838454246521,
+        0.5099999904632568,
+        -0.3167838454246521
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Knee.001",
+      "parent": "Leg_01",
+      "localPosition": [
+        0.193040132522583,
+        -0.17719998955726624,
+        -0.193040132522583
+      ],
+      "worldPosition": [
+        0.5098239779472351,
+        0.3328000009059906,
+        -0.5098239779472351
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Foot.001",
+      "parent": "Knee.001",
+      "localPosition": [
+        -0.02474871277809143,
+        -0.32280001044273376,
+        -0.03959798812866211
+      ],
+      "worldPosition": [
+        0.4850752651691437,
+        0.009999990463256836,
+        -0.5494219660758972
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Leg_02",
+      "parent": "t1_crawler",
+      "localPosition": [
+        -0.3167838454246521,
+        0.5099999904632568,
+        -0.3167838454246521
+      ],
+      "worldPosition": [
+        -0.3167838454246521,
+        0.5099999904632568,
+        -0.3167838454246521
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Knee.002",
+      "parent": "Leg_02",
+      "localPosition": [
+        -0.193040132522583,
+        -0.17719998955726624,
+        -0.193040132522583
+      ],
+      "worldPosition": [
+        -0.5098239779472351,
+        0.3328000009059906,
+        -0.5098239779472351
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Foot.002",
+      "parent": "Knee.002",
+      "localPosition": [
+        0.02474871277809143,
+        -0.32280001044273376,
+        -0.03959798812866211
+      ],
+      "worldPosition": [
+        -0.4850752651691437,
+        0.009999990463256836,
+        -0.5494219660758972
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Leg_03",
+      "parent": "t1_crawler",
+      "localPosition": [
+        -0.3167838454246521,
+        0.5099999904632568,
+        0.3167838454246521
+      ],
+      "worldPosition": [
+        -0.3167838454246521,
+        0.5099999904632568,
+        0.3167838454246521
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Knee.003",
+      "parent": "Leg_03",
+      "localPosition": [
+        -0.193040132522583,
+        -0.17719998955726624,
+        0.193040132522583
+      ],
+      "worldPosition": [
+        -0.5098239779472351,
+        0.3328000009059906,
+        0.5098239779472351
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Foot.003",
+      "parent": "Knee.003",
+      "localPosition": [
+        0.02474871277809143,
+        -0.32280001044273376,
+        0.03959798812866211
+      ],
+      "worldPosition": [
+        -0.4850752651691437,
+        0.009999990463256836,
+        0.5494219660758972
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "energyColor": "#3C9FCB",
+  "logicalRadius": 14,
+  "fbx": "Models/Enemies/t1_crawler.fbx",
+  "blend": "models/Enemies/t1_crawler.blend"
+}

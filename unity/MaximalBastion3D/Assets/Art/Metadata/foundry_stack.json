@@ -1,0 +1,113 @@
+{
+  "id": "foundry_stack",
+  "category": "Environment",
+  "displayName": "foundry_stack",
+  "scale": 0.05,
+  "forward": "+Z",
+  "up": "+Y",
+  "bounds": {
+    "min": [
+      -1.2854288816452026,
+      0.0,
+      -1.2854288816452026
+    ],
+    "max": [
+      1.2854288816452026,
+      8.284500122070312,
+      1.2854288816452026
+    ],
+    "meshCount": 14,
+    "triangles": 2744
+  },
+  "hierarchy": [
+    {
+      "name": "foundry_stack",
+      "parent": null,
+      "localPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Exhaust",
+      "parent": "foundry_stack",
+      "localPosition": [
+        0.0,
+        8.319999694824219,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        8.319999694824219,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "Heat",
+      "parent": "foundry_stack",
+      "localPosition": [
+        0.0,
+        8.279999732971191,
+        -0.0
+      ],
+      "worldPosition": [
+        0.0,
+        8.279999732971191,
+        -0.0
+      ],
+      "worldForward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "worldUp": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "localEulerDegrees": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    }
+  ],
+  "fbx": "Models/Environment/foundry_stack.fbx",
+  "blend": "models/Environment/foundry_stack.blend"
+}
