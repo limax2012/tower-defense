@@ -10,7 +10,7 @@ internal static class RuntimeFixtureBuilder
 {
     public static RuntimeConformanceFixture Create(Legacy.Data.GameContent content)
     {
-        var fixture = new RuntimeConformanceFixture();
+        var fixture = new RuntimeConformanceFixture { ReferenceRuntime = Environment.Version.ToString() };
         foreach (var map in content.Maps.Keys.OrderBy(x => x))
         foreach (var challenge in new[] { "standard", "close_quarters" })
             fixture.Scenarios.Add(CreateScenario(content, map, challenge, false));
@@ -83,6 +83,8 @@ internal static class RuntimeFixtureBuilder
         Command(4100, GameCommandType.StartWave);
 
         session = Legacy.GameSession.RestoreSaveGame(content, initial);
+        scenario.InitialChecksum = Legacy.Multiplayer.SessionChecksum.Compute(session, 0);
+        scenario.InitialFields = RuntimeConformance.DescribeFields(session.CaptureCoOpState(0, 0, false));
         var runner = new Legacy.Multiplayer.DeterministicSessionRunner(session);
         var commands = scenario.Commands.OrderBy(x => x.Tick).ThenBy(x => x.Command.Sequence).ToArray();
         var index = 0;
@@ -96,9 +98,11 @@ internal static class RuntimeFixtureBuilder
                 if (!runner.Schedule(command.Tick, native)) throw new Exception("Fixture schedule failed.");
             }
             runner.RunTicks(1);
-            if (runner.Tick % 12 == 0 || scenario.SnapshotTicks.Contains((int)runner.Tick))
+            if (runner.Tick <= 12 || runner.Tick % 12 == 0 || scenario.SnapshotTicks.Contains((int)runner.Tick))
                 scenario.Samples.Add(new RuntimeConformanceSample { Tick = runner.Tick,
-                    Checksum = Legacy.Multiplayer.SessionChecksum.Compute(session, runner.Tick) });
+                    Checksum = Legacy.Multiplayer.SessionChecksum.Compute(session, runner.Tick),
+                    Fields = runner.Tick <= 12 || runner.Tick % 120 == 0 || scenario.SnapshotTicks.Contains((int)runner.Tick)
+                        ? RuntimeConformance.DescribeFields(session.CaptureCoOpState(runner.Tick, 0, false)) : new() });
         }
         return scenario;
     }

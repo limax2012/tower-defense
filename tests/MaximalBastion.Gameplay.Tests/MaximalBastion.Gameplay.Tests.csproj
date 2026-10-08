@@ -11,5 +11,6 @@
     <Reference Include="MaximalBastion" HintPath="$(LegacyAssemblyPath)" Aliases="legacy" Condition="'$(LegacyAssemblyPath)' != ''" />
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5" />
     <None Include="../../src/MaximalBastion/ContentData/**/*.json" Link="ContentData/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures/**/*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

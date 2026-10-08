@@ -53,6 +53,23 @@ if (references.Any(x => x.Name!.Contains("Xna") || x.Name.Contains("MonoGame") |
     throw new Exception("Portable simulation has an engine assembly reference");
 Console.WriteLine("PASS authored content and engine-free assembly boundary");
 
+var campaignExportIndex = Array.IndexOf(args, "--export-campaign-replay");
+var campaignVerifyIndex = Array.IndexOf(args, "--verify-campaign-replay");
+if (campaignExportIndex >= 0 || campaignVerifyIndex >= 0)
+{
+    var optionIndex = campaignExportIndex >= 0 ? campaignExportIndex : campaignVerifyIndex;
+    if (optionIndex + 1 >= args.Length) throw new ArgumentException("A campaign replay path is required.");
+    var path = args[optionIndex + 1];
+    var replay = campaignExportIndex >= 0
+        ? CampaignReplayBuilder.Create(content, Path.Combine(AppContext.BaseDirectory, "Fixtures"))
+        : GameplayJson.Deserialize<CampaignReplayDocument>(File.ReadAllText(path))
+          ?? throw new InvalidDataException("Campaign replay is missing.");
+    var result = CampaignReplayBuilder.Verify(content, replay);
+    if (campaignExportIndex >= 0) File.WriteAllText(path, GameplayJson.Serialize(replay));
+    Console.WriteLine("PASS fresh-session campaign replay: " + JsonSerializer.Serialize(result, ContentJson.Options));
+    return;
+}
+
 var exportIndex = Array.IndexOf(args, "--export-runtime-fixture");
 if (exportIndex >= 0)
 {
@@ -71,6 +88,50 @@ void Match(GameSession session, Legacy.GameSession native, long tick, string lab
 {
     Equal(SessionChecksum.Compute(session, tick), Legacy.Multiplayer.SessionChecksum.Compute(native, tick), label + " checksum tick " + tick);
 }
+
+foreach (var challenge in new[] { "standard", "close_quarters" })
+{
+    var direct = new GameSession(content, "foundry_loop", "easy", challenge);
+    var commanded = new GameSession(content, "foundry_loop", "easy", challenge);
+    var options = new SimulationOptions { WavePlan = new WavePlan { Wave = 1, DecisionSeed = 7421,
+        Parameters = new SortedDictionary<string, double> { ["apexWave"] = 21, ["apexLimit"] = 2 } } };
+    var directPlayer = new AutoPlayer(direct, AutoPlayerStrategy.Experienced, 7421, options);
+    var host = new AuthoritativeCommandHost();
+    long request = 0;
+    var kinds = new HashSet<GameCommandType>();
+    var commandedPlayer = new AutoPlayer(commanded, AutoPlayerStrategy.Experienced, 7421, options, command =>
+    {
+        Equal(GameCommandValidator.IsStructurallyValid(command), true, "autoplayer command structure");
+        kinds.Add(command.Type);
+        return host.Submit(commanded, command with { ClientRequestId = ++request }).Accepted;
+    });
+    for (var tick = 0; tick < 90000 && !direct.IsDefeat && !direct.IsVictory; tick++)
+    {
+        if (direct.CanStartWave)
+        {
+            directPlayer.PrepareForWave(direct); commandedPlayer.PrepareForWave(commanded);
+            Equal(direct.StartNextWave(), GameCommandProcessor.Apply(commanded,
+                new GameCommand { Type = GameCommandType.StartWave, PlayerId = 1 }).Accepted, "adapter start wave");
+        }
+        if (tick % 30 == 0) { directPlayer.ReactDuringWave(direct); commandedPlayer.ReactDuringWave(commanded); }
+        direct.Update(1f / 60f); commanded.Update(1f / 60f);
+        if (tick % 12 == 0) Equal(SessionChecksum.Compute(direct, tick), SessionChecksum.Compute(commanded, tick), "autoplayer adapter checksum");
+    }
+    Equal(SessionChecksum.Compute(direct, 0), SessionChecksum.Compute(commanded, 0), "autoplayer adapter final state");
+    foreach (var kind in new[] { GameCommandType.PlaceTower, GameCommandType.ChooseDoctrine,
+                 GameCommandType.SpecializeTower, GameCommandType.SetTargetMode, GameCommandType.OverdriveTower })
+        Equal(kinds.Contains(kind), true, "autoplayer exercised " + kind);
+    Console.WriteLine($"PASS autoplayer command adapter {challenge}: wave {direct.CurrentWave}, {request:N0} validated commands");
+}
+{
+    var denied = new GameSession(content, "foundry_loop");
+    var before = SessionChecksum.Compute(denied, 0);
+    var attempts = 0;
+    new AutoPlayer(denied, AutoPlayerStrategy.Experienced, 7421, null, _ => { attempts++; return false; }).PrepareForWave(denied);
+    Equal(attempts > 0, true, "autoplayer rejected commands attempted");
+    Equal(SessionChecksum.Compute(denied, 0), before, "autoplayer rejected commands preserve state");
+}
+if (args.Contains("--adapter-only")) { Console.WriteLine($"PASS adapter checks: {checks:N0}"); return; }
 
 void CheckSnapshot(GameSession session, Legacy.GameSession native, long tick)
 {

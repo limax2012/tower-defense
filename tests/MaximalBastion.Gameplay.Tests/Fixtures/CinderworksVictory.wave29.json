@@ -1,0 +1,70 @@
+[
+  {
+    "Action": "Sell",
+    "Id": 14
+  },
+  {
+    "Action": "Build",
+    "X": 728,
+    "Y": 236,
+    "Doctrine": "mortar_survey",
+    "Spec": "quake_shell"
+  },
+  {
+    "Action": "Sell",
+    "Id": 24
+  },
+  {
+    "Action": "Sell",
+    "Id": 37
+  },
+  {
+    "Action": "Sell",
+    "Id": 12
+  },
+  {
+    "Action": "Build",
+    "X": 728,
+    "Y": 284,
+    "Doctrine": "mortar_survey",
+    "Spec": "quake_shell"
+  },
+  {
+    "Action": "Sell",
+    "Id": 30
+  },
+  {
+    "Action": "Sell",
+    "Id": 1
+  },
+  {
+    "Action": "Sell",
+    "Id": 6
+  },
+  {
+    "Action": "Build",
+    "X": 188,
+    "Y": 376,
+    "Doctrine": "mortar_survey",
+    "Spec": "quake_shell"
+  },
+  {
+    "Action": "Sell",
+    "Id": 33
+  },
+  {
+    "Action": "Sell",
+    "Id": 9
+  },
+  {
+    "Action": "Sell",
+    "Id": 10
+  },
+  {
+    "Action": "Build",
+    "X": 355,
+    "Y": 584,
+    "Doctrine": "mortar_survey",
+    "Spec": "quake_shell"
+  }
+]
