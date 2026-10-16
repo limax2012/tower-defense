@@ -283,48 +283,54 @@ public static partial class NightGridArt
 
     private static void DrawFrost(TowerBrush d, int stage, float time)
     {
-        var fins = stage == 1 ? 2 : 4;
+        var rotor = TowerTierVisuals.FrostRotorRadius(stage);
+        var offset = TowerTierVisuals.FrostCoolantOffset(stage);
+        var length = TowerTierVisuals.FrostCoolantLength(stage);
+        var banks = TowerTierVisuals.FrostCoolantBanks(stage);
         var spin = time * .22f;
-        if (stage >= 2)
+        // Fixed coolant banks attach to the bearing outside the crystal's full swept radius.
+        for (var i = 0; i < banks; i++)
         {
-            for (var sign = -1; sign <= 1; sign += 2)
-            {
-                d.Rail(-.54f, sign * .64f, .52f, sign * .64f, d.Metal, .25f);
-                d.Rail(-.48f, sign * .64f, .46f, sign * .64f, d.Ceramic, .16f);
-                d.Rail(-.48f, sign * .64f, -.48f, sign * .41f, d.Ceramic, .16f);
-                d.Rail(.46f, sign * .64f, .46f, sign * .41f, d.Ceramic, .16f);
-            }
-        }
-        for (var i = 0; i < fins; i++)
-        {
-            var a = spin + i * MathHelper.TwoPi / fins + MathHelper.PiOver4;
+            var a = MathHelper.PiOver2 + i * MathHelper.TwoPi / banks;
             var x = MathF.Cos(a);
             var y = MathF.Sin(a);
-            d.Rail(x * .35f, y * .35f, x * (stage >= 3 ? .90f : .77f), y * (stage >= 3 ? .90f : .77f), d.Metal, stage >= 3 ? .29f : .22f);
-            d.Diamond(x * .75f, y * .75f, stage >= 3 ? .22f : .14f, d.Ceramic, a);
-            d.Diamond(x * .75f, y * .75f, stage >= 3 ? .15f : .08f, d.Accent, a);
-        }
-        if (stage >= 3)
-        {
-            for (var sign = -1; sign <= 1; sign += 2)
+            d.Rail(x * (rotor + .10f), y * (rotor + .10f), x * offset, y * offset, d.Metal, .22f);
+            d.Rail(x * offset + y * length, y * offset - x * length,
+                x * offset - y * length, y * offset + x * length, d.Dark, .30f + stage * .02f);
+            d.Rail(x * offset + y * length, y * offset - x * length,
+                x * offset - y * length, y * offset + x * length, d.Ceramic, .20f + stage * .02f);
+            d.Rail(x * offset + y * length * .69f, y * offset - x * length * .69f,
+                x * offset - y * length * .69f, y * offset + x * length * .69f, d.Dark, .11f);
+            d.Rail(x * offset + y * length * .63f, y * offset - x * length * .63f,
+                x * offset - y * length * .63f, y * offset + x * length * .63f, d.Accent, .055f);
+            if (stage >= 3)
             {
-                d.Rail(-.67f, sign * .50f, -.10f, sign * .75f, d.Ceramic, .18f);
-                d.Rail(.67f, sign * .50f, .10f, sign * .75f, d.Ceramic, .18f);
+                for (var sign = -1; sign <= 1; sign += 2)
+                {
+                    var end = sign * length * .88f;
+                    d.Rail(x * (offset - .17f) - y * end, y * (offset - .17f) + x * end,
+                        x * (offset + .17f) - y * end, y * (offset + .17f) + x * end, d.Metal, .11f);
+                }
             }
         }
-        d.Diamond(0, 0, stage == 1 ? .42f : stage == 4 ? .61f : .50f, d.Ceramic, spin);
-        d.Diamond(0, 0, stage == 1 ? .32f : stage == 4 ? .49f : .39f, d.Dark, spin);
-        d.Diamond(0, 0, stage == 1 ? .23f : stage == 4 ? .37f : .29f, d.Accent, spin);
         if (stage == 4)
         {
             for (var i = 0; i < 4; i++)
             {
-                var a = i * MathHelper.PiOver2;
-                d.Diamond(MathF.Cos(a) * .98f, MathF.Sin(a) * .98f, .22f, d.Metal, a);
-                d.Diamond(MathF.Cos(a) * .98f, MathF.Sin(a) * .98f, .12f, d.Accent, a);
+                var a = MathHelper.PiOver4 + i * MathHelper.PiOver2;
+                var x = MathF.Cos(a);
+                var y = MathF.Sin(a);
+                d.Rail(x * .64f, y * .64f, x * 1.10f, y * 1.10f, d.Metal, .22f);
+                d.Rail(x * .81f, y * .81f, x * 1.10f, y * 1.10f, d.Ceramic, .13f);
+                d.Diamond(x * 1.06f, y * 1.06f, .12f, d.Accent, a);
             }
-            d.Diamond(0, 0, .13f, d.White, spin);
         }
+        d.Poly(0, 0, rotor + .14f, 8, d.Metal, MathHelper.PiOver4);
+        d.Disc(0, 0, rotor + .075f, d.Dark);
+        d.Diamond(0, 0, rotor, d.Ceramic, spin);
+        d.Diamond(0, 0, rotor - .07f, d.Dark, spin);
+        d.Diamond(0, 0, rotor - .12f, d.Accent, spin);
+        if (stage == 4) d.Diamond(0, 0, .13f, d.White, spin);
     }
 
     private static void DrawEmber(TowerBrush d, int stage, float recoil, float time)
@@ -416,17 +422,22 @@ public static partial class NightGridArt
         d.Poly(0, 0, well + .19f, stage == 1 ? 4 : 8, d.Metal, MathHelper.PiOver4);
         if (stage >= 2)
         {
-            for (var sign = -1; sign <= 1; sign += 2)
+            var banks = stage == 2 ? 2 : 4;
+            var offset = TowerTierVisuals.MortarBankOffset(stage);
+            var length = stage == 2 ? .42f : stage == 3 ? .43f : .52f;
+            for (var i = 0; i < banks; i++)
             {
-                d.Rail(-.58f, sign * .63f, .52f, sign * .63f, d.Metal, .28f);
-                d.Rail(-.47f, sign * .63f, .37f, sign * .63f, d.Ceramic, .17f);
-                d.Rail(-.31f, sign * .63f, .17f, sign * .63f, d.Accent, .07f);
+                var a = MathHelper.PiOver2 + i * MathHelper.TwoPi / banks;
+                var x = MathF.Cos(a);
+                var y = MathF.Sin(a);
+                d.Rail(x * (well + .05f), y * (well + .05f), x * offset, y * offset, d.Metal, .28f);
+                d.Rail(x * offset + y * length, y * offset - x * length,
+                    x * offset - y * length, y * offset + x * length, d.Metal, .30f);
+                d.Rail(x * offset + y * (length - .07f), y * offset - x * (length - .07f),
+                    x * offset - y * (length - .07f), y * offset + x * (length - .07f), d.Ceramic, .18f);
+                d.Rail(x * offset + y * (length - .14f), y * offset - x * (length - .14f),
+                    x * offset - y * (length - .14f), y * offset + x * (length - .14f), d.Accent, .07f);
             }
-        }
-        if (stage >= 3)
-        {
-            d.Rail(-.79f, -.42f, -.65f, .42f, d.Ceramic, .28f);
-            d.Rail(.79f, -.42f, .65f, .42f, d.Ceramic, .28f);
         }
         if (stage == 4)
         {

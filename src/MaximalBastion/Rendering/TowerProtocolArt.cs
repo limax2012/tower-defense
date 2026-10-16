@@ -45,11 +45,16 @@ public static class TowerProtocolArt
                     Route(-.15f, index * .12f, fan - .23f, index * spread * .82f);
                 break;
             case "frost_spire":
-                for (var sign = -1; sign <= 1; sign += 2)
+                var banks = TowerTierVisuals.FrostCoolantBanks(d.Stage);
+                var offset = TowerTierVisuals.FrostCoolantOffset(d.Stage);
+                var length = TowerTierVisuals.FrostCoolantLength(d.Stage) * .63f;
+                for (var i = 0; i < banks; i++)
                 {
-                    var side = d.Stage == 1 ? .38f : .64f;
-                    Route(-.43f, sign * side, .43f, sign * side);
-                    if (d.Stage >= 3) Route(-.55f, sign * .49f, -.13f, sign * .69f);
+                    var a = MathHelper.PiOver2 + i * MathHelper.TwoPi / banks;
+                    var x = MathF.Cos(a);
+                    var y = MathF.Sin(a);
+                    Route(x * offset + y * length, y * offset - x * length,
+                        x * offset - y * length, y * offset + x * length);
                 }
                 break;
             case "ember_coil":

@@ -52,6 +52,7 @@ public sealed partial class VisualVerificationGame
             "33-tower-upgrades.png", "UP / SAME AIM AT EVERY TIER"));
         scenes.Add(CaptureTowerUpgradeGallery(content, font, -.48f,
             "33b-tower-upgrades-diagonal.png", "DIAGONAL / SAME AIM AT EVERY TIER"));
+        CaptureFrostMortarReview(content, font, assertions, scenes);
         scenes.Add(CaptureTierAttackGallery(content, font, .18f, false,
             "35-tier-attack-signatures.png"));
         scenes.Add(CaptureTierAttackGallery(content, font, .31f, true,
