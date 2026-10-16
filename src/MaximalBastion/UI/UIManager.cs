@@ -3353,19 +3353,12 @@ public sealed partial class UIManager
         p.FillRect(batch, new Rectangle(834, 380, 390, 2), ColorPalette.Violet);
         DrawSummaryMetric(batch, "PROTOCOLS", entry.ProtocolActivations.ToString(), 834, 393, ColorPalette.Violet);
         DrawSummaryMetric(batch, "DIRECT PLATES", entry.PlateDirectPurchases.ToString(), 1038, 393, ColorPalette.Coral);
-        DrawSummaryMetric(batch, "PLATES / TRIGGERS", $"{entry.PlateDeployments} / {entry.PlateTriggers}", 834, 433, ColorPalette.Coral);
-        DrawSummaryMetric(batch, "PLATE HITS / KILLS", $"{entry.PlateHits} / {entry.PlateKills}", 1038, 433, ColorPalette.Coral);
-        DrawSummaryMetric(batch, "PLATE DAMAGE", entry.PlateDamage.ToString("0"), 834, 473, ColorPalette.Coral);
-        DrawSummaryMetric(batch, "FORGED CHARGES", entry.ForgedCharges.ToString(), 1038, 473, ColorPalette.GreenText);
-        DrawSummaryMetric(batch, "FORGES BUILT", entry.ForgePurchases.ToString(), 834, 513, ColorPalette.GreenText);
-        DrawSummaryMetric(batch, "FORGE UPGRADES", entry.ForgeUpgrades.ToString(), 1038, 513, ColorPalette.GreenText);
-
-        DrawText(batch, entry.Victory ? "FIELD AT FINISH" : "FIELD AT DEFEAT",
-            new Vector2(834, 568), ColorPalette.Muted, 0.40f);
-        var fieldHeadline = RecordedFieldHeadline(entry);
-        var fieldColor = entry.Victory ? ColorPalette.GreenText : entry.DefeatFieldRecorded ? ColorPalette.Coral : ColorPalette.Muted;
-        DrawFittedText(batch, fieldHeadline, new Vector2(834, 588), fieldColor, 0.52f, 390);
-        DrawFittedText(batch, RecordedFieldDetails(entry), new Vector2(834, 612), ColorPalette.Muted, 0.36f, 390);
+        DrawSummaryMetric(batch, "PLATES / TRIGGERS", $"{entry.PlateDeployments} / {entry.PlateTriggers}", 834, 447, ColorPalette.Coral);
+        DrawSummaryMetric(batch, "PLATE HITS / KILLS", $"{entry.PlateHits} / {entry.PlateKills}", 1038, 447, ColorPalette.Coral);
+        DrawSummaryMetric(batch, "PLATE DAMAGE", entry.PlateDamage.ToString("0"), 834, 501, ColorPalette.Coral);
+        DrawSummaryMetric(batch, "FORGED CHARGES", entry.ForgedCharges.ToString(), 1038, 501, ColorPalette.GreenText);
+        DrawSummaryMetric(batch, "FORGES BUILT", entry.ForgePurchases.ToString(), 834, 555, ColorPalette.GreenText);
+        DrawSummaryMetric(batch, "FORGE UPGRADES", entry.ForgeUpgrades.ToString(), 1038, 555, ColorPalette.GreenText);
 
         DrawButton(batch, p, _runHistoryLayoutButton,
             entry.FinalLayout is null ? "LAYOUT UNAVAILABLE" : "VIEW FINAL LAYOUT",
@@ -3379,38 +3372,6 @@ public sealed partial class UIManager
         return duration.TotalHours >= 1
             ? $"{(int)duration.TotalHours}:{duration.Minutes:00}:{duration.Seconds:00}"
             : $"{duration.Minutes:00}:{duration.Seconds:00}";
-    }
-
-    private static string RecordedFieldHeadline(RunHistoryEntry entry)
-    {
-        if (entry.Victory) return "CLEAR";
-        if (!entry.DefeatFieldRecorded) return "NOT RECORDED";
-        var count = entry.RemainingEnemies.Sum(enemy => enemy.Count);
-        return entry.QueuedEnemiesRemaining > 0
-            ? $"{count} ON FIELD  |  {entry.QueuedEnemiesRemaining} QUEUED"
-            : $"{count} ON FIELD";
-    }
-
-    private static string RecordedFieldDetails(RunHistoryEntry entry)
-    {
-        if (entry.Victory) return "NO ENEMIES REMAINED";
-        if (!entry.DefeatFieldRecorded) return "NEW RUNS SAVE THE FULL REMAINING FIELD";
-        if (entry.RemainingEnemies.Count == 0) return entry.QueuedEnemiesRemaining > 0
-            ? "NO ENEMIES ON FIELD; LATER GROUPS WERE STILL QUEUED"
-            : "NO ENEMIES REMAINED ON FIELD";
-        return string.Join("  |  ", entry.RemainingEnemies.Take(2).Select(RecordedRemainingEnemyLabel));
-    }
-
-    private static string RecordedRemainingEnemyLabel(RunHistoryRemainingEnemyEntry enemy)
-    {
-        var healthPercent = enemy.TotalMaxHealth <= 0
-            ? 0
-            : Math.Clamp(enemy.TotalHealth / enemy.TotalMaxHealth, 0, 1);
-        var shield = enemy.TotalShield > 0 ? $" +{enemy.TotalShield:0} SHIELD" : "";
-        var signal = enemy.SignalRole.Equals(nameof(EnemySignalRole.None), StringComparison.OrdinalIgnoreCase)
-            ? ""
-            : $" {enemy.SignalRole.ToUpperInvariant()}";
-        return $"{enemy.Count} {enemy.DisplayName.ToUpperInvariant()} {healthPercent:P0} HP{shield}{signal}";
     }
 
     private void DrawCoOpMenu(SpriteBatch batch, PrimitiveRenderer p)
@@ -3533,7 +3494,6 @@ public sealed partial class UIManager
             DrawResultDistrict(batch, p, session.Map.Definition, new Rectangle(310, 282, 300, 195), victory);
             DrawFittedText(batch, session.Map.Definition.DisplayName, new Vector2(658, 285), ColorPalette.Paper, 1.08f, 315);
             DrawText(batch, FormatRunDuration(session.Statistics.SimulatedSeconds), new Vector2(658, 334), ColorPalette.Muted, .8f);
-            if (session.IsDefeat) DrawFittedText(batch, LiveFieldHeadline(session), new Vector2(658, 377), ColorPalette.Muted, .52f, 315);
             DrawOutcomeEmblem(batch, p, new Vector2(814, 455), victory);
         }
         DrawButton(batch, p, ResultDetailsBounds, _resultDetails ? "OVERVIEW" : "STATISTICS", true, ColorPalette.CardOutline);
@@ -3662,35 +3622,14 @@ public sealed partial class UIManager
         var right = rect.X + 134;
         DrawSummaryMetric(batch, "CREDITS EARNED", economy.TotalCreditsEarned.ToString(), left, rect.Y + 53, ColorPalette.Gold);
         DrawSummaryMetric(batch, "CREDITS SPENT", economy.TotalCreditsSpent.ToString(), right, rect.Y + 53, ColorPalette.Ink);
-        DrawSummaryMetric(batch, "EARLY BONUS", economy.EarlyStartCreditsEarned.ToString(), left, rect.Y + 91, ColorPalette.GreenText);
-        DrawSummaryMetric(batch, "SALE RETURN", economy.SaleCreditsRecovered.ToString(), right, rect.Y + 91, ColorPalette.Orange);
-        DrawSummaryMetric(batch, "PROTOCOLS", stats.ProtocolActivations.ToString(), left, rect.Y + 129, ColorPalette.Violet);
-        DrawSummaryMetric(batch, "PLATES", stats.EmergencyDeployments.ToString(), right, rect.Y + 129, ColorPalette.Coral);
-        DrawSummaryMetric(batch, "PLATE DAMAGE", stats.EmergencyDamage.ToString("0"), left, rect.Y + 167, ColorPalette.Coral);
-        DrawSummaryMetric(batch, "FORGED", stats.GeneratedCharges.ToString(), right, rect.Y + 167, ColorPalette.GreenText);
-        DrawText(batch, session.IsDefeat ? "FIELD AT DEFEAT" : "FIELD AT FINISH",
-            new Vector2(rect.X + 14, rect.Y + 210), ColorPalette.Muted, 0.44f);
-        DrawFittedText(batch, LiveFieldHeadline(session), new Vector2(rect.X + 14, rect.Y + 228),
-            session.IsDefeat ? ColorPalette.Coral : ColorPalette.GreenText, 0.52f, rect.Width - 28);
+        DrawSummaryMetric(batch, "EARLY BONUS", economy.EarlyStartCreditsEarned.ToString(), left, rect.Y + 101, ColorPalette.GreenText);
+        DrawSummaryMetric(batch, "SALE RETURN", economy.SaleCreditsRecovered.ToString(), right, rect.Y + 101, ColorPalette.Orange);
+        DrawSummaryMetric(batch, "PROTOCOLS", stats.ProtocolActivations.ToString(), left, rect.Y + 149, ColorPalette.Violet);
+        DrawSummaryMetric(batch, "PLATES", stats.EmergencyDeployments.ToString(), right, rect.Y + 149, ColorPalette.Coral);
+        DrawSummaryMetric(batch, "PLATE DAMAGE", stats.EmergencyDamage.ToString("0"), left, rect.Y + 197, ColorPalette.Coral);
+        DrawSummaryMetric(batch, "FORGED", stats.GeneratedCharges.ToString(), right, rect.Y + 197, ColorPalette.GreenText);
+        p.FillRect(batch, new Rectangle(rect.X + 14, rect.Bottom - 49, rect.Width - 28, 1), ColorPalette.Divider);
         DrawText(batch, $"DEFENSE TIME  {elapsed.Minutes:00}:{elapsed.Seconds:00}", new Vector2(rect.X + 14, rect.Bottom - 27), ColorPalette.Cobalt, 0.52f);
-    }
-
-    private static string LiveFieldHeadline(MaximalBastion.GameSession session)
-    {
-        if (!session.IsDefeat) return "CLEAR";
-        var remaining = session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped).ToArray();
-        if (remaining.Length == 0)
-            return session.Waves.QueuedEnemies > 0 ? $"0 LIVE  |  {session.Waves.QueuedEnemies} QUEUED" : "0 LIVE";
-        var largestGroup = remaining
-            .GroupBy(enemy => enemy.DisplayName)
-            .OrderByDescending(group => group.Count())
-            .ThenByDescending(group => group.Sum(enemy => enemy.Health + enemy.Shield))
-            .First();
-        var healthPercent = largestGroup.Sum(enemy => enemy.MaxHealth) <= 0
-            ? 0
-            : Math.Clamp(largestGroup.Sum(enemy => enemy.Health) / largestGroup.Sum(enemy => enemy.MaxHealth), 0, 1);
-        var queued = session.Waves.QueuedEnemies > 0 ? $"  |  {session.Waves.QueuedEnemies} QUEUED" : "";
-        return $"{remaining.Length} LIVE  |  {largestGroup.Count()} {largestGroup.Key.ToUpperInvariant()} {healthPercent:P0} HP{queued}";
     }
 
     private void DrawSummaryMetric(SpriteBatch batch, string label, string value, int x, int y, Color valueColor)
