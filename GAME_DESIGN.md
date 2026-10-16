@@ -112,7 +112,7 @@ Shield is a separate temporary durability pool above health. Ordinary hits remov
 
 Signal enemies render above ordinary enemies and carry role-specific drive, repair, shield, interference, or disruption hardware. Thin range boundaries show coverage; successful repairs, shield grants, and interference transfers produce brief source and recipient feedback. Tower disruption interrupts violet power channels, while suppression closes orange output clamps.
 
-Burn appears as local heat and embers, Slow as ice deposits on plate edges, Expose as violet scan seams, and Armor Break as gold armor fractures. Shields follow the hull, regeneration lights repair ribs only while health is recovering, and accelerated enemies energize their drives. These effects can coexist; Stun reads through stopped movement. Damage resolution applies armor, shields, pierce, rank modifiers, Expose, Armor Break, burn, splash caps, and source attribution deterministically.
+Burn appears as local heat and embers, Slow as ice deposits on plate edges, Expose as violet scan seams, and Armor Break as gold armor fractures. Shields follow the hull, regeneration lights repair ribs only while health is recovering, and accelerated enemies energize their drives. Stun produces short cyan electrical discharges between internal plates; Reduced Effects holds them steady. These effects can coexist. Damage resolution applies armor, shields, pierce, rank modifiers, Expose, Armor Break, burn, splash caps, and source attribution deterministically.
 
 ## Campaign and Endless
 

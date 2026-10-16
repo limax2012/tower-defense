@@ -21,6 +21,7 @@ public sealed partial class VisualVerificationGame
     {
         var labels = new[] { "PLAIN", "SLOW", "BURN", "BREAK", "EXPOSED", "SHIELD", "HASTE", "STACKED" };
         var samples = new List<StatusReviewEnemy>();
+        var stunSamples = new List<StatusReviewEnemy>();
         foreach (var id in new[] { "t2_runner", "t1_crawler", "t3_brute" })
         {
             var baseline = StatusSample(content, id, "PLAIN");
@@ -42,8 +43,24 @@ public sealed partial class VisualVerificationGame
             }
             var stunned = StatusSample(content, id, "STUN");
             stunned.Enemy.ApplyStatus(new StatusApplication { Type = StatusType.Stun, Duration = 1, Magnitude = 1 });
-            Require(StatusEnemyPixels(stunned, .23f, true).SequenceEqual(plain),
-                $"{id}: Stun stops movement without adding a separate status symbol.", assertions);
+            var stunQuiet = StatusEnemyPixels(stunned, .23f, true);
+            Require(stunQuiet.Zip(plain, (a, b) => a != b).Count(changed => changed) >= 8 &&
+                    stunQuiet.SequenceEqual(StatusEnemyPixels(stunned, .87f, true)),
+                $"{id}: Stun remains visible as stable internal discharges in Reduced Effects.", assertions);
+            Require(!StatusEnemyPixels(stunned, .23f, false).SequenceEqual(StatusEnemyPixels(stunned, .31f, false)),
+                $"{id}: Stun electricity flickers within the enemy while active.", assertions);
+            var overlap = StatusSample(content, id, "STUN + DEBUFFS");
+            ApplyReviewStatus(overlap, "STACKED");
+            overlap.Enemy.ApplyStatus(new StatusApplication { Type = StatusType.Stun, Duration = 1, Magnitude = 1 });
+            stunSamples.Add(baseline);
+            stunSamples.Add(stunned);
+            stunSamples.Add(overlap);
+            var expiredStun = StatusSample(content, id, "STUN EXPIRED");
+            expiredStun.Enemy.ApplyStatus(new StatusApplication { Type = StatusType.Stun, Duration = .1f, Magnitude = 1 });
+            expiredStun.Enemy.StatusEffects.Update(.11f);
+            Require(StatusEnemyPixels(expiredStun, .23f, true).SequenceEqual(plain),
+                $"{id}: Stun discharges disappear immediately when the actual stun expires.", assertions);
+            stunSamples.Add(expiredStun);
             var expiring = StatusSample(content, id, "STACKED");
             ApplyReviewStatus(expiring, "STACKED");
             expiring.Enemy.StatusEffects.Update(6);
@@ -53,6 +70,7 @@ public sealed partial class VisualVerificationGame
                 $"{id}: expired debuffs, depleted shield and expired haste leave no rendered residue.", assertions);
         }
         scenes.Add(CaptureStatusEnemyGallery(samples, font, 8, "37-enemy-statuses.png"));
+        scenes.Add(CaptureStatusEnemyGallery(stunSamples, font, 4, "37a-arc-stun.png"));
 
         var full = StatusSample(content, "t5_regenerator", "FULL HEALTH");
         var paused = StatusSample(content, "t5_regenerator", "DAMAGE PAUSE");

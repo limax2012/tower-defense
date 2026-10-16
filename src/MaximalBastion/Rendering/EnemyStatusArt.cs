@@ -147,6 +147,31 @@ public static class EnemyStatusArt
             }
         }
 
+        if (enemy.StatusEffects.IsStunned)
+        {
+            // Short discharges bridge the internal plates without obscuring the hostile core.
+            var step = reducedEffects ? 0 : MathF.Floor(phase * 18f);
+            var energy = reducedEffects ? .90f : .83f + MathF.Sin(phase * 27f) * .13f;
+            var charge = ColorPalette.Cyan * energy;
+            var hot = Color.Lerp(ColorPalette.Cyan, ColorPalette.Paper, .78f) * energy;
+            for (var sign = -1; sign <= 1; sign += 2)
+            {
+                var shift = reducedEffects ? 0 : MathF.Sin(step * 2.7f + sign) * .045f;
+                var first = At(-.31f, sign * .18f);
+                var bend = At(-.12f, sign * (.30f + shift));
+                var knee = At(.06f, sign * (.17f - shift));
+                var last = At(.29f, sign * .21f);
+                Seam(first, bend, knee, charge, 1.6f);
+                p.Line(batch, knee, last, ColorPalette.Ink * .85f, 3);
+                p.Line(batch, knee, last, charge, 1.6f);
+                p.Line(batch, first, bend, hot, .7f);
+                p.Line(batch, bend, knee, hot, .7f);
+                p.Line(batch, knee, last, hot, .7f);
+                if (!reducedEffects)
+                    p.Glow(batch, bend, radius * .32f, ColorPalette.Cyan, energy * .30f);
+            }
+        }
+
         if (enemy.IsElite || enemy.IsBoss)
         {
             var rankColor = enemy.BossPhaseActive ? ColorPalette.Coral : ColorPalette.Gold;
