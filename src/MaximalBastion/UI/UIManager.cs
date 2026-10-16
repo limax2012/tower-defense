@@ -1447,18 +1447,18 @@ public sealed partial class UIManager
     }
 
     private static bool HasSandboxProtocolTestState(MaximalBastion.GameSession session) =>
-        session.OverdriveCooldownRemaining > 0 || session.Towers.Any(tower => tower.IsOverdriven);
+        session.SelectedTower is { IsSandboxDisabled: false } tower &&
+        (tower.IsOverdriven || tower.ApexProtocolCooldownRemaining > 0);
 
     private static void ToggleSandboxProtocolTest(MaximalBastion.GameSession session)
     {
+        if (session.SelectedTower is not { IsSandboxDisabled: false } tower) return;
         if (HasSandboxProtocolTestState(session))
         {
-            session.ResetSandboxProtocol();
+            session.ResetSandboxProtocol(tower.Id);
             return;
         }
-
-        if (session.SelectedTower is { IsSandboxDisabled: false } tower)
-            session.TestSandboxProtocol(tower.Id);
+        session.TestSandboxProtocol(tower.Id);
     }
 
     private void CycleSandboxEnemy(MaximalBastion.GameSession session, int direction)

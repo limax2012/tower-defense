@@ -91,6 +91,7 @@ internal static class Program
             ("challenge directives and persistence", ChallengeDirectivesAndPersistence),
             ("Signal Gauntlet disruption", SignalGauntletDisruption),
             ("sandbox tower laboratory", SandboxTowerLaboratory),
+            ("sandbox selected Protocol isolation", SandboxSelectedProtocolIsolation),
             ("tower sell keyboard shortcuts", TowerSellKeyboardShortcuts),
             ("sandbox pulse plates", SandboxPulsePlates),
             ("profile matrix state reconstruction", ProfileMatrixStateReconstruction),
@@ -957,8 +958,10 @@ internal static class Program
         Check.True(tower.LifetimeDamage > 0, "immortal target hits still populate tower telemetry");
 
         Check.True(session.TryOverdriveTower(tower.Id), "sandbox retains the authored Protocol behavior");
-        Check.True(session.ResetSandboxProtocol(), "sandbox can ready another Protocol test without clearing targets");
-        Check.Nearly(0, session.OverdriveCooldownRemaining, "Protocol-only reset clears the shared cooldown");
+        var sharedProtocolCooldown = session.OverdriveCooldownRemaining;
+        Check.True(session.ResetSandboxProtocol(tower.Id), "sandbox can ready another Protocol test without clearing targets");
+        Check.Nearly(sharedProtocolCooldown, session.OverdriveCooldownRemaining,
+            "selected Protocol reset preserves the shared cooldown");
         Check.True(!tower.IsOverdriven && session.Enemies.Count == 5,
             "Protocol-only reset preserves targets while ending the active effect");
         session.ResetSandboxExperiment();
@@ -980,7 +983,7 @@ internal static class Program
 
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { OverdrivePressed = true }, session);
         Check.True(!tower.IsOverdriven && session.OverdriveCooldownRemaining <= 0,
-            "sandbox E resets an active Protocol test and its shared cooldown");
+            "sandbox E ends the selected Protocol test without starting a shared cooldown");
         sandboxUi.HandleGameplayInput(WorldInput(Vector2.Zero) with { OverdrivePressed = true }, session);
         Check.True(tower.IsOverdriven,
             "sandbox E starts the selected Protocol again once the test is reset");
@@ -1060,6 +1063,125 @@ internal static class Program
         Check.Equal("sandbox_lab", ui.SelectedChallengeId, "solo setup exposes Sandbox Lab as a direct mode choice");
         ui.PrepareGameSetup(true);
         Check.Equal("standard", ui.SelectedChallengeId, "online setup excludes and safely leaves the solo-only sandbox");
+    }
+
+    private static void SandboxSelectedProtocolIsolation()
+    {
+        var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        var session = new GameSession(content, "foundry_loop", "normal", "sandbox_lab");
+        var selected = Place(new Vector2(45, 200), true);
+        var active = Place(new Vector2(190, 175), true);
+        var cooling = Place(new Vector2(245, 175), true);
+        var ready = Place(new Vector2(190, 340), true);
+        var ordinary = Place(new Vector2(245, 340), false);
+        var sharedAuto = Place(new Vector2(300, 340), false);
+        var activations = new List<int>();
+        session.TowerOverdriven += tower => activations.Add(tower.Id);
+
+        active.ActivateOverdrive();
+        cooling.ActivateOverdrive();
+        cooling.TickVisual(cooling.Protocol.DurationSeconds + .5f);
+        Check.True(!cooling.IsOverdriven && cooling.ApexProtocolCooldownRemaining > 0,
+            "Apex fixture includes an inactive tower still on its individual cooldown");
+        Check.True(session.TryToggleAutoProtocol(sharedAuto.Id) && session.TryOverdriveTower(sharedAuto.Id),
+            "an unrelated ordinary tower owns the shared automatic slot and cooldown");
+        Check.True(session.SpawnSandboxTargets("t1_crawler", 1, 1, "Elite", true),
+            "deploy a durable priority target for natural Apex activation");
+        session.Enemies.Single().SetSandboxPathDistance(280, session.Map.Path);
+        Check.True(session.StartSandboxWave(1) && session.SandboxWaveActive,
+            "Protocol isolation is exercised during a running authored Sandbox wave");
+        activations.Clear();
+
+        var activeDuration = active.OverdriveRemaining;
+        var activeCooldown = active.ApexProtocolCooldownRemaining;
+        var coolingCooldown = cooling.ApexProtocolCooldownRemaining;
+        var sharedCooldown = session.OverdriveCooldownRemaining;
+        Check.True(session.TestSandboxProtocol(selected.Id), "start only the selected Apex Protocol test");
+        Check.True(selected.IsOverdriven && activations.SequenceEqual(new[] { selected.Id }),
+            "manual Sandbox activation emits exactly the selected tower's activation");
+        AssertOtherTimers(activeDuration, activeCooldown, coolingCooldown, sharedCooldown);
+        Check.True(!ready.IsOverdriven && ready.ApexProtocolCooldownRemaining == 0,
+            "manual testing does not activate an unrelated ready Apex tower");
+
+        const float step = .01f;
+        session.Update(step);
+        Check.True(ready.IsOverdriven && activations.SequenceEqual(new[] { selected.Id, ready.Id }),
+            "the next live-wave tick preserves natural activation of a ready Apex without retriggering its neighbors");
+        AssertOtherTimers(activeDuration - step, activeCooldown - step,
+            coolingCooldown - step, sharedCooldown - step);
+
+        activeDuration = active.OverdriveRemaining;
+        activeCooldown = active.ApexProtocolCooldownRemaining;
+        coolingCooldown = cooling.ApexProtocolCooldownRemaining;
+        sharedCooldown = session.OverdriveCooldownRemaining;
+        var readyDuration = ready.OverdriveRemaining;
+        var readyCooldown = ready.ApexProtocolCooldownRemaining;
+        Check.True(session.ResetSandboxProtocol(selected.Id), "reset only the selected Apex Protocol test");
+        Check.True(!selected.IsOverdriven && selected.ApexProtocolCooldownRemaining == 0,
+            "the selected Apex's active duration and individual cooldown are reset");
+        AssertOtherTimers(activeDuration, activeCooldown, coolingCooldown, sharedCooldown);
+        Check.Nearly(readyDuration, ready.OverdriveRemaining, "reset preserves the naturally activated Apex duration");
+        Check.Nearly(readyCooldown, ready.ApexProtocolCooldownRemaining, "reset preserves the naturally activated Apex cooldown");
+        session.Update(step);
+        Check.True(activations.SequenceEqual(new[] { selected.Id, ready.Id, selected.Id }),
+            "only the reset Apex may naturally reactivate on the next live-wave tick");
+        Check.True(!cooling.IsOverdriven && cooling.ApexProtocolCooldownRemaining > 0,
+            "an unrelated cooling Apex is not rearmed by selected activation or reset");
+
+        var ui = new UIManager(null!);
+        Check.True(session.TrySelectTower(ordinary.Id), "select an ordinary tower while other Apex Protocols are active");
+        activeDuration = active.OverdriveRemaining;
+        activeCooldown = active.ApexProtocolCooldownRemaining;
+        coolingCooldown = cooling.ApexProtocolCooldownRemaining;
+        sharedCooldown = session.OverdriveCooldownRemaining;
+        ui.HandleGameplayInput(WorldInput(Vector2.Zero) with { OverdrivePressed = true }, session);
+        Check.True(ordinary.IsOverdriven && activations[^1] == ordinary.Id,
+            "Sandbox E starts the selected ordinary tower despite unrelated active Apex Protocols and a shared cooldown");
+        AssertOtherTimers(activeDuration, activeCooldown, coolingCooldown, sharedCooldown);
+        ui.HandleGameplayInput(WorldInput(Vector2.Zero) with { OverdrivePressed = true }, session);
+        Check.True(!ordinary.IsOverdriven, "Sandbox E resets the selected ordinary tower's active test");
+        AssertOtherTimers(activeDuration, activeCooldown, coolingCooldown, sharedCooldown);
+
+        Check.True(session.TrySelectTower(cooling.Id), "select a cooling Apex tower");
+        ui.HandleGameplayInput(WorldInput(Vector2.Zero) with { OverdrivePressed = true }, session);
+        Check.True(!cooling.IsOverdriven && cooling.ApexProtocolCooldownRemaining == 0,
+            "Sandbox E resets a selected Apex's individual cooldown without restarting it");
+        Check.Nearly(activeDuration, active.OverdriveRemaining, "cooldown reset preserves unrelated active Apex duration");
+        Check.Nearly(activeCooldown, active.ApexProtocolCooldownRemaining, "cooldown reset preserves unrelated active Apex cooldown");
+        Check.Nearly(sharedCooldown, session.OverdriveCooldownRemaining, "cooldown reset preserves the unrelated shared timer");
+
+        session.BeginPlacement("needle_turret");
+        Check.True(session.SelectedTower is null, "placement clears the Protocol selection");
+        var beforeNoSelection = session.Towers.Select(tower => (tower.OverdriveRemaining, tower.ApexProtocolCooldownRemaining)).ToArray();
+        var activationCount = activations.Count;
+        ui.HandleGameplayInput(WorldInput(Vector2.Zero) with { OverdrivePressed = true }, session);
+        Check.True(beforeNoSelection.SequenceEqual(session.Towers.Select(tower => (tower.OverdriveRemaining, tower.ApexProtocolCooldownRemaining))),
+            "Sandbox E without a selected tower leaves every Protocol timer unchanged");
+        Check.Equal(activationCount, activations.Count, "Sandbox E without selection emits no Protocol activation");
+        Check.Nearly(sharedCooldown, session.OverdriveCooldownRemaining, "Sandbox E without selection leaves shared cooldown unchanged");
+        Check.Equal(sharedAuto.Id, session.AutoOverdriveTowerId, "selected Protocol tests preserve an unrelated shared automatic slot");
+        Check.True(session.SandboxWaveActive, "selected Protocol controls preserve the live Sandbox wave");
+
+        TowerInstance Place(Vector2 position, bool apex)
+        {
+            Check.True(session.TryPlaceTower("needle_turret", position), "place a Protocol isolation fixture");
+            var tower = session.SelectedTower!;
+            if (apex)
+                Check.True(tower.TryChooseDoctrine("needle_cycler") && tower.TrySpecialize("rail_pin") && tower.TryApexUpgrade(),
+                    "prepare an authored Apex Needle Turret");
+            return tower;
+        }
+
+        void AssertOtherTimers(float expectedActiveDuration, float expectedActiveCooldown,
+            float expectedCoolingCooldown, float expectedSharedCooldown)
+        {
+            Check.Nearly(expectedActiveDuration, active.OverdriveRemaining, "unrelated active Apex duration is preserved");
+            Check.Nearly(expectedActiveCooldown, active.ApexProtocolCooldownRemaining, "unrelated active Apex cooldown is preserved");
+            Check.True(!cooling.IsOverdriven, "unrelated cooling Apex remains inactive");
+            Check.Nearly(expectedCoolingCooldown, cooling.ApexProtocolCooldownRemaining, "unrelated cooling Apex cooldown is preserved");
+            Check.Nearly(expectedSharedCooldown, session.OverdriveCooldownRemaining, "unrelated shared cooldown is preserved");
+            Check.Equal(sharedAuto.Id, session.AutoOverdriveTowerId, "unrelated shared automatic assignment is preserved");
+        }
     }
 
     private static void SandboxPulsePlates()

@@ -1211,14 +1211,15 @@ public sealed class GameSession
         AnnouncementRemaining = 1.8f;
     }
 
-    public bool ResetSandboxProtocol()
+    public bool ResetSandboxProtocol(int towerId)
     {
         if (!IsSandbox) return false;
-        OverdriveCooldownRemaining = 0;
-        AutoOverdriveTowerId = 0;
-        foreach (var tower in Towers) tower.ClearOverdrive();
+        var tower = Towers.FirstOrDefault(candidate => candidate.Id == towerId);
+        if (tower is null || tower.IsSandboxDisabled) return false;
+        if (AutoOverdriveTowerId == tower.Id) AutoOverdriveTowerId = 0;
+        tower.ClearOverdrive();
         AnnouncementTitle = "PROTOCOL TEST READY";
-        AnnouncementSubtitle = "Active effects and the shared cooldown were reset; targets and metrics remain.";
+        AnnouncementSubtitle = $"{tower.Definition.DisplayName}'s Protocol timer was reset.";
         AnnouncementPositive = true;
         AnnouncementRemaining = 1.8f;
         return true;
@@ -1226,13 +1227,12 @@ public sealed class GameSession
 
     public bool TestSandboxProtocol(int towerId)
     {
-        if (!IsSandbox) return false;
+        if (!IsSandbox || !ProtocolsEnabled) return false;
         var tower = Towers.FirstOrDefault(candidate => candidate.Id == towerId);
         if (tower is null || tower.IsSandboxDisabled) return false;
-        OverdriveCooldownRemaining = 0;
-        AutoOverdriveTowerId = 0;
-        foreach (var candidate in Towers) candidate.ClearOverdrive();
-        if (!TryOverdriveTower(tower.Id)) return false;
+        if (AutoOverdriveTowerId == tower.Id) AutoOverdriveTowerId = 0;
+        tower.ClearOverdrive();
+        if (!ActivateProtocol(tower)) return false;
         AnnouncementTitle = $"TESTING {tower.Protocol.DisplayName.ToUpperInvariant()}";
         AnnouncementSubtitle = "The selected tower's Protocol restarted from a clean timer.";
         AnnouncementPositive = true;

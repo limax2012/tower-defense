@@ -38,7 +38,7 @@ Modes change available decisions:
 - **Signal Gauntlet** adds enemy support and disruption roles while preserving the full defensive toolset.
 - **Core Six** restricts the roster to Needle, Frost, Shard, Ember, Breaker, and Beacon with the standard opening economy.
 - **Entrenched** preserves all permanent towers but removes Plates, Forge, Protocols, and selling.
-- **Sandbox Lab** exposes real combat and campaign waves in a noncompetitive test environment. Pulse Plates deploy freely with normal placement and active-field limits; Reset Test clears them. Wave signals are optional and off by default.
+- **Sandbox Lab** exposes real combat and campaign waves in a noncompetitive test environment. Test/Reset Protocol affects only the selected tower, bypassing the shared manual cooldown without changing other towers' timers or Apex automation. Reset Test clears targets, plates, tower metrics, and Protocol timers while preserving placed towers. Pulse Plates deploy freely with normal placement and active-field limits. Wave signals are optional and off by default.
 
 Competitive modes use the selected difficulty's opening economy without compensating credits. They never change tower damage or utility over time.
 

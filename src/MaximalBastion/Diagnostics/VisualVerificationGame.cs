@@ -845,6 +845,7 @@ public sealed partial class VisualVerificationGame : Game
         Require(CountColorPixels(sandboxBreakerPixels, new Rectangle(1180, 170, 84, 20), ColorPalette.Paper) >= 20,
             "Sandbox Protocol retains white text on its violet button.", assertions);
         scenes.Add(Capture("10d-sandbox-final-breaker-intel.png", ui, GameState.Playing, sandboxBreakerSession));
+        AssertSandboxProtocolSelection(content, font, typography.Display, assertions, scenes);
 
         var finalBreakerSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, ChallengeCatalog.DefaultId);
         finalBreakerSession.Economy.AddCredits(2_000);
