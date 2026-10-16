@@ -10,6 +10,8 @@ public static class TowerTierVisuals
     public static float FrostCoolantLength(int stage) => stage switch { 1 => .26f, 2 => .31f, 3 => .42f, _ => .50f };
     public static int FrostCoolantBanks(int stage) => stage == 1 ? 2 : 4;
     public static float MortarBankOffset(int stage) => stage switch { 1 => .46f, 2 => .64f, 3 => .78f, _ => .89f };
+    public static float EmberChamberRadius(int stage) => stage switch { 1 => .44f, 2 => .55f, 3 => .63f, _ => .67f };
+    public static float EmberNozzleLength(int stage) => stage switch { 1 => .88f, 2 => .96f, 3 => 1.04f, _ => 1.12f };
 
     public static float PrismBarrelLength(int level, bool apex) => Stage(level, apex) switch
     {

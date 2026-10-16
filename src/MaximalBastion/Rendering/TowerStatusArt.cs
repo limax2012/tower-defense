@@ -134,7 +134,7 @@ public static class TowerStatusArt
         "watchtower" => (-.48f, stage == 1 ? .25f : .49f),
         "shard_fan" => (-.45f, .34f),
         "frost_spire" => (-.06f, TowerTierVisuals.FrostCoolantOffset(stage)),
-        "ember_coil" => (-.35f, stage == 1 ? .42f : .57f),
+        "ember_coil" => stage == 1 ? (-.12f, .31f) : (-.29f, .57f),
         "breaker_cannon" => (-.35f, stage == 1 ? .35f : .52f),
         "siege_mortar" => (-.20f, TowerTierVisuals.MortarBankOffset(stage)),
         "prism_beam" => (-.24f, stage switch { 1 => .42f, 2 => .50f, 3 => .59f, _ => .69f }),

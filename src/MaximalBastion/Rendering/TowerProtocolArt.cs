@@ -58,11 +58,19 @@ public static class TowerProtocolArt
                 }
                 break;
             case "ember_coil":
+                var chamber = TowerTierVisuals.EmberChamberRadius(d.Stage);
+                var nozzleEnd = TowerTierVisuals.EmberNozzleLength(d.Stage) - .22f;
                 for (var sign = -1; sign <= 1; sign += 2)
                 {
-                    var side = d.Stage == 1 ? .35f : .57f;
-                    Route(-.48f, sign * side, .10f, sign * side);
-                    Route(.38f, sign * .08f, .81f, sign * .08f);
+                    if (d.Stage == 1)
+                    {
+                        var coil = chamber - .05f;
+                        Route(-coil * .85f, sign * coil * .50f, -coil * .50f, sign * coil * .85f);
+                        Route(-coil * .50f, sign * coil * .85f, 0, sign * coil);
+                    }
+                    else Route(-.43f, sign * .57f, -.19f, sign * .57f);
+                    if (d.Stage >= 3) Route(.03f, sign * .72f, .37f, sign * .72f);
+                    Route(chamber + .02f, sign * .05f, nozzleEnd, sign * .05f);
                 }
                 break;
             case "breaker_cannon":
@@ -110,7 +118,7 @@ public static class TowerProtocolArt
                 break;
         }
         if (!reducedEffects && glow)
-            d.Glow(-.10f, 0, .85f, energy, .13f + d.Beat(5.5f) * .07f);
+            d.Glow(towerId == "ember_coil" ? 0 : -.10f, 0, .85f, energy, .13f + d.Beat(5.5f) * .07f);
     }
 
     private static void ChargeRoute(TowerStatusFrame d, Vector2 start, Vector2 end,

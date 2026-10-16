@@ -48,7 +48,7 @@ public static partial class NightGridArt
             "watchtower" => WatchLength(stage) - recoil,
             "breaker_cannon" => BreakerLength(stage) - recoil,
             "shard_fan" => ShardLength(stage) - recoil,
-            "ember_coil" => EmberLength(stage) - recoil,
+            "ember_coil" => TowerTierVisuals.EmberNozzleLength(stage) - recoil,
             "prism_beam" => TowerTierVisuals.PrismBarrelLength(level, apex),
             "frost_spire" => .65f,
             "arc_relay" => .70f,
@@ -61,7 +61,6 @@ public static partial class NightGridArt
     private static float WatchLength(int stage) => stage switch { 1 => 1.22f, 2 => 1.36f, 3 => 1.48f, _ => 1.58f };
     private static float BreakerLength(int stage) => stage switch { 1 => .96f, 2 => 1.03f, 3 => 1.12f, _ => 1.18f };
     private static float ShardLength(int stage) => stage switch { 1 => .92f, 2 => 1.00f, 3 => 1.12f, _ => 1.20f };
-    private static float EmberLength(int stage) => stage switch { 1 => 1.00f, 2 => 1.06f, 3 => 1.15f, _ => 1.22f };
 
     private static void DrawModelTierIndicators(SpriteBatch b, PrimitiveRenderer p, Vector2 center,
         float radius, string id, int stage, Color accent, float opacity, bool lights)
@@ -335,7 +334,13 @@ public static partial class NightGridArt
 
     private static void DrawEmber(TowerBrush d, int stage, float recoil, float time)
     {
-        var size = stage == 1 ? .44f : stage == 2 ? .55f : .63f;
+        var size = TowerTierVisuals.EmberChamberRadius(stage);
+        var nozzle = TowerTierVisuals.EmberNozzleLength(stage) - recoil;
+        if (stage == 4)
+        {
+            d.Poly(0, 0, .87f, 6, d.Ceramic);
+            d.Poly(0, 0, .74f, 6, d.Dark);
+        }
         if (stage >= 2)
         {
             for (var sign = -1; sign <= 1; sign += 2)
@@ -355,23 +360,22 @@ public static partial class NightGridArt
         }
         if (stage == 4)
         {
-            d.Poly(-.12f, 0, .87f, 6, d.Ceramic);
-            d.Poly(-.12f, 0, .74f, 6, d.Dark);
             for (var i = 0; i < 3; i++)
             {
-                var x = -.68f + i * .32f;
+                var x = -.56f + i * .32f;
                 d.Rail(x, -.77f, x, -.53f, d.Accent, .10f);
                 d.Rail(x, .77f, x, .53f, d.Accent, .10f);
             }
         }
-        d.Ring(-.12f, 0, size, d.Metal, .16f);
-        d.DashedRing(-.12f, 0, size - .05f, d.Accent, stage == 1 ? 6 : 8, .10f, time * .35f);
-        d.Disc(-.12f, 0, size * .65f, d.Dark);
-        d.Disc(-.12f, 0, size * .42f, d.Accent);
-        d.Rail(.28f, 0, EmberLength(stage) - recoil, 0, d.Metal, stage >= 3 ? .35f : .25f);
-        d.Rail(.35f, 0, EmberLength(stage) - recoil, 0, d.Ceramic, stage >= 3 ? .22f : .16f);
-        d.Rail(.42f, 0, EmberLength(stage) - recoil, 0, d.Accent, .10f);
-        if (stage == 4) d.Disc(-.12f, 0, .13f, d.White);
+        // The short nozzle seats beneath the concentric chamber on the aiming swivel.
+        d.Rail(size - .15f, 0, nozzle, 0, d.Metal, stage >= 3 ? .35f : .25f);
+        d.Rail(size - .08f, 0, nozzle, 0, d.Ceramic, stage >= 3 ? .22f : .16f);
+        d.Rail(size, 0, nozzle, 0, d.Accent, .10f);
+        d.Ring(0, 0, size, d.Metal, .16f);
+        d.DashedRing(0, 0, size - .05f, d.Accent, stage == 1 ? 6 : 8, .10f, time * .35f);
+        d.Disc(0, 0, size * .65f, d.Dark);
+        d.Disc(0, 0, size * .42f, d.Accent);
+        if (stage == 4) d.Disc(0, 0, .13f, d.White);
     }
 
     private static void DrawArc(TowerBrush d, int stage, float time)
