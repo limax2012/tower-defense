@@ -167,7 +167,8 @@ public static partial class NightGridArt
         var fast = id.Contains("runner", StringComparison.Ordinal);
         var heavy = id.Contains("brute", StringComparison.Ordinal) || id.Contains("aegis", StringComparison.Ordinal) || boss;
         if (lights) p.Glow(b, center, r * 1.9f, accent, .19f);
-        p.DrawPolygon(b, center + new Vector2(2, 3), r * 1.12f, heavy ? 6 : 3, false, ColorPalette.Canvas, angle);
+        p.DrawPolygon(b, center + new Vector2(2, 3), r * (fast ? 1 : .85f), fast ? 3 : heavy ? 6 : 4,
+            false, ColorPalette.Canvas, angle);
         if (fast)
         {
             p.Line(b, center - direction * r, center - direction * r * 1.65f, accent * .45f, 3);
@@ -220,7 +221,6 @@ public static partial class NightGridArt
                 center + direction * r * .4f + side * r * .36f, accent, 3);
             if (id.Contains("regenerator", StringComparison.Ordinal))
             {
-                p.DashedRing(b, center, r * .72f, ColorPalette.Green, 12, 2, -time * .5f);
                 for (var rib = -1; rib <= 1; rib++)
                     p.Line(b, center + direction * r * rib * .3f - side * r * .3f,
                         center + direction * r * rib * .3f + side * r * .3f, armor, 2);
@@ -241,7 +241,6 @@ public static partial class NightGridArt
         if (boss)
         {
             p.Ring(b, center, r * .43f, accent, 2);
-            p.DashedRing(b, center, r + 5, accent, 16, 2, time * .24f);
             for (var sign = -1; sign <= 1; sign += 2)
             {
                 var rear = center - direction * r * .56f + side * r * .27f * sign;

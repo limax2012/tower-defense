@@ -103,6 +103,7 @@ public sealed partial class VisualVerificationGame : Game
         AssertTowerProgression(content, font, typography.Display, assertions, scenes);
         scenes.Add(CaptureTowerRotationGallery(content, font));
         AssertTowerProtocolPresentation(content, font, assertions, scenes);
+        AssertStatusPresentation(content, font, typography.Display, assertions, scenes);
         scenes.Add(CaptureHealthBarGallery(font));
         AssertCombatFeedClipping(content, assertions, scenes);
         var smoothMenu = new UIManager(font, typography.Display);
@@ -610,6 +611,7 @@ public sealed partial class VisualVerificationGame : Game
         gauntletSession.SpawnEnemy("t5_regenerator", 1, 1, "Elite", EnemySignalRole.Disruptor);
         var gauntletThreat = gauntletSession.Enemies.Single();
         gauntletThreat.SetSandboxPathDistance(130f, gauntletSession.Map.Path);
+        var gauntletBeforeDisruption = RenderPixels(ui, GameState.Playing, gauntletSession);
         gauntletThreat.ArmSignalAbility(0);
         gauntletSession.TryActivateEnemySignal(gauntletThreat);
         Require(gauntletSession.Towers[0].IsDisrupted,
@@ -618,8 +620,8 @@ public sealed partial class VisualVerificationGame : Game
                 gauntletSession.Effects.Effects.All(effect => effect.Kind != EffectKind.Splash && effect.BeamStyle == BeamStyle.Standard),
             "The Disruptor uses its standard attack beam without Prism highlights or radial pulse art.", assertions);
         var gauntletPixels = RenderPixels(ui, GameState.Playing, gauntletSession);
-        Require(CountColorPixels(gauntletPixels, new Rectangle(15, 165, 60, 70), ColorPalette.Violet) >= 12,
-            "Disrupted tower art carries the compact violet interruption mark.", assertions);
+        Require(CountChangedPixels(gauntletBeforeDisruption, gauntletPixels, new Rectangle(15, 165, 60, 70)) >= 12,
+            "The disrupted defense visibly changes at its physical hardware.", assertions);
         scenes.Add(Capture("05c-signal-gauntlet-disruption.png", ui, GameState.Playing, gauntletSession));
 
         var jammerVisualSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, "close_quarters");
@@ -633,7 +635,7 @@ public sealed partial class VisualVerificationGame : Game
         jammerVisualSession.TryActivateEnemySignal(jammerVisual);
         Require(jammerVisualSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Splash) &&
                 jammerVisualSession.Effects.Effects.All(effect => effect.Kind != EffectKind.Beam),
-            "The Jammer uses radial pulse art without direct attack beams.", assertions);
+            "A successful Jammer activation retains its pulse event without direct attack beams.", assertions);
         scenes.Add(Capture("05c1-signal-gauntlet-jammer-pulse.png", ui, GameState.Playing, jammerVisualSession));
 
         var supportSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, "close_quarters");
@@ -648,9 +650,18 @@ public sealed partial class VisualVerificationGame : Game
             "An Accelerator visibly supports each nearby formation member.", assertions);
         var supportPixels = RenderPixels(ui, GameState.Playing, supportSession);
         var supportPosition = supportSession.Enemies[0].Position.ToPoint();
-        Require(CountColorPixels(supportPixels,
-                    new Rectangle(supportPosition.X - 9, supportPosition.Y - 9, 18, 18), ColorPalette.Cyan) >= 8,
-            "A signal carrier and its embedded role glyph remain visible above an overlapping ordinary threat.", assertions);
+        var supportRegion = new Rectangle(supportPosition.X - 15, supportPosition.Y - 15, 30, 30);
+        var carrier = supportSession.Enemies[0];
+        supportSession.Enemies.Remove(carrier);
+        var ordinaryPixels = RenderPixels(ui, GameState.Playing, supportSession);
+        supportSession.Enemies.Add(carrier);
+        var reorderedSupportPixels = RenderPixels(ui, GameState.Playing, supportSession);
+        supportSession.Enemies.Remove(carrier);
+        supportSession.Enemies.Insert(0, carrier);
+        Require(CountChangedPixels(ordinaryPixels, supportPixels, supportRegion) >= 12,
+            "A signal carrier's attached hardware remains visible above an overlapping ordinary threat.", assertions);
+        Require(CountChangedPixels(reorderedSupportPixels, supportPixels, supportRegion) == 0,
+            "Signal-carrier hardware draws above ordinary threats independently of collection order.", assertions);
         var shieldedThreat = supportSession.Enemies[2];
         var shieldBarPosition = shieldedThreat.Position - new Vector2(0, shieldedThreat.Radius + 18);
         Require(CountColorPixels(supportPixels,
@@ -701,7 +712,7 @@ public sealed partial class VisualVerificationGame : Game
         var breakerLineColor = content.Towers["breaker_cannon"].Visual.AccentColor;
         Require(signalLineColor != breakerLineColor &&
                 ColorPalette.ContrastRatio(signalLineColor, ColorPalette.PanelAlt) >= 3f,
-            "Signal Beacon uses its readable outer-ring color, distinct from Breaker Cannon.", assertions);
+            "Signal Beacon uses a readable green support-boundary color, distinct from Breaker Cannon.", assertions);
         Require(ColorPalette.ContrastRatio(
             ColorPalette.BalancedAccentText(ColorPalette.Gold, ColorPalette.PanelAlt),
             ColorPalette.PanelAlt) >= 2.55f,
@@ -1726,7 +1737,7 @@ public sealed partial class VisualVerificationGame : Game
                     level: 3, angle: angle, time: reduced ? 0 : time, lights: !reduced, apex: column >= 3);
                 if (column > 0)
                     TowerProtocolArt.Draw(_batch, _primitives, Vector2.Zero, tower.Visual.Radius,
-                        tower.Id, time, reduced);
+                        tower.Id, 3, column >= 3, angle, time, reduced);
                 _batch.End();
             }
         }

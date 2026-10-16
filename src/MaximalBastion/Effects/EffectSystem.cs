@@ -31,6 +31,7 @@ public sealed class EffectInstance
     // Transient presentation ownership; effects are not part of synchronized snapshots or checksums.
     public int SourceTowerId { get; init; }
     public AttackAppearance Appearance { get; init; }
+    public SignalAppearance Signal { get; init; }
     public Vector2 Direction { get; init; }
 }
 
@@ -45,21 +46,21 @@ public sealed class EffectSystem
     public void Clear() => _effects.Clear();
 
     public void AddFlash(Vector2 position, Color color, float duration, float radius,
-        AttackAppearance appearance = default)
+        AttackAppearance appearance = default, SignalAppearance signal = default)
     {
         if (!ReserveTransientSlot(EffectKind.Flash)) return;
-        _effects.Add(new EffectInstance { Kind = EffectKind.Flash, Start = position, End = position, Color = color, Duration = duration, Remaining = duration, Radius = radius, Appearance = appearance });
+        _effects.Add(new EffectInstance { Kind = EffectKind.Flash, Start = position, End = position, Color = color, Duration = duration, Remaining = duration, Radius = radius, Appearance = appearance, Signal = signal });
     }
 
     public void AddBeam(Vector2 start, Vector2 end, Color color, float duration, BeamStyle style = BeamStyle.Standard,
-        int sourceTowerId = 0, AttackAppearance appearance = default)
+        int sourceTowerId = 0, AttackAppearance appearance = default, SignalAppearance signal = default)
     {
         if (!ReserveTransientSlot(EffectKind.Beam)) return;
-        _effects.Add(new EffectInstance { Kind = EffectKind.Beam, Start = start, End = end, Color = color, Duration = duration, Remaining = duration, Radius = 2, BeamStyle = style, SourceTowerId = sourceTowerId, Appearance = appearance });
+        _effects.Add(new EffectInstance { Kind = EffectKind.Beam, Start = start, End = end, Color = color, Duration = duration, Remaining = duration, Radius = 2, BeamStyle = style, SourceTowerId = sourceTowerId, Appearance = appearance, Signal = signal });
     }
 
     public void AddImpact(Vector2 position, Color color, float radius = 9f,
-        AttackAppearance appearance = default, Vector2 direction = default)
+        AttackAppearance appearance = default, Vector2 direction = default, SignalAppearance signal = default)
     {
         const float duration = 0.12f;
         if (!ReserveTransientSlot(EffectKind.Impact)) return;
@@ -73,12 +74,13 @@ public sealed class EffectSystem
             Remaining = duration,
             Radius = MathF.Max(4, radius),
             Appearance = appearance,
+            Signal = signal,
             Direction = direction
         });
     }
 
     public void AddSplash(Vector2 position, Color color, float radius,
-        AttackAppearance appearance = default)
+        AttackAppearance appearance = default, SignalAppearance signal = default)
     {
         const float duration = 0.24f;
         if (!ReserveTransientSlot(EffectKind.Splash)) return;
@@ -91,7 +93,8 @@ public sealed class EffectSystem
             Duration = duration,
             Remaining = duration,
             Radius = MathF.Max(10, radius),
-            Appearance = appearance
+            Appearance = appearance,
+            Signal = signal
         });
     }
 

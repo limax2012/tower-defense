@@ -86,7 +86,7 @@ Targeting remains a player-controlled tactical layer. Signal Gauntlet adds Suppo
 
 Every tower has a named temporary Protocol with a defined duration, cooldown, effects, and automatic trigger. Manual activation rewards timing; automation reduces repetitive input and selects only one armed tower at a time. Automatic conditions reflect the tower's role, such as enemy density, armored pressure, engaged supported towers, or elite/boss presence.
 
-Protocol state is visually separate from tower level, player ownership, selected-tower state, placement ghosts, and enemy statuses. Entrenched removes Protocols entirely.
+Active Protocols energize each weapon's power routes, emitters, or cooling assemblies in its own color. Green receiving circuits identify active Signal Beacon support; gold foundation contacts identify Surge Node power. These states remain separate from tower level, player ownership, selection, and placement feedback. Entrenched removes manual and armed Protocol controls; Apex retains automatic activation.
 
 ## Tactical devices
 
@@ -110,9 +110,9 @@ Each arena owns its campaign wave composition. Difficulty profiles scale that sa
 
 Shield is a separate temporary durability pool above health. Ordinary hits remove raw shield before armor mitigation is evaluated; shield-bypassing attacks skip that pool and damage health through the normal armor calculation.
 
-Signal enemies render above ordinary enemies, use distinct in-body glyphs, and show their support relationship through aura/recipient feedback.
+Signal enemies render above ordinary enemies and carry role-specific drive, repair, shield, interference, or disruption hardware. Thin range boundaries show coverage; successful repairs, shield grants, and interference transfers produce brief source and recipient feedback. Tower disruption interrupts violet power channels, while suppression closes orange output clamps.
 
-Core statuses are Slow, Stun, Expose, and Armor Break. Their glyphs are distinct and can coexist. Damage resolution applies armor, shields, pierce, rank modifiers, Expose, Armor Break, burn, splash caps, and source attribution deterministically.
+Burn appears as local heat and embers, Slow as ice deposits on plate edges, Expose as violet scan seams, and Armor Break as gold armor fractures. Shields follow the hull, regeneration lights repair ribs only while health is recovering, and accelerated enemies energize their drives. These effects can coexist; Stun reads through stopped movement. Damage resolution applies armor, shields, pierce, rank modifiers, Expose, Armor Break, burn, splash caps, and source attribution deterministically.
 
 ## Campaign and Endless
 

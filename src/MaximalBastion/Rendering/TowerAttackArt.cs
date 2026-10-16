@@ -164,32 +164,29 @@ public static class TowerAttackArt
     public static void DrawBeaconBroadcast(SpriteBatch batch, PrimitiveRenderer p, Vector2 position,
         Color accent, float radius, float time, bool reducedEffects, int level = 1, bool apex = false)
     {
-        var stage = TowerTierVisuals.Stage(level, apex);
-        var cycle = reducedEffects ? .35f : (time * .65f) % 1;
-        var fade = reducedEffects ? .35f : MathF.Sin(cycle * MathHelper.Pi) * .6f;
-        var reach = radius * (1.02f + cycle * .33f);
-        var sectors = stage switch { 1 => 2, 2 => 3, _ => 4 };
-        for (var sector = 0; sector < sectors; sector++)
+        var d = new TowerStatusFrame(batch, p, position, radius, "signal_beacon", level, apex,
+            -MathHelper.PiOver2, time, reducedEffects);
+        var energy = Color.Lerp(accent, ColorPalette.Paper, .14f + d.Beat(4.4f) * .14f);
+        var hot = Color.Lerp(accent, ColorPalette.Paper, .68f);
+        var phase = d.Phase(.72f);
+        var reach = d.Stage == 1 ? .31f : d.Stage >= 3 ? .78f : .67f;
+        for (var index = 0; index < 3; index++)
         {
-            var centerAngle = -MathHelper.PiOver2 + sector * MathHelper.TwoPi / sectors;
-            var sweep = stage == 4 ? .40f : .27f;
-            for (var segment = 0; segment < 4; segment++)
-            {
-                var a = centerAngle - sweep + sweep * 2 * segment / 4;
-                var b = centerAngle - sweep + sweep * 2 * (segment + 1) / 4;
-                var start = position + new Vector2(MathF.Cos(a), MathF.Sin(a)) * reach;
-                var end = position + new Vector2(MathF.Cos(b), MathF.Sin(b)) * reach;
-                p.Line(batch, start, end, accent * fade, stage >= 3 ? 1.4f : 1);
-                if (stage == 4)
-                    p.Line(batch, position + (start - position) * 1.12f,
-                        position + (end - position) * 1.12f, accent * (fade * .55f), .8f);
-            }
-            if (stage >= 3)
-            {
-                var radial = new Vector2(MathF.Cos(centerAngle), MathF.Sin(centerAngle));
-                p.DrawDiamond(batch, position + radial * reach, 1.4f, ColorPalette.Paper * fade, centerAngle);
-            }
+            var a = index * MathHelper.TwoPi / 3;
+            var axis = new Vector2(MathF.Cos(a), MathF.Sin(a));
+            var start = axis * (d.Stage == 1 ? .10f : .34f);
+            var end = axis * reach;
+            d.Trace(start.X, start.Y, end.X, end.Y, energy, .055f);
+            var first = Vector2.Lerp(start, end, phase * .65f);
+            var second = Vector2.Lerp(start, end, phase * .65f + .35f);
+            d.Line(first.X, first.Y, second.X, second.Y, hot, .035f);
         }
+        if (d.Stage == 4)
+        {
+            for (var sign = -1; sign <= 1; sign += 2)
+                d.Trace(-.49f, sign * .66f, .23f, sign * .66f, energy, .055f);
+        }
+        if (!reducedEffects) d.Glow(0, 0, .67f, accent, .10f + d.Beat(4.4f) * .06f);
     }
 
     public static void DrawMuzzle(SpriteBatch batch, PrimitiveRenderer p, string towerId, Vector2 position,

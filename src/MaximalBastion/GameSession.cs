@@ -847,7 +847,8 @@ public sealed class GameSession
         }
         else
         {
-            Effects.AddFlash(tower.Position, tower.Definition.Visual.PrimaryColor, 0.42f, 44);
+            Effects.AddFlash(tower.Position, tower.Definition.Visual.PrimaryColor, 0.42f, 44,
+                AttackAppearance.FromTower(tower));
         }
         TowerOverdriven?.Invoke(tower);
         return true;
@@ -1504,11 +1505,13 @@ public sealed class GameSession
                 var amount = target.RestoreHealth(target.MaxHealth * Challenge.CounterRepairFraction);
                 if (amount <= 0) continue;
                 restored += amount;
-                Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Green, 0.46f);
-                Effects.AddFlash(target.Position, ColorPalette.Green, 0.32f, target.Radius + 4);
+                var signal = new SignalAppearance(enemy.SignalRole, enemy.Id, target.Id);
+                Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Green, 0.46f, signal: signal);
+                Effects.AddFlash(target.Position, ColorPalette.Green, 0.32f, target.Radius + 4, signal: signal);
             }
             if (restored <= 0) return;
-            Effects.AddSplash(enemy.Position, ColorPalette.Green, Challenge.CounterSupportRadius);
+            Effects.AddSplash(enemy.Position, ColorPalette.Green, Challenge.CounterSupportRadius,
+                signal: new(enemy.SignalRole, enemy.Id));
             return;
         }
         if (enemy.SignalRole == EnemySignalRole.Bulwark)
@@ -1520,11 +1523,13 @@ public sealed class GameSession
                     target.Definition.Shield + target.MaxHealth * Challenge.CounterShieldCapacityFraction);
                 if (amount <= 0) continue;
                 granted += amount;
-                Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Shield, 0.46f);
-                Effects.AddFlash(target.Position, ColorPalette.Shield, 0.32f, target.Radius + 5);
+                var signal = new SignalAppearance(enemy.SignalRole, enemy.Id, target.Id);
+                Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Shield, 0.46f, signal: signal);
+                Effects.AddFlash(target.Position, ColorPalette.Shield, 0.32f, target.Radius + 5, signal: signal);
             }
             if (granted <= 0) return;
-            Effects.AddSplash(enemy.Position, ColorPalette.Shield, Challenge.CounterSupportRadius);
+            Effects.AddSplash(enemy.Position, ColorPalette.Shield, Challenge.CounterSupportRadius,
+                signal: new(enemy.SignalRole, enemy.Id));
             return;
         }
 
@@ -1536,11 +1541,13 @@ public sealed class GameSession
             .Where(tower => tower.ApplySuppression(Challenge.CounterSuppressionDuration, 2.4f))
             .ToArray();
         if (affected.Length == 0) return;
-        Effects.AddSplash(enemy.Position, ColorPalette.Orange, Challenge.CounterSuppressionRadius);
-        Effects.AddFlash(enemy.Position, ColorPalette.Orange, 0.38f, enemy.Radius + 8);
+        Effects.AddSplash(enemy.Position, ColorPalette.Orange, Challenge.CounterSuppressionRadius,
+            signal: new(enemy.SignalRole, enemy.Id));
+        Effects.AddFlash(enemy.Position, ColorPalette.Orange, 0.38f, enemy.Radius + 8,
+            signal: new(enemy.SignalRole, enemy.Id));
         foreach (var tower in affected)
             Effects.AddFlash(tower.Position, ColorPalette.Orange, 0.34f,
-                tower.Definition.Visual.Radius + 7);
+                tower.Definition.Visual.Radius + 7, signal: new(enemy.SignalRole, enemy.Id, TargetTowerId: tower.Id));
     }
 
     private void TryEmitDisruption(EnemyInstance enemy)
@@ -1558,10 +1565,12 @@ public sealed class GameSession
             .FirstOrDefault(tower => tower.ApplyDisruption(duration, 2.4f));
         if (target is null) return;
 
-        Effects.AddFlash(enemy.Position, ColorPalette.Violet, 0.24f, enemy.Radius + 6);
-        Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Violet, 0.38f);
-        Effects.AddImpact(target.Position, ColorPalette.Violet, target.Definition.Visual.Radius + 7);
-        Effects.AddFlash(target.Position, ColorPalette.Violet, 0.26f, target.Definition.Visual.Radius + 7);
+        var signal = new SignalAppearance(enemy.SignalRole, enemy.Id, TargetTowerId: target.Id);
+        Effects.AddFlash(enemy.Position, ColorPalette.Violet, 0.24f, enemy.Radius + 6,
+            signal: new(enemy.SignalRole, enemy.Id));
+        Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Violet, 0.38f, signal: signal);
+        Effects.AddImpact(target.Position, ColorPalette.Violet, target.Definition.Visual.Radius + 7, signal: signal);
+        Effects.AddFlash(target.Position, ColorPalette.Violet, 0.26f, target.Definition.Visual.Radius + 7, signal: signal);
     }
 
     public void OnEnemyKilled(EnemyInstance enemy)

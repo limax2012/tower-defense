@@ -74,9 +74,9 @@ public sealed class GameRenderer
 
     private void DrawRanges(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session)
     {
-        if (session.SelectedTower is { } selected)
+        if (session.SelectedTower is { IsSupport: false } selected)
             p.DashedRing(batch, selected.Position, DisplayRange(session, selected), ColorPalette.WithAlpha(ColorPalette.Gold, 155), 36, 2);
-        else if (session.HoveredTower is { } hovered)
+        else if (session.SelectedTower is null && session.HoveredTower is { IsSupport: false } hovered)
             p.DashedRing(batch, hovered.Position, DisplayRange(session, hovered), ColorPalette.WithAlpha(ColorPalette.Cyan, 105), 36, 2);
 
         var placementOnMap = session.PlacementPosition.X >= 0 && session.PlacementPosition.X < GameConstants.MapWidth &&
@@ -90,7 +90,10 @@ public sealed class GameRenderer
                 : definition.Levels[0].Range;
             // This large ring communicates the tower's eventual attack/aura range.
             // It is intentionally distinct from the compact remote-player handling marker.
-            p.DashedRing(batch, position, placementRange, ColorPalette.PlacementValid, 32, 2);
+            if (definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase))
+                p.Ring(batch, position, placementRange, ColorPalette.Green * .60f, 1);
+            else
+                p.DashedRing(batch, position, placementRange, ColorPalette.PlacementValid, 32, 2);
             NightGridArt.Tower(batch, p, position, definition.Visual.Radius, definition.Id, opacity: .5f, lights: !ReducedEffects);
             p.Brackets(batch, new Rectangle((int)position.X - 24, (int)position.Y - 24, 48, 48),
                 session.PlacementFailure == PlacementFailure.None ? ColorPalette.PlacementValid : ColorPalette.PlacementInvalid);
@@ -173,17 +176,13 @@ public sealed class GameRenderer
         var time = presentation.TimeSeconds;
         var autoTower = session.Towers.FirstOrDefault(tower => tower.Id == session.AutoOverdriveTowerId);
 
-        // Aura ranges are battlefield information, not tower foreground art.
-        // Keep them beneath every tower so an Auto-armed support tower cannot
-        // put its large dashed range over neighboring tower silhouettes.
+        // Precise support boundaries stay beneath tower silhouettes and foreground interaction art.
         foreach (var supportTower in session.Towers.Where(tower => tower.IsSupport && !tower.IsSandboxDisabled))
         {
-            var accent = supportTower.Definition.Visual.AccentColor;
-            p.DashedRing(batch, supportTower.Position, session.GetEffectiveAuraRange(supportTower),
-                ColorPalette.WithAlpha(accent, 120), 28, 2);
-            TowerAttackArt.DrawBeaconBroadcast(batch, p, supportTower.Position,
-                NightGridArt.TowerAccent(supportTower.Definition.Id), supportTower.Definition.Visual.Radius,
-                time, ReducedEffects, supportTower.LevelIndex + 1, supportTower.IsApex);
+            var opacity = supportTower == session.SelectedTower ? .60f :
+                supportTower == session.HoveredTower ? .48f : .35f;
+            p.Ring(batch, supportTower.Position, session.GetEffectiveAuraRange(supportTower),
+                ColorPalette.Green * opacity, 1);
         }
 
         foreach (var tower in session.Towers)
@@ -249,10 +248,6 @@ public sealed class GameRenderer
             p.Brackets(batch, new Rectangle((int)tower.Position.X - span, (int)tower.Position.Y - span, span * 2, span * 2),
                 tower == session.SelectedTower ? ColorPalette.Gold : ColorPalette.Cyan, 8);
         }
-        if (tower.IsDisrupted)
-            StatusGlyphRenderer.DrawDisrupted(batch, p, tower.Position, tower.Definition.Visual.Radius);
-        else if (tower.IsSuppressed)
-            StatusGlyphRenderer.DrawSuppressed(batch, p, tower.Position, tower.Definition.Visual.Radius);
         if (tower.IsSandboxDisabled)
         {
             var slash = tower.Definition.Visual.Radius * 0.58f;
@@ -262,16 +257,28 @@ public sealed class GameRenderer
                 p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 8, ColorPalette.Gold, 3);
             return;
         }
+        var radius = tower.Definition.Visual.Radius * pulse;
         if (session.Map.GetPowerBuff(tower.Position).IsPowered)
-            p.DashedRing(batch, tower.Position, tower.Definition.Visual.Radius + 10, ColorPalette.WithAlpha(ColorPalette.Gold, 190), 12, 2);
+            TowerStatusArt.DrawPowerConnection(batch, p, tower.Position, radius, tower.Definition.Id,
+                tower.LevelIndex + 1, tower.IsApex, aim, time, ReducedEffects);
+        if (tower.IsSupport && !tower.IsDisrupted)
+            TowerAttackArt.DrawBeaconBroadcast(batch, p, tower.Position, ColorPalette.Green, radius,
+                time, ReducedEffects, tower.LevelIndex + 1, tower.IsApex);
         if (tower.IsOverdriven)
-            TowerProtocolArt.Draw(batch, p, tower.Position, tower.Definition.Visual.Radius,
-                tower.Definition.Id, time, ReducedEffects, glow: groundEffects);
+            TowerProtocolArt.Draw(batch, p, tower.Position, radius, tower.Definition.Id,
+                tower.LevelIndex + 1, tower.IsApex, aim, time, ReducedEffects, glow: groundEffects);
+        if (session.GetSupportBuff(tower).IsActive)
+            TowerStatusArt.DrawSupport(batch, p, tower.Position, radius, tower.Definition.Id,
+                tower.LevelIndex + 1, tower.IsApex, aim, time, ReducedEffects);
+        if (tower.IsDisrupted)
+            TowerStatusArt.DrawDisrupted(batch, p, tower.Position, radius, tower.Definition.Id,
+                tower.LevelIndex + 1, tower.IsApex, aim, time, ReducedEffects);
+        else if (tower.IsSuppressed)
+            TowerStatusArt.DrawSuppressed(batch, p, tower.Position, radius, tower.Definition.Id,
+                tower.LevelIndex + 1, tower.IsApex, aim, time, ReducedEffects);
         if (session.IsCoOp)
             p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 8,
                 tower.OwnerPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral, 2);
-        if (session.GetSupportBuff(tower).IsActive)
-            DrawSignalBeaconEffect(batch, p, tower, time);
         if (tower == session.SelectedTower)
             p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + (session.IsCoOp ? 12 : 8), ColorPalette.Gold, 3);
     }
@@ -327,32 +334,12 @@ public sealed class GameRenderer
         p.Line(batch, marker + new Vector2(-1.7f, 0.7f), marker + new Vector2(1.7f, 0.7f), ColorPalette.Navy, 2);
     }
 
-    private static void DrawSignalBeaconEffect(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)
-    {
-        var pulse = (MathF.Sin(time * 5f + tower.Id) + 1f) * 0.5f;
-        var alpha = (byte)(175 + pulse * 55f);
-        var direction = new Vector2(MathF.Cos(-MathHelper.PiOver4), MathF.Sin(-MathHelper.PiOver4));
-        var markerPosition = tower.Position + direction * (tower.Definition.Visual.Radius + 1f);
-
-        // Keep the native accent ring completely visible: Beacon support is a status,
-        // not a replacement for tower identity. The pip sits inside the upper-right
-        // quadrant, clear of the tier lights and centered specialization glyph.
-        p.Circle(batch, markerPosition, 4.25f, ColorPalette.WithAlpha(ColorPalette.Navy, 225));
-        p.Circle(batch, markerPosition, 2.55f + pulse * 0.55f, ColorPalette.WithAlpha(ColorPalette.Gold, alpha));
-    }
-
     private void DrawEnemies(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session,
         PresentationFrame presentation)
     {
-        var time = presentation.TimeSeconds;
-        DrawEnemySignalFields(batch, p, session, presentation, time);
+        DrawEnemySignalFields(batch, p, session, presentation);
         DrawEnemyLayer(batch, p, session, presentation, signalCarriers: false);
         DrawEnemyLayer(batch, p, session, presentation, signalCarriers: true);
-        foreach (var enemy in session.Enemies)
-        {
-            if (enemy.IsDead || enemy.HasEscaped || enemy.SignalRole == EnemySignalRole.None) continue;
-            DrawEnemySignalMarker(batch, p, enemy, presentation.EnemyPosition(enemy));
-        }
     }
 
     private void DrawEnemyLayer(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session,
@@ -364,24 +351,14 @@ public sealed class GameRenderer
             if (enemy.IsDead || enemy.HasEscaped ||
                 (enemy.SignalRole != EnemySignalRole.None) != signalCarriers) continue;
             var position = presentation.EnemyPosition(enemy);
-            var pulseRate = enemy.IsBoss ? 8f : 5f;
-            var pulseAmount = enemy.IsBoss ? 0.09f : 0.05f;
-            var pulse = !ReducedEffects && (enemy.IsBoss || enemy.Definition.Id.Contains("regenerator", StringComparison.OrdinalIgnoreCase))
-                ? 1f + MathF.Sin(time * pulseRate) * pulseAmount : 1f;
-            var ahead = session.Map.Path.GetPosition(MathF.Min(session.Map.Path.TotalLength, enemy.DistanceAlongPath + 3));
-            var heading = ahead - enemy.Position;
-            var headingAngle = MathF.Atan2(heading.Y, heading.X);
-            NightGridArt.Enemy(batch, p, position, enemy.Radius * pulse, enemy.Definition.Id,
+            var radius = EnemyBodyRadius(enemy, time);
+            var headingAngle = EnemyHeading(session, enemy);
+            NightGridArt.Enemy(batch, p, position, radius, enemy.Definition.Id,
                 headingAngle, ReducedEffects ? 0 : time, enemy.IsBoss,
                 Math.Clamp((enemy.DamagePauseTimer - .88f) * 6, 0, .7f), !ReducedEffects);
 
-            if (enemy.IsBoss)
-            {
-                p.DashedRing(batch, position, enemy.Radius + 10, ColorPalette.Coral, 16, 3);
-                p.DashedRing(batch, position, enemy.Radius + 16, ColorPalette.Gold, 24, 2);
-            }
-            else if (enemy.IsElite)
-                p.DashedRing(batch, position, enemy.Radius + 7, ColorPalette.Gold, 12, 2);
+            EnemySignalArt.DrawHardware(batch, p, enemy, position, radius, headingAngle, time, ReducedEffects);
+            EnemyStatusArt.Draw(batch, p, enemy, position, radius, headingAngle, time, ReducedEffects);
 
             if (enemy.IsSandboxImmortal)
                 p.DashedRing(batch, position, enemy.Radius + (enemy.IsBoss ? 21 : 7), ColorPalette.Paper, 10, 2);
@@ -400,29 +377,12 @@ public sealed class GameRenderer
                 var shieldCapacity = MathF.Max(enemy.Shield, MathF.Max(naturalShieldCapacity, signalShieldCapacity));
                 p.HealthBar(batch, position - new Vector2(0, enemy.Radius + 18), barWidth,
                     enemy.Shield / shieldCapacity, ColorPalette.Shield, ColorPalette.HealthTrack, ColorPalette.Ink, 6);
-                p.Ring(batch, position, enemy.Radius + 5, ColorPalette.Shield, 3);
             }
-            if (enemy.StatusEffects.IsBurning)
-            {
-                var burnAlpha = (byte)(145 + (MathF.Sin(time * 7f + enemy.Id) + 1f) * 42f);
-                p.Ring(batch, position, MathF.Max(5, enemy.Radius - 2), ColorPalette.WithAlpha(ColorPalette.Burn, burnAlpha), 2);
-            }
-            if (enemy.StatusEffects.SlowFactor > 0)
-                p.DashedRing(batch, position, enemy.Radius + 9, ColorPalette.Slow, 16, 2);
-            if (enemy.StatusEffects.DamageMultiplier > 1f)
-            {
-                p.Ring(batch, position, enemy.Radius + 13, ColorPalette.Violet, 2);
-                p.DrawPolygon(batch, position - new Vector2(0, enemy.Radius + 13), 3.5f, 4, false, ColorPalette.Violet, MathHelper.PiOver4);
-            }
-            if (enemy.StatusEffects.ArmorReduction > 0)
-                StatusGlyphRenderer.DrawArmorBreak(batch, p, position, enemy.Radius);
-            if (enemy.Definition.RegenerationPerSecond > 0)
-                p.Ring(batch, position, enemy.Radius + 11, ColorPalette.Lime, 2);
         }
     }
 
     private static void DrawEnemySignalFields(SpriteBatch batch, PrimitiveRenderer p,
-        MaximalBastion.GameSession session, PresentationFrame presentation, float time)
+        MaximalBastion.GameSession session, PresentationFrame presentation)
     {
         if (!session.CounterPressureEnabled) return;
         var sources = session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped &&
@@ -435,37 +395,19 @@ public sealed class GameRenderer
         {
             var sourcePosition = presentation.EnemyPosition(source);
             var accent = EnemySignalGlyphRenderer.Accent(source.SignalRole);
-            var pulse = (MathF.Sin(time * 3.4f + source.Id * 0.7f) + 1f) * 0.5f;
-            var alpha = source.SignalRole == EnemySignalRole.Accelerator
-                ? (byte)(54 + pulse * 34)
-                : (byte)(30 + pulse * 20);
             p.Ring(batch, sourcePosition, supportRadius,
-                ColorPalette.WithAlpha(accent, alpha), source.SignalRole == EnemySignalRole.Accelerator ? 2 : 1);
-        }
-
-        var accelerators = sources.Where(source => source.SignalRole == EnemySignalRole.Accelerator).ToArray();
-        if (accelerators.Length == 0) return;
-        foreach (var recipient in session.Enemies.Where(enemy => !enemy.IsDead && !enemy.HasEscaped &&
-                     enemy.FormationSpeedMultiplier > 1.001f))
-        {
-            var source = accelerators.OrderBy(candidate =>
-                    Vector2.DistanceSquared(candidate.Position, recipient.Position))
-                .FirstOrDefault(candidate => candidate.Id != recipient.Id &&
-                    Vector2.DistanceSquared(candidate.Position, recipient.Position) <= supportRadius * supportRadius);
-            if (source is null) continue;
-            var recipientPosition = presentation.EnemyPosition(recipient);
-            var sourcePosition = presentation.EnemyPosition(source);
-            var linkColor = ColorPalette.WithAlpha(EnemySignalGlyphRenderer.Accent(source.SignalRole), 138);
-            p.Line(batch, sourcePosition, recipientPosition, linkColor, 2);
-            p.Ring(batch, recipientPosition, recipient.Radius + 3, linkColor, 2);
+                accent * .15f, 1);
         }
     }
 
-    private static void DrawEnemySignalMarker(SpriteBatch batch, PrimitiveRenderer p, EnemyInstance enemy, Vector2 position)
+    private float EnemyBodyRadius(EnemyInstance enemy, float time) => enemy.Radius *
+        (!ReducedEffects && enemy.IsBoss ? 1f + MathF.Sin(time * 8f) * .09f : 1f);
+
+    private static float EnemyHeading(GameSession session, EnemyInstance enemy)
     {
-        if (enemy.SignalRole == EnemySignalRole.None) return;
-        EnemySignalGlyphRenderer.DrawEmbedded(batch, p, enemy.SignalRole, position,
-            MathHelper.Clamp(enemy.Radius * 0.43f, 4.5f, 7f));
+        var ahead = session.Map.Path.GetPosition(MathF.Min(session.Map.Path.TotalLength, enemy.DistanceAlongPath + 3));
+        var direction = ahead - enemy.Position;
+        return MathF.Atan2(direction.Y, direction.X);
     }
 
     private void DrawProjectiles(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session,
@@ -496,6 +438,11 @@ public sealed class GameRenderer
             var progress = MathHelper.Clamp(remaining / MathF.Max(effect.Duration, 0.001f), 0, 1);
             var alpha = (byte)(100 + 155 * progress);
             var effectColor = effect.Color * progress;
+            if (effect.Signal.IsKnown)
+            {
+                DrawSignalEffect(batch, p, session, presentation, effect, progress);
+                continue;
+            }
             var appearance = effect.Appearance.Resolve(session, effect.SourceTowerId);
             if (effect.Kind == EffectKind.Beam && effect.BeamStyle == BeamStyle.Prism)
             {
@@ -635,6 +582,51 @@ public sealed class GameRenderer
                 }
             }
         }
+    }
+
+    private void DrawSignalEffect(SpriteBatch batch, PrimitiveRenderer p, GameSession session,
+        PresentationFrame presentation, EffectInstance effect, float progress)
+    {
+        var signal = effect.Signal;
+        var time = presentation.TimeSeconds;
+        var source = session.Enemies.FirstOrDefault(enemy => enemy.Id == signal.SourceEnemyId &&
+            !enemy.IsDead && !enemy.HasEscaped);
+        if (signal.TargetEnemyId != 0)
+        {
+            var target = session.Enemies.FirstOrDefault(enemy => enemy.Id == signal.TargetEnemyId &&
+                !enemy.IsDead && !enemy.HasEscaped);
+            if (target is null) return;
+            var position = presentation.EnemyPosition(target);
+            if (effect.Kind == EffectKind.Beam)
+            {
+                if (source is not null && source != target)
+                    EnemySignalArt.DrawTransfer(batch, p, presentation.EnemyPosition(source), position,
+                        signal.Role, progress, time, ReducedEffects);
+                return;
+            }
+            var radius = EnemyBodyRadius(target, time);
+            var heading = EnemyHeading(session, target);
+            if (signal.Role == EnemySignalRole.Restorer)
+                EnemyStatusArt.DrawRepairPulse(batch, p, target, position, radius, heading, progress, time, ReducedEffects);
+            else if (signal.Role == EnemySignalRole.Bulwark)
+                EnemyStatusArt.DrawShieldPulse(batch, p, target, position, radius, heading, progress, time, ReducedEffects);
+            return;
+        }
+        if (signal.TargetTowerId != 0)
+        {
+            var target = session.Towers.FirstOrDefault(tower => tower.Id == signal.TargetTowerId && !tower.IsSandboxDisabled);
+            if (target is null || (signal.Role == EnemySignalRole.Disruptor ? !target.IsDisrupted : !target.IsSuppressed)) return;
+            if (effect.Kind == EffectKind.Beam && source is not null)
+                EnemySignalArt.DrawTransfer(batch, p, presentation.EnemyPosition(source), target.Position,
+                    signal.Role, progress, time, ReducedEffects);
+            else if (effect.Kind == EffectKind.Flash && !ReducedEffects)
+                p.Glow(batch, target.Position, target.Definition.Visual.Radius * .8f,
+                    EnemySignalGlyphRenderer.Accent(signal.Role), .22f * progress);
+            return;
+        }
+        if (source is null || (signal.Role == EnemySignalRole.Jammer && effect.Kind == EffectKind.Flash)) return;
+        EnemySignalArt.DrawEmitterPulse(batch, p, source, presentation.EnemyPosition(source),
+            EnemyBodyRadius(source, time), EnemyHeading(session, source), progress, time, ReducedEffects);
     }
 
     private static void DrawMarkers(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session)

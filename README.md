@@ -115,7 +115,7 @@ Each arena contains one 30-wave campaign on every difficulty. Waves 21–30 form
 | Prism Nullspace | 380 | 6 | 3 | 2,336 |
 | Helix Reactor | 360 | 6 | 9 | 2,383 |
 
-Surge Nodes grant focused attack-rate, range, damage, or armor-piercing bonuses. The active node is shown during placement and in Tower Intel; effective node and Signal Beacon modifiers are included in displayed stats.
+Surge Nodes grant focused attack-rate, range, damage, or armor-piercing bonuses. The active node is shown during placement and in Tower Intel; effective node and Signal Beacon modifiers are included in displayed stats. Powered towers show gold foundation contacts, while active Signal Beacon support energizes green receiving circuits on their hardware.
 
 ### Difficulties
 
