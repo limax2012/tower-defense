@@ -70,29 +70,50 @@ public static class EnemyStatusArt
         {
             for (var sign = -1; sign <= 1; sign += 2)
             {
+                var brightness = reducedEffects ? .95f : .85f + MathF.Sin(phase * 5.4f + sign) * .13f;
                 var first = At(-.29f, sign * .47f);
                 var bend = At(-.09f, sign * .35f);
                 var last = At(-.16f, sign * .19f);
-                Seam(first, bend, last, ColorPalette.ArmorBreak * .95f, 1.3f);
+                Seam(first, bend, last, ColorPalette.ArmorBreak * brightness, 1.3f);
                 p.Line(batch, bend, At(.05f, sign * .43f), ColorPalette.Ink, 2.4f);
-                p.Line(batch, bend, At(.05f, sign * .43f), ColorPalette.ArmorBreak * .8f, 1);
+                p.Line(batch, bend, At(.05f, sign * .43f), ColorPalette.ArmorBreak * (brightness * .84f), 1);
+                if (!reducedEffects)
+                {
+                    var cycle = phase * 1.9f + sign * .28f;
+                    var travel = cycle - MathF.Floor(cycle);
+                    var spark = MathF.Sin(travel * MathHelper.Pi);
+                    var from = travel < .5f ? first : bend;
+                    var to = travel < .5f ? bend : last;
+                    var along = travel < .5f ? travel * 2 : (travel - .5f) * 2;
+                    var at = Vector2.Lerp(from, to, along);
+                    p.Line(batch, Vector2.Lerp(from, at, .65f), at,
+                        Color.Lerp(ColorPalette.ArmorBreak, ColorPalette.Paper, .55f) * (spark * spark * .8f), .9f);
+                }
             }
         }
 
         if (enemy.StatusEffects.SlowFactor > 0)
         {
-            // Ice accumulates on separated plate edges, leaving the original hull contour readable.
-            for (var deposit = 0; deposit < 3; deposit++)
+            // Every armor edge carries frost; the gaps preserve the hull's corners and shield contour.
+            for (var edge = 0; edge < sides; edge++)
             {
-                var edge = deposit * sides / 3;
                 var first = Vertex(edge, .94f);
                 var next = Vertex((edge + 1) % sides, .94f);
-                var start = Vector2.Lerp(first, next, .29f);
-                var end = Vector2.Lerp(first, next, .60f);
-                var middle = Vector2.Lerp(start, end, .55f);
-                p.Line(batch, start, end, ColorPalette.Slow * .9f, 1.7f);
+                var start = Vector2.Lerp(first, next, .20f);
+                var end = Vector2.Lerp(first, next, .80f);
+                var middle = Vector2.Lerp(start, end, .5f);
+                var cycle = phase * .8f - edge / (float)sides;
+                var travel = cycle - MathF.Floor(cycle);
+                var shimmer = reducedEffects ? .9f : .83f + MathF.Sin(cycle * MathHelper.TwoPi) * .10f;
+                p.Line(batch, start, end, ColorPalette.Slow * shimmer, 1.7f);
                 p.Line(batch, middle, Vector2.Lerp(middle, position, .22f), ColorPalette.Paper * .7f, .9f);
                 p.DrawDiamond(batch, start, MathF.Max(.8f, radius * .055f), ColorPalette.Slow, headingAngle);
+                if (!reducedEffects)
+                {
+                    var glint = MathF.Sin(travel * MathHelper.Pi);
+                    p.Line(batch, Vector2.Lerp(start, end, travel * .8f),
+                        Vector2.Lerp(start, end, travel * .8f + .2f), ColorPalette.Paper * (glint * glint * .65f), 1);
+                }
             }
         }
 

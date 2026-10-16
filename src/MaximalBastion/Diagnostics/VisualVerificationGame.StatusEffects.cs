@@ -37,7 +37,26 @@ public sealed partial class VisualVerificationGame
                 if (label != "PLAIN")
                     Require(quiet.Zip(plain, (a, b) => a != b).Count(changed => changed) >= 8,
                         $"{id} {label}: the active condition remains visible at the hull without relying on bloom.", assertions);
-                if (label is "BURN" or "EXPOSED" or "SHIELD" or "HASTE" or "STACKED")
+                if (label == "SLOW")
+                {
+                    var sides = id == "t2_runner" ? 3 : id == "t1_crawler" ? 4 : 6;
+                    var hullRadius = sample.Enemy.Radius * (sides == 3 ? 1 : .85f) * .94f;
+                    for (var edge = 0; edge < sides; edge++)
+                    {
+                        var firstAngle = sample.Heading + edge * MathHelper.TwoPi / sides;
+                        var nextAngle = firstAngle + MathHelper.TwoPi / sides;
+                        var midpoint = (new Vector2(MathF.Cos(firstAngle), MathF.Sin(firstAngle)) +
+                            new Vector2(MathF.Cos(nextAngle), MathF.Sin(nextAngle))) * hullRadius * .5f;
+                        var at = (new Vector2(53) + midpoint) * 3;
+                        var covered = 0;
+                        for (var y = (int)at.Y - 3; y <= (int)at.Y + 3; y++)
+                        for (var x = (int)at.X - 3; x <= (int)at.X + 3; x++)
+                            if (plain[y * 320 + x] != quiet[y * 320 + x]) covered++;
+                        Require(covered >= 2,
+                            $"{id}: frost visibly covers hull edge {edge + 1} of {sides}.", assertions);
+                    }
+                }
+                if (label is "SLOW" or "BURN" or "BREAK" or "EXPOSED" or "SHIELD" or "HASTE" or "STACKED")
                     Require(!StatusEnemyPixels(sample, .23f, false).SequenceEqual(StatusEnemyPixels(sample, .87f, false)),
                         $"{id} {label}: full status energy animates while remaining attached to its hull.", assertions);
             }
@@ -71,6 +90,16 @@ public sealed partial class VisualVerificationGame
         }
         scenes.Add(CaptureStatusEnemyGallery(samples, font, 8, "37-enemy-statuses.png"));
         scenes.Add(CaptureStatusEnemyGallery(stunSamples, font, 4, "37a-arc-stun.png"));
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_DEBUFF_ANIMATION") == "1")
+        {
+            var animated = samples.Where(sample => sample.Label is "SLOW" or "BURN" or "BREAK" or "EXPOSED")
+                .Concat(stunSamples.Where(sample => sample.Label == "STUN"))
+                .OrderBy(sample => sample.Enemy.Definition.Id).ToArray();
+            Directory.CreateDirectory(Path.Combine(_outputDirectory, "debuff-animation"));
+            for (var frame = 0; frame < 60; frame++)
+                scenes.Add(CaptureStatusEnemyGallery(animated, font, 5,
+                    $"debuff-animation/frame-{frame:000}.png", frame / 30f));
+        }
 
         var full = StatusSample(content, "t5_regenerator", "FULL HEALTH");
         var paused = StatusSample(content, "t5_regenerator", "DAMAGE PAUSE");
@@ -163,7 +192,7 @@ public sealed partial class VisualVerificationGame
     }
 
     private VisualVerificationScene CaptureStatusEnemyGallery(IReadOnlyList<StatusReviewEnemy> samples,
-        SpriteFont font, int columns, string fileName)
+        SpriteFont font, int columns, string fileName, float time = .23f)
     {
         var rows = (samples.Count + columns - 1) / columns;
         var cellWidth = columns == 8 ? 260 : 440;
@@ -198,7 +227,7 @@ public sealed partial class VisualVerificationGame
             {
                 _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp,
                     null, null, null, Matrix.CreateScale(scale) * Matrix.CreateTranslation(at.X, at.Y, 0));
-                DrawStatusEnemy(samples[index], Vector2.Zero, samples[index].Heading, .23f, reduced);
+                DrawStatusEnemy(samples[index], Vector2.Zero, samples[index].Heading, time, reduced);
                 _batch.End();
             }
         }
