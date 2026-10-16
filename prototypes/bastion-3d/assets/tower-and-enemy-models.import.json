@@ -1,0 +1,34 @@
+{
+  "source": "C:\\Users\\Max\\projects\\MinimalBastion\\prototypes\\bastion-3d\\assets\\tower-and-enemy-models.glb",
+  "blend": "C:\\Users\\Max\\projects\\MinimalBastion\\prototypes\\bastion-3d\\assets\\tower-and-enemy-models.blend",
+  "blender": "4.5.7 LTS",
+  "objects": 337,
+  "meshes": 263,
+  "materials": 30,
+  "actions": 1,
+  "cameras": [
+    "Review / Three-quarter overview",
+    "Review / Opposite side",
+    "Review / Road level",
+    "Review / Overhead"
+  ],
+  "frames": [
+    1,
+    120
+  ],
+  "fps": 30,
+  "camera_focus_width": 25.0,
+  "camera_ground": -0.1599999964237213,
+  "bounds": {
+    "min": [
+      -12.5,
+      -2.5,
+      -0.1599999964237213
+    ],
+    "max": [
+      12.5,
+      2.5,
+      3.1446456909179688
+    ]
+  }
+}

@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &494173835
+--- !u!1 &969533874
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,8 +127,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 494173837}
-  - component: {fileID: 494173836}
+  - component: {fileID: 969533876}
+  - component: {fileID: 969533875}
   m_Layer: 0
   m_Name: Maximal Bastion / Cinderworks
   m_TagString: Untagged
@@ -136,26 +136,26 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &494173836
+--- !u!114 &969533875
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 494173835}
+  m_GameObject: {fileID: 969533874}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dd6e49ead8c00d24e86c75c81c5051db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bastion3D.BastionApplication
   catalog: {fileID: 11400000, guid: f716c0ef35befb74ebe858b60aa6b572, type: 2}
---- !u!4 &494173837
+--- !u!4 &969533876
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 494173835}
+  m_GameObject: {fileID: 969533874}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -168,4 +168,4 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 494173837}
+  - {fileID: 969533876}

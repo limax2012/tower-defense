@@ -1,0 +1,38 @@
+{
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "duration": 28,
+  "frames": 840,
+  "stats": {
+    "time": 31.999999999999464,
+    "fps": 60,
+    "enemies": 17,
+    "projectiles": 3,
+    "kills": 15,
+    "shots": {
+      "needle": 113,
+      "prism": 118,
+      "mortar": 11
+    },
+    "telemetry": {
+      "needleHits": 107,
+      "prismHits": 118,
+      "mortarHits": 16,
+      "mortarMultiHits": 5,
+      "defeats": 15,
+      "turns": 3345,
+      "occluded": 19
+    },
+    "drawCalls": 1326,
+    "triangles": 195954,
+    "camera": [
+      -30.93876187320538,
+      19.048143421355082,
+      28.060282940074064
+    ],
+    "mode": "orbit",
+    "errors": []
+  },
+  "errors": []
+}

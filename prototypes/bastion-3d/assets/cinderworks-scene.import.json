@@ -1,0 +1,35 @@
+{
+  "source": "C:\\Users\\Max\\projects\\MinimalBastion\\prototypes\\bastion-3d\\assets\\cinderworks-scene.glb",
+  "blend": "C:\\Users\\Max\\projects\\MinimalBastion\\prototypes\\bastion-3d\\assets\\cinderworks-scene.blend",
+  "blender": "4.5.7 LTS",
+  "objects": 3215,
+  "meshes": 2970,
+  "materials": 122,
+  "actions": 1,
+  "cameras": [
+    "Review / Three-quarter overview",
+    "Review / Opposite side",
+    "Review / Road level",
+    "Review / Overhead"
+  ],
+  "frames": [
+    1,
+    120
+  ],
+  "fps": 30,
+  "camera_focus_width": 68.0,
+  "camera_ground": 0.0,
+  "camera_preset": "cinderworks",
+  "bounds": {
+    "min": [
+      -110.0,
+      -95.0,
+      -4.300000190734863
+    ],
+    "max": [
+      110.0,
+      95.0,
+      30.6200008392334
+    ]
+  }
+}

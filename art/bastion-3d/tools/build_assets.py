@@ -254,7 +254,6 @@ def prism(spec):
         world=obj.matrix_world.copy()
         obj.parent=mount
         obj.matrix_world=world
-    mount.rotation_euler.z=PI/4
     for x in [-.91,.91]:
         box('Resonator_rail',yaw,(x,.63,-.03),(.10,.35,.90),P['steel'],.023)
         box('Resonator_light',yaw,(x,.825,-.03),(.065,.018,.71),e,.006)

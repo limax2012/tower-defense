@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maximal Bastion · Cinderworks 3D</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="loading"><strong>MAXIMAL BASTION</strong><span>Preparing Cinderworks</span></div>
+<canvas id="scene" aria-label="Interactive 3D Cinderworks combat scene"></canvas>
+<header class="hud">
+  <div class="identity"><span class="eyebrow">MAXIMAL BASTION</span><h1>CINDERWORKS <span>3D STUDY</span></h1></div>
+  <div class="actions"><button id="pause">Pause</button><button id="restart">Restart</button><button id="tour">Camera tour</button><button id="help" aria-label="Camera controls">?</button></div>
+</header>
+<aside id="guide" class="hud">
+  <strong>Explore every angle</strong>
+  <p><b>Drag</b> orbit · <b>Right drag</b> pan · <b>Wheel</b> zoom</p>
+  <p><b>Free camera</b>: drag to look · <b>W A S D</b> move · <b>Q / E</b> descend / rise · <b>Shift</b> faster</p>
+  <p><b>Space</b> pause · <b>R</b> restart · <b>H</b> hide interface</p>
+</aside>
+<div id="status" class="hud"><span class="live-dot"></span><span id="sequence">COMBAT LOOP</span><span id="time">00:00</span></div>
+<footer class="hud">
+  <div class="camera-bar"><div class="switch"><button id="orbit" class="active">Orbit</button><button id="free">Free camera</button></div><span class="separator"></span><button data-view="overview">Overview</button><button data-view="ground">Ground</button><button data-view="rear">Rear</button><button data-view="overhead">Overhead</button><button id="quality" title="Toggle render quality">High quality</button></div>
+  <div class="unit-bar"><button data-focus="needle"><i style="--accent:#49dcff"></i><span>NEEDLE<small>Direct fire</small></span><em id="needle-shots">0</em></button><button data-focus="prism"><i style="--accent:#b99aff"></i><span>PRISM<small>Focused beam</small></span><em id="prism-shots">0</em></button><button data-focus="mortar"><i style="--accent:#d3f446"></i><span>MORTAR<small>Area bombardment</small></span><em id="mortar-shots">0</em></button></div>
+</footer>
+<div id="error" hidden></div>
+<script type="module" src="src/main.js"></script>
+</body></html>

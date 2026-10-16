@@ -1,0 +1,5 @@
+.server.pid
+node_modules/
+assets/*.blend1
+.artifacts/
+.tools/
