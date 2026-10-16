@@ -65,6 +65,8 @@ This produces four complete builds per tower. Doctrines emphasize a statistical 
 
 Wave 21 unlocks one Apex promotion for completed level-three towers. Apex preserves the selected build's identity while raising its late-game ceiling. It is a permanent upgrade, remains available in Entrenched, and is recorded in saves, co-op snapshots, history layouts, and contribution data.
 
+Each tower family has four distinct hardware stages. T1 uses a compact functional assembly; T2 adds specialized weapon supports; T3 gains advanced emitters, armor, or capacitor banks; Apex has a larger final assembly with a distinctive silhouette. Shots, beams, impacts, and Beacon broadcasts follow the same progression while retaining the family's color and weapon identity. Tier differences remain visible with Reduced Effects enabled.
+
 ## Tower roles
 
 - **Needle Turret:** low-cost direct coverage; develops ricochet or piercing pressure.

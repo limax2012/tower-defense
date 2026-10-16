@@ -100,7 +100,7 @@ public sealed partial class VisualVerificationGame : Game
         AssertProjectileIdentity(content, font, assertions, scenes);
         AssertPrismBeamPresentation(content, font, typography.Display, assertions, scenes);
         scenes.Add(CaptureTowerMountGallery(content, font));
-        scenes.Add(CaptureTowerUpgradeGallery(content, font));
+        AssertTowerProgression(content, font, typography.Display, assertions, scenes);
         scenes.Add(CaptureTowerRotationGallery(content, font));
         AssertTowerProtocolPresentation(content, font, assertions, scenes);
         scenes.Add(CaptureHealthBarGallery(font));
@@ -1639,74 +1639,6 @@ public sealed partial class VisualVerificationGame : Game
             0, Vector2.Zero, scale * GameConstants.FontDrawScale, SpriteEffects.None, 0);
     }
 
-    private VisualVerificationScene CaptureTowerUpgradeGallery(GameContent content, SpriteFont font)
-    {
-        var towers = content.Towers.Values.ToArray();
-        var decks = new[] { ColorPalette.Cinderworks.Deck, ColorPalette.Rainline.Deck,
-            ColorPalette.Nullspace.Deck, ColorPalette.Helix.Deck };
-        var angles = new[] { -MathHelper.PiOver2, 0, MathHelper.Pi * .75f };
-        var tiers = new[] { "T1", "T2", "T3", "APEX", "APEX / REDUCED" };
-        using var target = new RenderTarget2D(GraphicsDevice, 1800, 1400,
-            false, SurfaceFormat.Color, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
-        GraphicsDevice.SetRenderTarget(target);
-        GraphicsDevice.Clear(ColorPalette.Canvas);
-        _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp);
-        Label("TOWER UPGRADES", new Vector2(24, 16), 1.05f);
-        Label("2.4x detail above / field scale below", new Vector2(450, 23), .7f);
-        for (var index = 0; index < towers.Length; index++)
-        {
-            var x = 24 + index % 2 * 888;
-            var y = 76 + index / 2 * 262;
-            _primitives.FillRect(_batch, new Rectangle(x, y, 864, 250), decks[index % decks.Length]);
-            Label(towers[index].DisplayName, new Vector2(x + 16, y + 10), .8f);
-            for (var tier = 0; tier < tiers.Length; tier++)
-            {
-                var textScale = tier == 4 ? .42f : .54f;
-                var at = new Vector2(x + Column(tier), y + 46);
-                at.X -= font.MeasureString(tiers[tier]).X * textScale * GameConstants.FontDrawScale * .5f;
-                Label(tiers[tier], at, textScale);
-            }
-            _primitives.Line(_batch, new Vector2(x + 657, y + 46), new Vector2(x + 657, y + 234), ColorPalette.Metal);
-        }
-        _batch.End();
-        for (var index = 0; index < towers.Length; index++)
-        {
-            var tower = towers[index];
-            var x = 24 + index % 2 * 888;
-            var y = 76 + index / 2 * 262;
-            for (var tier = 0; tier < tiers.Length; tier++)
-            {
-                var angle = angles[(index + tier) % angles.Length];
-                Sample(new Vector2(x + Column(tier), y + 120), 2.4f, angle, tier);
-                Sample(new Vector2(x + Column(tier), y + 210), 1, angle, tier);
-            }
-
-            void Sample(Vector2 at, float scale, float angle, int tier)
-            {
-                var lights = tier != 4;
-                var transform = Matrix.CreateScale(scale) * Matrix.CreateTranslation(at.X, at.Y, 0);
-                _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp,
-                    null, null, null, transform);
-                NightGridArt.Tower(_batch, _primitives, Vector2.Zero, tower.Visual.Radius, tower.Id,
-                    level: Math.Min(tier + 1, 3), angle: angle, time: lights ? .23f : 0,
-                    lights: lights, apex: tier >= 3);
-                _batch.End();
-            }
-        }
-        GraphicsDevice.SetRenderTarget(null);
-        const string fileName = "33-tower-upgrades.png";
-        var path = Path.Combine(_outputDirectory, fileName);
-        using (var stream = File.Create(path)) target.SaveAsPng(stream, target.Width, target.Height);
-        var pixels = new Color[target.Width * target.Height];
-        target.GetData(pixels);
-        return new VisualVerificationScene(fileName, target.Width, target.Height,
-            Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))), pixels.Count(pixel => pixel != ColorPalette.Canvas));
-
-        static float Column(int tier) => tier == 4 ? 758 : 82 + tier * 160;
-        void Label(string text, Vector2 at, float scale) => _batch.DrawString(font, text, at, ColorPalette.Paper,
-            0, Vector2.Zero, scale * GameConstants.FontDrawScale, SpriteEffects.None, 0);
-    }
-
     private void AssertTowerProtocolPresentation(GameContent content, SpriteFont font,
         ICollection<string> assertions, ICollection<VisualVerificationScene> scenes)
     {
@@ -2019,7 +1951,7 @@ public sealed partial class VisualVerificationGame : Game
         Require(MathF.Abs(MathHelper.WrapAngle(GameRenderer.TowerAim(session, emitter, presentation) - shotAngle)) < .0001f,
             "A visible Prism beam holds its barrel on the fired ray after target movement.", assertions);
         var expectedMuzzle = emitter.Position + shotDirection * emitter.Definition.Visual.Radius *
-            presentation.TowerScale(emitter) * PrismBeamArt.BarrelLength;
+            presentation.TowerScale(emitter) * TowerTierVisuals.PrismBarrelLength(emitter.LevelIndex + 1, emitter.IsApex);
         Require(Vector2.Distance(GameRenderer.PrismBeamOrigin(session, beam, presentation), expectedMuzzle) < .001f &&
                 beam.Start == emitter.Position,
             "The visible Prism ray begins at the scaled barrel tip without changing its stored shot.", assertions);

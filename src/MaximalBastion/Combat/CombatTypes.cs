@@ -51,6 +51,7 @@ public sealed class ProjectileInstance
     public bool IsExpired { get; private set; }
     public Color Color { get; }
     public float Radius { get; }
+    public AttackAppearance Appearance { get; init; }
 
     public ProjectileInstance(
         Vector2 position,

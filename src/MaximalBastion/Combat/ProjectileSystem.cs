@@ -28,12 +28,15 @@ public sealed class ProjectileSystem
         foreach (var projectile in _projectiles)
         {
             if (projectile.IsExpired) continue;
+            var appearance = projectile.Appearance.Resolve(session, projectile.Payload.SourceTowerId);
             if (projectile.Target is { IsDead: true } && projectile.Kind == ProjectileKind.Homing)
             {
                 projectile.Expire();
                 continue;
             }
 
+            var incomingDirection = (projectile.Kind == ProjectileKind.Homing && projectile.Target is { } destination
+                ? destination.Position : projectile.AimPoint) - projectile.Position;
             if (!projectile.Update(deltaSeconds)) continue;
             if (projectile.Kind == ProjectileKind.ImpactPoint)
             {
@@ -49,7 +52,7 @@ public sealed class ProjectileSystem
             {
                 session.DamageResolver.Apply(target, projectile.Payload);
                 session.Effects.AddImpact(target.Position, projectile.Color,
-                    MathF.Max(6, MathF.Min(12, target.Radius * 0.6f)));
+                    MathF.Max(6, MathF.Min(12, target.Radius * 0.6f)), appearance, incomingDirection);
                 ApplyRicochet(session, projectile, target);
             }
             projectile.Expire();
@@ -71,9 +74,12 @@ public sealed class ProjectileSystem
         if (secondary is null) return;
 
         session.DamageResolver.Apply(secondary, ScaleDamage(projectile.Payload, projectile.RicochetDamageMultiplier));
-        session.Effects.AddBeam(primary.Position, secondary.Position, projectile.Color, 0.11f);
+        var appearance = projectile.Appearance.Resolve(session, projectile.Payload.SourceTowerId);
+        session.Effects.AddBeam(primary.Position, secondary.Position, projectile.Color, 0.11f,
+            appearance: appearance);
         session.Effects.AddImpact(secondary.Position, projectile.Color,
-            MathF.Max(5, MathF.Min(9, secondary.Radius * 0.5f)));
+            MathF.Max(5, MathF.Min(9, secondary.Radius * 0.5f)), appearance,
+            secondary.Position - primary.Position);
     }
 
     private static DamagePayload ScaleDamage(DamagePayload payload, float multiplier) => new()
@@ -92,7 +98,8 @@ public sealed class ProjectileSystem
         session.Effects.AddSplash(
             projectile.Position,
             projectile.Color,
-            MathF.Max(10, projectile.SplashRadius));
+            MathF.Max(10, projectile.SplashRadius),
+            projectile.Appearance.Resolve(session, projectile.Payload.SourceTowerId));
     }
 
     private static void ApplySplash(MaximalBastion.GameSession session, ProjectileInstance projectile)

@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 namespace MaximalBastion.Rendering;
 
 /// <summary>Shared mechanical silhouettes and infrastructure for the field and tactical displays.</summary>
-public static class NightGridArt
+public static partial class NightGridArt
 {
     public static Color TowerAccent(string id) => id switch
     {
@@ -25,6 +25,11 @@ public static class NightGridArt
         int level = 1, float angle = -MathHelper.PiOver2, float time = 0, float recoil = 0,
         float opacity = 1, bool lights = true, bool groundEffects = true, bool apex = false)
     {
+        if (id is not "pulse_plate" and not "charge_forge")
+        {
+            DrawTowerModel(b, p, center, radius, id, level, angle, time, recoil, opacity, lights, groundEffects, apex);
+            return;
+        }
         var accent = TowerAccent(id) * opacity;
         var metal = ColorPalette.Metal * opacity;
         var ceramic = Color.Lerp(ColorPalette.Metal, ColorPalette.Paper, .56f) * opacity;
@@ -93,132 +98,7 @@ public static class NightGridArt
                 p.Ring(b, center, r * .34f, white, 2);
                 p.Circle(b, center, r * .18f, accent);
                 break;
-            case "needle_turret":
-                p.Circle(b, At(-.24f, 0), r * .36f, metal);
-                p.Circle(b, At(-.24f, 0), r * .24f, dark);
-                Rail(-.49f, -.30f, -.05f, -.30f, ceramic, .13f);
-                Rail(-.49f, .30f, -.05f, .30f, ceramic, .13f);
-                Rail(-.40f, 0, -.08f, 0, accent, .09f);
-                for (var side = -1; side <= 1; side += 2)
-                {
-                    Rail(-.16f, side * .23f, 1.10f - recoil, side * .23f, dark, .19f);
-                    Rail(-.08f, side * .23f, 1.08f - recoil, side * .23f, metal, .12f);
-                    Rail(.08f, side * .23f, 1.06f - recoil, side * .23f, side < 0 ? accent : white, .05f);
-                    Rail(.05f, side * .23f, .25f, side * .23f, ceramic, .18f);
-                    Rail(.92f - recoil, side * .23f, 1.08f - recoil, side * .23f, ceramic, .11f);
-                }
-                break;
-            case "watchtower":
-                Rail(-.52f, 0, .12f, 0, metal, .49f);
-                Rail(-.45f, -.23f, .06f, -.23f, ceramic, .10f);
-                Rail(-.45f, .23f, .06f, .23f, ceramic, .10f);
-                Rail(-.12f, 0, 1.28f - recoil, 0, dark, .25f);
-                Rail(-.06f, 0, 1.27f - recoil, 0, metal, .16f);
-                Rail(.20f, 0, 1.24f - recoil, 0, white, .06f);
-                Rail(.47f - recoil, 0, .64f - recoil, 0, ceramic, .25f);
-                Rail(1.09f - recoil, 0, 1.28f - recoil, 0, accent, .11f);
-                Rail(-.22f, -.15f, -.22f, -.48f, metal, .14f);
-                Rail(-.43f, -.49f, .26f, -.49f, metal, .29f);
-                Rail(-.36f, -.49f, .17f, -.49f, ceramic, .17f);
-                p.Circle(b, At(.27f, -.49f), r * .17f, dark);
-                p.Circle(b, At(.29f, -.49f), r * .11f, accent);
-                p.Circle(b, At(.32f, -.51f), r * .04f, white);
-                break;
-            case "breaker_cannon":
-                Rail(-.52f, 0, .22f, 0, metal, .94f);
-                Rail(-.44f, 0, .04f, 0, ceramic, .66f);
-                Rail(-.34f, 0, .13f, 0, dark, .45f);
-                Rail(-.04f, 0, 1.01f - recoil, 0, dark, .68f);
-                Rail(.03f, 0, .94f - recoil, 0, metal, .51f);
-                for (var side = -1; side <= 1; side += 2)
-                {
-                    Rail(-.46f, side * .51f, .47f, side * .40f, ceramic, .19f);
-                    Rail(-.17f, side * .48f, .38f - recoil, side * .29f, metal, .20f);
-                    Rail(.13f, side * .19f, .67f - recoil, side * .19f, ceramic, .10f);
-                    Rail(-.37f, side * .51f, -.17f, side * .49f, accent, .07f);
-                }
-                Rail(.76f - recoil, 0, 1.06f - recoil, 0, ceramic, .73f);
-                Rail(.80f - recoil, 0, 1.06f - recoil, 0, metal, .47f);
-                Rail(1.04f - recoil, -.23f, 1.04f - recoil, .23f, dark, .12f);
-                Rail(.84f - recoil, -.30f, 1.01f - recoil, -.30f, accent, .07f);
-                Rail(.84f - recoil, .30f, 1.01f - recoil, .30f, accent, .07f);
-                break;
-            case "shard_fan":
-                for (var i = -1; i <= 1; i++)
-                {
-                    Rail(-.25f, i * .18f, .85f - recoil, i * .5f, metal, .3f);
-                    Rail(-.20f, i * .18f, .36f, i * .35f, ceramic, .16f);
-                    Rail(.55f, i * .39f, .98f - recoil, i * .54f, accent, .12f);
-                }
-                break;
-            case "frost_spire":
-                for (var i = 0; i < 4; i++)
-                {
-                    var a = i * MathHelper.PiOver2 + time * .28f;
-                    var v = new Vector2(MathF.Cos(a), MathF.Sin(a));
-                    p.Line(b, center + v * r * .5f, center + v * r * .9f, metal, r * .3f);
-                    p.Line(b, center + v * r * .42f, center + v * r * .86f, accent, r * .19f);
-                    p.Circle(b, center + v * r * .89f, r * .10f, ceramic);
-                }
-                p.DrawDiamond(b, center, r * .48f, ceramic, time * .3f);
-                p.DrawDiamond(b, center, r * .36f, dark, time * .3f);
-                p.DrawDiamond(b, center, r * .27f, accent, time * .3f);
-                break;
-            case "ember_coil":
-                p.Ring(b, center, r * .66f, metal, 4);
-                p.DashedRing(b, center, r * .63f, accent, 12, 3, time * .4f);
-                p.Ring(b, center, r * .42f, dark, 3);
-                p.Circle(b, center, r * .32f, accent);
-                for (var sign = -1; sign <= 1; sign += 2)
-                    Rail(-.33f, sign * .55f, .16f, sign * .55f, ceramic, .18f);
-                Rail(.3f, 0, .95f - recoil, 0, white, .20f);
-                break;
-            case "arc_relay":
-                for (var i = -1; i <= 1; i++)
-                {
-                    var at = At(i == 0 ? .6f : -.35f, i * .65f);
-                    p.Line(b, center, at, metal, r * .23f);
-                    p.Circle(b, at, r * .26f, ceramic);
-                    p.Circle(b, at, r * .23f, dark);
-                    p.Circle(b, at, r * .21f, accent);
-                    p.Circle(b, at, r * .09f, white);
-                }
-                p.Circle(b, center, r * .24f, white);
-                break;
-            case "siege_mortar":
-                p.DrawPolygon(b, center, r * .76f, 4, false, metal, MathHelper.PiOver4);
-                p.Circle(b, center, r * .53f, accent);
-                p.Ring(b, center, r * .53f, ceramic, Math.Max(1, (int)(r * .11f)));
-                p.Circle(b, center, r * .37f, dark);
-                p.Circle(b, center, r * (.17f + recoil * .2f), white);
-                for (var i = -1; i <= 1; i += 2) Rail(-.55f, i * .62f, .5f, i * .62f, accent, .10f);
-                break;
-            case "prism_beam":
-                var prismFrame = ColorPalette.Muted * opacity;
-                Rail(-.55f, -.5f, .7f, -.5f, prismFrame, .32f);
-                Rail(-.55f, .5f, .7f, .5f, prismFrame, .32f);
-                Rail(-.55f, -.5f, .7f, -.5f, ceramic, .23f);
-                Rail(-.55f, .5f, .7f, .5f, ceramic, .23f);
-                Rail(-.2f, -.5f, .35f, -.5f, dark, .08f);
-                Rail(-.2f, .5f, .35f, .5f, dark, .08f);
-                Rail(-.5f, -.5f, -.25f, -.5f, white, .06f);
-                Rail(-.5f, .5f, -.25f, .5f, white, .06f);
-                Rail(.45f, 0, PrismBeamArt.BarrelLength, 0, metal, .26f);
-                Rail(.48f, 0, PrismBeamArt.BarrelLength, 0, accent, .13f);
-                // The diamond's perpendicular border width matches each barrel edge.
-                p.DrawDiamond(b, center, r * (.58f + .065f * MathF.Sqrt(2)), metal, angle);
-                p.DrawDiamond(b, center, r * .58f, accent, angle);
-                p.DrawDiamond(b, center, r * .3f, white, angle);
-                p.DrawDiamond(b, center, r * .12f, accent, angle);
-                break;
-            case "signal_beacon":
-                p.Ring(b, center, r * .64f, accent, 2);
-                p.DashedRing(b, center, r * .82f, accent, 12, 2, time * .5f);
-                p.DrawPolygon(b, center, r * .42f, 3, false, accent, -MathHelper.PiOver2);
-                Rail(-.48f, -.51f, .30f, -.51f, ceramic, .13f);
-                Rail(-.48f, .51f, .30f, .51f, ceramic, .13f);
-                p.Line(b, center + new Vector2(0, r * .2f), center - new Vector2(0, r * .7f), white, 2);
-                break;
+
         }
         if (lights && id != "prism_beam")
             DrawMuzzleFlash(b, p, At(1.2f - recoil, 0), r, accent, recoil, opacity);

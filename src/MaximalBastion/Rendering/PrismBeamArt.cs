@@ -9,13 +9,15 @@ public static class PrismBeamArt
     public const float BarrelLength = 1.1f;
 
     public static void Draw(SpriteBatch batch, PrimitiveRenderer p, Vector2 start, Vector2 end,
-        Color accent, float radius, float progress, bool reducedEffects, bool emitter = true)
+        Color accent, float radius, float progress, bool reducedEffects, bool emitter = true,
+        int level = 1, bool apex = false)
     {
         var fade = MathF.Pow(MathHelper.Clamp(progress, 0, 1), .70f);
         if (fade <= 0) return;
         var delta = end - start;
         var length = delta.Length();
-        var width = MathF.Max(1, radius);
+        var stage = TowerTierVisuals.Stage(level, apex);
+        var width = stage switch { 1 => 2.8f, 2 => 3.6f, 3 => 4.4f, _ => 5.4f };
         var hot = Color.Lerp(accent, ColorPalette.Paper, .72f);
         if (length < .01f)
         {
@@ -27,16 +29,29 @@ public static class PrismBeamArt
         var forward = delta / length;
         if (!reducedEffects)
         {
-            Sheath(width + 14, accent * (.08f * fade));
-            Sheath(width + 8, accent * (.22f * fade));
+            Sheath(width + 6 + stage * 1.2f, accent * (.06f * fade));
+            Sheath(width + 3 + stage * .8f, accent * (.18f * fade));
         }
-        p.Line(batch, start, end, accent * fade, 5.2f);
-        p.Line(batch, start, end, Color.Lerp(accent, ColorPalette.Paper, .26f) * fade, 3.4f);
-        p.Line(batch, start, end, Color.Lerp(accent, ColorPalette.Paper, .50f) * fade, 2.0f);
+        p.Line(batch, start, end, accent * fade, width);
+        p.Line(batch, start, end, Color.Lerp(accent, ColorPalette.Paper, .24f + stage * .025f) * fade,
+            width * .64f);
+        p.Line(batch, start, end, Color.Lerp(accent, ColorPalette.Paper, .42f + stage * .035f) * fade,
+            width * (stage == 1 ? .28f : .36f));
+        if (stage >= 3)
+        {
+            // Fine continuous edge filaments preserve a uniform optical profile at every frame rate.
+            var side = new Vector2(-forward.Y, forward.X);
+            var filamentColor = Color.Lerp(accent, ColorPalette.Paper, .22f) * (fade * .55f);
+            for (var sign = -1; sign <= 1; sign += 2)
+            {
+                var offset = side * (sign * width * .42f);
+                p.Line(batch, start + offset, end + offset, filamentColor, stage == 4 ? .65f : .4f);
+            }
+        }
         if (!reducedEffects)
         {
-            p.Glow(batch, start, emitter ? 18 : 11, accent, fade * .7f);
-            p.Glow(batch, end, 14, hot, fade * .75f);
+            p.Glow(batch, start, emitter ? 12 + stage * 1.5f : 9, accent, fade * .65f);
+            p.Glow(batch, end, 9 + stage * 1.3f, hot, fade * .7f);
         }
 
         void Sheath(float thickness, Color color)

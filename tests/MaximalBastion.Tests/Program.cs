@@ -114,6 +114,7 @@ internal static class Program
             ("mixed wave composition", MixedWaveComposition),
             ("final campaign act pressure curve", FinalCampaignActPressureCurve),
             ("arc relay chain", ArcRelayChain),
+            ("tower attack appearance lifecycle", TowerAttackAppearanceLifecycle),
             ("frost area control", FrostAreaControl),
             ("needle rapid ricochet", NeedleRapidRicochet),
             ("breaker breach punch through", BreakerBreachPunchThrough),
@@ -6112,6 +6113,82 @@ internal static class Program
         Check.Nearly(100, outOfRange.Health, "chain range limit");
         Check.Nearly(40f, 400 - first.Health - second.Health - third.Health - outOfRange.Health, "chain damage is bounded");
         Check.Equal(3, session.Effects.Effects.Count(x => x.Kind == EffectKind.Beam), "primary plus two chain beams");
+    }
+
+    private static void TowerAttackAppearanceLifecycle()
+    {
+        var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        foreach (var definition in content.Towers.Values.Where(tower => tower.Behavior != "aura"))
+        for (var stage = 1; stage <= 4; stage++)
+        {
+            var session = Session();
+            var tower = new TowerInstance(9, definition, new Vector2(100, 100));
+            if (stage >= 2) Check.True(tower.TryChooseDoctrine(definition.Tier2Doctrines[0].Id), "prepare tier two appearance");
+            if (stage >= 3) Check.True(tower.TrySpecialize(definition.Specializations[0].Id), "prepare tier three appearance");
+            if (stage == 4) Check.True(tower.TryApexUpgrade(), "prepare Apex appearance");
+            session.Towers.Add(tower);
+            var enemy = Enemy("appearance_target", 1_000_000, 10, 1, 0, 0);
+            for (var index = 0; index < 3; index++)
+            {
+                var target = new EnemyInstance(index + 1, enemy, session.Map.Path, 1, 1);
+                target.UpdateMovement(10 + index, session.Map.Path);
+                session.Enemies.Add(target);
+            }
+            var expected = new AttackAppearance(definition.Id, Math.Min(stage, 3), stage == 4);
+            TowerBehaviorRegistry.Create(definition.Behavior).Attack(new TowerInstanceContext
+            {
+                Tower = tower, Target = session.Enemies[0], Session = session
+            });
+            var projectiles = session.Projectiles.Projectiles.ToArray();
+            var beams = session.Effects.Effects.Where(effect => effect.Kind == EffectKind.Beam).ToArray();
+            Check.True(projectiles.Length + beams.Length > 0, $"{definition.Id} stage {stage} emits an attack");
+            foreach (var projectile in projectiles)
+                Check.Equal(expected, projectile.Appearance, "projectile captures the firing tier");
+            foreach (var beam in beams)
+                Check.Equal(expected, beam.Appearance, "every chain segment captures the firing tier");
+            if (beams.Length > 0)
+            {
+                Check.Equal(tower.Id, beams[0].SourceTowerId, "primary beam tracks the tower muzzle");
+                Check.True(beams.Skip(1).All(beam => beam.SourceTowerId == 0), "chain segments retain their enemy origins");
+            }
+            Check.Equal(expected, default(AttackAppearance).Resolve(session, tower.Id),
+                "restored shots recover appearance from their source tower");
+            if (stage == 1) tower.TryChooseDoctrine(definition.Tier2Doctrines[0].Id);
+            else if (stage == 2) tower.TrySpecialize(definition.Specializations[0].Id);
+            else if (stage == 3) tower.TryApexUpgrade();
+            session.Towers.Remove(tower);
+            foreach (var projectile in projectiles)
+                Check.Equal(expected, projectile.Appearance.Resolve(session, tower.Id),
+                    "an in-flight shot keeps its firing tier after upgrade and sale");
+            session.Projectiles.Update(10, session);
+            Check.Equal(0, session.Projectiles.Projectiles.Count, "projectiles finish after source removal");
+            var impacts = session.Effects.Effects.Where(effect => effect.Kind is EffectKind.Impact or EffectKind.Splash).ToArray();
+            if (projectiles.Length > 0)
+                Check.True(impacts.Length > 0, "travelling attacks transfer their appearance to impacts");
+            foreach (var impact in impacts)
+                Check.Equal(expected, impact.Appearance, "impact retains original shot tier");
+        }
+
+        var first = Session();
+        var second = Session();
+        var payload = new DamagePayload { Damage = 10, SourceTowerId = 4 };
+        var plain = new ProjectileInstance(new Vector2(100, 100), new Vector2(100, 30), null,
+            100, ProjectileKind.ImpactPoint, 20, payload, Color.Violet, 5);
+        var styled = new ProjectileInstance(new Vector2(100, 100), new Vector2(100, 30), null,
+            100, ProjectileKind.ImpactPoint, 20, payload, Color.Violet, 5)
+        {
+            Appearance = new AttackAppearance("siege_mortar", 3, true)
+        };
+        first.Projectiles.Add(plain);
+        second.Projectiles.Add(styled);
+        Check.Equal(JsonSerializer.Serialize(plain.CaptureCoOpState()), JsonSerializer.Serialize(styled.CaptureCoOpState()),
+            "local attack appearance does not change synchronized projectile state");
+        Check.Equal(SessionChecksum.Compute(first, 17), SessionChecksum.Compute(second, 17),
+            "local attack appearance does not change simulation checksums");
+        first.Projectiles.Update(1, first);
+        second.Projectiles.Update(1, second);
+        Check.Equal(SessionChecksum.Compute(first, 18), SessionChecksum.Compute(second, 18),
+            "tiered impact rendering leaves simulation outcomes identical");
     }
 
     private static void FrostAreaControl()

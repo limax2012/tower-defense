@@ -62,7 +62,10 @@ internal static class BehaviorHelpers
 
     public static void Projectile(TowerInstanceContext context, EnemyInstance target, ProjectileKind kind, Vector2 aimPoint, float splashRadius, DamagePayload payload, float speed, Color color, float radius = 5f, int splashTargetLimit = 0, float ricochetRange = 0, float ricochetDamageMultiplier = 0)
     {
-        context.Session.Projectiles.Add(new ProjectileInstance(context.Tower.Position, aimPoint, target, speed, kind, splashRadius, payload, color, radius, splashTargetLimit, ricochetRange, ricochetDamageMultiplier));
+        context.Session.Projectiles.Add(new ProjectileInstance(context.Tower.Position, aimPoint, target, speed, kind, splashRadius, payload, color, radius, splashTargetLimit, ricochetRange, ricochetDamageMultiplier)
+        {
+            Appearance = AttackAppearance.FromTower(context.Tower)
+        });
     }
 }
 
@@ -149,7 +152,8 @@ public sealed class ChainBehavior : ITowerBehavior
         var primaryStatus = BehaviorHelpers.Status(context, StatusType.Stun, level.StunDuration, 1f);
         context.Session.DamageResolver.Apply(context.Target, BehaviorHelpers.Payload(context, level,
             level.Damage, primaryStatus));
-        context.Session.Effects.AddBeam(context.Tower.Position, context.Target.Position, context.Tower.Definition.Visual.PrimaryColor, 0.14f);
+        context.Session.Effects.AddBeam(context.Tower.Position, context.Target.Position, context.Tower.Definition.Visual.PrimaryColor, 0.14f,
+            sourceTowerId: context.Tower.Id, appearance: AttackAppearance.FromTower(context.Tower));
 
         var excluded = new HashSet<int> { context.Target.Id };
         var previous = context.Target.Position;
@@ -158,10 +162,12 @@ public sealed class ChainBehavior : ITowerBehavior
             excluded.Add(enemy.Id);
             context.Session.DamageResolver.Apply(enemy, BehaviorHelpers.Payload(context, level,
                 level.ChainDamage));
-            context.Session.Effects.AddBeam(previous, enemy.Position, context.Tower.Definition.Visual.AccentColor, 0.12f);
+            context.Session.Effects.AddBeam(previous, enemy.Position, context.Tower.Definition.Visual.AccentColor, 0.12f,
+                appearance: AttackAppearance.FromTower(context.Tower));
             previous = enemy.Position;
         }
-        context.Session.Effects.AddFlash(previous, context.Tower.Definition.Visual.PrimaryColor, 0.18f, 28);
+        context.Session.Effects.AddFlash(previous, context.Tower.Definition.Visual.PrimaryColor, 0.18f, 28,
+            AttackAppearance.FromTower(context.Tower));
     }
 }
 
@@ -204,7 +210,7 @@ public sealed class BeamBehavior : ITowerBehavior
         var status = BehaviorHelpers.Status(context, StatusType.Exposed, level.ExposeDuration, level.ExposePercent);
         context.Session.DamageResolver.Apply(context.Target, BehaviorHelpers.Payload(context, level, level.Damage, status, level.IgnoreShield, level.ArmorPierce));
         context.Session.Effects.AddBeam(context.Tower.Position, context.Target.Position, context.Tower.Definition.Visual.PrimaryColor,
-            0.15f, BeamStyle.Prism, context.Tower.Id);
+            0.15f, BeamStyle.Prism, context.Tower.Id, AttackAppearance.FromTower(context.Tower));
         if (level.ChainCount <= 0 || level.ChainDamage <= 0 || level.ChainRange <= 0) return;
 
         var excluded = new HashSet<int> { context.Target.Id };
@@ -214,7 +220,8 @@ public sealed class BeamBehavior : ITowerBehavior
             excluded.Add(enemy.Id);
             context.Session.DamageResolver.Apply(enemy,
                 BehaviorHelpers.Payload(context, level, level.ChainDamage, status, level.IgnoreShield, level.ArmorPierce));
-            context.Session.Effects.AddBeam(previous, enemy.Position, context.Tower.Definition.Visual.AccentColor, 0.12f, BeamStyle.Prism);
+            context.Session.Effects.AddBeam(previous, enemy.Position, context.Tower.Definition.Visual.AccentColor, 0.12f, BeamStyle.Prism,
+                appearance: AttackAppearance.FromTower(context.Tower));
             previous = enemy.Position;
         }
     }

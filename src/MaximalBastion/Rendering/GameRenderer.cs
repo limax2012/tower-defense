@@ -181,6 +181,9 @@ public sealed class GameRenderer
             var accent = supportTower.Definition.Visual.AccentColor;
             p.DashedRing(batch, supportTower.Position, session.GetEffectiveAuraRange(supportTower),
                 ColorPalette.WithAlpha(accent, 120), 28, 2);
+            TowerAttackArt.DrawBeaconBroadcast(batch, p, supportTower.Position,
+                NightGridArt.TowerAccent(supportTower.Definition.Id), supportTower.Definition.Visual.Radius,
+                time, ReducedEffects, supportTower.LevelIndex + 1, supportTower.IsApex);
         }
 
         foreach (var tower in session.Towers)
@@ -225,7 +228,8 @@ public sealed class GameRenderer
         var ray = effect.End - tower.Position;
         var length = ray.Length();
         if (length < .001f) return tower.Position;
-        var barrel = tower.Definition.Visual.Radius * presentation.TowerScale(tower) * PrismBeamArt.BarrelLength;
+        var barrel = tower.Definition.Visual.Radius * presentation.TowerScale(tower) *
+            TowerTierVisuals.PrismBarrelLength(tower.LevelIndex + 1, tower.IsApex);
         return tower.Position + ray / length * MathF.Min(barrel, length);
     }
 
@@ -476,11 +480,9 @@ public sealed class GameRenderer
                 : projectile.AimPoint;
             var forward = destination - position;
             if (forward.LengthSquared() < .0001f) forward = destination - projectile.Position;
-            // Attribution retains sold sources while their shots are in flight, including after reconstruction.
-            if (!session.Statistics.TowerDefinitionByInstance.TryGetValue(projectile.Payload.SourceTowerId, out var towerId))
-                towerId = session.Towers.FirstOrDefault(tower => tower.Id == projectile.Payload.SourceTowerId)?.Definition.Id;
-            ProjectileArt.Draw(batch, p, towerId, position, forward, projectile.Radius, projectile.Color,
-                presentation.TimeSeconds, ReducedEffects);
+            var appearance = projectile.Appearance.Resolve(session, projectile.Payload.SourceTowerId);
+            ProjectileArt.Draw(batch, p, appearance.TowerId, position, forward, projectile.Radius, projectile.Color,
+                presentation.TimeSeconds, ReducedEffects, appearance.Level, appearance.IsApex);
         }
     }
 
@@ -494,18 +496,34 @@ public sealed class GameRenderer
             var progress = MathHelper.Clamp(remaining / MathF.Max(effect.Duration, 0.001f), 0, 1);
             var alpha = (byte)(100 + 155 * progress);
             var effectColor = effect.Color * progress;
+            var appearance = effect.Appearance.Resolve(session, effect.SourceTowerId);
             if (effect.Kind == EffectKind.Beam && effect.BeamStyle == BeamStyle.Prism)
             {
                 if (effect.SourceTowerId != 0 && ActivePrismBeam(session, effect.SourceTowerId, presentation) != effect)
                     continue;
                 PrismBeamArt.Draw(batch, p, PrismBeamOrigin(session, effect, presentation), effect.End, effect.Color, effect.Radius,
-                    progress, ReducedEffects, effect.SourceTowerId != 0);
+                    progress, ReducedEffects, effect.SourceTowerId != 0, appearance.Level, appearance.IsApex);
+                TowerAttackArt.DrawImpact(batch, p, "prism_beam", effect.End, effect.End - effect.Start,
+                    effect.Color, 7, progress, presentation.TimeSeconds, ReducedEffects, appearance.Level, appearance.IsApex);
                 if (!ReducedEffects && session.Towers.FirstOrDefault(t => t.Id == effect.SourceTowerId) is { } emitter)
                 {
                     var recoil = MathF.Max(0, emitter.RecoilAnimationRemaining - presentation.LeadSeconds) / .12f * .2f;
                     NightGridArt.DrawMuzzleFlash(batch, p, PrismBeamOrigin(session, effect, presentation),
                         emitter.Definition.Visual.Radius * presentation.TowerScale(emitter), effect.Color, recoil);
                 }
+                continue;
+            }
+            if (effect.Kind == EffectKind.Beam && appearance.TowerId == "arc_relay")
+            {
+                TowerAttackArt.DrawArc(batch, p, effect.Start, effect.End, effect.Color, progress,
+                    presentation.TimeSeconds, ReducedEffects, appearance.Level, appearance.IsApex);
+                continue;
+            }
+            if (appearance.IsKnown && effect.Kind is EffectKind.Impact or EffectKind.Splash or EffectKind.Flash or EffectKind.Shatter)
+            {
+                TowerAttackArt.DrawImpact(batch, p, appearance.TowerId!, effect.Start, effect.Direction,
+                    effect.Color, effect.Radius, progress, presentation.TimeSeconds, ReducedEffects,
+                    appearance.Level, appearance.IsApex);
                 continue;
             }
             if (!ReducedEffects && effect.Kind != EffectKind.Ping)
@@ -530,19 +548,6 @@ public sealed class GameRenderer
                     p.Line(batch, effect.Start, effect.End, effect.Color * (.16f * progress), effect.Radius + 9);
                 p.Line(batch, effect.Start, effect.End, effectColor, Math.Max(2, effect.Radius + 1));
                 p.Line(batch, effect.Start, effect.End, ColorPalette.Paper * progress, 1);
-                if (!ReducedEffects && effect.Color == session.Content.Towers["arc_relay"].Visual.PrimaryColor)
-                {
-                    var previous = effect.Start;
-                    var delta = effect.End - effect.Start;
-                    var normal = SafeDirection(new Vector2(-delta.Y, delta.X));
-                    for (var step = 1; step <= 6; step++)
-                    {
-                        var next = Vector2.Lerp(effect.Start, effect.End, step / 6f) +
-                            (step == 6 ? Vector2.Zero : normal * MathF.Sin(step * 7 + progress * 14) * 5);
-                        p.Line(batch, previous, next, effectColor, 2);
-                        previous = next;
-                    }
-                }
             }
             else if (effect.Kind == EffectKind.Ping)
             {
