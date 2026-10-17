@@ -227,11 +227,22 @@ public static partial class NightGridArt
             }
             if (id.Contains("aegis", StringComparison.Ordinal))
             {
+                var casing = Color.Lerp(shell, ColorPalette.Muted, .30f);
                 for (var sign = -1; sign <= 1; sign += 2)
                 {
-                    var emitter = center + direction * r * .12f + side * r * .66f * sign;
-                    p.Line(b, emitter - direction * r * .32f, emitter + direction * r * .30f, ColorPalette.Navy, r * .13f);
-                    p.Line(b, emitter - direction * r * .24f, emitter + direction * r * .22f, ColorPalette.Violet, r * .065f);
+                    Vector2 At(float along, float across) => center + direction * r * along + side * r * across * sign;
+                    // Recessed capacitor cells sit inside permanent armored flank housings.
+                    p.Line(b, At(-.48f, .66f), At(.26f, .66f), ColorPalette.Ink, r * .34f);
+                    p.Line(b, At(-.45f, .66f), At(.23f, .66f), casing, r * .28f);
+                    p.Line(b, At(-.34f, .66f), At(.12f, .66f), ColorPalette.Navy, r * .18f);
+                    if (lights) p.Glow(b, At(-.11f, .66f), r * .38f, ColorPalette.Hostile, .18f);
+                    for (var cell = 0; cell < 3; cell++)
+                    {
+                        var along = -.27f + cell * .16f;
+                        p.Line(b, At(along, .61f), At(along, .71f), ColorPalette.Hostile * .85f, r * .065f);
+                    }
+                    p.Line(b, At(-.43f, .55f), At(-.43f, .77f), armor, r * .055f);
+                    p.Line(b, At(.20f, .55f), At(.20f, .77f), armor, r * .055f);
                 }
             }
         }

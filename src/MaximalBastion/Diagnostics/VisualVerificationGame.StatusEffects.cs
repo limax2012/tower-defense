@@ -132,6 +132,7 @@ public sealed partial class VisualVerificationGame
         AssertSupportLifecycle(content, font, display, assertions, scenes);
         AssertSignalLifecycle(content, assertions);
         CaptureDenseStatusCombat(content, font, display, assertions, scenes);
+        AssertAegisPresentation(content, font, display, assertions, scenes);
     }
 
     private static StatusReviewEnemy StatusSample(GameContent content, string id, string label,
