@@ -230,7 +230,7 @@ internal static class RainlineDistrictArt
         p.Line(b, new Vector2(roof.Left + 2, roof.Top + 2), new Vector2(roof.Left + 2, roof.Bottom - 2), c.Edge * .32f);
         p.Line(b, new Vector2(roof.Right - 2, roof.Top + 2), new Vector2(roof.Right - 2, roof.Bottom - 2), ColorPalette.Ink * .65f, 2);
         p.DrawRect(b, roof, c.Edge * .46f);
-        p.Brackets(b, roof, hovered ? ColorPalette.PlacementValid : Color.Lerp(c.Edge, ColorPalette.Paper, .35f), 9);
+        MapEnvironmentRenderer.DeckEdgeLights(b, p, roof, c.Edge, c.Accent, hovered);
     }
 
     private static void DrawConduit(SpriteBatch b, PrimitiveRenderer p, Vector2 start, Vector2 end, bool trunk = true)

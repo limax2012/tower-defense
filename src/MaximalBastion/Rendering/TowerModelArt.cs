@@ -30,6 +30,8 @@ public static partial class NightGridArt
             case "signal_beacon": DrawBeacon(brush, stage, time); break;
         }
 
+        TowerProtocolArt.DrawStandby(batch, primitives, center, radius, id, level, apex, angle, opacity);
+
         if (!lights || id == "prism_beam") return;
         var muzzle = TowerMuzzlePosition(center, radius, id, level, angle, recoil, apex);
         DrawMuzzleFlash(batch, primitives, muzzle, radius, accent, recoil, opacity);

@@ -104,6 +104,7 @@ public sealed partial class VisualVerificationGame : Game
         scenes.Add(CaptureTowerRotationGallery(content, font));
         AssertTowerProtocolPresentation(content, font, assertions, scenes);
         AssertStatusPresentation(content, font, typography.Display, assertions, scenes);
+        AssertBattlefieldInteractionPresentation(content, font, typography.Display, assertions, scenes);
         scenes.Add(CaptureHealthBarGallery(font));
         AssertCombatFeedClipping(content, assertions, scenes);
         var smoothMenu = new UIManager(font, typography.Display);
@@ -357,14 +358,14 @@ public sealed partial class VisualVerificationGame : Game
         scenes.Add(Capture("03a-valid-placement-ghost.png", ui, GameState.Playing, placementSession));
         Require(CountChangedPixels(placementBaselinePixels, validPlacementPixels,
                     new Rectangle(130, 75, 48, 250)) >= 35,
-            "Tower placement retains the full dashed attack/aura range preview.", assertions);
+            "Tower placement retains its full continuous attack/aura boundary.", assertions);
         Require(CountColorPixels(validPlacementPixels, new Rectangle(37, 192, 16, 16), ColorPalette.PlacementValid) < 10,
             "Tower placement no longer overlays a green check icon at its center.", assertions);
 
         var localNodePlacementSession = new GameSession(content, "relay_divide", DifficultyCatalog.DefaultId,
             ChallengeCatalog.DefaultId);
         var nodeTerrainPixels = RenderPixels(ui, GameState.Playing, localNodePlacementSession);
-        scenes.Add(Capture("03a0-power-node-glyphs.png", ui, GameState.Playing, localNodePlacementSession));
+        scenes.Add(Capture("03a0-power-node-devices.png", ui, GameState.Playing, localNodePlacementSession));
         var amplifierNodePosition = localNodePlacementSession.Map.Definition.PowerNodes
             .Single(node => node.Id == "inner_amplifier").Position.ToVector2();
         var amplifierCoreCenter = ColorPixelCenter(nodeTerrainPixels,
@@ -381,19 +382,17 @@ public sealed partial class VisualVerificationGame : Game
         var localNodePlacementPixels = RenderPixels(ui, GameState.Playing, localNodePlacementSession);
         scenes.Add(Capture("03a1-local-node-placement-marker.png", ui, GameState.Playing, localNodePlacementSession));
         var amplifierColor = localNodePlacementSession.Map.GetPowerNodes(localNodePlacementSession.PlacementPreviewPosition)[0].NodeColor;
-        var expectedNodeMarkerCenter = new Vector2(
-            MathF.Round(localNodePlacementSession.PlacementPreviewPosition.X) + 0.5f,
-            MathF.Round(localNodePlacementSession.PlacementPreviewPosition.Y) + 0.5f);
+        var expectedNodeMarkerCenter = localNodePlacementSession.PlacementPreviewPosition + new Vector2(0, 20);
         Require(CountColorPixels(localNodePlacementPixels,
-                    new Rectangle((int)expectedNodeMarkerCenter.X - 6, (int)expectedNodeMarkerCenter.Y - 6, 13, 13),
+                    new Rectangle((int)expectedNodeMarkerCenter.X - 5, (int)expectedNodeMarkerCenter.Y - 4, 10, 8),
                     amplifierColor) >= 20,
-            "Local tower placement carries a centered node-colored marker over the ghost.", assertions);
+            "Local tower placement connects the actual node to a node-colored receiving coupler on its foundation.", assertions);
         var renderedNodeMarkerCenter = ColorPixelCenter(localNodePlacementPixels,
-            new Rectangle((int)expectedNodeMarkerCenter.X - 4, (int)expectedNodeMarkerCenter.Y - 4, 9, 9),
-            ColorPalette.Paper);
+            new Rectangle((int)expectedNodeMarkerCenter.X - 4, (int)expectedNodeMarkerCenter.Y - 2, 8, 4),
+            amplifierColor);
         Require(renderedNodeMarkerCenter is { } center &&
                 Vector2.Distance(center, expectedNodeMarkerCenter) <= 0.05f,
-            "The node-overlap marker's white dot is centered inside its colored square.", assertions);
+            "The receiving coupler is aligned with the snapped foundation rather than the raw cursor.", assertions);
 
         var breachNodePlacementSession = new GameSession(content, "relay_divide", DifficultyCatalog.DefaultId,
             ChallengeCatalog.DefaultId);
@@ -419,9 +418,9 @@ public sealed partial class VisualVerificationGame : Game
         var remoteNodePlacementPixels = RenderPixels(ui, GameState.Playing, remoteNodePlacementSession);
         scenes.Add(Capture("03a2-remote-node-placement-marker.png", ui, GameState.Playing, remoteNodePlacementSession));
         Require(CountColorPixels(remoteNodePlacementPixels,
-                    new Rectangle((int)expectedNodeMarkerCenter.X - 6, (int)expectedNodeMarkerCenter.Y - 6, 13, 13),
+                    new Rectangle((int)expectedNodeMarkerCenter.X - 5, (int)expectedNodeMarkerCenter.Y - 4, 10, 8),
                     amplifierColor) >= 20,
-            "Remote co-op tower placement shows the same centered node marker at its synchronized snapped position.", assertions);
+            "Remote co-op placement connects to the same foundation coupler at its synchronized snapped position.", assertions);
         ui.SetRemoteCoOpCursor(null, 0);
 
         placementSession.HandleWorldInput(Pointer(100, 200));
@@ -543,19 +542,24 @@ public sealed partial class VisualVerificationGame : Game
         Require(autoHeaderSession.TryToggleAutoProtocol(autoTower.Id, 2),
             "Auto header scene arms the earlier tower beneath its later neighbor.", assertions);
         var withAutoMarker = RenderPixels(ui, GameState.Playing, autoHeaderSession);
-        var changedAutoMarkerPixels = CountChangedPixels(withoutAutoMarker, withAutoMarker,
-            new Rectangle(160, 176, 30, 30));
+        var controllerAt = BattlefieldInteractionArt.AutoControllerPosition(autoTower.Position,
+            autoTower.Definition.Visual.Radius, autoTower.Definition.Id);
+        var controllerBounds = new Rectangle((int)controllerAt.X - 13, (int)controllerAt.Y - 12, 26, 26);
+        var changedAutoMarkerPixels = CountChangedPixels(withoutAutoMarker, withAutoMarker, controllerBounds);
         Require(changedAutoMarkerPixels >= 90,
-            $"Arming Auto adds a compact, legible badge ({changedAutoMarkerPixels} changed pixels).", assertions);
-        var changedOutsideBadge = CountChangedPixels(withoutAutoMarker, withAutoMarker,
-            new Rectangle(155, 140, 75, 75)) - changedAutoMarkerPixels;
-        Require(changedOutsideBadge >= 40,
-            $"Auto restores compact L-shaped corner brackets around its tower ({changedOutsideBadge} changed pixels outside badge).", assertions);
+            $"Arming Auto illuminates a legible controller attached to the foundation ({changedAutoMarkerPixels} changed pixels).", assertions);
+        Require(CountChangedPixels(withoutAutoMarker, withAutoMarker, new Rectangle(163, 147, 54, 7)) == 0,
+            "The Auto controller leaves the rotating weapon's upper silhouette unchanged.", assertions);
         Require(autoHeaderSession.TryToggleAutoProtocol(laterTower.Id, 2) &&
                 autoHeaderSession.AutoOverdriveTowerId == laterTower.Id &&
                 autoHeaderSession.TryToggleAutoProtocol(autoTower.Id, 2) &&
                 autoHeaderSession.AutoOverdriveTowerId == autoTower.Id,
-            "Moving Auto transfers foreground priority; the previous tower immediately returns to normal order.", assertions);
+            "Moving Auto transfers the active controller to the requested tower.", assertions);
+        Require(autoHeaderSession.TryToggleAutoProtocol(autoTower.Id, 2) &&
+                CountChangedPixels(withoutAutoMarker, RenderPixels(ui, GameState.Playing, autoHeaderSession), controllerBounds) == 0,
+            "Clearing Auto removes its controller immediately without changing the foundation underneath.", assertions);
+        Require(autoHeaderSession.TryToggleAutoProtocol(autoTower.Id, 2),
+            "The controller can be armed again after being cleared.", assertions);
         ui.HandleGameplayInput(Pointer(0, 0), autoHeaderSession, _ => { }, 2);
         scenes.Add(Capture("05-auto-coop-owner.png", ui, GameState.Playing, autoHeaderSession));
         ui.SetRemoteCoOpCursor(new Vector2(330, 220), 1);
@@ -563,13 +567,14 @@ public sealed partial class VisualVerificationGame : Game
         ui.SetRemoteCoOpCursor(new Vector2(330, 220), 1, selectedTowerId: autoTower.Id);
         var withRemoteSelection = RenderPixels(ui, GameState.Playing, autoHeaderSession);
         Require(CountChangedPixels(withoutRemoteSelection, withRemoteSelection, new Rectangle(165, 130, 50, 35)) >= 160,
-            "Remote inspection uses an opaque high-contrast player flag instead of Auto-like square corners.", assertions);
-        scenes.Add(Capture("05a-remote-selected-player-flag.png", ui, GameState.Playing, autoHeaderSession));
+            "Remote inspection has a legible player terminal attached to its illuminated foundation.", assertions);
+        scenes.Add(Capture("05a-remote-selected-player-terminal.png", ui, GameState.Playing, autoHeaderSession));
         ui.SetRemoteCoOpCursor(new Vector2(330, 220), 2, selectedTowerId: autoTower.Id);
         var playerTwoSelection = RenderPixels(ui, GameState.Playing, autoHeaderSession);
-        Require(CountColorPixels(playerTwoSelection, new Rectangle(165, 130, 50, 35), ColorPalette.Coral) >= 250,
-            "P2 uses the same centered selection-flag geometry as P1 with its own opaque color.", assertions);
-        scenes.Add(Capture("05a2-remote-selected-player-two-flag.png", ui, GameState.Playing, autoHeaderSession));
+        Require(CountColorPixels(playerTwoSelection, new Rectangle(165, 130, 50, 35), ColorPalette.Coral) >= 60 &&
+                CountColorPixels(playerTwoSelection, new Rectangle(165, 130, 50, 35), ColorPalette.Paper) >= 30,
+            "P2 retains a distinct full-color terminal lamp and readable neutral player lettering.", assertions);
+        scenes.Add(Capture("05a2-remote-selected-player-two-terminal.png", ui, GameState.Playing, autoHeaderSession));
         ui.SetRemoteCoOpCursor(null, 0);
 
         var crowdedMarkerSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId,
@@ -601,7 +606,7 @@ public sealed partial class VisualVerificationGame : Game
         var crowdedTagRegion = new Rectangle((int)crowdedRemoteTower.Position.X - 22,
             (int)crowdedRemoteTower.Position.Y - crowdedRemoteTower.Definition.Visual.Radius - 25, 44, 24);
         Require(CountChangedPixels(crowdedWithoutSelection, crowdedWithSelection, crowdedTagRegion) >= 160,
-            "The P1 remote-selection flag remains fully visible above a dense tower cluster.", assertions);
+            "The P1 remote-selection terminal remains fully visible above a dense tower cluster.", assertions);
         scenes.Add(Capture("05b-crowded-auto-and-remote-selection.png", ui, GameState.Playing, crowdedMarkerSession));
         ui.SetRemoteCoOpCursor(null, 0);
 

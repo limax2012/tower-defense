@@ -75,14 +75,40 @@ public static class MapEnvironmentRenderer
                 p.FillRect(b, new Rectangle(x, r.Top + 6, 13, 2), c.Edge * .55f);
         }
 
-        // Identical brackets and bolt spacing consistently identify legal build surfaces.
+        // Recessed edge lamps and fasteners identify the build surface without covering its deck.
         p.DrawRect(b, r, c.Edge * .46f);
         p.Line(b, new Vector2(r.Left + 2, r.Top + 2), new Vector2(r.Right - 2, r.Top + 2), ColorPalette.Paper * .13f);
         p.Line(b, new Vector2(r.Right - 2, r.Top + 2), new Vector2(r.Right - 2, r.Bottom - 2), ColorPalette.Ink * .65f, 2);
-        p.Brackets(b, r, hovered ? ColorPalette.PlacementValid : Color.Lerp(c.Edge, ColorPalette.Paper, .35f), 9);
+        DeckEdgeLights(b, p, r, c.Edge, c.Accent, hovered);
         for (var x = r.Left + 17; x < r.Right - 8; x += 30)
         for (var y = r.Top + 17; y < r.Bottom - 8; y += 30)
             p.FillRect(b, new Rectangle(x, y, 2, 2), c.Edge * .15f);
+    }
+
+    public static void DeckEdgeLights(SpriteBatch b, PrimitiveRenderer p, Rectangle deck, Color edge,
+        Color accent, bool hovered)
+    {
+        var lampColor = hovered ? Color.Lerp(accent, ColorPalette.Paper, .28f) : edge * .65f;
+        var horizontalHalf = Math.Clamp(deck.Width * .16f, 6f, 20f);
+        var verticalHalf = Math.Clamp(deck.Height * .16f, 6f, 20f);
+        for (var side = -1; side <= 1; side += 2)
+        {
+            var horizontalCenter = new Vector2(deck.Center.X, side < 0 ? deck.Top + 3 : deck.Bottom - 3);
+            var verticalCenter = new Vector2(side < 0 ? deck.Left + 3 : deck.Right - 3, deck.Center.Y);
+            Lamp(horizontalCenter, Vector2.UnitX, horizontalHalf);
+            Lamp(verticalCenter, Vector2.UnitY, verticalHalf);
+        }
+
+        void Lamp(Vector2 center, Vector2 direction, float halfLength)
+        {
+            var start = center - direction * halfLength;
+            var end = center + direction * halfLength;
+            p.Line(b, start - direction * 3, end + direction * 3, ColorPalette.Ink, 4);
+            p.Line(b, start - direction * 2, end + direction * 2, edge * .48f, 3);
+            p.Line(b, start, end, lampColor, hovered ? 2 : 1);
+            p.Circle(b, start - direction * 2, .8f, ColorPalette.Ink);
+            p.Circle(b, end + direction * 2, .8f, ColorPalette.Ink);
+        }
     }
 
     public static void Path(SpriteBatch b, PrimitiveRenderer p, MapDefinition map, float time)

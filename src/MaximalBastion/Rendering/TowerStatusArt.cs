@@ -36,19 +36,7 @@ public static class TowerStatusArt
     {
         var d = new TowerStatusFrame(batch, p, center, radius, towerId, level, apex, aim, time, reducedEffects);
         var power = Math.Clamp(strength, .35f, 1);
-        var green = ColorPalette.GreenText * ((.80f + d.Beat(4.6f) * .20f) * power);
-        var (x, y) = ReceivingContacts(towerId, d.Stage);
-        for (var sign = -1; sign <= 1; sign += 2)
-        {
-            var atY = y * sign;
-            var length = d.Stage >= 3 ? .33f : .27f;
-            d.Line(x - length * .5f, atY, x + length * .5f, atY, ColorPalette.Navy, .20f);
-            d.Line(x - length * .5f, atY, x + length * .5f, atY, ColorPalette.Metal, .14f);
-            d.Line(x - length * .37f, atY, x + length * .37f, atY, green, .065f);
-            d.Trace(x + length * .5f, atY, x + length * .5f + .11f, atY * .77f, green, .045f);
-            d.Trace(x - length * .5f, atY, x - length * .5f - .09f, atY * .77f, green, .045f);
-            if (!reducedEffects) d.Glow(x, atY, .34f, ColorPalette.Green, .12f * power);
-        }
+        TowerHardwareChannels.DrawReceiver(d, towerId, active: true, glow: !reducedEffects, power);
     }
 
     public static void DrawDisrupted(SpriteBatch batch, PrimitiveRenderer p, Vector2 center, float radius,

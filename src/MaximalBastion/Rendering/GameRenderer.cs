@@ -57,14 +57,15 @@ public sealed class GameRenderer
             var hover = active && region.Contains(pointer.ToPoint());
             MapEnvironmentRenderer.Deck(batch, p, region, session.Map.Definition.PathVisual.Style, hover);
         }
+        var inspected = session.SelectedTower ?? session.HoveredTower;
+        var connectedNodes = inspected is null ? null : session.Map.GetPowerNodes(inspected.Position);
         foreach (var node in session.Map.Definition.PowerNodes)
         {
             var position = node.Position.ToVector2();
-            p.Glow(batch, position, node.Radius * 2, node.NodeColor, .24f);
-            p.DashedRing(batch, position, node.Radius, ColorPalette.WithPremultipliedAlpha(node.NodeColor, 140), 32, 2);
-            p.DrawPolygon(batch, position, 13, 6, false, ColorPalette.Metal);
-            p.DrawPolygon(batch, position, 8, 6, false, node.NodeColor);
-            p.DrawPolygon(batch, position, 4, 6, false, ColorPalette.Paper);
+            p.Ring(batch, position, node.Radius, node.NodeColor * .46f, 1);
+            PowerNodeArt.DrawDevice(batch, p, position, node.NodeColor, glow: !ReducedEffects);
+            if (inspected is not null && connectedNodes!.Contains(node))
+                PowerNodeArt.DrawLink(batch, p, position, inspected.Position, node.NodeColor);
         }
         p.DrawRect(batch, new Rectangle(0, 0, GameConstants.MapWidth, GameConstants.LogicalHeight), ColorPalette.MapBoundary);
     }
@@ -75,9 +76,9 @@ public sealed class GameRenderer
     private void DrawRanges(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session)
     {
         if (session.SelectedTower is { IsSupport: false } selected)
-            p.DashedRing(batch, selected.Position, DisplayRange(session, selected), ColorPalette.WithAlpha(ColorPalette.Gold, 155), 36, 2);
+            p.Ring(batch, selected.Position, DisplayRange(session, selected), ColorPalette.Gold * .54f, 1);
         else if (session.SelectedTower is null && session.HoveredTower is { IsSupport: false } hovered)
-            p.DashedRing(batch, hovered.Position, DisplayRange(session, hovered), ColorPalette.WithAlpha(ColorPalette.Cyan, 105), 36, 2);
+            p.Ring(batch, hovered.Position, DisplayRange(session, hovered), ColorPalette.Cyan * .38f, 1);
 
         var placementOnMap = session.PlacementPosition.X >= 0 && session.PlacementPosition.X < GameConstants.MapWidth &&
                              session.PlacementPosition.Y >= GameConstants.TopBarHeight && session.PlacementPosition.Y < GameConstants.LogicalHeight;
@@ -88,15 +89,13 @@ public sealed class GameRenderer
             var placementRange = definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase)
                 ? definition.Levels[0].AuraRange
                 : definition.Levels[0].Range;
-            // This large ring communicates the tower's eventual attack/aura range.
-            // It is intentionally distinct from the compact remote-player handling marker.
-            if (definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase))
-                p.Ring(batch, position, placementRange, ColorPalette.Green * .60f, 1);
-            else
-                p.DashedRing(batch, position, placementRange, ColorPalette.PlacementValid, 32, 2);
+            p.Ring(batch, position, placementRange,
+                (definition.Behavior.Equals("aura", StringComparison.OrdinalIgnoreCase) ? ColorPalette.Green : ColorPalette.Cyan) * .48f, 1);
+            BattlefieldInteractionArt.DrawFootprint(batch, p, position, definition.Visual.Radius,
+                definition.Id, 1, false,
+                session.PlacementFailure == PlacementFailure.None ? ColorPalette.PlacementValid : ColorPalette.PlacementInvalid,
+                1, true, !ReducedEffects);
             NightGridArt.Tower(batch, p, position, definition.Visual.Radius, definition.Id, opacity: .5f, lights: !ReducedEffects);
-            p.Brackets(batch, new Rectangle((int)position.X - 24, (int)position.Y - 24, 48, 48),
-                session.PlacementFailure == PlacementFailure.None ? ColorPalette.PlacementValid : ColorPalette.PlacementInvalid);
         }
 
         if (!placementOnMap || session.TacticalPlacement == TacticalPlacementKind.None) return;
@@ -105,12 +104,20 @@ public sealed class GameRenderer
             if (!session.HasPlacementPreview) return;
             var tactical = session.Content.Tactics.EmergencyDefense;
             var position = session.PlacementPreviewPosition;
+            BattlefieldInteractionArt.DrawFootprint(batch, p, position, tactical.Visual.Radius,
+                tactical.Id, 1, false,
+                session.PlacementFailure == PlacementFailure.None ? ColorPalette.PlacementValid : ColorPalette.PlacementInvalid,
+                .8f, true, !ReducedEffects);
             NightGridArt.Tower(batch, p, position, tactical.Visual.Radius, tactical.Id, tactical.Charges, opacity: .5f, lights: !ReducedEffects);
         }
         else if (session.TacticalPlacement == TacticalPlacementKind.ChargeForge)
         {
             if (!session.HasPlacementPreview) return;
             var generator = session.Content.Tactics.Generator;
+            BattlefieldInteractionArt.DrawFootprint(batch, p, session.PlacementPreviewPosition, generator.Visual.Radius,
+                generator.Id, 1, false,
+                session.PlacementFailure == PlacementFailure.None ? ColorPalette.PlacementValid : ColorPalette.PlacementInvalid,
+                .8f, true, !ReducedEffects);
             NightGridArt.Tower(batch, p, session.PlacementPreviewPosition, generator.Visual.Radius, generator.Id, opacity: .5f, lights: !ReducedEffects);
         }
     }
@@ -128,24 +135,7 @@ public sealed class GameRenderer
     }
 
     internal static void DrawPowerNodePlacementIndicator(SpriteBatch batch, PrimitiveRenderer p, Vector2 position,
-        IReadOnlyList<PowerNodeData> powerNodes)
-    {
-        if (powerNodes.Count == 0) return;
-
-        var visibleNodeCount = Math.Min(3, powerNodes.Count);
-        for (var index = 0; index < visibleNodeCount; index++)
-        {
-            var offset = (index - (visibleNodeCount - 1) * 0.5f) * 7f;
-            var pipCenter = position + new Vector2(offset, 0);
-            var pixelCenter = new Point((int)MathF.Round(pipCenter.X), (int)MathF.Round(pipCenter.Y));
-            p.FillRect(batch, new Rectangle(pixelCenter.X - 5, pixelCenter.Y - 5, 11, 11), ColorPalette.Navy);
-            p.FillRect(batch, new Rectangle(pixelCenter.X - 3, pixelCenter.Y - 3, 7, 7),
-                powerNodes[index].NodeColor);
-            // Odd-sized rectangles have their geometric center on the half pixel.
-            // Use that same center for the circular pip so all three layers align.
-            p.Circle(batch, pixelCenter.ToVector2() + new Vector2(0.5f), 2f, ColorPalette.Paper);
-        }
-    }
+        IReadOnlyList<PowerNodeData> powerNodes) => PowerNodeArt.DrawCouplers(batch, p, position, powerNodes);
 
     private void DrawTacticalDefenses(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session,
         PresentationFrame presentation)
@@ -159,15 +149,17 @@ public sealed class GameRenderer
 
         if (session.Generator is not { } generator) return;
         var visual = generator.Definition.Visual;
+        if (session.SelectedGenerator == generator)
+            BattlefieldInteractionArt.DrawFootprint(batch, p, generator.Position, visual.Radius,
+                generator.Definition.Id, generator.LevelIndex + 1, false, ColorPalette.Gold, 1, true, !ReducedEffects);
         NightGridArt.Tower(batch, p, generator.Position, visual.Radius, generator.Definition.Id,
             generator.LevelIndex + 1, time: ReducedEffects ? 0 : presentation.TimeSeconds, lights: !ReducedEffects);
         if (session.IsCoOp)
-            p.Ring(batch, generator.Position, visual.Radius + 8, generator.OwnerPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral, 2);
+            BattlefieldInteractionArt.DrawOwnerContact(batch, p, generator.Position, visual.Radius,
+                generator.Definition.Id, generator.OwnerPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral);
         var track = new Rectangle((int)generator.Position.X - 22, (int)generator.Position.Y + visual.Radius + 8, 44, 5);
         p.FillRect(batch, track, ColorPalette.HealthTrack);
         p.FillRect(batch, new Rectangle(track.X, track.Y, (int)(track.Width * generator.ProductionProgress), track.Height), ColorPalette.Green);
-        if (session.SelectedGenerator == generator)
-            p.Ring(batch, generator.Position, visual.Radius + (session.IsCoOp ? 12 : 8), ColorPalette.Gold, 3);
     }
 
     private void DrawTowers(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session,
@@ -239,22 +231,18 @@ public sealed class GameRenderer
         var pulse = supportPulse * presentation.TowerScale(tower);
         var aim = TowerAim(session, tower, presentation);
         var recoil = MathF.Max(0, tower.RecoilAnimationRemaining - presentation.LeadSeconds) / .12f * .2f;
+        if (tower == session.HoveredTower || tower == session.SelectedTower)
+            BattlefieldInteractionArt.DrawFootprint(batch, p, tower.Position, tower.Definition.Visual.Radius,
+                tower.Definition.Id, tower.LevelIndex + 1, tower.IsApex,
+                tower == session.SelectedTower ? ColorPalette.Gold : ColorPalette.Cyan,
+                tower == session.SelectedTower ? 1 : .65f, tower == session.SelectedTower, groundEffects && !ReducedEffects);
         NightGridArt.Tower(batch, p, tower.Position, tower.Definition.Visual.Radius * pulse,
             tower.Definition.Id, tower.LevelIndex + 1, aim, ReducedEffects ? 0 : time, recoil,
             tower.IsSandboxDisabled ? .4f : 1, !ReducedEffects, groundEffects, tower.IsApex);
-        if (tower == session.HoveredTower || tower == session.SelectedTower)
-        {
-            var span = tower.Definition.Visual.Radius + 10;
-            p.Brackets(batch, new Rectangle((int)tower.Position.X - span, (int)tower.Position.Y - span, span * 2, span * 2),
-                tower == session.SelectedTower ? ColorPalette.Gold : ColorPalette.Cyan, 8);
-        }
         if (tower.IsSandboxDisabled)
         {
-            var slash = tower.Definition.Visual.Radius * 0.58f;
-            p.Line(batch, tower.Position + new Vector2(-slash, -slash), tower.Position + new Vector2(slash, slash), ColorPalette.Coral, 3);
-            p.Line(batch, tower.Position + new Vector2(slash, -slash), tower.Position + new Vector2(-slash, slash), ColorPalette.Coral, 3);
-            if (tower == session.SelectedTower)
-                p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 8, ColorPalette.Gold, 3);
+            BattlefieldInteractionArt.DrawOwnerContact(batch, p, tower.Position, tower.Definition.Visual.Radius,
+                tower.Definition.Id, ColorPalette.Coral);
             return;
         }
         var radius = tower.Definition.Visual.Radius * pulse;
@@ -277,10 +265,8 @@ public sealed class GameRenderer
             TowerStatusArt.DrawSuppressed(batch, p, tower.Position, radius, tower.Definition.Id,
                 tower.LevelIndex + 1, tower.IsApex, aim, time, ReducedEffects);
         if (session.IsCoOp)
-            p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + 8,
-                tower.OwnerPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral, 2);
-        if (tower == session.SelectedTower)
-            p.Ring(batch, tower.Position, tower.Definition.Visual.Radius + (session.IsCoOp ? 12 : 8), ColorPalette.Gold, 3);
+            BattlefieldInteractionArt.DrawOwnerContact(batch, p, tower.Position, tower.Definition.Visual.Radius,
+                tower.Definition.Id, tower.OwnerPlayerId == 1 ? ColorPalette.Cyan : ColorPalette.Coral);
     }
 
     private void DrawForegroundTowerOverlays(SpriteBatch batch, PrimitiveRenderer p,
@@ -291,6 +277,12 @@ public sealed class GameRenderer
             ? session.Towers.FirstOrDefault(tower => tower.Id == foregroundTowerId)
             : null;
 
+        if (remoteSelectedTower is not null && !remoteSelectedTower.IsSandboxDisabled)
+            BattlefieldInteractionArt.DrawFootprint(batch, p, remoteSelectedTower.Position,
+                remoteSelectedTower.Definition.Visual.Radius, remoteSelectedTower.Definition.Id,
+                remoteSelectedTower.LevelIndex + 1, remoteSelectedTower.IsApex, ColorPalette.Cobalt,
+                .75f, true, glow: false);
+
         // Towers carrying temporary interaction state remain readable above dense
         // units and attack effects. Once the state moves or clears, normal authored
         // tower order resumes automatically. Ground shadows and light pools stay beneath combat.
@@ -298,40 +290,13 @@ public sealed class GameRenderer
             DrawTower(batch, p, session, presentation, autoTower, presentation.TimeSeconds, groundEffects: false);
         if (remoteSelectedTower is not null && remoteSelectedTower != autoTower && !remoteSelectedTower.IsSandboxDisabled)
             DrawTower(batch, p, session, presentation, remoteSelectedTower, presentation.TimeSeconds, groundEffects: false);
+        if (session.SelectedTower is { IsSandboxDisabled: false } selected && selected != autoTower && selected != remoteSelectedTower)
+            DrawTower(batch, p, session, presentation, selected, presentation.TimeSeconds, groundEffects: false);
 
-        // Auto's brackets and literal badge are the final battlefield marks, so
-        // neither enemies nor a foreground remote selection can obscure them.
+        // The attached Auto controller stays readable above transient combat effects.
         if (autoTower is not null && !autoTower.IsSandboxDisabled)
-            DrawAutoProtocolEffect(batch, p, autoTower, presentation.TimeSeconds);
-    }
-
-    private static void DrawAutoProtocolEffect(SpriteBatch batch, PrimitiveRenderer p, TowerInstance tower, float time)
-    {
-        var pulse = (MathF.Sin(time * 3.5f + tower.Id) + 1f) * 0.5f;
-        var color = ColorPalette.WithAlpha(ColorPalette.AutoMarker, (byte)(190 + pulse * 55));
-
-        var bracketExtent = tower.Definition.Visual.Radius + 9f + pulse;
-        const float bracketLength = 6f;
-        foreach (var horizontalDirection in new[] { -1f, 1f })
-        foreach (var verticalDirection in new[] { -1f, 1f })
-        {
-            var corner = tower.Position + new Vector2(horizontalDirection * bracketExtent,
-                verticalDirection * bracketExtent);
-            p.Line(batch, corner, corner - new Vector2(horizontalDirection * bracketLength, 0), color, 2.5f);
-            p.Line(batch, corner, corner - new Vector2(0, verticalDirection * bracketLength), color, 2.5f);
-        }
-
-        // A compact literal badge reinforces the corner-bracket Auto language.
-        var badgeDirection = Vector2.Normalize(new Vector2(-1f, 1f));
-        var marker = tower.Position + badgeDirection * (tower.Definition.Visual.Radius + 7f);
-        p.Circle(batch, marker, 7f, ColorPalette.WithAlpha(ColorPalette.AutoMarker, 245));
-        p.Ring(batch, marker, 7f, ColorPalette.Navy, 2);
-        var top = marker + new Vector2(0, -3.7f);
-        var lowerLeft = marker + new Vector2(-3.1f, 3.2f);
-        var lowerRight = marker + new Vector2(3.1f, 3.2f);
-        p.Line(batch, lowerLeft, top, ColorPalette.Navy, 2);
-        p.Line(batch, top, lowerRight, ColorPalette.Navy, 2);
-        p.Line(batch, marker + new Vector2(-1.7f, 0.7f), marker + new Vector2(1.7f, 0.7f), ColorPalette.Navy, 2);
+            BattlefieldInteractionArt.DrawAutoController(batch, p, autoTower.Position, autoTower.Definition.Visual.Radius,
+                autoTower.Definition.Id, presentation.TimeSeconds, ReducedEffects);
     }
 
     private void DrawEnemies(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session,
@@ -360,13 +325,17 @@ public sealed class GameRenderer
             EnemySignalArt.DrawHardware(batch, p, enemy, position, radius, headingAngle, time, ReducedEffects);
             EnemyStatusArt.Draw(batch, p, enemy, position, radius, headingAngle, time, ReducedEffects);
 
-            if (enemy.IsSandboxImmortal)
-                p.DashedRing(batch, position, enemy.Radius + (enemy.IsBoss ? 21 : 7), ColorPalette.Paper, 10, 2);
-
             var barWidth = enemy.Radius * (enemy.IsBoss ? 3.5f : 2.5f);
             var healthRatio = enemy.MaxHealth > 0 ? enemy.Health / enemy.MaxHealth : 0;
             p.HealthBar(batch, position - new Vector2(0, enemy.Radius + 11), barWidth,
                 healthRatio, ColorPalette.Health(healthRatio), ColorPalette.HealthTrack, ColorPalette.Ink);
+            if (enemy.IsSandboxImmortal)
+            {
+                var at = position - new Vector2(0, enemy.Radius + 11);
+                p.Line(batch, at + new Vector2(-barWidth * .5f, 3), at + new Vector2(barWidth * .5f, 3), ColorPalette.Muted, 1);
+                p.Line(batch, at + new Vector2(-barWidth * .5f - 1, -1), at + new Vector2(-barWidth * .5f - 1, 2), ColorPalette.Paper, 2);
+                p.Line(batch, at + new Vector2(barWidth * .5f + 1, -1), at + new Vector2(barWidth * .5f + 1, 2), ColorPalette.Paper, 2);
+            }
 
             if (enemy.Shield > 0)
             {

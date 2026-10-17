@@ -1977,31 +1977,29 @@ public sealed partial class UIManager
             var tag = new Rectangle((int)MathF.Round(tower.Position.X - tagWidth * 0.5f), tagY,
                 tagWidth, tagHeight);
             var shadow = new Rectangle(tag.X - 2, tag.Y - 2, tag.Width + 4, tag.Height + 4);
-            p.FillRect(batch, shadow, ColorPalette.WithAlpha(ColorPalette.Navy, 245));
-            p.FillRect(batch, tag, color);
-            p.DrawRect(batch, tag, ColorPalette.Paper, 1);
+            p.FillRect(batch, shadow, ColorPalette.WithAlpha(ColorPalette.Ink, 245));
+            p.FillRect(batch, tag, ColorPalette.PanelAlt);
+            p.DrawRect(batch, tag, Color.Lerp(ColorPalette.Metal, color, .28f), 1);
+            p.FillRect(batch, new Rectangle(tag.Left + 2, tag.Top + 3, 2, tag.Height - 6), color);
+            p.Line(batch, new Vector2(tag.Left + 6, tag.Top + 2), new Vector2(tag.Right - 3, tag.Top + 2), color * .55f);
             // SpriteFont exposes line bounds rather than tight glyph ink bounds.
             // Each short label needs its own optical correction; keep these
             // independent so tuning one player never shifts the other.
             var playerLabelOffsetY = _remoteCoOpCursorPlayerId == 2 ? 1.25f : 0.25f;
             DrawFittedCenteredText(batch, $"P{_remoteCoOpCursorPlayerId}",
                 tag.Center.ToVector2() + new Vector2(0, playerLabelOffsetY),
-                ColorPalette.HighContrastText(color), 0.34f, tag.Width - 6, preserveInk: true);
+                ColorPalette.Paper, 0.34f, tag.Width - 6, preserveInk: true);
 
             var tagAboveTower = tag.Center.Y < tower.Position.Y;
             var tagAnchor = new Vector2(tag.Center.X, tagAboveTower ? tag.Bottom : tag.Top);
             var towerAnchor = tower.Position + new Vector2(0, tagAboveTower ? -radius - 2f : radius + 2f);
-            p.Line(batch, tagAnchor, towerAnchor, color, 2);
-            var pointerCenter = tagAnchor + new Vector2(0, tagAboveTower ? 3f : -3f);
-            p.DrawPolygon(batch, pointerCenter, 4.5f, 3, false, color,
-                tagAboveTower ? MathHelper.PiOver2 : -MathHelper.PiOver2);
+            p.Line(batch, tagAnchor, towerAnchor, ColorPalette.Ink, 3);
+            p.Line(batch, tagAnchor, towerAnchor, color * .7f, 1);
         }
-        p.Ring(batch, position, 8, color, 2);
-        p.Circle(batch, position, 2.5f, color);
-        p.Line(batch, position + new Vector2(-15, 0), position + new Vector2(-10, 0), color, 2);
-        p.Line(batch, position + new Vector2(10, 0), position + new Vector2(15, 0), color, 2);
-        p.Line(batch, position + new Vector2(0, -15), position + new Vector2(0, -10), color, 2);
-        p.Line(batch, position + new Vector2(0, 10), position + new Vector2(0, 15), color, 2);
+        var cursorTail = position + new Vector2(8, 11);
+        p.Line(batch, position, cursorTail, ColorPalette.Ink, 6);
+        p.Line(batch, position + new Vector2(2, 3), cursorTail, ColorPalette.Metal, 3);
+        p.Line(batch, position, position + new Vector2(4, 5.5f), color, 2);
         DrawText(batch, $"P{_remoteCoOpCursorPlayerId}", position + new Vector2(13, -17), color, 0.36f);
     }
 
@@ -2014,6 +2012,8 @@ public sealed partial class UIManager
             p.Line(batch, cursorPosition, previewPosition, ColorPalette.WithAlpha(playerColor, 115), 1);
         var breath = _settings.ReducedEffects ? .5f : (MathF.Sin(_visualTimeSeconds * 2.2f) + 1f) * 0.5f;
         var pulse = 0.985f + breath * 0.025f;
+        BattlefieldInteractionArt.DrawFootprint(batch, p, previewPosition, visual.Radius, hardwareId, 1,
+            false, playerColor, .65f, true, !_settings.ReducedEffects);
         NightGridArt.Tower(batch, p, previewPosition, visual.Radius * pulse, hardwareId, marks,
             opacity: primaryAlpha / 255f, lights: !_settings.ReducedEffects);
     }
@@ -2814,8 +2814,7 @@ public sealed partial class UIManager
         _specializationBButton = Rectangle.Empty;
         p.FillRect(batch, new Rectangle(972, 474, 296, 202), ColorPalette.PanelAlt);
         p.DrawRect(batch, new Rectangle(972, 474, 296, 202), zone.NodeColor, 1);
-        p.DrawPolygon(batch, TowerIntelIconCenter, 17, 4, false, zone.NodeColor, MathHelper.PiOver4);
-        p.DrawPolygon(batch, TowerIntelIconCenter, 8, 4, false, ColorPalette.Paper, MathHelper.PiOver4);
+        PowerNodeArt.DrawDevice(batch, p, TowerIntelIconCenter, zone.NodeColor, 1.3f, !_settings.ReducedEffects);
         DrawFittedText(batch, zone.DisplayName, new Vector2(1028, 486), ColorPalette.Ink, 0.82f, 236);
         DrawText(batch, "SURGE NODE", new Vector2(1028, 508), PowerNodeIntelTextColor(zone.NodeColor), 0.60f);
         var bonus = zone.AttackSpeedBonus > 0 ? $"ATTACK RATE +{zone.AttackSpeedBonus:P0}" :

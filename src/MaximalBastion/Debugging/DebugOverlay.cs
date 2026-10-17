@@ -39,6 +39,6 @@ public sealed class DebugOverlay
             batch.DrawString(_font, i.ToString(), points[i] + new Vector2(6, -10), ColorPalette.Paper, 0, Vector2.Zero, 0.55f * GameConstants.FontDrawScale, SpriteEffects.None, 0);
         }
         foreach (var tower in session.Towers)
-            p.DashedRing(batch, tower.Position, session.GetEffectiveRange(tower), ColorPalette.WithAlpha(ColorPalette.Cyan, 180), 24, 1);
+            p.Ring(batch, tower.Position, session.GetEffectiveRange(tower), ColorPalette.WithAlpha(ColorPalette.Cyan, 180), 1);
     }
 }
