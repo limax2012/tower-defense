@@ -53,8 +53,11 @@ public enum UiAction
 
 public sealed partial class UIManager
 {
-    internal static readonly Rectangle HudThreatBounds = new(820, 6, 140, 44);
-    internal static readonly Rectangle HudRunSetupBounds = new(974, 6, 288, 44);
+    internal static readonly Rectangle HudThreatBounds = new(335, 6, 101, 44);
+    internal static readonly Rectangle HudRunSetupBounds = new(860, 6, 368, 44);
+    internal static readonly Rectangle SandboxWavePreviousBounds = new(1120, 59, 36, 28);
+    internal static readonly Rectangle SandboxWaveNextBounds = new(1160, 59, 36, 28);
+    internal static readonly Rectangle SandboxWaveSignalsBounds = new(1200, 59, 68, 28);
     internal static readonly Rectangle CoOpTacticalTitleBounds = new(980, 56, 178, 34);
     internal static readonly Rectangle CoOpLinkStatusBounds = new(1164, 58, 96, 14);
     internal static readonly Rectangle CoOpReadyStatusBounds = new(1164, 74, 96, 14);
@@ -306,6 +309,7 @@ public sealed partial class UIManager
     internal IReadOnlyList<string> MainMenuBattleTowerKinds => _mainMenuBattleScene?.TowerKinds ?? [];
     internal IReadOnlyList<int> MainMenuBattleTowerCounts => _mainMenuBattleScene?.TowerCounts ?? [];
     internal IReadOnlyList<int> MainMenuBattleEnemyCounts => _mainMenuBattleScene?.EnemyCounts ?? [];
+    internal IReadOnlyList<int> MainMenuBattleHealthBarCounts => _mainMenuBattleScene?.HealthBarCounts ?? [];
 
     public void PreparePauseScreen()
     {
@@ -1100,10 +1104,16 @@ public sealed partial class UIManager
         _hudPointer = input.IsMouseOverLogicalCanvas ? input.MousePosition : new Vector2(-1, -1);
         _hudPressed = input.LeftPressed;
         var point = input.MousePosition.ToPoint();
+        var selectedEnemy = SelectedEnemyIntelTarget(session);
         if (session.IsCoOpPaused)
         {
             CloseTargetPicker();
             return HandleCoOpPausedInput(input, session, commandSink, playerId);
+        }
+        if (selectedEnemy is not null && (input.RightPressed || input.EscapePressed))
+        {
+            _selectedEnemyIntel = null;
+            return UiAction.None;
         }
         if (_targetPickerOpen && (session.SelectedTower is not { IsSupport: false } selectedTargetTower ||
                                   selectedTargetTower.Id != _targetPickerTowerId))
@@ -1307,6 +1317,14 @@ public sealed partial class UIManager
         {
             if (!pair.Value.Contains(point)) continue;
             session.BeginPlacement(pair.Key);
+            return UiAction.None;
+        }
+
+        if (input.IsMouseOverLogicalCanvas && point.X >= 0 && point.X < GameConstants.MapWidth &&
+            point.Y >= GameConstants.TopBarHeight && point.Y < GameConstants.LogicalHeight &&
+            session.PlacementTowerId is null && session.TacticalPlacement == TacticalPlacementKind.None)
+        {
+            SelectEnemyIntel(session, input.MousePosition);
             return UiAction.None;
         }
 
@@ -1872,6 +1890,7 @@ public sealed partial class UIManager
     public void Draw(SpriteBatch batch, PrimitiveRenderer p, GameState state, MaximalBastion.GameSession? session,
         Matrix? transform = null)
     {
+        _intelTransform = transform ?? Matrix.Identity;
         LastMenuHeading = null;
         _readOnlyInspection = state is GameState.DefeatField or GameState.RunHistoryField;
         _archivedLayoutInspection = state == GameState.RunHistoryField;
@@ -1922,6 +1941,7 @@ public sealed partial class UIManager
         }
 
         if (session is null) return;
+        DrawEnemySelection(batch, p, session);
         DrawHud(batch, p, session);
         DrawSidebar(batch, p, session);
         DrawTacticalBar(batch, p, session);
@@ -2034,35 +2054,7 @@ public sealed partial class UIManager
         }
         CommandSurfaceArt.Surface(batch, p, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.TopBarHeight), ColorPalette.Cyan, 0, false);
         p.FillRect(batch, new Rectangle(0, GameConstants.TopBarHeight - 2, GameConstants.LogicalWidth, 2), ColorPalette.Cyan);
-        if (session.IsSandbox)
-        {
-            DrawSandboxHudMetric(batch, 0, "LIVES", "UNLIMITED", ColorPalette.Coral);
-            DrawSandboxHudMetric(batch, 1, "CREDITS", "UNLIMITED", ColorPalette.Gold);
-            DrawSandboxHudMetric(batch, 2, "MODE", "LAB", ColorPalette.Cyan);
-            DrawSandboxHudMetric(batch, 3, "TARGETS", session.EnemiesRemaining.ToString(), ColorPalette.Muted);
-        }
-        else
-        {
-            DrawText(batch, "LIVES", new Vector2(18, 8), ColorPalette.Coral, 0.75f);
-            DrawDisplayText(batch, $"{session.Economy.Lives}/{session.Economy.StartingLives}",
-                new Vector2(18, 26), ColorPalette.Paper, 1f);
-            DrawText(batch, "CREDITS", new Vector2(115, 8), ColorPalette.Gold, 0.75f);
-            DrawDisplayValue(batch, session.Economy.Credits.ToString(),
-                new Vector2(115, 26), _creditPulse > 0 ? _creditChange > 0 ? ColorPalette.Green : ColorPalette.Gold : ColorPalette.Paper,
-                1f, 98);
-            if (_creditPulse > 0 && session.Economy.Credits < 10000 && Math.Abs((long)_creditChange) < 10000)
-                DrawTextRight(batch, $"{(_creditChange > 0 ? "+" : "")}{_creditChange}", new Vector2(211, 33 - (1 - _creditPulse / .7f) * 7),
-                    (_creditChange > 0 ? ColorPalette.Green : ColorPalette.Gold) * (_creditPulse / .7f), .38f);
-            DrawText(batch, session.IsEndlessMode ? "ENDLESS" : "WAVE",
-                new Vector2(225, 8), ColorPalette.Cyan, 0.75f);
-            DrawDisplayText(batch, session.IsEndlessMode ? session.CurrentWave.ToString() : $"{session.CurrentWave}/{session.TotalWaves}",
-                new Vector2(225, 26), ColorPalette.Paper, 1f);
-            if (new Rectangle(225, 0, 210, 56).Contains(_hudPointer.ToPoint()))
-            {
-                DrawText(batch, "REMAINING", new Vector2(335, 8), ColorPalette.Muted, .55f);
-                DrawText(batch, session.EnemiesRemaining.ToString(), new Vector2(335, 27), ColorPalette.Paper, .8f);
-            }
-        }
+        DrawHudMetrics(batch, p, session);
 
         _startWaveButton = new Rectangle(450, 9, 170, 38);
         _speedButton = new Rectangle(630, 9, 76, 38);
@@ -2088,40 +2080,14 @@ public sealed partial class UIManager
         DrawButton(batch, p, _pauseButton, pauseLabel, !session.IsCoOp || _coOpPeerConnected, pauseFill,
             session.IsSandbox ? ContrastAwareButtonTextColor(pauseFill) : null, "P");
 
-        if (session.IsSandbox)
-        {
-            _sandboxWavePreviousButton = new Rectangle(820, 9, 38, 38);
-            _sandboxWaveNextButton = new Rectangle(864, 9, 38, 38);
-            _sandboxWaveSignalsButton = new Rectangle(908, 9, 56, 38);
-            DrawSandboxButton(batch, p, _sandboxWavePreviousButton, "W-", true, ColorPalette.Cyan, "-");
-            DrawSandboxButton(batch, p, _sandboxWaveNextButton, "W+", true, ColorPalette.Cyan, "+");
-            DrawSandboxButton(batch, p, _sandboxWaveSignalsButton,
-                session.SandboxWaveSignalsEnabled ? "SIG ON" : "SIG OFF", !session.SandboxWaveActive,
-                session.SandboxWaveSignalsEnabled ? ColorPalette.Orange : ColorPalette.Cyan, "L");
-        }
-        else
+        if (!session.IsSandbox)
         {
             _sandboxWavePreviousButton = Rectangle.Empty;
             _sandboxWaveNextButton = Rectangle.Empty;
             _sandboxWaveSignalsButton = Rectangle.Empty;
         }
 
-        if (!session.IsSandbox && new Rectangle(225, 0, 210, 56).Contains(_hudPointer.ToPoint()))
-        {
-            var wave = session.Waves.ActiveWave ?? session.Waves.NextWave;
-            if (wave is not null)
-                DrawFittedText(batch, WaveIntel.Analyze(wave, session.Content.Enemies).ScalingSummary(
-                    session.Difficulty.EnemyHealthMultiplier, session.Difficulty.EnemySpeedMultiplier),
-                    new Vector2(824, 26), ColorPalette.Muted, .45f, 132);
-        }
-
-    }
-
-    private void DrawSandboxHudMetric(SpriteBatch batch, int column, string label, string value, Color accent)
-    {
-        var x = 18 + column * 108;
-        DrawText(batch, label, new Vector2(x, 8), accent, .65f);
-        DrawDisplayValue(batch, value, new Vector2(x, 27), ColorPalette.Paper, .68f, 94);
+        DrawHudRunContext(batch, p, session);
     }
 
     private void DrawCoOpPausedBanner(SpriteBatch batch, PrimitiveRenderer p, int pausedByPlayerId)
@@ -2265,9 +2231,9 @@ public sealed partial class UIManager
         }
         else
         {
-            DrawDisplayText(batch, session.IsSandbox ? "Sandbox Lab" : _archivedLayoutInspection ? "Defense archive" : "Defenses",
+            DrawDisplayText(batch, session.IsSandbox ? "Targets" : _archivedLayoutInspection ? "Defense archive" : "Defenses",
                 new Vector2(986, 64), ColorPalette.Paper,
-                session.IsSandbox ? 1.08f : _archivedLayoutInspection ? 0.88f : 1.0f);
+                session.IsSandbox ? .9f : _archivedLayoutInspection ? 0.88f : 1.0f);
         }
         if (session.IsSandbox)
             DrawSandboxBar(batch, p, session);
@@ -2404,7 +2370,7 @@ public sealed partial class UIManager
         DrawFittedCenteredText(batch, timing, new Vector2(1120, 408),
             _restartArmed ? ColorPalette.Coral : ColorPalette.Muted, 0.48f, 268);
         DrawFittedCenteredText(batch,
-            $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}",
+            PauseGameTimeLabel(session),
             new Vector2(1120, 444), ColorPalette.Muted, 0.42f, 268);
     }
 
@@ -2414,6 +2380,15 @@ public sealed partial class UIManager
         _generatorButton = Rectangle.Empty;
         _overdriveButton = Rectangle.Empty;
         _autoProtocolButton = Rectangle.Empty;
+
+        _sandboxWavePreviousButton = SandboxWavePreviousBounds;
+        _sandboxWaveNextButton = SandboxWaveNextBounds;
+        _sandboxWaveSignalsButton = SandboxWaveSignalsBounds;
+        DrawSandboxButton(batch, p, _sandboxWavePreviousButton, "W-", true, ColorPalette.Cyan, "-");
+        DrawSandboxButton(batch, p, _sandboxWaveNextButton, "W+", true, ColorPalette.Cyan, "+");
+        DrawSandboxButton(batch, p, _sandboxWaveSignalsButton,
+            session.SandboxWaveSignalsEnabled ? "SIG ON" : "SIG OFF", !session.SandboxWaveActive,
+            session.SandboxWaveSignalsEnabled ? ColorPalette.Orange : ColorPalette.Cyan, "L");
 
         var enemies = SandboxEnemies(session);
         _sandboxEnemyIndex = Math.Clamp(_sandboxEnemyIndex, 0, Math.Max(0, enemies.Count - 1));
@@ -2482,6 +2457,11 @@ public sealed partial class UIManager
     {
         _targetModeButtons.Clear();
         _targetPickerBounds = Rectangle.Empty;
+        if (!_targetPickerOpen && SelectedEnemyIntelTarget(session) is { } selectedEnemy)
+        {
+            DrawEnemyIntel(batch, p, session, selectedEnemy);
+            return;
+        }
         var tacticalPreview = _hoveredTacticalPlacement != TacticalPlacementKind.None
             ? _hoveredTacticalPlacement
             : session.TacticalPlacement;
@@ -2505,6 +2485,12 @@ public sealed partial class UIManager
             return;
         }
 
+        if (!_targetPickerOpen && FindEnemyIntelTarget(session, _hudPointer) is { } enemy)
+        {
+            DrawEnemyIntel(batch, p, session, enemy);
+            return;
+        }
+
         var tower = session.SelectedTower ?? session.HoveredTower;
         if (tower is null)
         {
@@ -2518,7 +2504,7 @@ public sealed partial class UIManager
                 DrawSurgeZoneIntel(batch, p, _hoveredPowerNode);
                 return;
             }
-            DrawText(batch, "Select a tower", new Vector2(980, 490), ColorPalette.Muted, .65f);
+            DrawText(batch, "Select a tower or enemy", new Vector2(980, 490), ColorPalette.Muted, .65f);
             return;
         }
 
@@ -2561,17 +2547,11 @@ public sealed partial class UIManager
                 : tower.IsSuppressed
                     ? $"SIGNAL WEAKENED  {tower.SuppressionRemaining:0.0}s"
                 : _hoveredUpgradePreviewLabel ?? "CURRENT STATS";
-        if (!tower.IsSandboxDisabled && !tower.IsDisrupted && !tower.IsSuppressed &&
-            (supportBuff.IsActive || powerNodes.Count > 0))
-        {
-            var boostSources = TowerInfo.ActiveBoostSources(supportBuff, powerNodes,
-                compact: _hoveredUpgradePreview is not null);
-            statHeader += $"  |  {boostSources}";
-        }
-        DrawFittedText(batch, statHeader, new Vector2(980, 531),
-            tower.IsSandboxDisabled ? ColorPalette.Coral : tower.IsDisrupted ? ColorPalette.Violet :
+        var showBoostSources = !tower.IsSandboxDisabled && !tower.IsDisrupted && !tower.IsSuppressed;
+        DrawTowerStatHeader(batch, statHeader,
+            tower.IsSandboxDisabled ? ColorPalette.Coral : tower.IsDisrupted ? ColorPalette.Disruption :
             tower.IsSuppressed ? ColorPalette.Orange : _hoveredUpgradePreview is not null ? ColorPalette.Violet : ColorPalette.Muted,
-            0.45f, 280);
+            showBoostSources ? supportBuff : default, showBoostSources ? powerNodes : Array.Empty<PowerNodeData>());
         var comparisonStats = TowerInfo.ComparisonStats(tower.Definition, tower.Level, _hoveredUpgradePreview,
             supportBuff, power, tower.IsOverdriven ? tower.Protocol : null,
             session.GetSignalDamageMultiplier(tower), session.GetSignalRateMultiplier(tower));
@@ -2774,6 +2754,41 @@ public sealed partial class UIManager
     private static Color PowerNodeIntelTextColor(Color nodeColor) =>
         ColorPalette.BalancedAccentText(nodeColor, ColorPalette.PanelAlt);
 
+    private void DrawTowerStatHeader(SpriteBatch batch, string label, Color labelColor,
+        TowerBuff supportBuff, IReadOnlyList<PowerNodeData> powerNodes)
+    {
+        var parts = new List<(string Text, Color Color)> { (label, labelColor) };
+        if (supportBuff.IsActive || powerNodes.Count > 0)
+        {
+            parts.Add(("  |  ", ColorPalette.Muted));
+            if (supportBuff.IsActive) parts.Add(("BEACON", ColorPalette.BeaconHighlight));
+            if (powerNodes.Count > 0)
+            {
+                if (supportBuff.IsActive) parts.Add((" + ", ColorPalette.Muted));
+                var nodeLabel = TowerInfo.ActiveBoostSources(default, powerNodes);
+                if (supportBuff.IsActive) nodeLabel = nodeLabel.Replace("ON ", "", StringComparison.Ordinal);
+                parts.Add((nodeLabel, PowerNodeIntelTextColor(powerNodes[0].NodeColor)));
+            }
+        }
+
+        const float maximumWidth = 280;
+        var measuredWidth = parts.Sum(part => _font.MeasureString(part.Text).X) * GameConstants.FontDrawScale;
+        var scale = MathF.Max(TowerStatGridMinimumScale, MathF.Min(.45f, maximumWidth / MathF.Max(1, measuredWidth)));
+        var sourceWidth = parts.Skip(1).Sum(part => _font.MeasureString(part.Text).X) * GameConstants.FontDrawScale * scale;
+        if (parts.Count > 1 && measuredWidth * scale > maximumWidth)
+            parts[0] = (Ellipsize(label, scale, MathF.Max(0, maximumWidth - sourceWidth)), labelColor);
+        var position = new Vector2(980, 531);
+        foreach (var part in parts)
+        {
+            var availableWidth = 1260 - position.X;
+            if (availableWidth <= 0) break;
+            var text = Ellipsize(part.Text, scale, availableWidth);
+            DrawText(batch, text, position, part.Color, scale);
+            position.X += _font.MeasureString(text).X * scale * GameConstants.FontDrawScale;
+            if (text != part.Text) break;
+        }
+    }
+
     private static string PowerNodeNames(IReadOnlyList<PowerNodeData> nodes) => nodes.Count == 1
         ? nodes[0].DisplayName.ToUpperInvariant()
         : $"{string.Join(" + ", nodes.Select(node => node.DisplayName.Replace(" Node", "", StringComparison.OrdinalIgnoreCase).ToUpperInvariant()))} NODES";
@@ -2812,8 +2827,8 @@ public sealed partial class UIManager
         _sellButton = Rectangle.Empty;
         _specializationAButton = Rectangle.Empty;
         _specializationBButton = Rectangle.Empty;
-        p.FillRect(batch, new Rectangle(972, 474, 296, 202), ColorPalette.PanelAlt);
-        p.DrawRect(batch, new Rectangle(972, 474, 296, 202), zone.NodeColor, 1);
+        p.FillRect(batch, new Rectangle(972, 474, 296, 170), ColorPalette.PanelAlt);
+        p.DrawRect(batch, new Rectangle(972, 474, 296, 170), zone.NodeColor, 1);
         PowerNodeArt.DrawDevice(batch, p, TowerIntelIconCenter, zone.NodeColor, 1.3f, !_settings.ReducedEffects);
         DrawFittedText(batch, zone.DisplayName, new Vector2(1028, 486), ColorPalette.Ink, 0.82f, 236);
         DrawText(batch, "SURGE NODE", new Vector2(1028, 508), PowerNodeIntelTextColor(zone.NodeColor), 0.60f);
@@ -2824,8 +2839,6 @@ public sealed partial class UIManager
         DrawText(batch, bonus, new Vector2(980, 546), ColorPalette.Ink, 0.68f);
         DrawText(batch, $"FIELD RADIUS {zone.Radius:0}", new Vector2(980, 570), ColorPalette.Muted, 0.56f);
         DrawFittedText(batch, "Place a tower inside the ring.", new Vector2(980, 606), ColorPalette.Muted, .55f, 280);
-        DrawFittedText(batch, "Node bonuses do not stack.", new Vector2(980, 652),
-            PowerNodeIntelTextColor(ColorPalette.Gold), 0.49f, 280);
     }
 
     private void DrawGeneratorIntel(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session, ChargeForgeInstance? active)
@@ -3007,6 +3020,8 @@ public sealed partial class UIManager
         for (var index = 0; index < _difficulties.Count; index++)
             DrawSetupChoice(batch, p, SetupCardRectangle(1, index, _difficulties.Count), _difficulties[index].DisplayName,
                 ColorPalette.Cyan, index == _selectedDifficultyIndex);
+        if (SelectedDifficultyDescription.Length > 0)
+            DrawSetupDescription(batch, p, SelectedDifficultyDescription, 1, _selectedDifficultyIndex, _difficulties.Count);
 
         var setupChallenges = SetupChallenges();
         DrawSetupSectionHeader(batch, "MODE", 2, setupChallenges.Count);
@@ -3015,13 +3030,9 @@ public sealed partial class UIManager
             var challengeIndex = _challenges.IndexOf(setupChallenges[index]);
             DrawSetupChoice(batch, p, SetupCardRectangle(2, index, setupChallenges.Count), setupChallenges[index].MenuLabel,
                 ColorPalette.Cyan, challengeIndex == _selectedChallengeIndex);
+            if (challengeIndex == _selectedChallengeIndex && SelectedModeDescription.Length > 0)
+                DrawSetupDescription(batch, p, SelectedModeDescription, 2, index, setupChallenges.Count);
         }
-        var modeDescription = HoveredModeDescription;
-        if (modeDescription.Length > 0)
-            DrawSetupDescription(batch, modeDescription, 2, setupChallenges.Count);
-        for (var index = 0; index < _difficulties.Count; index++)
-            if (SetupCardRectangle(1, index, _difficulties.Count).Contains(_hudPointer.ToPoint()))
-                DrawSetupDescription(batch, _difficulties[index].Description, 1, _difficulties.Count);
 
         DrawButton(batch, p, _setupConfirmButton, _setupForCoOp ? "HOST" : "START", true, ColorPalette.Gold, primary: true);
         DrawButton(batch, p, _setupBackButton, "BACK", true, ColorPalette.CardOutline);
@@ -3067,14 +3078,31 @@ public sealed partial class UIManager
     private void DrawSetupSectionHeader(SpriteBatch batch, string label, int row, int count)
     {
         var bounds = SetupChoiceRowBounds(row, count);
-        DrawText(batch, label, new Vector2(bounds.Center.X, bounds.Top - 20), ColorPalette.Muted, .57f, true);
+        var measured = _displayFont.MeasureString(label);
+        var ink = TextInkExtents(_displayFont, label);
+        var scale = 14f / MathF.Max(1, ink.Y - ink.X);
+        var origin = new Vector2(measured.X * .5f, (ink.X + ink.Y) * .5f);
+        batch.DrawString(_displayFont, label, new Vector2(bounds.Center.X, bounds.Top - 20),
+            ColorPalette.Paper, 0, origin, scale, SpriteEffects.None, 0);
     }
 
-    private void DrawSetupDescription(SpriteBatch batch, string text, int row, int count)
+    private void DrawSetupDescription(SpriteBatch batch, PrimitiveRenderer p, string text, int row, int index, int count)
     {
-        var bounds = SetupChoiceRowBounds(row, count);
-        DrawFittedCenteredText(batch, text, new Vector2(bounds.Center.X, bounds.Bottom + 16),
-            ColorPalette.Muted, .46f, bounds.Width - 44);
+        var bounds = SetupCardRectangle(row, index, count);
+        var (caption, scale) = FitCenteredText(text, .46f, bounds.Width - 16);
+        var position = new Vector2(bounds.Center.X, bounds.Bottom + 16);
+        var measured = _font.MeasureString(caption);
+        var factor = scale * GameConstants.FontDrawScale;
+        var ink = TextInkExtents(_font, caption);
+        var halfWidth = (int)MathF.Ceiling(measured.X * factor * .5f);
+        var top = (int)MathF.Floor(position.Y + (ink.X - measured.Y * .5f) * factor);
+        var bottom = (int)MathF.Ceiling(position.Y + (ink.Y - measured.Y * .5f) * factor);
+        var backing = new Rectangle(bounds.Center.X - halfWidth - 5, top - 3,
+            halfWidth * 2 + 10, bottom - top + 6);
+        p.FillRect(batch, backing, ColorPalette.Navy * .4f);
+        backing.Inflate(-1, -1);
+        p.FillRect(batch, backing, ColorPalette.Navy);
+        DrawText(batch, caption, position, ColorPalette.Tint(ColorPalette.Muted, .16f), scale, true);
     }
 
     private void DrawSetupChoice(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string label, Color accent, bool selected, string? mapStyle = null)
@@ -3670,11 +3698,11 @@ public sealed partial class UIManager
     {
         p.FillRect(batch, new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight), ColorPalette.WithAlpha(ColorPalette.Navy, 220));
         DrawMenuPanel(batch, p, new Rectangle(420, 108, 440, 504), ColorPalette.Muted);
-        var identity = $"{session.Map.Definition.DisplayName.ToUpperInvariant()}  |  {session.Difficulty.DisplayName.ToUpperInvariant()}  |  {session.Challenge.DisplayName.ToUpperInvariant()}";
-        DrawHeading(batch, "Paused", new Rectangle(444, 110, 392, CenteredTextTop(identity, 181, .48f, 360) - 110),
-            lowerBoundary: "Run identity");
+        var gameTime = PauseGameTimeLabel(session);
+        DrawHeading(batch, "Paused", new Rectangle(444, 110, 392, CenteredTextTop(gameTime, 181, .48f, 360) - 110),
+            lowerBoundary: "Game time");
         DrawFittedCenteredText(batch,
-            identity,
+            gameTime,
             new Vector2(640, 181), ColorPalette.Muted, 0.48f, 360);
 
         DrawButton(batch, p, PauseResumeBounds, "RESUME", true, ColorPalette.Gold, primary: true);

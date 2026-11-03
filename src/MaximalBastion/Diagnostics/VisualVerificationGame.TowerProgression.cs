@@ -348,6 +348,8 @@ public sealed partial class VisualVerificationGame
 
     private VisualVerificationScene SaveTierScene(RenderTarget2D target, string fileName)
     {
+        // Offscreen capture runs before the game loop; present to retire disposed GPU resources.
+        GraphicsDevice.Present();
         var path = Path.Combine(_outputDirectory, fileName);
         using (var stream = File.Create(path)) target.SaveAsPng(stream, target.Width, target.Height);
         var pixels = new Color[target.Width * target.Height];

@@ -10,11 +10,16 @@ internal sealed class MainMenuBattleScene
 {
     private const float FixedStepSeconds = 1f / 60f;
     private readonly GameContent _content;
-    private readonly GameRenderer _renderer = new();
+    private readonly GameRenderer _leftRenderer = new();
+    private readonly GameRenderer _rightRenderer = new();
     private readonly Random _random;
     private LaneBattle _left;
     private LaneBattle _right;
     private float _accumulator;
+    private int _leftHealthBarCount;
+    private int _rightHealthBarCount;
+    private static readonly Rectangle LeftFeedBounds = new(21, 60, 278, 608);
+    private static readonly Rectangle RightFeedBounds = new(981, 60, 278, 608);
 
     public int EnemiesKilled => _left.EnemiesKilled + _right.EnemiesKilled;
     public int EnemiesEscaped => _left.EnemiesEscaped + _right.EnemiesEscaped;
@@ -24,6 +29,7 @@ internal sealed class MainMenuBattleScene
         .Select(tower => tower.Definition.Id).ToArray();
     public IReadOnlyList<int> TowerCounts => [_left.Session.Towers.Count, _right.Session.Towers.Count];
     public IReadOnlyList<int> EnemyCounts => [_left.EnemyCount, _right.EnemyCount];
+    public IReadOnlyList<int> HealthBarCounts => [_leftHealthBarCount, _rightHealthBarCount];
 
     public MainMenuBattleScene(GameContent content, int? randomSeed = null)
     {
@@ -49,11 +55,19 @@ internal sealed class MainMenuBattleScene
 
     public void Draw(SpriteBatch batch, PrimitiveRenderer primitives, Matrix transform, bool reducedEffects = false)
     {
-        _renderer.ReducedEffects = reducedEffects;
-        primitives.DrawClipped(batch, new Rectangle(21, 60, 278, 608), transform,
-            () => _renderer.DrawCombatShowcase(batch, primitives, _left.Session, _accumulator));
-        primitives.DrawClipped(batch, new Rectangle(981, 60, 278, 608), transform,
-            () => _renderer.DrawCombatShowcase(batch, primitives, _right.Session, _accumulator));
+        _leftRenderer.ReducedEffects = _rightRenderer.ReducedEffects = reducedEffects;
+        primitives.DrawClipped(batch, LeftFeedBounds, transform, () =>
+        {
+            _leftRenderer.DrawCombatShowcase(batch, primitives, _left.Session, _accumulator,
+                enemyHudBounds: LeftFeedBounds);
+            _leftHealthBarCount = _leftRenderer.LastEnemyHealthBarCount;
+        });
+        primitives.DrawClipped(batch, RightFeedBounds, transform, () =>
+        {
+            _rightRenderer.DrawCombatShowcase(batch, primitives, _right.Session, _accumulator,
+                enemyHudBounds: RightFeedBounds);
+            _rightHealthBarCount = _rightRenderer.LastEnemyHealthBarCount;
+        });
     }
 
     private void UpdateLane(ref LaneBattle lane, bool leftLane)

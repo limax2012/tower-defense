@@ -90,6 +90,7 @@ internal static class Program
             ("difficulty profiles and persistence", DifficultyProfilesAndPersistence),
             ("challenge directives and persistence", ChallengeDirectivesAndPersistence),
             ("Signal Gauntlet disruption", SignalGauntletDisruption),
+            ("live Beacon support presentation", BeaconSupportTests.Run),
             ("sandbox tower laboratory", SandboxTowerLaboratory),
             ("sandbox selected Protocol isolation", SandboxSelectedProtocolIsolation),
             ("tower sell keyboard shortcuts", TowerSellKeyboardShortcuts),
@@ -104,6 +105,10 @@ internal static class Program
             ("damage over time floor", DamageOverTimeFloor),
             ("ember piercing burn", EmberPiercingBurn),
             ("status effects", StatusEffects),
+            ("enemy readability and local transitions", EnemyReadabilityTests.Run),
+            ("enemy short-circuit presentation", EnemyStunPresentationTests.Run),
+            ("enemy material lifecycle and world particles", EnemyMaterialTimelineTests.Run),
+            ("planted enemy contacts and corner gait", EnemyLocomotionTests.Run),
             ("effect budget", EffectBudget),
             ("elite and boss ranks", EliteAndBossRanks),
             ("economy", EconomyRules),
@@ -130,6 +135,7 @@ internal static class Program
             ("co-op command history bounds", CoOpCommandHistoryBounds),
             ("co-op buffered jitter commands", CoOpBufferedJitterCommands),
             ("co-op active state snapshot", CoOpActiveStateSnapshot),
+            ("co-op granted shield reconstruction", CoOpGrantedShieldReconstruction),
             ("co-op tower path reconstruction", CoOpTowerPathReconstruction),
             ("co-op tactical state reconstruction", CoOpTacticalStateReconstruction),
             ("co-op malformed snapshot rejection", CoOpMalformedSnapshotRejection),
@@ -800,8 +806,14 @@ internal static class Program
             "restorer repeats on the shared five-second signal cadence");
         Check.Nearly(repairTarget.MaxHealth * repairSession.Challenge.CounterRepairFraction,
             repairTarget.Health - damagedHealth, "restorer repairs its authored share of nearby health");
-        Check.True(repairSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Beam),
-            "restorer visibly links its repair pulse to affected formation members");
+        Check.True(repairSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Splash &&
+                       effect.Signal.SourceEnemyId == repairSession.Enemies[1].Id &&
+                       effect.Signal.Role == EnemySignalRole.Restorer) &&
+                   repairSession.Effects.Effects.Count(effect => effect.Kind == EffectKind.Flash &&
+                       effect.Signal.TargetEnemyId == repairTarget.Id &&
+                       effect.Signal.SourceEnemyId == repairSession.Enemies[1].Id) == 1 &&
+                   repairSession.Effects.Effects.All(effect => effect.Kind != EffectKind.Beam),
+            "restorer emits one source wave and acknowledges the recipient's actual health gain");
 
         var shieldSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
         shieldSession.SpawnEnemy("t1_crawler", 1, 1);
@@ -812,8 +824,14 @@ internal static class Program
             "bulwark repeats on the shared five-second signal cadence");
         Check.Nearly(shieldSession.Enemies[0].MaxHealth * shieldSession.Challenge.CounterShieldFraction,
             shieldSession.Enemies[0].Shield, "bulwark grants its authored shield share to nearby threats");
-        Check.True(shieldSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Beam),
-            "bulwark visibly links its shield pulse to affected formation members");
+        Check.True(shieldSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Splash &&
+                       effect.Signal.SourceEnemyId == shieldSession.Enemies[1].Id &&
+                       effect.Signal.Role == EnemySignalRole.Bulwark) &&
+                   shieldSession.Effects.Effects.Count(effect => effect.Kind == EffectKind.Flash &&
+                       effect.Signal.SourceEnemyId == shieldSession.Enemies[1].Id &&
+                       shieldSession.Enemies.Any(enemy => enemy.Id == effect.Signal.TargetEnemyId && enemy.Shield > 0)) == 2 &&
+                   shieldSession.Effects.Effects.All(effect => effect.Kind != EffectKind.Beam),
+            "bulwark emits one source wave and acknowledges each actual shield grant");
 
         var jammerSession = new GameSession(content, "foundry_loop", "hard", "close_quarters");
         Check.True(jammerSession.TryPlaceTower("needle_turret", new Vector2(190, 335)) &&
@@ -839,8 +857,9 @@ internal static class Program
         Check.Equal(towersInsideJammerPulse, jammerSession.Towers.Count(tower => tower.IsSuppressed),
             "jammer weakens every combat tower inside its pulse radius");
         Check.True(jammerSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Splash) &&
-                   jammerSession.Effects.Effects.All(effect => effect.Kind != EffectKind.Beam),
-            "jammer interference is presented as a radial pulse without aimed attack beams");
+                   jammerSession.Effects.Effects.Count(effect => effect.Kind == EffectKind.Beam &&
+                       effect.Signal.Role == EnemySignalRole.Jammer) == towersInsideJammerPulse,
+            "jammer interference links every affected tower to its source");
         Check.True(jammerSession.GetEffectiveAttacksPerSecond(jammerTower) < unsuppressedRate &&
                    jammerSession.GetEffectiveDamage(jammerTower, jammerTower.Level.Damage) < unsuppressedDamage,
             "jammer suppression reduces both attack rate and damage without pausing the tower");
@@ -1686,10 +1705,8 @@ internal static class Program
         Check.Equal("Amplifier Node", nodes[0].DisplayName, "specific overlapping node");
         Check.Equal("DAMAGE +15%", TowerInfo.PowerNodeBonus(nodes[0]), "node bonus label");
         Check.Equal("ON AMPLIFIER NODE", TowerInfo.ActiveBoostSources(default, nodes), "placed tower names its node");
-        Check.Equal("NODE", TowerInfo.ActiveBoostSources(default, nodes, compact: true), "upgrade preview keeps node source compact");
         var beaconBuff = new TowerBuff(0.15f, 0.10f);
         Check.Equal("BEACON + AMPLIFIER NODE", TowerInfo.ActiveBoostSources(beaconBuff, nodes), "combined boost sources remain distinct");
-        Check.Equal("BEACON + NODE", TowerInfo.ActiveBoostSources(beaconBuff, nodes, compact: true), "combined preview source stays compact");
         Check.Equal("BEACON", TowerInfo.ActiveBoostSources(beaconBuff, Array.Empty<PowerNodeData>()), "beacon-only source label");
         Check.Equal("DAMAGE 8>9.2", TowerInfo.PowerNodeStatChange(content.Towers["needle_turret"], content.Towers["needle_turret"].Levels[0], session.Map.GetPowerBuff(position)), "node stat delta");
         Check.Equal("NO COMPATIBLE COMBAT STAT CHANGE", TowerInfo.PowerNodeStatChange(content.Towers["signal_beacon"], content.Towers["signal_beacon"].Levels[0], session.Map.GetPowerBuff(position)), "support compatibility warning");
@@ -3019,6 +3036,59 @@ internal static class Program
         peerRunner.RunTicks(80);
         Check.Equal(SessionChecksum.Compute(host, runner.Tick), SessionChecksum.Compute(peer, peerRunner.Tick),
             "reconnected tactical systems remain deterministic through rearming and production");
+    }
+
+    private static void CoOpGrantedShieldReconstruction()
+    {
+        var content = new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load();
+        foreach (var definition in content.Enemies.Values)
+        foreach (var rank in new[] { "Standard", "Elite", "Boss" })
+        {
+            var host = new GameSession(content, "foundry_loop", "normal", "close_quarters");
+            host.ConfigureCoOp(1);
+            host.SpawnEnemy(definition.Id, 1.3f, 1, rank);
+            var recipient = host.Enemies.Single();
+            host.SpawnEnemy("t1_crawler", 1, 1, signalRole: EnemySignalRole.Bulwark);
+            var carrier = host.Enemies.Last();
+            for (var pulse = 0; pulse < 2; pulse++)
+            {
+                carrier.ArmSignalAbility(0);
+                host.TryActivateEnemySignal(carrier);
+            }
+            var shieldCapacity = definition.Shield + recipient.MaxHealth * host.Challenge.CounterShieldCapacityFraction;
+            Check.Nearly(shieldCapacity, recipient.Shield,
+                $"{definition.Id} {rank}: real Bulwark pulses reach the authored shield cap");
+            Check.Equal(EnemySignalRole.None, recipient.SignalRole,
+                "shield recipients do not need a signal role");
+            host.Enemies.Remove(carrier);
+            var snapshot = host.CaptureCoOpState(18, 0, false);
+            var transferred = JsonSerializer.Deserialize<CoOpStateSnapshot>(JsonSerializer.Serialize(snapshot))!;
+            var peer = GameSession.RestoreCoOpState(content, transferred, 2);
+            Check.Nearly(recipient.Shield, peer.Enemies.Single().Shield,
+                $"{definition.Id} {rank}: granted shields survive reconnect after their carrier is gone");
+            Check.Equal(SessionChecksum.Compute(host, 18), SessionChecksum.Compute(peer, 18),
+                $"{definition.Id} {rank}: granted-shield snapshot preserves the synchronized checksum");
+            transferred.Enemies.Single().Shield = shieldCapacity + 1;
+            Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(content, transferred, 2),
+                $"{definition.Id} {rank}: Gauntlet rejects shields above its authored cap");
+
+            foreach (var challenge in new[] { "standard", "core_six", "no_reserves" })
+            {
+                var ordinary = new GameSession(content, "foundry_loop", "normal", challenge);
+                ordinary.ConfigureCoOp(1);
+                ordinary.SpawnEnemy(definition.Id, 1.3f, 1, rank);
+                var native = ordinary.Enemies.Single();
+                var nativeSnapshot = ordinary.CaptureCoOpState(18, 0, false);
+                var nativePeer = GameSession.RestoreCoOpState(content, nativeSnapshot, 2);
+                Check.Nearly(native.Shield, nativePeer.Enemies.Single().Shield,
+                    $"{challenge} {definition.Id} {rank}: native and boss shields remain valid");
+                Check.Equal(SessionChecksum.Compute(ordinary, 18), SessionChecksum.Compute(nativePeer, 18),
+                    $"{challenge} {definition.Id} {rank}: native shield reconstruction preserves the checksum");
+                nativeSnapshot.Enemies.Single().Shield = native.Shield + 1;
+                Check.Throws<InvalidDataException>(() => GameSession.RestoreCoOpState(content, nativeSnapshot, 2),
+                    $"{challenge} {definition.Id} {rank}: a mode without Bulwark rejects any shield above its native cap");
+            }
+        }
     }
 
     private static void CoOpMalformedSnapshotRejection()
@@ -5995,15 +6065,20 @@ internal static class Program
         var session = SessionWithWaves(3);
         Check.True(session.StartNextWave(), "start first wave");
         Check.Equal(0, session.Economy.EarlyStartCreditsEarned, "first wave has no early reward");
+        Check.True(session.AnnouncementTitle is null && session.AnnouncementSubtitle is null && session.AnnouncementRemaining == 0,
+            "the first wave starts without a battlefield announcement");
         ResolveSingleEnemyWave(session);
         Check.True(session.IntermissionRemaining > 0, "intermission begins");
         Check.True(session.StartNextWave(), "call second wave early");
         Check.Equal(GameConstants.EarlyStartBonus, session.Economy.EarlyStartCreditsEarned, "early call reward");
-        Check.True(session.AnnouncementSubtitle!.Contains("EARLY CALL", StringComparison.Ordinal), "early call announced");
+        Check.True(session.AnnouncementTitle is null && session.AnnouncementSubtitle is null && session.AnnouncementRemaining == 0,
+            "an early wave clears the completion announcement without adding a wave-start banner");
         ResolveSingleEnemyWave(session);
         for (var index = 0; index < 101; index++) session.Update(0.1f);
         Check.True(session.StartNextWave(), "start third wave after waiting");
         Check.Equal(GameConstants.EarlyStartBonus, session.Economy.EarlyStartCreditsEarned, "waiting forfeits extra reward");
+        Check.True(session.AnnouncementTitle is null && session.AnnouncementSubtitle is null && session.AnnouncementRemaining == 0,
+            "a normally started wave has no battlefield announcement");
 
         var lockedBonus = SessionWithWaves(2);
         Check.True(lockedBonus.StartNextWave(), "start co-op bonus setup wave");
@@ -6511,6 +6586,7 @@ internal static class Program
             Target = crowd[0],
             Session = session
         });
+        var originalShot = session.Projectiles.Projectiles.Single();
         session.Projectiles.Update(1, session);
 
         Check.Equal(2, crowd.Count(enemy => enemy.Health < enemy.MaxHealth),
@@ -6519,9 +6595,36 @@ internal static class Program
             "Rapid ricochet resolves the nearest eligible enemy deterministically");
         Check.Nearly(10, crowd[0].MaxHealth - crowd[0].Health, "Rapid primary retains full damage");
         Check.Nearly(6, crowd[1].MaxHealth - crowd[1].Health, "Rapid ricochet applies its authored damage ratio");
-        Check.True(session.Effects.Effects.Any(effect => effect.Kind == EffectKind.Beam &&
+        Check.True(session.Effects.Effects.Any(effect => effect.Kind == EffectKind.Ricochet &&
                 effect.Start == crowd[0].Position && effect.End == crowd[1].Position),
-            "Rapid ricochet is communicated by a visible jump between enemies");
+            "Rapid ricochet travels from the primary hit to the secondary enemy");
+        var bounce = session.Effects.Effects.Single(effect => effect.Kind == EffectKind.Ricochet);
+        Check.True(bounce.Appearance == originalShot.Appearance && bounce.Color == originalShot.Color &&
+                bounce.Radius == originalShot.Radius,
+            "Ricochets retain the original projectile's captured appearance and dimensions");
+        Check.Nearly(Vector2.Distance(crowd[0].Position, crowd[1].Position) / originalShot.Speed,
+            bounce.TravelDuration, "Ricochet visual travel uses the original projectile speed");
+        Check.True(ReferenceEquals(bounce.TargetEnemy, crowd[1]),
+            "Ricochet presentation retains the selected secondary target");
+        crowd[1].UpdateMovement(.4f, session.Map.Path);
+        var presentation = PresentationFrame.Create(session, DeterministicSessionRunner.FixedStepSeconds * .5f);
+        var trackingChecksum = SessionChecksum.Compute(session, 0);
+        Check.True(presentation.RicochetDestination(bounce) == presentation.EnemyPosition(crowd[1]) &&
+                Vector2.Distance(presentation.RicochetDestination(bounce), bounce.End) > 3,
+            "Ricochet follows the moving target's interpolated center rather than its original hit position");
+        Check.True(SessionChecksum.Compute(session, 0) == trackingChecksum,
+            "Ricochet target tracking leaves synchronized gameplay unchanged");
+        var lastCenter = PresentationFrame.Create(session, 0).RicochetDestination(bounce);
+        crowd[1].ApplyHealthDamage(crowd[1].MaxHealth * 2);
+        session.Enemies.Remove(crowd[1]);
+        Check.True(presentation.RicochetDestination(bounce) == lastCenter,
+            "A removed target keeps its last center without retargeting or forward extrapolation");
+        Check.True(presentation.RicochetDestination(new EffectInstance { End = bounce.End }) == bounce.End,
+            "Unbound ricochet previews retain their explicit endpoint");
+        var afterHit = SessionChecksum.Compute(session, 0);
+        session.Effects.Update(bounce.Duration + .01f);
+        Check.True(session.Effects.Effects.Count == 0 && SessionChecksum.Compute(session, 0) == afterHit,
+            "Ricochet flight and landing expire without further gameplay or damage changes");
         var projectileState = new ProjectileInstance(tower.Position, crowd[0].Position, crowd[0], 500,
             ProjectileKind.Homing, 0, new DamagePayload { Damage = 10 }, Color.Blue, 3,
             ricochetRange: 72, ricochetDamageMultiplier: 0.6f).CaptureCoOpState();

@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace MaximalBastion.Rendering;
 
-/// <summary>Embedded power relays, their coverage projection, and receiving couplers.</summary>
+/// <summary>Embedded power relays and node-colored placement couplers.</summary>
 public static class PowerNodeArt
 {
     public static void DrawDevice(SpriteBatch b, PrimitiveRenderer p, Vector2 position,
@@ -32,15 +32,6 @@ public static class PowerNodeArt
         Rail(-2, 0, 2, 0, ColorPalette.Paper, 1);
     }
 
-    public static void DrawLink(SpriteBatch b, PrimitiveRenderer p, Vector2 source, Vector2 receiver,
-        Color color, float opacity = .46f)
-    {
-        var distance = Vector2.Distance(source, receiver);
-        if (distance < 15) return;
-        var direction = (receiver - source) / distance;
-        p.Line(b, source + direction * 12, receiver - direction * 3, color * opacity, 1);
-    }
-
     public static void DrawCouplers(SpriteBatch b, PrimitiveRenderer p, Vector2 position,
         IReadOnlyList<PowerNodeData> nodes)
     {
@@ -48,7 +39,6 @@ public static class PowerNodeArt
         for (var index = 0; index < count; index++)
         {
             var at = position + new Vector2((index - (count - 1) * .5f) * 9, 20);
-            DrawLink(b, p, nodes[index].Position.ToVector2(), at, nodes[index].NodeColor, .70f);
             p.Line(b, at - new Vector2(4, 0), at + new Vector2(4, 0), ColorPalette.Navy, 6);
             p.Line(b, at - new Vector2(3, 0), at + new Vector2(3, 0), ColorPalette.Metal, 4);
             p.Line(b, at - new Vector2(2, 0), at + new Vector2(2, 0), nodes[index].NodeColor, 2);

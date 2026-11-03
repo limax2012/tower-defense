@@ -12,6 +12,7 @@ Maximal Bastion is an industrial cyberpunk tower-defense game built with C# and 
 - Pulse Plates, a three-level Charge Forge, Surge Nodes, automatic Protocol activation, and configurable wave auto-start.
 - One rolling autosave, expandable manual save slots, save duplication/deletion, recovery generations, run history, final-layout inspection, medals, achievements, and career records.
 - Contextual Tower Intel with complete live statistics, upgrade comparisons, Protocol controls, and lifetime contributions.
+- Soft colored fog summarizes Burn, Slow, Armor Break, and Expose, with exact values available by hovering or selecting an enemy. Stun has fine branching blue discharges, brief contact sparks, and a restrained chassis shudder over planted feet or tracks. Reduced Effects keeps steady electrical contacts without vibration. Support carriers show their application radius; recipients do not receive redundant buff auras. Health bars remain visible from entry, shields retain a quiet shell and capacity meter, and family-specific grounded movement reinforces enemy scale.
 - Direct two-player Windows co-op with host-authoritative commands, deterministic local simulation, reconnect repair, shared defenses, and visible remote cursor/placement state.
 - Night Grid art direction: furnace works, rain-soaked rooftop skybridges, virtual hard-light platforms, reactor infrastructure, mechanical defense hardware, hostile drones, dark tactical panels, and bounded energy effects. All art is generated at runtime; no external asset downloads are required. A shuffled gameplay soundtrack, menu music, and synthesized effects accompany combat.
 - Headless deterministic agents, isolated regression tests, and a hidden UI renderer for verification without taking desktop focus.
@@ -115,7 +116,7 @@ Each arena contains one 30-wave campaign on every difficulty. Waves 21–30 form
 | Prism Nullspace | 380 | 6 | 3 | 2,336 |
 | Helix Reactor | 360 | 6 | 9 | 2,383 |
 
-Surge Nodes grant focused attack-rate, range, damage, or armor-piercing bonuses. The active node is shown during placement and in Tower Intel; effective node and Signal Beacon modifiers are included in displayed stats. Powered towers show gold foundation contacts, while active Signal Beacon support energizes green receiving circuits on their hardware.
+Surge Nodes grant focused attack-rate, range, damage, or armor-piercing bonuses. The active node is shown during placement and in Tower Intel; effective node and Signal Beacon modifiers are included in displayed stats. Node feedback uses the node's own color, while active Signal Beacon support energizes green receiving circuits on tower hardware.
 
 ### Difficulties
 
@@ -151,7 +152,7 @@ Tower statistics do not change with difficulty, wave number, map, or elapsed tim
 | Siege Mortar | 360 | First | Predictive capped splash damage |
 | Prism Beam | 450 | Strongest | Durable-target pressure and Expose |
 
-Tower silhouettes show their level without hover: one inward spoke at level 1, a second at 120 degrees at level 2, and a third at 240 degrees at level 3. The selected final role is represented inside the level-three silhouette. Tower Intel contains the exact current values, preview deltas, lifetime damage/kills/control, active boosts, node state, owner in co-op, and Apex state.
+Each tower family progresses from compact T1 hardware to larger T2, specialized T3, and expanded Apex assemblies. Fitted tier lights supplement these structural silhouettes. Tower Intel contains the exact current values, preview deltas, lifetime damage/kills/control, active boosts, node state, owner in co-op, and Apex state. Node coverage appears as a compact node-colored coupler beneath the snapped placement preview; after placement, Intel identifies the node by name and color alongside green Beacon support, keeping redundant node markers off the tower.
 
 Pulse Plates begin with one stored charge, support up to 16 deployed plates, and carry two pulses. A direct active-wave purchase starts at 60 credits and rises by 15 for each additional direct purchase during that wave; the price resets on the next wave. Plates deal fixed area damage, stun and slow their blast, and use bounded knockback with reduced displacement against elites and bosses.
 
@@ -160,6 +161,7 @@ The Charge Forge costs 300 credits and creates stored Plates only while a wave i
 ## Controls
 
 - Left click selects, places, or activates a control. Right click cancels placement.
+- Click an enemy to keep its family, rank, signal, live defenses, and active conditions open in Intel as it moves. Gold corner brackets identify the selected enemy. Right click or `Escape` clears it; clicking another enemy or structure changes the selection, and clicking empty battlefield clears it. Hover inspection is available when no enemy is selected. Placement previews retain priority.
 - `1`-`0` prepares the corresponding tower.
 - `Q` prepares a stored Pulse Plate or buys one during an active wave. Sandbox allows free deployment at any time.
 - `G` prepares or selects the Charge Forge.
@@ -171,7 +173,7 @@ The Charge Forge costs 300 credits and creates stored Plates only while a wave i
 - `Delete` or numpad `Del` (with Num Lock on or off) sells the selected tower or Forge where selling is permitted, or removes the selected tower in Sandbox.
 - `D` enables or disables a selected tower in Sandbox.
 - `Space` starts/readies a wave. `S` toggles 1x/2x speed.
-- `Escape` or `P` pauses solo play or requests a shared pause in co-op.
+- `Escape` clears enemy selection or cancels placement first; otherwise it pauses solo play or requests a shared pause in co-op. `P` also pauses when placement is inactive.
 - Middle click sends a co-op location ping.
 - `F11` toggles borderless desktop fullscreen. `F4` toggles the debug overlay in Debug builds.
 
@@ -219,6 +221,22 @@ powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
 
 The script builds into `%TEMP%`, runs the deterministic regression executable, and invokes a hidden non-activating renderer under `.artifacts\verification\ui`. Visual verification uses the canonical 2560x1440 scene size and includes a 3840x2160 display-density smoke scene. It does not replace files used by a running game or send keyboard/mouse input. Use `-SkipVisuals` to omit rendering.
 
+Capture an eight-second enemy lane at normal camera scale with:
+
+```powershell
+$env:MAXIMAL_BASTION_CROWDED_PILOT = "1"
+dotnet run --project src\MaximalBastion -c Debug -- --capture-enemy-lane .artifacts\enemy-lane C
+Remove-Item Env:\MAXIMAL_BASTION_CROWDED_PILOT
+```
+
+The diagnostic renders 60 Hz simulation at 30 captured frames per second, using the normal 2560x1440 scene and a 1280x720 output. Named capture variants use the same gameplay HUD policy, debuff fog, artwork, and simulation fixtures. Enemy health meters remain visible from entry. `MAXIMAL_BASTION_PILOT_PREVIEW=1` saves selected frames while still advancing every tick; `MAXIMAL_BASTION_PILOT_BODY_ONLY=1` suppresses enemy durability meters for the comparison. Use `MAXIMAL_BASTION_GROUND_CONTACTS=1` instead of the crowded-pilot flag for locomotion evidence, or `MAXIMAL_BASTION_STATE_EVIDENCE=1` for shield grants, repair pauses, overdrive, signal recipients, and lifecycle cleanup. With none of those flags, `MAXIMAL_BASTION_LANE_EVIDENCE=1` adds an ordinary authored wave and dense four-map evidence to the Brute/Runner lane; `MAXIMAL_BASTION_EVIDENCE_ONLY=1` captures that evidence directly. `MAXIMAL_BASTION_LANE_REDUCED=1` selects Reduced Effects where supported. Captures include settings, authoritative state, checksums, rendering/HUD counts, and stance-cycle identifiers. Focused hidden checks use `MAXIMAL_BASTION_STATUS_ONLY=1`, `MAXIMAL_BASTION_HUD_ONLY=1`, or `MAXIMAL_BASTION_CONSTRUCTION_ONLY=1` with `--verify-ui`; the full verification runs their gameplay-facing assertions together. Presentation alone never establishes a human recognition score.
+
+For complete authored-wave captures, combine `MAXIMAL_BASTION_EVIDENCE_ONLY=1` with `MAXIMAL_BASTION_WAVE_EVIDENCE=1`. `MAXIMAL_BASTION_WAVE_SELECTION=ordinary|holdout|both` selects Cinderworks wave 17 / seed 1421 and Rainline wave 9 / seed 7331. Both use normal simulation speed and retain two seconds after the wave settles. `MAXIMAL_BASTION_WAVE_PREVIEW=1` saves periodic stills while recording every frame's truth. The capture metadata retains authoritative enemy conditions and rendering counts for matched comparisons.
+
+Use `MAXIMAL_BASTION_PROFILE_EVIDENCE=1` with evidence-only mode for three warmed-up repeats of ordinary and crowded scenes in Full and Reduced Effects. It records capture-disabled, present-to-present timing with a reusable scene target, memory and effect counts. These hidden-window measurements are not GPU timestamps or interactive gameplay FPS. `MAXIMAL_BASTION_CORNERS_ONLY=1` with `--verify-ui` checks the four districts' rail joins.
+
+`MAXIMAL_BASTION_PROFILE_LONG=1` extends the profiler to three complete ordinary-wave runs per effects mode, recording periodic memory/particle samples and identifying the settled tail separately. `MAXIMAL_BASTION_VIEWPORT_EVIDENCE=1` with evidence-only mode exports all four districts at native, enlarged, letterboxed and minimum persisted window sizes. The 320x180 limit is a display stress case; it does not establish useful text or condition readability.
+
 Verify the mastered loudness, true-peak headroom, and dynamic range of every music asset with FFmpeg installed:
 
 ```powershell
@@ -248,3 +266,4 @@ Reports are written under `.build\balance`. Filters include strategy, seed, run 
 - [STRATEGY_GUIDE.md](STRATEGY_GUIDE.md): tower roles, upgrade use cases, targeting, map planning, and expert-agent assumptions.
 - [docs/co-op-architecture.md](docs/co-op-architecture.md): transport, authority, synchronization, reconnect, and co-op UI.
 - [docs/tower-defense-research.md](docs/tower-defense-research.md): durable design principles used by the project.
+- [docs/enemy-condition-rendering.md](docs/enemy-condition-rendering.md): condition sources, color ownership, physical cues, and visibility rules.

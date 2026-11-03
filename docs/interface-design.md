@@ -31,12 +31,12 @@ Tower Intel stages selected hardware above its current statistics and actions. A
 | Screen | Default information and primary action | Additional information |
 | --- | --- | --- |
 | Home | One evenly spaced column of Play, Co-op, Load, History, Settings, and supported Quit | Play is taller; live defense feeds are decorative |
-| Run setup | Map, difficulty, mode, Start Run | Difficulty and mode descriptions only while hovered |
+| Run setup | Map, difficulty, mode, Start Run | Persistent descriptions beneath the selected difficulty and mode |
 | Settings | Display, Audio, Gameplay tabs | Only the active category receives input |
 | Achievements | Name, completion state, progress, short requirement | Medals and Records tabs; independent pages |
 | History | Map, result, difficulty, wave, date | Run details and read-only final layout |
 | Saves | Slot, map, difficulty, wave, timestamp | Explicit overwrite and delete actions; empty state |
-| Pause | One evenly spaced column of Resume, Settings, Save, Load, Restart, and Main Menu | Run identity and an armed restart confirmation |
+| Pause | One evenly spaced column of Resume, Settings, Save, Load, Restart, and Main Menu | Saved run's game time and an armed restart confirmation |
 | Results | Outcome, run identity, key totals, continuation/retry | Statistics and battlefield inspection |
 | Co-op | Host or Join; address and code when needed | Copyable host code, connection status, reconnect controls |
 | Loading | Loading state and activity indicator | No implementation diagnostics |
@@ -45,15 +45,19 @@ Home actions share a 12-unit gap and are centered inside the connecting wire enc
 
 Solo and co-op pause menus use the same 12-unit vertical spacing. Resume is taller than the remaining actions, with a gold accent distinct from Restart's coral. The solo menu keeps every action at a shared width; the compact co-op menu follows the same structure within the sidebar.
 
-Play opens one setup screen. Map cards occur in that setup; selecting one does not launch a run. Start Run commits the selected map, difficulty, and mode. Difficulty and Mode labels sit above the center of their complete option rows. Both hover descriptions share a text size and a 16-unit offset below the row. Descriptions disappear when the pointer leaves, including after selection; the persistent cyan underline communicates difficulty and mode selection. Hosting uses the same setup structure with supported modes.
+Play opens one setup screen. Map cards occur in that setup; selecting one does not launch a run. Start Run commits the selected map, difficulty, and mode. Difficulty and Mode use bright Oxanium SemiBold headings with a 14-unit letter height, centered above their complete option rows and visually larger than the choices below. Selected difficulties and modes keep their descriptions centered beneath their buttons with a 16-unit offset and bounded text width. A dark navy backing with softened edges keeps the pale description text clear of the infrastructure artwork. Each backing closely fits its measured text with small, symmetric padding and no interactive border. Difficulty descriptions show enemy health, enemy speed, and starting lives separated by slashes. The persistent cyan underline reinforces difficulty and mode selection. Hosting uses the same setup structure with supported modes.
 
 Escape dismisses expanded result details before navigating away. Save deletion and restarting require an explicit second action, with concise confirmation text. No modal layer should allow clicks to affect covered gameplay controls.
 
 ## Battlefield hierarchy
 
-Lives, credits, wave state, and essential wave/speed/pause controls remain visible. Secondary wave data appears on hover. Sandbox uses evenly spaced metric columns with shared label and value baselines. The tower catalog presents names, prices, and roles; selected and placement-preview towers show their complete current stat grid. Upgrade previews use the same cells for before-and-after values. Placed towers always show lifetime contribution below the grid. Protocol controls remain visible without tower selection, showing active Protocol names and remaining duration before returning to the shared cooldown or readiness, alongside whether Auto is armed. Active status uses a restrained accent and a shrinking duration strip without enabling activation. With no selection, ARMED selects the armed tower; selected towers expose Auto on/off or transfer, while Apex shows its self-activating state. Tactical device and node explanations are contextual. Sandbox's Plates control sits beside the Towers heading and shares the normal Q shortcut.
+Tower hover and selection trace the foundation with a thin outline and reinforced corners. Placement previews use the same corner treatment.
 
-Announcements occupy a compact banner below the top bar. Placement guidance and a co-op pause take priority over announcements. Decorative glow stays subordinate to routes, selection, placement, and combat state. Sandbox retains its dedicated testing controls because those actions are the purpose of that mode.
+Lives, credits, wave state, and enemies remaining occupy four permanent metric columns beside wave/speed/pause controls. Credit changes appear immediately beside the fitted credit total. Map, difficulty, and mode occupy three open fields to the right of Pause, with balanced outer margins and vertically centered visible text. The map name uses its district accent: Cinderworks orange, Rainline blue, Prism violet, or Helix green. Campaign and Sandbox use the same metric positions, text sizes, and value baselines; Sandbox shows infinity symbols for lives and credits and N/A for wave. Its authored-wave selection and signal toggle sit beside the Targets sidebar heading. Pause shows the persisted simulation clock as game time, which advances with game speed and excludes paused time.
+
+The tower catalog presents names, prices, and roles; selected and placement-preview towers show their complete current stat grid. Upgrade previews use the same cells for before-and-after values. Placed towers always show lifetime contribution below the grid. Protocol controls remain visible without tower selection, showing active Protocol names and remaining duration before returning to the shared cooldown or readiness, alongside whether Auto is armed. Active status uses a restrained accent and a shrinking duration strip without enabling activation. With no selection, ARMED selects the armed tower; selected towers expose Auto on/off or transfer, while Apex shows its self-activating state. Tactical device and node explanations are contextual. Sandbox's Plates control sits beside the Towers heading and shares the normal Q shortcut.
+
+Announcements occupy a compact banner below the top bar. Entering a new or saved game and starting waves leave the battlefield unobstructed; the persistent HUD shows the map, difficulty, mode, wave progress, and credit changes. Sandbox follows the same presentation. Placement guidance and a co-op pause take priority over announcements. Decorative glow stays subordinate to routes, selection, placement, and combat state. Sandbox retains its dedicated testing controls because those actions are the purpose of that mode.
 
 ## Verification
 

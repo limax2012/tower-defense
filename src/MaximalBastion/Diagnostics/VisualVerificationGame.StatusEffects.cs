@@ -22,10 +22,11 @@ public sealed partial class VisualVerificationGame
         var labels = new[] { "PLAIN", "SLOW", "BURN", "BREAK", "EXPOSED", "SHIELD", "HASTE", "STACKED" };
         var samples = new List<StatusReviewEnemy>();
         var stunSamples = new List<StatusReviewEnemy>();
-        foreach (var id in new[] { "t2_runner", "t1_crawler", "t3_brute" })
+        foreach (var id in new[] { "t2_runner", "t1_crawler", "t3_brute", "t4_aegis", "t5_regenerator" })
         {
             var baseline = StatusSample(content, id, "PLAIN");
             var plain = StatusEnemyPixels(baseline, .23f, true);
+            var nativePlain = StatusEnemyPixels(baseline, .23f, true, scale: 1);
             foreach (var label in labels)
             {
                 var sample = StatusSample(content, id, label);
@@ -35,30 +36,35 @@ public sealed partial class VisualVerificationGame
                 Require(quiet.SequenceEqual(StatusEnemyPixels(sample, .87f, true)),
                     $"{id} {label}: Reduced Effects retains stable hull-attached status geometry.", assertions);
                 if (label != "PLAIN")
+                {
                     Require(quiet.Zip(plain, (a, b) => a != b).Count(changed => changed) >= 8,
                         $"{id} {label}: the active condition remains visible at the hull without relying on bloom.", assertions);
+                    var native = StatusEnemyPixels(sample, .23f, true, scale: 1);
+                    var changedBodyPixels = native.Where((pixel, index) => pixel != nativePlain[index]).Count();
+                    var minimumBodyPixels = label == "EXPOSED" ? 4 : 10;
+                    Require(changedBodyPixels >= minimumBodyPixels,
+                        $"{id} {label}: secondary hull reinforcement remains visible at native scale ({changedBodyPixels} changed pixels).", assertions);
+                    if (label == "EXPOSED")
+                        Require(native.Where((pixel, index) => pixel != nativePlain[index] &&
+                                pixel.B > pixel.G * 1.08f && pixel.R > pixel.G * 1.02f).Count() >= 2,
+                            $"{id}: the small Expose incision retains its Prism source color at native scale.", assertions);
+                }
                 if (label == "SLOW")
                 {
-                    var sides = id == "t2_runner" ? 3 : id == "t1_crawler" ? 4 : 6;
-                    var hullRadius = sample.Enemy.Radius * (sides == 3 ? 1 : .85f) * .94f;
-                    for (var edge = 0; edge < sides; edge++)
-                    {
-                        var firstAngle = sample.Heading + edge * MathHelper.TwoPi / sides;
-                        var nextAngle = firstAngle + MathHelper.TwoPi / sides;
-                        var midpoint = (new Vector2(MathF.Cos(firstAngle), MathF.Sin(firstAngle)) +
-                            new Vector2(MathF.Cos(nextAngle), MathF.Sin(nextAngle))) * hullRadius * .5f;
-                        var at = (new Vector2(53) + midpoint) * 3;
-                        var covered = 0;
-                        for (var y = (int)at.Y - 3; y <= (int)at.Y + 3; y++)
-                        for (var x = (int)at.X - 3; x <= (int)at.X + 3; x++)
-                            if (plain[y * 320 + x] != quiet[y * 320 + x]) covered++;
-                        Require(covered >= 2,
-                            $"{id}: frost visibly covers hull edge {edge + 1} of {sides}.", assertions);
-                    }
+                    AssertFrostMaterialCoverage(content, sample, nativePlain, assertions);
+                    Require(StatusEnemyPixels(sample, .23f, false, materialOnly: true)
+                            .SequenceEqual(StatusEnemyPixels(sample, .87f, false, materialOnly: true)),
+                        $"{id}: settled matte rime stays attached without a continuous surface wobble.", assertions);
+                    AssertMaterialApplication(content, id, StatusType.Slow, assertions);
                 }
-                if (label is "SLOW" or "BURN" or "BREAK" or "EXPOSED" or "SHIELD" or "HASTE" or "STACKED")
-                    Require(!StatusEnemyPixels(sample, .23f, false).SequenceEqual(StatusEnemyPixels(sample, .87f, false)),
-                        $"{id} {label}: full status energy animates while remaining attached to its hull.", assertions);
+                if (label == "BREAK")
+                    Require(StatusEnemyPixels(sample, .23f, false, materialOnly: true)
+                            .SequenceEqual(StatusEnemyPixels(sample, .87f, false, materialOnly: true)),
+                        $"{id} {label}: attached solid material remains steady between attack events.", assertions);
+                if (label is "BURN" or "EXPOSED" or "SHIELD" or "HASTE" or "STACKED")
+                    Require(!StatusEnemyPixels(sample, .23f, false, materialOnly: true)
+                            .SequenceEqual(StatusEnemyPixels(sample, .87f, false, materialOnly: true)),
+                        $"{id} {label}: sustained activity animates on the body without a HUD glyph.", assertions);
             }
             var stunned = StatusSample(content, id, "STUN");
             stunned.Enemy.ApplyStatus(new StatusApplication { Type = StatusType.Stun, Duration = 1, Magnitude = 1 });
@@ -66,8 +72,10 @@ public sealed partial class VisualVerificationGame
             Require(stunQuiet.Zip(plain, (a, b) => a != b).Count(changed => changed) >= 8 &&
                     stunQuiet.SequenceEqual(StatusEnemyPixels(stunned, .87f, true)),
                 $"{id}: Stun remains visible as stable internal discharges in Reduced Effects.", assertions);
-            Require(!StatusEnemyPixels(stunned, .23f, false).SequenceEqual(StatusEnemyPixels(stunned, .31f, false)),
-                $"{id}: Stun electricity flickers within the enemy while active.", assertions);
+            Require(!StatusEnemyPixels(stunned, .23f, false, materialOnly: true)
+                    .SequenceEqual(StatusEnemyPixels(stunned, .87f, false, materialOnly: true)),
+                $"{id}: Stun sustains changing fine discharge paths for its actual active duration.", assertions);
+            AssertMaterialApplication(content, id, StatusType.Stun, assertions);
             var overlap = StatusSample(content, id, "STUN + DEBUFFS");
             ApplyReviewStatus(overlap, "STACKED");
             overlap.Enemy.ApplyStatus(new StatusApplication { Type = StatusType.Stun, Duration = 1, Magnitude = 1 });
@@ -90,6 +98,7 @@ public sealed partial class VisualVerificationGame
         }
         scenes.Add(CaptureStatusEnemyGallery(samples, font, 8, "37-enemy-statuses.png"));
         scenes.Add(CaptureStatusEnemyGallery(stunSamples, font, 4, "37a-arc-stun.png"));
+        AssertConditionComposition(content, assertions, scenes, font);
         if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_DEBUFF_ANIMATION") == "1")
         {
             var animated = samples.Where(sample => sample.Label is "SLOW" or "BURN" or "BREAK" or "EXPOSED")
@@ -111,7 +120,23 @@ public sealed partial class VisualVerificationGame
         healing.Enemy.Regenerate(.1f);
         Require(!EnemyStatusArt.IsRegenerating(full.Enemy) && !EnemyStatusArt.IsRegenerating(paused.Enemy) &&
                 EnemyStatusArt.IsRegenerating(healing.Enemy) && healing.Enemy.Health > beforeHeal,
-            "Regeneration art distinguishes full health, the damage pause and actual health recovery.", assertions);
+            "Regeneration state distinguishes full health, the damage pause and actual health recovery.", assertions);
+        foreach (var reduced in new[] { false, true })
+        {
+            var activePixels = StatusEnemyPixels(healing, .23f, reduced, scale: 1, materialOnly: true);
+            var pausedPixels = StatusEnemyPixels(paused, .23f, reduced, scale: 1, materialOnly: true);
+            var fullPixels = StatusEnemyPixels(full, .23f, reduced, scale: 1, materialOnly: true);
+            Require(activePixels.SequenceEqual(fullPixels) && pausedPixels.SequenceEqual(fullPixels) &&
+                    fullPixels.All(pixel => pixel == ColorPalette.Canvas),
+                $"Regenerator {(reduced ? "Reduced" : "Full")}: native repair adds no asymmetric surface marks at full health, during damage pause, or while healing.", assertions);
+            var fullBody = StatusEnemyPixels(full, .23f, reduced, scale: 1, runtimePresentation: true);
+            Require(StatusEnemyPixels(paused, .23f, reduced, scale: 1, runtimePresentation: true).SequenceEqual(fullBody) &&
+                    StatusEnemyPixels(healing, .23f, reduced, scale: 1, runtimePresentation: true).SequenceEqual(fullBody),
+                $"Regenerator {(reduced ? "Reduced" : "Full")}: runtime chassis and durability decoration retain identical symmetry across health and repair states.", assertions);
+        }
+        Require(StatusEnemyPixels(healing, .23f, true, materialOnly: true)
+                .SequenceEqual(StatusEnemyPixels(healing, .87f, true, materialOnly: true)),
+            "Reduced Effects keeps native repair free of animated surface decoration.", assertions);
         var burned = StatusSample(content, "t5_regenerator", "BURN / PAUSED");
         burned.Enemy.ApplyHealthDamage(100);
         ApplyReviewStatus(burned, "BURN");
@@ -126,7 +151,7 @@ public sealed partial class VisualVerificationGame
             font, 4, "38-status-lifecycles.png"));
         healing.Enemy.Regenerate(1000);
         Require(!EnemyStatusArt.IsRegenerating(healing.Enemy),
-            "Regeneration illumination stops when health reaches its maximum.", assertions);
+            "Native regeneration stops when health reaches its maximum.", assertions);
         scenes.Add(CaptureSignalHardwareGallery(content, font));
         scenes.Add(CaptureTowerStatusGallery(content, font));
         AssertSupportLifecycle(content, font, display, assertions, scenes);
@@ -146,6 +171,113 @@ public sealed partial class VisualVerificationGame
         return new StatusReviewEnemy(label, session, enemy);
     }
 
+    private void AssertFrostMaterialCoverage(GameContent content, StatusReviewEnemy sample,
+        Color[] plain, ICollection<string> assertions)
+    {
+        var enemy = sample.Enemy;
+        var radius = EnemyModelArt.BodyRadius(enemy);
+        var forward = new Vector2(MathF.Cos(sample.Heading), MathF.Sin(sample.Heading));
+        var side = new Vector2(-forward.Y, forward.X);
+        var frost = StatusEnemyPixels(sample, .23f, true, scale: 1);
+        var shield = StatusSample(content, enemy.Definition.Id, "SHIELD");
+        ApplyReviewStatus(shield, "SHIELD");
+        var shieldOnly = StatusEnemyPixels(shield, .23f, true, scale: 1, materialOnly: true);
+        var shieldBody = StatusEnemyPixels(shield, .23f, true, scale: 1);
+        ApplyReviewStatus(shield, "SLOW");
+        var frostShield = StatusEnemyPixels(shield, .23f, true, scale: 1);
+        var banks = new int[2];
+        var corePixels = 0;
+        var changedCore = 0;
+        var centerlinePixels = 0;
+        var changedCenterline = 0;
+        var shellPixels = 0;
+        var changedShell = 0;
+        var frostOnShell = 0;
+        var mask = Enumerable.Repeat(ColorPalette.Canvas, plain.Length).ToArray();
+        for (var index = 0; index < frost.Length; index++)
+        {
+            var at = new Vector2(index % 320 + .5f, index / 320 + .5f) - new Vector2(53);
+            var local = new Vector2(Vector2.Dot(at, forward), Vector2.Dot(at, side));
+            var changed = frost[index] != plain[index];
+            if (changed && MathF.Abs(local.Y) > radius * .12f)
+            {
+                banks[local.Y < 0 ? 0 : 1]++;
+                mask[index] = local.Y < 0 ? ColorPalette.FrostShot : ColorPalette.FrostHighlight;
+            }
+            if (at.LengthSquared() < radius * radius * .5f * .5f &&
+                plain[index].R > plain[index].G * 1.6f && plain[index].B > plain[index].G * 1.3f)
+            {
+                corePixels++;
+                if (changed) changedCore++;
+                mask[index] = changed ? ColorPalette.Burn : ColorPalette.Hostile;
+            }
+            if (MathF.Abs(local.Y) < radius * .08f && MathF.Abs(local.X) > radius * .28f &&
+                MathF.Abs(local.X) < radius * .58f && plain[index] != ColorPalette.Canvas)
+            {
+                centerlinePixels++;
+                if (changed) changedCenterline++;
+                mask[index] = changed ? ColorPalette.Burn : ColorPalette.Green;
+            }
+            var shell = shieldOnly[index];
+            if (shell.B > 185 && shell.G > 140 && shell.B > shell.R * 1.7f)
+            {
+                shellPixels++;
+                if (frostShield[index] != shieldBody[index]) changedShell++;
+                if (changed) frostOnShell++;
+                mask[index] = frostShield[index] != shieldBody[index] ? ColorPalette.Burn : ColorPalette.Shield;
+            }
+        }
+        var directory = Path.Combine(_outputDirectory, "material-masks");
+        Directory.CreateDirectory(directory);
+        var report = new
+        {
+            family = enemy.Definition.Id, resolution = "native logical pixels", radius,
+            bankPixels = banks, corePixels, changedCore, centerlinePixels, changedCenterline,
+            shellPixels, changedShell, frostOnShell,
+            maskLegend = "blue/pale: changed bank material; magenta: preserved reactor; green: preserved centerline material; cyan: preserved shield core; red: constraint violation"
+        };
+        File.WriteAllText(Path.Combine(directory, enemy.Definition.Id + ".json"),
+            System.Text.Json.JsonSerializer.Serialize(report, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        using (var texture = new Texture2D(GraphicsDevice, 320, 320))
+        {
+            texture.SetData(mask);
+            using var stream = File.Create(Path.Combine(directory, enemy.Definition.Id + ".png"));
+            texture.SaveAsPng(stream, 320, 320);
+        }
+        Require(banks[0] >= 8 && banks[1] >= 8,
+            $"{enemy.Definition.Id}: frost visibly coats both authored plate banks ({banks[0]}/{banks[1]} native pixels).", assertions);
+        Require(corePixels > 0 && changedCore == 0 && centerlinePixels > 0 && changedCenterline == 0,
+            $"{enemy.Definition.Id}: the frosted banks retain the reactor and centerline material ({corePixels}/{centerlinePixels} protected native pixels).", assertions);
+        Require(shellPixels >= 8 && changedShell == 0 && frostOnShell == 0,
+            $"{enemy.Definition.Id}: frost stays separate from all {shellPixels} sampled luminous shell pixels and cannot form a second shield outline.", assertions);
+    }
+
+    private void AssertMaterialApplication(GameContent content, string id, StatusType type,
+        ICollection<string> assertions)
+    {
+        var sample = StatusSample(content, id, type.ToString());
+        var timeline = new EnemyVisualTimeline();
+        timeline.Observe(sample.Session, 0);
+        sample.Enemy.ApplyStatus(new StatusApplication { Type = type, Magnitude = .4f, Duration = 1 });
+        var checksum = SessionChecksum.Compute(sample.Session, 0);
+        timeline.Observe(sample.Session, .1f);
+        var onset = StatusEnemyPixels(sample, .1f, false, scale: 1, materialOnly: true,
+            feedback: timeline.Feedback(sample.Enemy, .1f));
+        timeline.Observe(sample.Session, .7f);
+        var settled = StatusEnemyPixels(sample, .7f, false, scale: 1, materialOnly: true,
+            feedback: timeline.Feedback(sample.Enemy, .7f));
+        Require(onset.Count(pixel => pixel != ColorPalette.Canvas) >= 8 && !onset.SequenceEqual(settled),
+            $"{id} {type}: an actual observed application starts visible material that settles into its ordinary state.", assertions);
+        Require(SessionChecksum.Compute(sample.Session, 0) == checksum,
+            $"{id} {type}: material onset and settling leave authoritative timing unchanged.", assertions);
+        sample.Enemy.StatusEffects.Update(2);
+        timeline.Observe(sample.Session, .8f);
+        var expired = StatusEnemyPixels(sample, .8f, false, scale: 1, materialOnly: true,
+            feedback: timeline.Feedback(sample.Enemy, .8f));
+        Require(expired.All(pixel => pixel == ColorPalette.Canvas),
+            $"{id} {type}: expiry immediately removes hull-attached material; detached remnants are separate.", assertions);
+    }
+
     private static void ApplyReviewStatus(StatusReviewEnemy sample, string label)
     {
         var enemy = sample.Enemy;
@@ -163,15 +295,22 @@ public sealed partial class VisualVerificationGame
         }
     }
 
-    private Color[] StatusEnemyPixels(StatusReviewEnemy sample, float time, bool reduced)
+    private Color[] StatusEnemyPixels(StatusReviewEnemy sample, float time, bool reduced,
+        float scale = 3, bool materialOnly = false, EnemyVisualFeedback? feedback = null, bool runtimePresentation = false)
     {
         using var target = new RenderTarget2D(GraphicsDevice, 320, 320,
             false, SurfaceFormat.Color, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
         GraphicsDevice.SetRenderTarget(target);
         GraphicsDevice.Clear(ColorPalette.Canvas);
         _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp,
-            null, null, null, Matrix.CreateScale(3));
-        DrawStatusEnemy(sample, new Vector2(53), sample.Heading, time, reduced);
+            null, null, null, Matrix.CreateScale(scale));
+        if (materialOnly)
+            EnemyStatusArt.DrawAnimated(_batch, _primitives, sample.Enemy, new Vector2(53),
+                EnemyModelArt.BodyRadius(sample.Enemy), sample.Heading, time,
+                feedback ?? new EnemyVisualFeedback(1, 0, 0, 0), reduced,
+                exposureAccent: EnemyConditionPresentation.ExposeAccent(sample.Session, sample.Enemy));
+        else
+            DrawStatusEnemy(sample, new Vector2(53), sample.Heading, time, reduced, indicators: runtimePresentation);
         _batch.End();
         GraphicsDevice.SetRenderTarget(null);
         var pixels = new Color[target.Width * target.Height];
@@ -179,17 +318,112 @@ public sealed partial class VisualVerificationGame
         return pixels;
     }
 
-    private void DrawStatusEnemy(StatusReviewEnemy sample, Vector2 center, float heading, float time, bool reduced)
+    private void DrawStatusEnemy(StatusReviewEnemy sample, Vector2 center, float heading, float time, bool reduced,
+        bool indicators = true)
     {
         var enemy = sample.Enemy;
-        NightGridArt.Enemy(_batch, _primitives, center, enemy.Radius, enemy.Definition.Id, heading, 0,
-            enemy.IsBoss, lights: false);
-        EnemySignalArt.DrawHardware(_batch, _primitives, enemy, center, enemy.Radius, heading, time, reduced);
-        EnemyStatusArt.Draw(_batch, _primitives, enemy, center, enemy.Radius, heading, time, reduced);
+        var radius = EnemyModelArt.BodyRadius(enemy);
+        EnemyModelArt.Draw(_batch, _primitives, enemy, center, heading, time, reduced);
+
+        var exposureAccent = EnemyConditionPresentation.ExposeAccent(sample.Session, enemy);
+        if (indicators)
+        {
+            EnemyDebuffAuraArt.Draw(_batch, _primitives, sample.Session, enemy, center, radius, time, reduced);
+            EnemyStatusArt.DrawDurability(_batch, _primitives, enemy, center, radius, heading, time, reduced);
+            EnemyStunArt.Draw(_batch, _primitives, enemy, center, radius, heading, time, reduced);
+        }
+        else
+            EnemyStatusArt.Draw(_batch, _primitives, enemy, center, radius, heading, time, reduced,
+                exposureAccent: exposureAccent);
         if (sample.Repair)
-            EnemyStatusArt.DrawRepairPulse(_batch, _primitives, enemy, center, enemy.Radius, heading, .78f, time, reduced);
+            EnemyStatusArt.DrawRepairPulse(_batch, _primitives, enemy, center, radius, heading, .78f, time, reduced);
         if (sample.ShieldPulse)
-            EnemyStatusArt.DrawShieldPulse(_batch, _primitives, enemy, center, enemy.Radius, heading, .78f, time, reduced);
+            EnemyStatusArt.DrawShieldPulse(_batch, _primitives, enemy, center, radius, heading, .78f, time, reduced);
+    }
+
+    private void AssertConditionComposition(GameContent content, ICollection<string> assertions,
+        ICollection<VisualVerificationScene> scenes, SpriteFont font)
+    {
+        var combined = new List<StatusReviewEnemy>();
+        Span<EnemyCondition> zones = stackalloc EnemyCondition[4];
+        foreach (var id in content.Enemies.Keys)
+        foreach (var pair in new[] { "BURN + FROST", "BURN + BREAK", "FROST + EXPOSE", "SHIELD + BURN", "STUN + BREAK", "ALL CONDITIONS" })
+        {
+            var sample = StatusSample(content, id, pair);
+            if (pair.Contains("BURN", StringComparison.Ordinal) || pair == "ALL CONDITIONS") ApplyReviewStatus(sample, "BURN");
+            if (pair.Contains("FROST", StringComparison.Ordinal) || pair == "ALL CONDITIONS") ApplyReviewStatus(sample, "SLOW");
+            if (pair.Contains("BREAK", StringComparison.Ordinal) || pair == "ALL CONDITIONS") ApplyReviewStatus(sample, "BREAK");
+            if (pair.Contains("EXPOSE", StringComparison.Ordinal) || pair == "ALL CONDITIONS") ApplyReviewStatus(sample, "EXPOSED");
+            if (pair.Contains("STUN", StringComparison.Ordinal) || pair == "ALL CONDITIONS")
+                sample.Enemy.ApplyStatus(new StatusApplication { Type = StatusType.Stun, Duration = 5, Magnitude = 1 });
+            if (pair.Contains("SHIELD", StringComparison.Ordinal) || pair == "ALL CONDITIONS")
+                sample.Enemy.GrantShield(sample.Enemy.MaxHealth * .10f, sample.Enemy.MaxHealth * .20f);
+            var before = SessionChecksum.Compute(sample.Session, 0);
+            var composition = EnemyConditionPresentation.Compose(sample.Enemy);
+            var regionCount = EnemyDebuffAuraArt.CopyDebuffs(sample.Enemy, zones);
+            Require(regionCount <= 4 && regionCount <= composition.ActiveCount,
+                $"{id} {pair}: at most four translucent debuff zones summarize the inspectable condition set.", assertions);
+            if (pair == "ALL CONDITIONS")
+                Require(regionCount == 4 && composition.Has(EnemyCondition.Stun),
+                    $"{id}: four sustained debuffs use fog while Stun remains in the inspectable condition set.", assertions);
+            _ = StatusEnemyPixels(sample, .23f, false);
+            _ = StatusEnemyPixels(sample, .87f, true);
+            Require(before == SessionChecksum.Compute(sample.Session, 0),
+                $"{id} {pair}: condition composition and rendering leave synchronized state unchanged.", assertions);
+            combined.Add(sample);
+        }
+        scenes.Add(CaptureStatusEnemyGallery(combined, font, 6, "64-condition-combinations.png"));
+
+        var healingBurn = StatusSample(content, "t5_regenerator", "REPAIR + BURN");
+        healingBurn.Enemy.ApplyHealthDamage(150);
+        healingBurn.Enemy.TickRuntimeTimers(1.1f);
+        healingBurn.Enemy.GrantShield(healingBurn.Enemy.MaxHealth * .10f, healingBurn.Enemy.MaxHealth * .20f);
+        ApplyReviewStatus(healingBurn, "BURN");
+        var pausedBurn = StatusSample(content, "t5_regenerator", "REPAIR PAUSED + BURN");
+        pausedBurn.Enemy.ApplyHealthDamage(150);
+        ApplyReviewStatus(pausedBurn, "BURN");
+        Require(EnemyConditionPresentation.IsPresent(healingBurn.Enemy, EnemyCondition.Regeneration) &&
+                !EnemyConditionPresentation.IsPresent(pausedBurn.Enemy, EnemyCondition.Regeneration),
+            "Repair activity reflects the health-damage pause independently of the burn's material condition.", assertions);
+        var shieldSamples = new List<StatusReviewEnemy>();
+        foreach (var fraction in new[] { 1f, .5f, .125f, 0f })
+        {
+            var sample = StatusSample(content, "t4_aegis", $"SHIELD {fraction:P0}");
+            sample.Enemy.GrantShield(sample.Enemy.Definition.Shield * fraction, sample.Enemy.Definition.Shield);
+            Require(MathF.Abs(EnemyStatusArt.ShieldFraction(sample.Enemy) - fraction) < .001f,
+                $"Aegis: the quantitative reserve remains {fraction:P0} of authored shield capacity.", assertions);
+            shieldSamples.Add(sample);
+        }
+        foreach (var reduced in new[] { false, true })
+        {
+            var intact = StatusEnemyPixels(shieldSamples[0], .23f, reduced, scale: 1, materialOnly: true);
+            foreach (var sample in shieldSamples.Skip(1).Take(2))
+                Require(intact.SequenceEqual(StatusEnemyPixels(sample, .23f, reduced, scale: 1, materialOnly: true)),
+                    $"Aegis {(reduced ? "Reduced" : "Full")}: every positive reserve retains the same whole shield shell.", assertions);
+            var broken = StatusEnemyPixels(shieldSamples[3], .23f, reduced, scale: 1, materialOnly: true);
+            Require(broken.All(pixel => pixel == ColorPalette.Canvas) && intact.Count(pixel => pixel != ColorPalette.Canvas) >= 30,
+                $"Aegis {(reduced ? "Reduced" : "Full")}: the shield shell disappears only when its actual reserve reaches zero.", assertions);
+        }
+        scenes.Add(CaptureStatusEnemyGallery([healingBurn, pausedBurn, .. shieldSamples], font, 3,
+            "64a-repair-shield-transitions.png"));
+
+        var all = StatusSample(content, "t5_regenerator", "ALL ACTIVE STATES");
+        all.Enemy.ApplyHealthDamage(150);
+        all.Enemy.TickRuntimeTimers(1.1f);
+        ApplyReviewStatus(all, "STACKED");
+        all.Enemy.ApplyStatus(new StatusApplication { Type = StatusType.Stun, Duration = 5, Magnitude = 1 });
+        Span<EnemyCondition> active = stackalloc EnemyCondition[8];
+        var written = EnemyConditionPresentation.CopyActive(all.Enemy, active);
+        var every = EnemyConditionPresentation.Compose(all.Enemy);
+        Span<EnemyCondition> allZones = stackalloc EnemyCondition[4];
+        Require(written == 8 && every.ActiveCount == 8 && EnemyDebuffAuraArt.CopyDebuffs(all.Enemy, allZones) == 4,
+            "Four sustained debuffs form fog regions while all eight states remain available as inspector text.", assertions);
+        Require(EnemyConditionPresentation.Accent(EnemyCondition.Exposed) == ColorPalette.Violet &&
+                EnemyConditionPresentation.Accent(EnemyCondition.Burn) == ColorPalette.EmberShot &&
+                EnemyConditionPresentation.Accent(EnemyCondition.ArmorBreak) == ColorPalette.BreakerShot &&
+                EnemyConditionPresentation.Accent(EnemyCondition.Stun) == ColorPalette.ArcShot &&
+                EnemyConditionPresentation.Accent(EnemyCondition.Slow) == ColorPalette.FrostAura,
+            "Continuing conditions use canonical prismatic, thermal, fracture, electrical, and frost colors.", assertions);
     }
 
     private VisualVerificationScene CaptureStatusEnemyGallery(IReadOnlyList<StatusReviewEnemy> samples,
@@ -204,8 +438,8 @@ public sealed partial class VisualVerificationGame
         GraphicsDevice.SetRenderTarget(target);
         GraphicsDevice.Clear(ColorPalette.Canvas);
         _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp);
-        StatusLabel(font, "ENEMY STATES / HULL-ATTACHED ENERGY", new Vector2(24, 15), .95f);
-        StatusLabel(font, "3x DETAIL ABOVE / FIELD SIZE AND REDUCED BELOW", new Vector2(24, 53), .68f);
+        StatusLabel(font, "ENEMY STATES / PHYSICAL CONDITIONS", new Vector2(24, 15), .95f);
+        StatusLabel(font, "SYNTHETIC STATE FIXTURES / 3x DETAIL / FIELD SIZE AND REDUCED BELOW", new Vector2(24, 53), .68f);
         for (var index = 0; index < samples.Count; index++)
         {
             var x = index % columns * cellWidth;
@@ -286,14 +520,17 @@ public sealed partial class VisualVerificationGame
                     null, null, null, Matrix.CreateScale(scale) * Matrix.CreateTranslation(center.X, center.Y, 0));
                 var tower = towers[row];
                 const float aim = -.55f;
+                if (column is 2 or 5)
+                    TowerProtocolArt.DrawEnvelope(_batch, _primitives, Vector2.Zero, tower.Visual.Radius,
+                        tower.Id, 3, false, .23f, reduced);
                 NightGridArt.Tower(_batch, _primitives, Vector2.Zero, tower.Visual.Radius, tower.Id,
-                    3, aim, lights: false, groundEffects: false);
+                    3, aim, lights: false, groundEffects: false, power: column == 4 ? .18f : 1);
                 if (tower.Id != "signal_beacon" && column is 1 or 5)
                     TowerStatusArt.DrawSupport(_batch, _primitives, Vector2.Zero, tower.Visual.Radius,
                         tower.Id, 3, false, aim, .23f, reduced);
                 if (column is 2 or 5)
                     TowerProtocolArt.Draw(_batch, _primitives, Vector2.Zero, tower.Visual.Radius,
-                        tower.Id, 3, false, aim, .23f, reduced);
+                        tower.Id, 3, false, aim, .23f, reduced, envelope: false);
                 if (column == 3 && tower.Id != "signal_beacon")
                     TowerStatusArt.DrawSuppressed(_batch, _primitives, Vector2.Zero, tower.Visual.Radius,
                         tower.Id, 3, false, aim, .23f, reduced);

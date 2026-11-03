@@ -11,9 +11,11 @@ internal sealed class BrowserPrimitiveAtlas : IDisposable
     private sealed record Entry(int Size, float Radius, Func<int, int, Color> Sample, Action<Mask> Assign);
     private readonly Mask[] _rings = new Mask[129];
     private readonly Dictionary<(int, bool), Mask> _polygons = new();
+    private readonly Dictionary<string, Mask> _authoredShapes = new(StringComparer.Ordinal);
     public Texture2D Texture { get; }
     public Mask Circle { get; private set; }
     public Mask Glow { get; private set; }
+    public Mask[] EnergyEnvelopes { get; } = new Mask[PrimitiveRenderer.EnergyEnvelopeStyles];
     public Rectangle Pixel { get; private set; }
 
     public BrowserPrimitiveAtlas(GraphicsDevice device)
@@ -28,6 +30,14 @@ internal sealed class BrowserPrimitiveAtlas : IDisposable
             AddRadial(radius, thickness * radius / 128f, false, mask => _rings[index] = mask);
         }
         AddRadial(32, 32, true, mask => Glow = mask);
+        for (var style = 0; style < PrimitiveRenderer.EnergyEnvelopeStyles; style++)
+        {
+            var index = style;
+            entries.Add(new Entry(PrimitiveRenderer.EnergyEnvelopeRasterSize,
+                PrimitiveRenderer.EnergyEnvelopeRasterRadius,
+                (x, y) => PrimitiveRenderer.SampleEnergyEnvelope(x, y, index),
+                mask => EnergyEnvelopes[index] = mask));
+        }
         entries.Add(new Entry(4, 1, (_, _) => Color.White, mask =>
             Pixel = new Rectangle(mask.Source.X + 1, mask.Source.Y + 1, 1, 1)));
         for (var sides = 3; sides <= 8; sides++)
@@ -44,6 +54,17 @@ internal sealed class BrowserPrimitiveAtlas : IDisposable
             }
             entries.Add(new Entry(264, 128, (x, y) => Inside(x + .5f, y + .5f, vertices)
                 ? Color.White : Color.Transparent, mask => _polygons[key] = mask));
+        }
+        foreach (var (shapeId, outline) in EnemyModelContours.Shapes)
+        {
+            const int radius = PrimitiveRenderer.AuthoredShapeRadius * 2;
+            const int size = radius * 2 + 8;
+            var center = new Vector2(size / 2f);
+            var vertices = new Vector2[outline.Length];
+            for (var index = 0; index < outline.Length; index++)
+                vertices[index] = center + outline[index] * radius;
+            entries.Add(new Entry(size, radius, (x, y) => Inside(x + .5f, y + .5f, vertices)
+                ? Color.White : Color.Transparent, mask => _authoredShapes[shapeId] = mask));
         }
 
         const int width = 4096;
@@ -99,6 +120,8 @@ internal sealed class BrowserPrimitiveAtlas : IDisposable
         (int)MathF.Round(Math.Max(1, thickness) * 128 / Math.Max(1, radius)), 1, 128)];
 
     public bool TryPolygon(int sides, bool star, out Mask mask) => _polygons.TryGetValue((sides, star), out mask);
+
+    public Mask AuthoredShape(string shapeId) => _authoredShapes[shapeId];
 
     public void Draw(SpriteBatch batch, Mask mask, Vector2 center, float radius, Color color, float rotation = 0) =>
         batch.Draw(Texture, center, mask.Source, color, rotation,

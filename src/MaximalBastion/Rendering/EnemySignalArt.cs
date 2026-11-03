@@ -4,77 +4,66 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace MaximalBastion.Rendering;
 
-/// <summary>Signal carriers use role-specific machinery and short, local transfer feedback.</summary>
+/// <summary>Reactor signal identity, support fields, and hostile transmissions.</summary>
 public static class EnemySignalArt
 {
-    public static void DrawHardware(SpriteBatch batch, PrimitiveRenderer p, EnemyInstance enemy,
-        Vector2 position, float radius, float heading, float time, bool reducedEffects)
+    public static float SupportRangeRadius(GameSession session, EnemyInstance enemy) =>
+        session.CounterSupportEnabled && !enemy.IsDead && !enemy.HasEscaped &&
+        enemy.SignalRole is EnemySignalRole.Accelerator or EnemySignalRole.Restorer or EnemySignalRole.Bulwark
+            ? session.Challenge.CounterSupportRadius : 0;
+
+    public static void DrawSupportRange(SpriteBatch batch, PrimitiveRenderer p, GameSession session,
+        EnemyInstance enemy, Vector2 position, bool reducedEffects, float time = 0)
+    {
+        var radius = SupportRangeRadius(session, enemy);
+        if (radius <= 0) return;
+        // The continuous edge marks eligibility; repair and shield pulses still select nearby recipients.
+        p.Ring(batch, position, radius, EnemySignalGlyphRenderer.Accent(enemy.SignalRole) * .50f, 1);
+        if (enemy.SignalRole != EnemySignalRole.Accelerator || reducedEffects) return;
+        var phase = time * .46f + enemy.Id * .381966f;
+        phase -= MathF.Floor(phase);
+        var rippleRadius = MathHelper.Lerp(MathF.Min(19, radius * .19f), radius, phase);
+        var strength = MathF.Sin(phase * MathHelper.Pi) * .36f;
+        p.SupportWave(batch, position, rippleRadius, ColorPalette.Acceleration * strength, angular: false);
+    }
+
+    public static void DrawSupportWave(SpriteBatch batch, PrimitiveRenderer p, EnemyInstance enemy,
+        Vector2 position, float rangeRadius, float progress, bool reducedEffects)
+    {
+        if (enemy.IsDead || enemy.HasEscaped || rangeRadius <= 0 || progress <= 0 ||
+            enemy.SignalRole is not (EnemySignalRole.Restorer or EnemySignalRole.Bulwark)) return;
+        var remaining = MathHelper.Clamp(progress, 0, 1);
+        var accent = EnemySignalGlyphRenderer.Accent(enemy.SignalRole);
+        if (reducedEffects)
+        {
+            p.Ring(batch, position, rangeRadius, accent * (remaining * .32f), 1);
+            return;
+        }
+        var age = 1 - remaining;
+        var radius = MathHelper.Lerp(MathF.Min(16, rangeRadius * .16f), rangeRadius,
+            1 - MathF.Pow(remaining, 1.35f));
+        p.SupportWave(batch, position, radius, accent * (MathF.Pow(remaining, .65f) * .82f),
+            angular: enemy.SignalRole == EnemySignalRole.Bulwark);
+        var boundaryCatch = MathF.Max(0, 1 - MathF.Abs(age - .83f) / .17f);
+        if (boundaryCatch > 0)
+            p.Ring(batch, position, rangeRadius, accent * (boundaryCatch * .55f), 1);
+    }
+
+    public static Vector2 MountedPosition(EnemyInstance enemy, Vector2 position, float radius, float heading) => position;
+
+    public static Rectangle IdentityBounds(EnemyInstance enemy, Vector2 position, float radius, float heading)
+    {
+        var center = MountedPosition(enemy, position, radius, heading);
+        var extent = MathF.Ceiling(EnemyModelArt.CoreRadius(enemy) * 1.12f + 2);
+        return new Rectangle((int)MathF.Floor(center.X - extent), (int)MathF.Floor(center.Y - extent),
+            (int)extent * 2 + 1, (int)extent * 2 + 1);
+    }
+
+    public static void DrawIdentity(SpriteBatch batch, PrimitiveRenderer p, EnemyInstance enemy,
+        Vector2 position, float radius, float time, bool reducedEffects, float heading = 0)
     {
         if (enemy.IsDead || enemy.HasEscaped || enemy.SignalRole == EnemySignalRole.None) return;
-        var forward = new Vector2(MathF.Cos(heading), MathF.Sin(heading));
-        var side = new Vector2(-forward.Y, forward.X);
-        var accent = EnemySignalGlyphRenderer.Accent(enemy.SignalRole);
-        var phase = reducedEffects ? 0 : time + enemy.Id * .173f;
-        var light = reducedEffects ? .8f : .76f + MathF.Sin(phase * 3.1f) * .10f;
-        Vector2 At(float x, float y) => position + (forward * x + side * y) * radius;
-        void Rail(float from, float to, float lateral, Color color, float width) =>
-            p.Line(batch, At(from, lateral), At(to, lateral), color, radius * width);
-
-        switch (enemy.SignalRole)
-        {
-            case EnemySignalRole.Accelerator:
-                for (var sign = -1; sign <= 1; sign += 2)
-                {
-                    Rail(-.56f, -.06f, sign * .34f, ColorPalette.Ink, .23f);
-                    Rail(-.54f, -.08f, sign * .34f, ColorPalette.Muted, .14f);
-                    Rail(-.54f, -.14f, sign * .34f, accent * light, .065f);
-                    p.Line(batch, At(-.31f, sign * .25f), At(-.31f, sign * .43f), ColorPalette.Metal,
-                        MathF.Max(1, radius * .07f));
-                    p.Circle(batch, At(-.57f, sign * .34f), MathF.Max(.8f, radius * .06f), accent);
-                }
-                break;
-            case EnemySignalRole.Restorer:
-                for (var sign = -1; sign <= 1; sign += 2)
-                {
-                    Rail(-.30f, .22f, sign * .34f, ColorPalette.Ink, .22f);
-                    Rail(-.27f, .20f, sign * .34f, ColorPalette.Metal, .16f);
-                    for (var rib = 0; rib < 3; rib++)
-                    {
-                        var along = -.20f + rib * .17f;
-                        p.Line(batch, At(along, sign * .27f), At(along, sign * .41f),
-                            accent * light, MathF.Max(1, radius * .055f));
-                    }
-                }
-                p.Line(batch, At(-.33f, -.29f), At(-.33f, .29f), ColorPalette.Muted, 1.2f);
-                break;
-            case EnemySignalRole.Bulwark:
-                DrawShieldPlates(batch, p, enemy, position, radius, heading, light, false);
-                break;
-            case EnemySignalRole.Jammer:
-                for (var sign = -1; sign <= 1; sign += 2)
-                {
-                    Rail(-.37f, -.03f, sign * .35f, ColorPalette.Ink, .21f);
-                    Rail(-.35f, -.06f, sign * .35f, ColorPalette.Muted, .13f);
-                    p.Line(batch, At(-.27f, sign * .35f), At(-.63f, sign * .47f), ColorPalette.Ink, 3.2f);
-                    p.Line(batch, At(-.27f, sign * .35f), At(-.63f, sign * .47f), ColorPalette.Metal, 1.9f);
-                    p.DrawDiamond(batch, At(-.63f, sign * .47f), MathF.Max(1.15f, radius * .075f),
-                        accent * light, heading);
-                    p.Line(batch, At(-.37f, sign * .29f), At(-.37f, sign * .41f), accent, 1.2f);
-                }
-                break;
-            case EnemySignalRole.Disruptor:
-                for (var sign = -1; sign <= 1; sign += 2)
-                {
-                    Rail(-.32f, .27f, sign * .33f, ColorPalette.Ink, .22f);
-                    Rail(-.29f, .24f, sign * .33f, ColorPalette.Muted, .14f);
-                    Rail(-.27f, -.065f, sign * .33f, accent * light, .065f);
-                    Rail(.045f, .23f, sign * .33f, accent * light, .065f);
-                    p.Line(batch, At(.22f, sign * .33f), At(.36f, sign * .19f), ColorPalette.Ink, 3.1f);
-                    p.Line(batch, At(.22f, sign * .33f), At(.36f, sign * .19f), accent, 1.25f);
-                    p.Circle(batch, At(-.30f, sign * .33f), MathF.Max(.7f, radius * .045f), ColorPalette.Paper * .7f);
-                }
-                break;
-        }
+        EnemyModelArt.DrawSignalCore(batch, p, enemy, position, heading, time, reducedEffects);
     }
 
     public static void DrawTransfer(SpriteBatch batch, PrimitiveRenderer p, Vector2 start, Vector2 end,
@@ -84,82 +73,106 @@ public static class EnemySignalArt
         var length = delta.Length();
         var fade = MathHelper.Clamp(progress, 0, 1);
         if (length < 2 || fade <= 0 || role == EnemySignalRole.None) return;
+        if (role is EnemySignalRole.Jammer or EnemySignalRole.Disruptor)
+            DrawHostileTransfer(batch, p, start, end, role, fade, reducedEffects);
+    }
+
+    private static void DrawHostileTransfer(SpriteBatch batch, PrimitiveRenderer p, Vector2 start, Vector2 end,
+        EnemySignalRole role, float remaining, bool reducedEffects)
+    {
+        var delta = end - start;
+        var length = delta.Length();
         var forward = delta / length;
         var side = new Vector2(-forward.Y, forward.X);
         var accent = EnemySignalGlyphRenderer.Accent(role);
-        var packetLength = Math.Clamp(length * .055f, 3, 10);
-        var count = length < 30 ? 1 : 2;
+        var hot = Color.Lerp(accent, ColorPalette.Paper, .58f);
+        var age = 1 - remaining;
+        var envelope = MathF.Min(1, remaining * 3.5f);
+        var spread = role == EnemySignalRole.Jammer ? 3.6f : 4.0f;
+        var railAlpha = envelope * (reducedEffects ? .32f : .42f);
+        // Paired rails and transverse gates read as an outbound transmission, not weapon tracers.
+        for (var sign = -1; sign <= 1; sign += 2)
+        {
+            var previous = start;
+            const int segments = 10;
+            for (var segment = 1; segment <= segments; segment++)
+            {
+                var t = segment / (float)segments;
+                var width = MathF.Sin(t * MathHelper.Pi) * spread;
+                if (role == EnemySignalRole.Disruptor) width *= segment % 2 == 0 ? .65f : 1.35f;
+                var at = Vector2.Lerp(start, end, t) + side * (sign * width);
+                p.Line(batch, previous, at, ColorPalette.Ink * (envelope * .72f), 3.1f);
+                p.Line(batch, previous, at, accent * railAlpha, 1.35f);
+                previous = at;
+            }
+        }
+        var count = reducedEffects ? 2 : 3;
         for (var packet = 0; packet < count; packet++)
         {
-            var travel = reducedEffects ? .50f + packet * .23f : (1 - fade) * 1.2f - packet * .15f;
-            if (travel < 0 || travel > 1) continue;
-            var position = Vector2.Lerp(start, end, travel);
-            var strength = fade * (reducedEffects ? .7f : MathF.Sin(travel * MathHelper.Pi) * .75f);
-            p.Line(batch, position - forward * packetLength, position, accent * strength, 1.5f);
-            p.Line(batch, position - forward * packetLength * .45f, position, ColorPalette.Paper * (strength * .65f), .75f);
-            if (role == EnemySignalRole.Bulwark)
-                p.Line(batch, position - side * 1.7f, position + side * 1.7f, accent * strength, 1);
-            if (!reducedEffects) p.Glow(batch, position, 7, accent, strength * .4f);
+            var t = reducedEffects ? .32f + packet * .36f : age * 1.85f - packet * .24f;
+            if (t < 0 || t > 1) continue;
+            var at = Vector2.Lerp(start, end, t);
+            var fade = envelope * MathF.Min(1, MathF.Min(t, 1 - t) * 12 + .25f);
+            if (!reducedEffects) p.Glow(batch, at, 11, accent, fade * .25f);
+            if (role == EnemySignalRole.Jammer)
+            {
+                var half = 4 + MathF.Sin(t * MathHelper.Pi) * 3;
+                for (var echo = 0; echo < 2; echo++)
+                {
+                    var tip = at - forward * echo * 4.5f;
+                    var wing = half - echo;
+                    p.Line(batch, tip - forward * 3 - side * wing, tip, ColorPalette.Ink * fade, 3.2f);
+                    p.Line(batch, tip, tip - forward * 3 + side * wing, ColorPalette.Ink * fade, 3.2f);
+                    p.Line(batch, tip - forward * 3 - side * wing, tip, accent * fade, 1.8f);
+                    p.Line(batch, tip, tip - forward * 3 + side * wing, accent * fade, 1.8f);
+                }
+                p.Line(batch, at - side * 2.5f, at + side * 2.5f, hot * fade, 1.1f);
+            }
+            else
+            {
+                var nose = at + forward * 6.5f;
+                var tail = at - forward * 6.5f;
+                var left = at - side * 5.2f;
+                var right = at + side * 5.2f;
+                Edge(nose, left);
+                Edge(left, tail);
+                Edge(tail, right);
+                Edge(right, nose);
+                void Edge(Vector2 first, Vector2 last)
+                {
+                    p.Line(batch, first, last, ColorPalette.Ink * fade, 3.5f);
+                    p.Line(batch, first, last, accent * fade, 1.7f);
+                }
+                p.Line(batch, at - side * 2, at + side * 2, hot * fade, 1.2f);
+            }
         }
+        var terminal = envelope * .8f;
+        p.Line(batch, end - side * 4, end + side * 4, accent * terminal, 1.5f);
+        if (!reducedEffects) p.Glow(batch, start, 10, accent, envelope * .2f);
     }
 
     public static void DrawEmitterPulse(SpriteBatch batch, PrimitiveRenderer p, EnemyInstance enemy,
         Vector2 position, float radius, float heading, float progress, float time, bool reducedEffects)
     {
         if (enemy.IsDead || enemy.HasEscaped || enemy.SignalRole == EnemySignalRole.None || progress <= 0) return;
+        var center = MountedPosition(enemy, position, radius, heading);
         var forward = new Vector2(MathF.Cos(heading), MathF.Sin(heading));
         var side = new Vector2(-forward.Y, forward.X);
         var accent = EnemySignalGlyphRenderer.Accent(enemy.SignalRole);
         var fade = MathHelper.Clamp(progress, 0, 1);
-        Vector2 At(float x, float y) => position + (forward * x + side * y) * radius;
-        if (enemy.SignalRole == EnemySignalRole.Bulwark)
+        if (enemy.SignalRole is EnemySignalRole.Restorer or EnemySignalRole.Bulwark)
         {
-            DrawShieldPlates(batch, p, enemy, position, radius, heading, fade, true);
-            return;
+            if (!reducedEffects)
+                p.Glow(batch, center, EnemyModelArt.CoreRadius(enemy) * 1.6f, accent, fade * fade * .42f);
+            fade *= fade;
         }
+        // Successful transfers energize opposing edges of the reactor socket.
         for (var sign = -1; sign <= 1; sign += 2)
         {
-            var at = enemy.SignalRole switch
-            {
-                EnemySignalRole.Accelerator => At(-.57f, sign * .34f),
-                EnemySignalRole.Jammer => At(-.63f, sign * .47f),
-                EnemySignalRole.Disruptor => At(.23f, sign * .33f),
-                _ => At(-.03f, sign * .34f)
-            };
-            if (!reducedEffects) p.Glow(batch, at, radius * .42f, accent, fade * .65f);
-            p.Line(batch, at - forward * radius * .12f, at + forward * radius * .08f,
-                accent * fade, 2.1f);
-            p.Circle(batch, at, MathF.Max(.8f, radius * .04f), ColorPalette.Paper * (fade * .8f));
-            if (enemy.SignalRole == EnemySignalRole.Restorer)
-                p.Line(batch, at - side * radius * .08f, at + side * radius * .08f,
-                    accent * fade, 1.3f);
-        }
-    }
-
-    private static void DrawShieldPlates(SpriteBatch batch, PrimitiveRenderer p, EnemyInstance enemy,
-        Vector2 position, float radius, float heading, float light, bool pulse)
-    {
-        var runner = enemy.Definition.Id.Contains("runner", StringComparison.Ordinal);
-        var heavy = enemy.IsBoss || enemy.Definition.Id.Contains("brute", StringComparison.Ordinal) ||
-            enemy.Definition.Id.Contains("aegis", StringComparison.Ordinal);
-        var sides = runner ? 3 : heavy ? 6 : 4;
-        var hullRadius = radius * (runner ? 1 : .85f);
-        var front = position + new Vector2(MathF.Cos(heading), MathF.Sin(heading)) * hullRadius;
-        for (var sign = -1; sign <= 1; sign += 2)
-        {
-            var angle = heading + sign * MathHelper.TwoPi / sides;
-            var flank = position + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * hullRadius;
-            var start = Vector2.Lerp(front, flank, .20f);
-            var end = Vector2.Lerp(front, flank, .71f);
-            if (!pulse)
-            {
-                p.Line(batch, start, end, ColorPalette.Ink, MathF.Max(3.6f, radius * .20f));
-                p.Line(batch, start, end, ColorPalette.Muted, MathF.Max(2.4f, radius * .135f));
-            }
-            p.Line(batch, start, end, ColorPalette.Shield * light, pulse ? 2 : 1.1f);
-            if (pulse)
-                p.Line(batch, Vector2.Lerp(start, end, .2f), Vector2.Lerp(start, end, .55f),
-                    ColorPalette.Paper * (light * .6f), 1);
+            var at = center + side * (sign * EnemyModelArt.CoreRadius(enemy) * .78f);
+            if (!reducedEffects) p.Glow(batch, at, 6, accent, fade * .42f);
+            p.Line(batch, at - forward * 1.5f, at + forward * 1.5f,
+                accent * fade, 1.4f);
         }
     }
 }

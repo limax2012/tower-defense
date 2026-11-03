@@ -74,24 +74,17 @@ public sealed partial class UIManager
         _ => index is 5 or 6
     };
 
-    internal string HoveredModeDescription
-    {
-        get
-        {
-            var modes = SetupChallenges();
-            for (var index = 0; index < modes.Count; index++)
-                if (SetupCardRectangle(2, index, modes.Count).Contains(_hudPointer.ToPoint()))
-                    return modes[index].Id == "standard" ? "Full arsenal. Standard rules." : ModeSummary(modes[index].Id);
-            return "";
-        }
-    }
+    internal string SelectedModeDescription => ModeSummary(_challenges.ElementAtOrDefault(_selectedChallengeIndex)?.Id ?? "");
+
+    internal string SelectedDifficultyDescription => _difficulties.ElementAtOrDefault(_selectedDifficultyIndex)?.Description ?? "";
 
     private static string ModeSummary(string id) => id switch
     {
-        "core_six" => "Six core tower types.",
+        "standard" => "Full arsenal. Standard rules.",
+        "core_six" => "Six core tower types only.",
         "no_reserves" => "No Plates, Forge, manual Protocols, or selling.",
-        "close_quarters" => "Signal enemies disrupt nearby defenses.",
-        "sandbox_lab" => "Unlimited resources. Spawn targets and test defenses.",
+        "close_quarters" => "Enemies boost their allies and disrupt your towers.",
+        "sandbox_lab" => "Unlimited resources. Spawn enemies and test defenses.",
         _ => ""
     };
 

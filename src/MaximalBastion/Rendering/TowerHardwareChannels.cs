@@ -5,9 +5,20 @@ namespace MaximalBastion.Rendering;
 /// <summary>Inset conductors follow the physical rails, cooling banks, and housings of each family.</summary>
 internal static class TowerHardwareChannels
 {
-    internal static void DrawProtocol(TowerStatusFrame frame, string id, bool active, bool glow, float opacity = 1)
+    internal static void DrawOperational(TowerStatusFrame frame, string id, bool glow, float opacity = 1,
+        float firing = 0, float power = 1) => DrawConductors(frame, id, protocol: false, glow, opacity, Math.Clamp(firing, 0, 1), power);
+
+    internal static void DrawProtocol(TowerStatusFrame frame, string id, bool active, bool glow, float opacity = 1,
+        float firing = 0) => DrawConductors(frame, id, protocol: active, glow, opacity, Math.Clamp(firing, 0, 1));
+
+    internal static void DrawInterference(TowerStatusFrame frame, string id, bool shutdown, bool glow) =>
+        DrawConductors(frame, id, false, glow, 1, 0, interference: shutdown ? 2 : 1);
+
+    private static void DrawConductors(TowerStatusFrame frame, string id, bool protocol, bool glow,
+        float opacity, float firing, float power = 1, int interference = 0)
     {
-        var d = new ChannelBrush(frame, NightGridArt.TowerAccent(id), active, glow, opacity, receiver: false);
+        var d = new ChannelBrush(frame, NightGridArt.TowerAccent(id), true, glow, opacity,
+            receiver: false, protocol, firing, power, interference);
         var stage = frame.Stage;
         switch (id)
         {
@@ -19,6 +30,7 @@ internal static class TowerHardwareChannels
                     if (stage >= 2) d.Route(-.50f, sign * .48f, -.24f, sign * .47f);
                     if (stage == 4) d.Route(-.53f, sign * .71f, -.23f, sign * .65f);
                 }
+                d.Source(.38f, 0, .42f);
                 break;
             case "watchtower":
                 d.Route(.33f, 0, stage >= 3 ? 1.08f : .88f, 0);
@@ -27,14 +39,22 @@ internal static class TowerHardwareChannels
                 if (stage >= 3)
                     for (var sign = -1; sign <= 1; sign += 2)
                         d.Route(.46f, sign * .19f, .93f, sign * .19f);
+                d.Source(-.17f, 0, .35f);
                 break;
             case "shard_fan":
-                var fan = stage == 1 ? .43f : stage == 4 ? .69f : .57f;
-                for (var i = -1; i <= 1; i++)
-                    d.Route(.12f, i * (fan * .36f), .48f, i * (fan * .61f));
-                if (stage == 4)
-                    for (var sign = -1; sign <= 1; sign += 2)
-                        d.Route(-.42f, sign * .69f, .10f, sign * .75f);
+                var shardCore = TowerTierVisuals.ShardCoreRadius(stage);
+                var shardVane = TowerTierVisuals.ShardVaneCenter(stage);
+                var shardSplit = TowerTierVisuals.ShardVaneSplit(stage);
+                for (var i = 0; i < 3; i++)
+                    for (var petal = stage < 3 ? 0 : -1; petal <= (stage < 3 ? 0 : 1); petal += 2)
+                    {
+                        var angle = i * MathHelper.TwoPi / 3 + petal * shardSplit;
+                        var x = MathF.Cos(angle);
+                        var y = MathF.Sin(angle);
+                        d.Route(x * (shardCore + .13f), y * (shardCore + .13f),
+                            x * (shardVane - .05f), y * (shardVane - .05f));
+                    }
+                d.Source(0, 0, shardCore * 1.65f);
                 break;
             case "frost_spire":
                 var banks = TowerTierVisuals.FrostCoolantBanks(stage);
@@ -42,6 +62,7 @@ internal static class TowerHardwareChannels
                 var length = TowerTierVisuals.FrostCoolantLength(stage) * .63f;
                 for (var i = 0; i < banks; i++)
                     BankRoute(d, MathHelper.PiOver2 + i * MathHelper.TwoPi / banks, offset, -length, length);
+                d.Source(0, 0, TowerTierVisuals.FrostRotorRadius(stage) * 1.20f);
                 break;
             case "ember_coil":
                 var chamber = TowerTierVisuals.EmberChamberRadius(stage);
@@ -58,17 +79,17 @@ internal static class TowerHardwareChannels
                         else d.Route(-.56f, sign * .57f, -.46f, sign * .57f);
                         if (stage >= 3) d.Route(.05f, sign * .72f, .37f, sign * .72f);
                     }
-                if (active && glow) frame.Glow(0, 0, chamber * 1.35f, ColorPalette.EmberCore,
-                    (.28f + frame.Beat(6) * .20f) * opacity);
+                d.Source(0, 0, chamber * 1.35f);
                 break;
             case "breaker_cannon":
                 for (var sign = -1; sign <= 1; sign += 2)
                 {
                     var bank = stage == 1 ? .29f : .35f;
                     d.Route(-.40f, sign * bank, -.15f, sign * bank, stage == 1 ? .08f : .10f);
-                    if (stage >= 2) d.Route(.16f, sign * .18f, .55f, sign * .18f);
+                    if (stage >= 2) d.Route(.16f, sign * .18f, stage == 2 ? .50f : .55f, sign * .18f);
                     if (stage >= 3) d.Route(-.66f, sign * .67f, -.37f, sign * .67f);
                     if (stage == 4) d.Route(-.45f, sign * .84f, -.14f, sign * .79f);
+                    d.Source(-.27f, sign * bank, .29f);
                 }
                 break;
             case "arc_relay":
@@ -80,8 +101,7 @@ internal static class TowerHardwareChannels
                     var start = Vector2.Lerp(new Vector2(-.20f, 0), end, .50f);
                     var stop = Vector2.Lerp(new Vector2(-.20f, 0), end, .83f);
                     d.Route(start.X, start.Y, stop.X, stop.Y);
-                    if (active && glow) frame.Glow(end.X, end.Y, .38f, ColorPalette.Cobalt,
-                        (.30f + frame.Beat(7) * .20f) * opacity);
+                    d.Source(end.X, end.Y, .36f);
                 }
                 if (stage >= 3)
                     for (var sign = -1; sign <= 1; sign += 2)
@@ -99,6 +119,7 @@ internal static class TowerHardwareChannels
                         BankRoute(d, MathHelper.PiOver2 + i * MathHelper.TwoPi / count,
                             TowerTierVisuals.MortarBankOffset(stage), -half, half);
                 }
+                d.Source(0, 0, well * 1.05f);
                 break;
             case "prism_beam":
                 var span = stage switch { 1 => .42f, 2 => .50f, 3 => .59f, _ => .69f };
@@ -109,6 +130,7 @@ internal static class TowerHardwareChannels
                     if (stage >= 3) d.Route(-.64f, sign * .57f, -.34f, sign * .73f);
                     if (stage == 4) d.Route(-.36f, sign * .89f, .20f, sign * .89f);
                 }
+                d.Source(0, 0, .60f + stage * .035f);
                 break;
             case "signal_beacon":
                 d.Route(-.04f, 0, .42f, 0);
@@ -124,13 +146,14 @@ internal static class TowerHardwareChannels
                 if (stage == 4)
                     for (var sign = -1; sign <= 1; sign += 2)
                         d.Route(-.48f, sign * .66f, .22f, sign * .66f);
+                d.Source(0, 0, .50f + stage * .04f);
                 break;
         }
     }
 
     internal static void DrawReceiver(TowerStatusFrame frame, string id, bool active, bool glow, float opacity = 1)
     {
-        var d = new ChannelBrush(frame, ColorPalette.GreenText, active, glow, opacity, receiver: true);
+        var d = new ChannelBrush(frame, ColorPalette.BeaconHighlight, active, glow, opacity, receiver: true);
         var stage = frame.Stage;
         switch (id)
         {
@@ -140,14 +163,16 @@ internal static class TowerHardwareChannels
                 d.Route(rear, -height, rear, height);
                 break;
             case "watchtower":
-                if (stage == 1) d.Route(-.23f, -.25f, .08f, -.25f);
-                else d.Route(-.30f, -.44f, .09f, -.44f);
+                var watchRear = stage == 1 ? -.50f : -.65f;
+                var watchHalfWidth = stage == 1 ? .12f : .15f;
+                d.Route(watchRear, -watchHalfWidth, watchRear, watchHalfWidth);
                 break;
             case "shard_fan":
-                if (stage == 1) d.Route(-.20f, 0, .03f, 0);
-                else
-                    for (var sign = -1; sign <= 1; sign += 2)
-                        d.Route(-.60f, sign * .395f, -.33f, sign * .319f);
+                var receiverRadius = TowerTierVisuals.ShardReceiverRadius(stage);
+                var receiverHalfWidth = stage < 3 ? .09f : stage == 3 ? .18f : .25f;
+                for (var i = 0; i < 3; i++)
+                    BankRoute(d, i * MathHelper.TwoPi / 3, receiverRadius,
+                        -receiverHalfWidth, receiverHalfWidth);
                 break;
             case "frost_spire":
                 var banks = TowerTierVisuals.FrostCoolantBanks(stage);
@@ -223,11 +248,51 @@ internal static class TowerHardwareChannels
     }
 
     private readonly struct ChannelBrush(TowerStatusFrame frame, Color energy, bool active, bool glow,
-        float opacity, bool receiver)
+        float opacity, bool receiver, bool protocol = false, float firing = 0, float power = 1, int interference = 0)
     {
+        internal void Source(float x, float y, float size)
+        {
+            if (!glow || interference != 0 || power < .5f) return;
+            // Local spill comes from the emitter or capacitor; armor retains its unlit material value.
+            var strength = (protocol ? .20f : .13f) + firing * .16f;
+            frame.Glow(x, y, size, energy, strength * opacity);
+        }
+
         internal void Route(float x1, float y1, float x2, float y2, float width = 0)
         {
             if (width <= 0) width = receiver ? .075f : .10f;
+            if (interference != 0)
+            {
+                var faultStart = new Vector2(x1, y1);
+                var faultEnd = new Vector2(x2, y2);
+                var shutdown = interference == 2;
+                var fault = shutdown ? ColorPalette.Disruption : ColorPalette.Orange;
+                var intensity = shutdown ? .38f + frame.Beat(8) * .62f : .70f + frame.Beat(17) * .25f;
+                frame.Line(x1, y1, x2, y2, ColorPalette.Navy, width + .035f);
+                // Signal faults interrupt existing conductors; no geometry crosses the weapon aperture.
+                for (var segment = 0; segment < 2; segment++)
+                {
+                    // Jammer interference flows backward through the weapon's conductors.
+                    var offset = shutdown ? segment * .78f : (1 - frame.Phase(2.3f) + segment * .5f) % 1;
+                    var faultFirst = Vector2.Lerp(faultStart, faultEnd, offset * (shutdown ? 1 : .72f));
+                    var faultLast = Vector2.Lerp(faultStart, faultEnd, shutdown ? offset + .22f : offset * .72f + .28f);
+                    frame.Line(faultFirst.X, faultFirst.Y, faultLast.X, faultLast.Y, fault * intensity, width * .85f);
+                    if (glow) frame.Glow(faultFirst.X, faultFirst.Y, .20f, fault, intensity * .20f);
+                }
+                return;
+            }
+            if (!receiver)
+            {
+                var breath = frame.Beat(2.1f);
+                var illumination = protocol ? .94f : .78f + breath * .035f;
+                var lit = Color.Lerp(ColorPalette.Navy, Color.Lerp(ColorPalette.Metal, energy, illumination), power);
+                var hot = Color.Lerp(ColorPalette.Navy,
+                    Color.Lerp(energy, ColorPalette.Paper, (protocol ? .25f : .09f) + firing * .28f), power);
+                frame.Line(x1, y1, x2, y2, ColorPalette.Navy * opacity, width + .035f);
+                frame.Line(x1, y1, x2, y2, lit * opacity, width * .82f);
+                frame.Line(x1, y1, x2, y2, hot * ((.70f + firing * .25f) * opacity), width * .40f);
+                return;
+            }
             if (!active)
             {
                 frame.Line(x1, y1, x2, y2, ColorPalette.Navy * opacity, width + .045f);

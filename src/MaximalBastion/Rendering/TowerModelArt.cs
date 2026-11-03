@@ -7,11 +7,12 @@ public static partial class NightGridArt
 {
     private static void DrawTowerModel(SpriteBatch batch, PrimitiveRenderer primitives, Vector2 center,
         float radius, string id, int level, float angle, float time, float recoil, float opacity,
-        bool lights, bool groundEffects, bool apex)
+        bool lights, bool groundEffects, bool apex, float power)
     {
         var stage = TowerTierVisuals.Stage(level, apex);
-        var accent = TowerAccent(id) * opacity;
-        var brush = new TowerBrush(batch, primitives, center, radius, angle, opacity, accent);
+        power = Math.Clamp(power, 0, 1);
+        var accent = Color.Lerp(ColorPalette.Navy, TowerAccent(id), power) * opacity;
+        var brush = new TowerBrush(batch, primitives, center, radius, angle, opacity, accent, power);
         DrawTowerFoundation(batch, primitives, center, radius, id, stage, accent, opacity, lights, groundEffects);
         DrawModelTierIndicators(batch, primitives, center, radius, id, stage, accent, opacity, lights && groundEffects);
 
@@ -22,7 +23,7 @@ public static partial class NightGridArt
             case "watchtower": DrawWatchtower(brush, stage, recoil); break;
             case "breaker_cannon": DrawBreaker(brush, stage, recoil); break;
             case "shard_fan": DrawShard(brush, stage, recoil); break;
-            case "frost_spire": DrawFrost(brush, stage, time); break;
+            case "frost_spire": DrawFrost(brush, stage); break;
             case "ember_coil": DrawEmber(brush, stage, recoil, time); break;
             case "arc_relay": DrawArc(brush, stage, time); break;
             case "siege_mortar": DrawMortar(brush, stage, recoil); break;
@@ -30,11 +31,16 @@ public static partial class NightGridArt
             case "signal_beacon": DrawBeacon(brush, stage, time); break;
         }
 
-        TowerProtocolArt.DrawStandby(batch, primitives, center, radius, id, level, apex, angle, opacity);
+        var hardware = new TowerStatusFrame(batch, primitives, center, radius, id, level, apex,
+            angle, time, reducedEffects: !lights);
+        TowerHardwareChannels.DrawOperational(hardware, id, glow: lights && groundEffects, opacity,
+            firing: Math.Clamp(recoil / .2f, 0, 1), power: power);
+        TowerHardwareChannels.DrawReceiver(hardware, id, active: false, glow: false, opacity);
 
-        if (!lights || id == "prism_beam") return;
+        if (!lights || power < .5f || id == "prism_beam") return;
         var muzzle = TowerMuzzlePosition(center, radius, id, level, angle, recoil, apex);
-        DrawMuzzleFlash(batch, primitives, muzzle, radius, accent, recoil, opacity);
+        if (id != "shard_fan")
+            DrawMuzzleFlash(batch, primitives, muzzle, radius, accent, recoil, opacity);
         TowerAttackArt.DrawMuzzle(batch, primitives, id, muzzle,
             new Vector2(MathF.Cos(angle), MathF.Sin(angle)), accent,
             Math.Clamp(recoil / .2f, 0, 1), false, level, apex);
@@ -49,10 +55,10 @@ public static partial class NightGridArt
             "needle_turret" => NeedleLength(stage) - recoil,
             "watchtower" => WatchLength(stage) - recoil,
             "breaker_cannon" => BreakerLength(stage) - recoil,
-            "shard_fan" => ShardLength(stage) - recoil,
+            "shard_fan" => 0,
             "ember_coil" => TowerTierVisuals.EmberNozzleLength(stage) - recoil,
             "prism_beam" => TowerTierVisuals.PrismBarrelLength(level, apex),
-            "frost_spire" => .65f,
+            "frost_spire" => 0,
             "arc_relay" => .70f,
             _ => 0
         };
@@ -62,7 +68,6 @@ public static partial class NightGridArt
     private static float NeedleLength(int stage) => stage switch { 1 => 1.00f, 2 => 1.12f, 3 => 1.25f, _ => 1.34f };
     private static float WatchLength(int stage) => stage switch { 1 => 1.22f, 2 => 1.36f, 3 => 1.48f, _ => 1.58f };
     private static float BreakerLength(int stage) => stage switch { 1 => .96f, 2 => 1.03f, 3 => 1.12f, _ => 1.18f };
-    private static float ShardLength(int stage) => stage switch { 1 => .92f, 2 => 1.00f, 3 => 1.12f, _ => 1.20f };
 
     private static void DrawModelTierIndicators(SpriteBatch b, PrimitiveRenderer p, Vector2 center,
         float radius, string id, int stage, Color accent, float opacity, bool lights)
@@ -148,11 +153,10 @@ public static partial class NightGridArt
         {
             d.Rail(-.18f, sign * spread, end, sign * spread, d.Dark, .19f);
             d.Rail(-.12f, sign * spread, end, sign * spread, d.Metal, .12f);
-            d.Rail(.10f, sign * spread, end - .03f, sign * spread, sign < 0 ? d.Accent : d.White, .055f);
+            d.Rail(.10f, sign * spread, end - .03f, sign * spread, d.White, .055f);
             if (stage >= 2)
             {
                 d.Rail(-.62f, sign * .48f, -.03f, sign * .46f, d.Ceramic, .23f);
-                d.Rail(-.52f, sign * .48f, -.23f, sign * .47f, d.Accent, .075f);
                 d.Rail(.08f, sign * spread, .30f, sign * spread, d.Ceramic, .22f);
             }
             if (stage >= 3)
@@ -164,8 +168,7 @@ public static partial class NightGridArt
             if (stage == 4)
             {
                 d.Rail(-.67f, sign * .72f, -.12f, sign * .62f, d.Ceramic, .22f);
-                d.Rail(-.56f, sign * .72f, -.20f, sign * .65f, d.Accent, .09f);
-                d.Rail(.45f, sign * .42f, 1.02f - recoil, sign * .35f, d.Accent, .085f);
+                d.Rail(.45f, sign * .42f, 1.02f - recoil, sign * .35f, d.Ceramic, .085f);
             }
         }
         d.Rail(-.48f, 0, -.02f, 0, d.Accent, stage >= 3 ? .14f : .09f);
@@ -175,40 +178,41 @@ public static partial class NightGridArt
     private static void DrawWatchtower(TowerBrush d, int stage, float recoil)
     {
         var end = WatchLength(stage) - recoil;
+        var receiver = stage == 1 ? -.50f : -.65f;
+        d.Rail(receiver, 0, -.29f, 0, d.Metal, .24f);
+        d.Rail(receiver, -.19f, receiver, .19f, d.Dark, .20f);
+        d.Rail(receiver, -.17f, receiver, .17f, d.Ceramic, .14f);
         d.Rail(-.49f, 0, .15f, 0, d.Metal, stage >= 3 ? .62f : .44f);
         d.Rail(-.39f, 0, .08f, 0, d.Ceramic, stage >= 3 ? .39f : .28f);
+        for (var sign = -1; sign <= 1; sign += 2)
+        {
+            if (stage >= 2)
+            {
+                d.Rail(-.56f, sign * .40f, .27f, sign * .31f, d.Dark, .29f);
+                d.Rail(-.51f, sign * .40f, .24f, sign * .31f, d.Metal, .22f);
+                d.Rail(-.43f, sign * .40f, .08f, sign * .34f, d.Ceramic, .12f);
+            }
+            if (stage >= 3)
+            {
+                d.Rail(-.74f, sign * .54f, -.19f, sign * .47f, d.Metal, .25f);
+                d.Rail(-.68f, sign * .54f, -.25f, sign * .48f, d.Ceramic, .14f);
+                d.Rail(.38f, sign * .19f, end - .29f, sign * .19f, d.Ceramic, .11f);
+            }
+            if (stage == 4)
+            {
+                d.Rail(-.87f, sign * .32f, -.49f, sign * .32f, d.Metal, .22f);
+                d.Rail(-.82f, sign * .32f, -.55f, sign * .32f, d.Accent, .08f);
+                d.Rail(.28f, sign * .42f, .97f, sign * .30f, d.Metal, .20f);
+                d.Rail(.42f, sign * .42f, .75f, sign * .36f, d.Accent, .07f);
+            }
+        }
+        d.Rail(-.32f, 0, -.12f, 0, d.Dark, .15f);
+        d.Rail(-.29f, 0, -.15f, 0, d.Accent, .075f);
+        // The coaxial barrel sits above the receiver and stabilizer assembly.
         d.Rail(-.10f, 0, end, 0, d.Dark, stage == 4 ? .31f : .25f);
         d.Rail(-.03f, 0, end, 0, d.Metal, stage == 4 ? .22f : .16f);
         d.Rail(.19f, 0, end - .02f, 0, d.White, .06f);
         d.Rail(end - .22f, 0, end - .02f, 0, d.Accent, .10f);
-        if (stage == 1)
-        {
-            d.Rail(-.26f, -.25f, .15f, -.25f, d.Dark, .15f);
-            d.Disc(.17f, -.25f, .10f, d.Accent);
-            return;
-        }
-        d.Rail(-.40f, -.44f, .27f, -.44f, d.Metal, .29f);
-        d.Rail(-.35f, -.44f, .13f, -.44f, d.Ceramic, .17f);
-        d.Disc(.28f, -.44f, .18f, d.Dark);
-        d.Disc(.30f, -.44f, .115f, d.Accent);
-        d.Disc(.33f, -.47f, .035f, d.White);
-        d.Rail(-.37f, .40f, .27f, .35f, d.Ceramic, .19f);
-        if (stage >= 3)
-        {
-            d.Rail(-.72f, -.56f, -.19f, -.56f, d.Ceramic, .22f);
-            d.Rail(-.72f, .52f, -.19f, .49f, d.Metal, .23f);
-            d.Rail(.38f, -.19f, end - .29f, -.19f, d.Ceramic, .11f);
-            d.Rail(.38f, .19f, end - .29f, .19f, d.Ceramic, .11f);
-        }
-        if (stage == 4)
-        {
-            d.Rail(-.87f, -.32f, -.49f, -.32f, d.Accent, .16f);
-            d.Rail(-.87f, .32f, -.49f, .32f, d.Accent, .16f);
-            d.Rail(.28f, -.42f, .97f, -.30f, d.Metal, .20f);
-            d.Rail(.28f, .42f, .97f, .30f, d.Metal, .20f);
-            d.Rail(.42f, -.42f, .75f, -.36f, d.Accent, .07f);
-            d.Rail(.42f, .42f, .75f, .36f, d.Accent, .07f);
-        }
     }
 
     private static void DrawBreaker(TowerBrush d, int stage, float recoil)
@@ -248,48 +252,71 @@ public static partial class NightGridArt
 
     private static void DrawShard(TowerBrush d, int stage, float recoil)
     {
-        var end = ShardLength(stage) - recoil;
-        if (stage >= 2)
+        var core = TowerTierVisuals.ShardCoreRadius(stage);
+        var vaneCenter = TowerTierVisuals.ShardVaneCenter(stage);
+        var vaneSize = TowerTierVisuals.ShardVaneSize(stage);
+        var split = TowerTierVisuals.ShardVaneSplit(stage);
+        var receiver = TowerTierVisuals.ShardReceiverRadius(stage);
+        d.Poly(0, 0, core + .19f, 6, d.Metal);
+        d.Poly(0, 0, core + .12f, 6, d.Dark);
+
+        // Broad focusing petals feed the exposed central discharge aperture.
+        for (var index = 0; index < 3; index++)
         {
-            d.Poly(-.20f, 0, stage == 4 ? .69f : .54f, 3, d.Metal);
-            d.Poly(-.20f, 0, stage == 4 ? .47f : .35f, 3, d.Dark);
-        }
-        for (var i = -1; i <= 1; i++)
-        {
-            var spread = stage == 1 ? .43f : stage == 4 ? .69f : .57f;
-            d.Rail(-.25f, i * .12f, end, i * spread, d.Metal, stage >= 3 ? .34f : .25f);
-            d.Rail(-.17f, i * .12f, end - .27f, i * spread * .80f, d.Ceramic, stage >= 3 ? .19f : .13f);
-            d.Rail(end - .28f, i * spread * .84f, end, i * spread, d.Accent, .12f);
-            if (stage >= 3)
+            var axisAngle = index * MathHelper.TwoPi / 3;
+            var axis = new Vector2(MathF.Cos(axisAngle), MathF.Sin(axisAngle));
+            var side = new Vector2(-axis.Y, axis.X);
+            var firstPetal = stage < 3 ? 0 : -1;
+            var lastPetal = stage < 3 ? 0 : 1;
+            for (var petal = firstPetal; petal <= lastPetal; petal += 2)
             {
-                d.Rail(end - .45f, i * spread * .70f, end - .23f, i * spread * .86f, d.Dark, .29f);
-                d.Rail(end - .42f, i * spread * .72f, end - .26f, i * spread * .84f, d.Ceramic, .23f);
+                var angle = axisAngle + petal * split;
+                var ray = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+                d.Rail(ray.X * (core + .04f), ray.Y * (core + .04f),
+                    ray.X * vaneCenter, ray.Y * vaneCenter, d.Metal, stage >= 3 ? .20f : .18f);
+                d.Poly(ray.X * vaneCenter, ray.Y * vaneCenter, vaneSize + .035f, 3, d.Metal, angle + MathHelper.Pi);
+                d.Poly(ray.X * vaneCenter, ray.Y * vaneCenter, vaneSize * .80f, 3, d.Ceramic, angle + MathHelper.Pi);
+                d.Rail(ray.X * (core + .13f), ray.Y * (core + .13f),
+                    ray.X * (vaneCenter - .05f), ray.Y * (vaneCenter - .05f), d.Dark, .13f);
+            }
+
+            var halfWidth = stage < 3 ? .12f : stage == 3 ? .22f : .29f;
+            var a = axis * receiver - side * halfWidth;
+            var b = axis * receiver + side * halfWidth;
+            d.Rail(a.X, a.Y, b.X, b.Y, d.Metal, stage == 1 ? .18f : .24f);
+            d.Rail(a.X, a.Y, b.X, b.Y, d.Dark, .10f);
+            if (stage >= 2)
+            {
+                for (var sign = -1; sign <= 1; sign += 2)
+                {
+                    var terminal = axis * receiver + side * halfWidth * sign;
+                    d.Disc(terminal.X, terminal.Y, stage == 4 ? .09f : .07f, d.Ceramic);
+                    d.Disc(terminal.X, terminal.Y, .035f, d.Dark);
+                }
+            }
+            if (stage == 4)
+            {
+                var outer = axis * (receiver + .19f);
+                d.Poly(outer.X, outer.Y, .13f, 4, d.Metal, axisAngle + MathHelper.PiOver4);
+                d.Rail(outer.X - side.X * .055f, outer.Y - side.Y * .055f,
+                    outer.X + side.X * .055f, outer.Y + side.Y * .055f, d.Accent, .055f);
             }
         }
-        if (stage >= 2)
-        {
-            d.Rail(-.69f, -.42f, -.19f, -.28f, d.Ceramic, .25f);
-            d.Rail(-.69f, .42f, -.19f, .28f, d.Ceramic, .25f);
-            d.Disc(-.30f, 0, .17f, d.Accent);
-        }
-        if (stage == 4)
-        {
-            d.Rail(-.60f, -.68f, .26f, -.78f, d.Metal, .25f);
-            d.Rail(-.60f, .68f, .26f, .78f, d.Metal, .25f);
-            d.Rail(-.46f, -.68f, .14f, -.76f, d.Accent, .10f);
-            d.Rail(-.46f, .68f, .14f, .76f, d.Accent, .10f);
-            d.Diamond(-.30f, 0, .12f, d.White);
-        }
+
+        d.Poly(0, 0, core + .105f, 6, d.Ceramic);
+        d.Poly(0, 0, core + .055f, 6, d.Dark);
+        d.Poly(0, 0, core, 6, d.Accent);
+        d.Poly(0, 0, core * .62f, 6, Color.Lerp(d.Accent, d.White, .32f + recoil));
+        d.Poly(0, 0, core * (.24f + recoil * .28f), 6, d.White);
     }
 
-    private static void DrawFrost(TowerBrush d, int stage, float time)
+    private static void DrawFrost(TowerBrush d, int stage)
     {
         var rotor = TowerTierVisuals.FrostRotorRadius(stage);
         var offset = TowerTierVisuals.FrostCoolantOffset(stage);
         var length = TowerTierVisuals.FrostCoolantLength(stage);
         var banks = TowerTierVisuals.FrostCoolantBanks(stage);
-        var spin = time * .22f;
-        // Fixed coolant banks attach to the bearing outside the crystal's full swept radius.
+        // Coolant banks and the crystal share one concentric rotating assembly.
         for (var i = 0; i < banks; i++)
         {
             var a = MathHelper.PiOver2 + i * MathHelper.TwoPi / banks;
@@ -328,10 +355,10 @@ public static partial class NightGridArt
         }
         d.Poly(0, 0, rotor + .14f, 8, d.Metal, MathHelper.PiOver4);
         d.Disc(0, 0, rotor + .075f, d.Dark);
-        d.Diamond(0, 0, rotor, d.Ceramic, spin);
-        d.Diamond(0, 0, rotor - .07f, d.Dark, spin);
-        d.Diamond(0, 0, rotor - .12f, d.Accent, spin);
-        if (stage == 4) d.Diamond(0, 0, .13f, d.White, spin);
+        d.Diamond(0, 0, rotor, d.Ceramic);
+        d.Diamond(0, 0, rotor - .07f, d.Dark);
+        d.Diamond(0, 0, rotor - .12f, Color.Lerp(d.Accent, d.White, .30f));
+        if (stage == 4) d.Diamond(0, 0, .13f, d.White);
     }
 
     private static void DrawEmber(TowerBrush d, int stage, float recoil, float time)
@@ -567,7 +594,7 @@ public static partial class NightGridArt
         public readonly Color Accent;
 
         public TowerBrush(SpriteBatch batch, PrimitiveRenderer primitives, Vector2 center, float radius,
-            float angle, float opacity, Color accent)
+            float angle, float opacity, Color accent, float power)
         {
             _batch = batch;
             _primitives = primitives;
@@ -579,7 +606,7 @@ public static partial class NightGridArt
             Metal = ColorPalette.Metal * opacity;
             Ceramic = Color.Lerp(ColorPalette.Metal, ColorPalette.Paper, .56f) * opacity;
             Dark = ColorPalette.Navy * opacity;
-            White = ColorPalette.Paper * opacity;
+            White = Color.Lerp(ColorPalette.Muted, ColorPalette.Paper, power) * opacity;
             Accent = accent;
         }
 

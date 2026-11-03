@@ -102,10 +102,10 @@ public sealed partial class VisualVerificationGame
     private void DrawAegisSample(StatusReviewEnemy sample, Vector2 center, float time, bool reduced)
     {
         var enemy = sample.Enemy;
-        NightGridArt.Enemy(_batch, _primitives, center, enemy.Radius, enemy.Definition.Id,
-            sample.Heading, reduced ? 0 : time, enemy.IsBoss, lights: !reduced);
-        EnemySignalArt.DrawHardware(_batch, _primitives, enemy, center, enemy.Radius, sample.Heading, time, reduced);
-        EnemyStatusArt.Draw(_batch, _primitives, enemy, center, enemy.Radius, sample.Heading, time, reduced);
+        var radius = EnemyModelArt.BodyRadius(enemy);
+        EnemyModelArt.Draw(_batch, _primitives, enemy, center, sample.Heading, time, reduced);
+
+        EnemyStatusArt.Draw(_batch, _primitives, enemy, center, radius, sample.Heading, time, reduced);
     }
 
     private Color[] AegisPixels(StatusReviewEnemy sample, float time, bool reduced)

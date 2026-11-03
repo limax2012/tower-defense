@@ -40,19 +40,20 @@ public sealed class ProjectileSystem
             if (!projectile.Update(deltaSeconds)) continue;
             if (projectile.Kind == ProjectileKind.ImpactPoint)
             {
-                ApplySplash(session, projectile);
-                AddSplashEffect(session, projectile);
+                var recipient = ApplySplash(session, projectile);
+                AddSplashEffect(session, projectile, recipient);
             }
             else if (projectile.Kind == ProjectileKind.Homing && projectile.SplashRadius > 0)
             {
-                ApplySplash(session, projectile);
-                AddSplashEffect(session, projectile);
+                var recipient = ApplySplash(session, projectile);
+                AddSplashEffect(session, projectile, recipient);
             }
             else if (projectile.Target is { IsDead: false, HasEscaped: false } target)
             {
                 session.DamageResolver.Apply(target, projectile.Payload);
                 session.Effects.AddImpact(target.Position, projectile.Color,
-                    MathF.Max(6, MathF.Min(12, target.Radius * 0.6f)), appearance, incomingDirection);
+                    MathF.Max(6, MathF.Min(12, target.Radius * 0.6f)), appearance, incomingDirection,
+                    targetEnemy: target);
                 ApplyRicochet(session, projectile, target);
             }
             projectile.Expire();
@@ -75,11 +76,9 @@ public sealed class ProjectileSystem
 
         session.DamageResolver.Apply(secondary, ScaleDamage(projectile.Payload, projectile.RicochetDamageMultiplier));
         var appearance = projectile.Appearance.Resolve(session, projectile.Payload.SourceTowerId);
-        session.Effects.AddBeam(primary.Position, secondary.Position, projectile.Color, 0.11f,
-            appearance: appearance);
-        session.Effects.AddImpact(secondary.Position, projectile.Color,
-            MathF.Max(5, MathF.Min(9, secondary.Radius * 0.5f)), appearance,
-            secondary.Position - primary.Position);
+        session.Effects.AddRicochet(primary.Position, secondary.Position, projectile.Color,
+            projectile.Speed, projectile.Radius,
+            MathF.Max(5, MathF.Min(9, secondary.Radius * 0.5f)), appearance, secondary);
     }
 
     private static DamagePayload ScaleDamage(DamagePayload payload, float multiplier) => new()
@@ -93,16 +92,17 @@ public sealed class ProjectileSystem
         SourceTowerId = payload.SourceTowerId
     };
 
-    private static void AddSplashEffect(MaximalBastion.GameSession session, ProjectileInstance projectile)
+    private static void AddSplashEffect(MaximalBastion.GameSession session, ProjectileInstance projectile,
+        EnemyInstance? targetEnemy)
     {
         session.Effects.AddSplash(
             projectile.Position,
             projectile.Color,
             MathF.Max(10, projectile.SplashRadius),
-            projectile.Appearance.Resolve(session, projectile.Payload.SourceTowerId));
+            projectile.Appearance.Resolve(session, projectile.Payload.SourceTowerId), targetEnemy: targetEnemy);
     }
 
-    private static void ApplySplash(MaximalBastion.GameSession session, ProjectileInstance projectile)
+    private static EnemyInstance? ApplySplash(MaximalBastion.GameSession session, ProjectileInstance projectile)
     {
         var radiusSquared = projectile.SplashRadius * projectile.SplashRadius;
         IEnumerable<EnemyInstance> targets = session.Enemies.Where(enemy =>
@@ -113,6 +113,20 @@ public sealed class ProjectileSystem
                 .OrderBy(enemy => Vector2.DistanceSquared(enemy.Position, projectile.Position))
                 .ThenBy(enemy => enemy.Id)
                 .Take(projectile.SplashTargetLimit);
-        foreach (var enemy in targets) session.DamageResolver.Apply(enemy, projectile.Payload);
+        EnemyInstance? recipient = null;
+        var nearestDistanceSquared = float.MaxValue;
+        foreach (var enemy in targets)
+        {
+            session.DamageResolver.Apply(enemy, projectile.Payload);
+            if (enemy.IsDead || enemy.HasEscaped) continue;
+            var distanceSquared = Vector2.DistanceSquared(enemy.Position, projectile.Position);
+            if (distanceSquared < nearestDistanceSquared ||
+                distanceSquared == nearestDistanceSquared && (recipient is null || enemy.Id < recipient.Id))
+            {
+                recipient = enemy;
+                nearestDistanceSquared = distanceSquared;
+            }
+        }
+        return recipient;
     }
 }

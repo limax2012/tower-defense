@@ -3,34 +3,9 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace MaximalBastion.Rendering;
 
-/// <summary>Temporary receiving, power-fault, and output-lock states attached to tower hardware.</summary>
+/// <summary>Receiving power, interrupted conductors, and interference within tower hardware.</summary>
 public static class TowerStatusArt
 {
-    public static void DrawPowerConnection(SpriteBatch batch, PrimitiveRenderer p, Vector2 center, float radius,
-        string towerId, int level, bool apex, float aim, float time, bool reducedEffects)
-    {
-        var d = new TowerStatusFrame(batch, p, center, radius, towerId, level, apex, 0, time, reducedEffects);
-        var mount = d.Stage switch { 1 => .89f, 2 => .99f, 3 => 1.06f, _ => 1.12f };
-        var triangular = towerId is "arc_relay" or "signal_beacon" or "shard_fan";
-        var gold = ColorPalette.Gold * (.82f + d.Beat(2.4f) * .18f);
-        if (triangular)
-        {
-            d.Line(0, -mount * .84f, 0, -mount * .52f, ColorPalette.Ink, .27f);
-            d.Line(0, -mount * .82f, 0, -mount * .54f, ColorPalette.Metal, .18f);
-            d.Line(0, -mount * .78f, 0, -mount * .58f, gold, .075f);
-            d.Line(-.09f, -mount * .58f, .09f, -mount * .58f, gold, .055f);
-        }
-        else
-        {
-            var y = mount * (towerId is "watchtower" or "frost_spire" ? .60f : .78f);
-            d.Line(-.26f, y, .26f, y, ColorPalette.Ink, .23f);
-            d.Line(-.23f, y, .23f, y, ColorPalette.Metal, .16f);
-            d.Line(-.18f, y, .18f, y, gold, .06f);
-            for (var sign = -1; sign <= 1; sign += 2)
-                d.Trace(sign * .15f, y - .09f, sign * .15f, y + .07f, gold, .045f);
-        }
-    }
-
     public static void DrawSupport(SpriteBatch batch, PrimitiveRenderer p, Vector2 center, float radius,
         string towerId, int level, bool apex, float aim, float time, bool reducedEffects, float strength = 1)
     {
@@ -43,93 +18,34 @@ public static class TowerStatusArt
         string towerId, int level, bool apex, float aim, float time, bool reducedEffects)
     {
         var d = new TowerStatusFrame(batch, p, center, radius, towerId, level, apex, aim, time, reducedEffects);
-        var (bankX, bankY) = ReceivingContacts(towerId, d.Stage);
-        var flash = reducedEffects ? .80f : .56f + .44f * MathF.Pow(d.Beat(21), 2);
-        var fault = ColorPalette.Violet * flash;
-        var hot = Color.Lerp(ColorPalette.Violet, ColorPalette.Paper, .58f) * flash;
-        for (var sign = -1; sign <= 1; sign += 2)
-        {
-            var start = new Vector2(MathF.Max(-.56f, bankX), sign * MathF.Min(.42f, bankY));
-            var knee = new Vector2(-.12f, sign * .27f);
-            var end = new Vector2(.08f, sign * .11f);
-            d.Trace(start.X, start.Y, knee.X - .07f, knee.Y, fault, .065f);
-            d.Trace(knee.X + .07f, knee.Y, end.X, end.Y, fault, .065f);
-
-            var split = Vector2.Lerp(start, knee, .47f);
-            var before = Vector2.Lerp(start, knee, .27f);
-            var after = Vector2.Lerp(start, knee, .70f);
-            d.Line(before.X, before.Y, after.X, after.Y, ColorPalette.Ink, .13f);
-            d.Line(before.X, before.Y, split.X - .035f, split.Y, fault, .065f);
-            d.Line(split.X + .035f, split.Y, after.X, after.Y, fault, .065f);
-            var arc = (reducedEffects ? .025f : .018f + d.Beat(27 + sign) * .035f) * sign;
-            d.Line(knee.X - .075f, knee.Y, knee.X - .025f, knee.Y - arc, hot, .035f);
-            d.Line(knee.X - .025f, knee.Y - arc, knee.X + .028f, knee.Y + arc, hot, .035f);
-            d.Line(knee.X + .028f, knee.Y + arc, knee.X + .078f, knee.Y, hot, .035f);
-        }
+        TowerHardwareChannels.DrawInterference(d, towerId, shutdown: true, glow: !reducedEffects);
     }
 
     public static void DrawSuppressed(SpriteBatch batch, PrimitiveRenderer p, Vector2 center, float radius,
         string towerId, int level, bool apex, float aim, float time, bool reducedEffects)
     {
         var d = new TowerStatusFrame(batch, p, center, radius, towerId, level, apex, aim, time, reducedEffects);
-        var orange = ColorPalette.Orange * (.85f + d.Beat(3.8f) * .15f);
-        if (towerId == "arc_relay")
+        TowerHardwareChannels.DrawInterference(d, towerId, shutdown: false, glow: !reducedEffects);
+    }
+
+    public static Vector2 SignalContact(Vector2 center, float radius, string towerId, int level, bool apex, float aim)
+    {
+        var stage = TowerTierVisuals.Stage(level, apex);
+        var local = towerId switch
         {
-            if (d.Stage == 1)
-            {
-                OutputClamp(d, .68f * MathF.Cos(.8f), .68f * MathF.Sin(.8f), .14f, orange);
-                OutputClamp(d, .68f * MathF.Cos(.8f), -.68f * MathF.Sin(.8f), .14f, orange);
-            }
-            else OutputClamp(d, d.Stage == 4 ? .87f : .68f, 0, .18f, orange);
-            return;
-        }
-        if (towerId is "siege_mortar" or "frost_spire" or "signal_beacon")
-        {
-            var halfWidth = towerId == "siege_mortar" ? .26f : .20f;
-            OutputClamp(d, 0, 0, halfWidth, orange);
-            return;
-        }
-        var muzzle = NightGridArt.TowerMuzzlePosition(Vector2.Zero, 1, towerId, level, 0, apex: apex).X;
-        var width = towerId switch
-        {
-            "breaker_cannon" => d.Stage == 1 ? .24f : .34f,
-            "prism_beam" => TowerTierVisuals.PrismApertureWidth(level, apex) * .50f,
-            "needle_turret" => d.Stage == 1 ? .24f : .32f,
-            "shard_fan" => d.Stage == 1 ? .40f : .56f,
-            _ => .16f
+            "needle_turret" => new Vector2(stage == 1 ? -.48f : -.56f, 0),
+            "watchtower" => new Vector2(stage == 1 ? -.50f : -.65f, 0),
+            "prism_beam" => new Vector2(.45f, stage switch { 1 => .42f, 2 => .50f, 3 => .59f, _ => .69f }),
+            "frost_spire" => new Vector2(0, TowerTierVisuals.FrostCoolantOffset(stage)),
+            "siege_mortar" => new Vector2(0, TowerTierVisuals.MortarBankOffset(stage)),
+            "shard_fan" => new Vector2(-TowerTierVisuals.ShardReceiverRadius(stage) * .5f,
+                TowerTierVisuals.ShardReceiverRadius(stage) * .866f),
+            _ => new Vector2(-.25f, 0)
         };
-        if (towerId == "shard_fan")
-        {
-            var spread = d.Stage == 1 ? .43f : d.Stage == 4 ? .69f : .57f;
-            for (var i = -1; i <= 1; i++) OutputClamp(d, muzzle - .10f, i * spread, .11f, orange);
-        }
-        else OutputClamp(d, muzzle - .10f, 0, width, orange);
+        return center + new Vector2(MathF.Cos(aim) * local.X - MathF.Sin(aim) * local.Y,
+            MathF.Sin(aim) * local.X + MathF.Cos(aim) * local.Y) * radius;
     }
 
-    private static void OutputClamp(TowerStatusFrame d, float x, float y, float halfWidth, Color color)
-    {
-        for (var sign = -1; sign <= 1; sign += 2)
-        {
-            d.Line(x - .12f, y + sign * halfWidth, x + .10f, y + sign * halfWidth, ColorPalette.Ink, .15f);
-            d.Line(x - .11f, y + sign * halfWidth, x + .08f, y + sign * halfWidth, color, .075f);
-        }
-        d.Trace(x + .025f, y - halfWidth, x + .025f, y + halfWidth, color, .07f);
-    }
-
-    internal static (float X, float Y) ReceivingContacts(string towerId, int stage) => towerId switch
-    {
-        "needle_turret" => (-.40f, stage == 1 ? .31f : .48f),
-        "watchtower" => (-.48f, stage == 1 ? .25f : .49f),
-        "shard_fan" => (-.45f, .34f),
-        "frost_spire" => (-.06f, TowerTierVisuals.FrostCoolantOffset(stage)),
-        "ember_coil" => stage == 1 ? (-.12f, .31f) : (-.29f, .57f),
-        "breaker_cannon" => (-.35f, stage == 1 ? .35f : .52f),
-        "siege_mortar" => (-.20f, TowerTierVisuals.MortarBankOffset(stage)),
-        "prism_beam" => (-.24f, stage switch { 1 => .42f, 2 => .50f, 3 => .59f, _ => .69f }),
-        "arc_relay" => (-.54f, stage < 3 ? .26f : .47f),
-        "signal_beacon" => (-.30f, .38f),
-        _ => (-.35f, .44f)
-    };
 }
 
 internal readonly struct TowerStatusFrame

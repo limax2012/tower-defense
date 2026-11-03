@@ -38,6 +38,7 @@ public sealed partial class VisualVerificationGame
         scenes.Add(CaptureInteractionAtlas(content, font, true));
         AssertInteractionRanges(content, font, display, assertions, scenes);
         AssertInteractionLifecycle(content, font, display, assertions, scenes);
+        AssertAutoControllerLifecycle(content, font, display, assertions, scenes);
         CaptureInteractionCombat(content, font, display, assertions, scenes);
 
         static int Changed(Color[] first, Color[] second) => first.Zip(second, (a, b) => a != b).Count(changed => changed);
@@ -222,6 +223,92 @@ public sealed partial class VisualVerificationGame
             "Clearing selection preserves an armed Auto controller and its valid status effects.", assertions);
         scenes.Add(Capture("44a-interaction-selection-cleared.png", ui, GameState.Playing, session));
         _renderer.ReducedEffects = false;
+    }
+
+    private void AssertAutoControllerLifecycle(GameContent content, SpriteFont font, SpriteFont display,
+        ICollection<string> assertions, ICollection<VisualVerificationScene> scenes)
+    {
+        var previousReduced = _renderer.ReducedEffects;
+        try
+        {
+            foreach (var reduced in new[] { false, true })
+            {
+                var effects = reduced ? "reduced" : "full";
+                var waitingGlyph = AutoControllerPixels(.23f, reduced, false);
+                var activeGlyph = AutoControllerPixels(.23f, reduced, true);
+                Require(waitingGlyph.Zip(activeGlyph, (a, b) => a != b).Count(changed => changed) >= 6,
+                    $"Auto {effects}: activation changes the controller display at native field scale.", assertions);
+                Require(activeGlyph.SequenceEqual(AutoControllerPixels(.91f, reduced, true)) &&
+                        activeGlyph.SequenceEqual(AutoControllerPixels(1.82f, reduced, true)),
+                    $"Auto {effects}: the active display remains steady throughout its duration.", assertions);
+                var laterWaitingGlyph = AutoControllerPixels(.91f, reduced, false);
+                Require(waitingGlyph.SequenceEqual(laterWaitingGlyph) == reduced,
+                    $"Auto {effects}: waiting lights follow the selected effects setting.", assertions);
+
+                var session = new GameSession(content, "foundry_loop", "normal", "sandbox_lab");
+                Require(session.TryPlaceTower("needle_turret", new Vector2(270, 350)),
+                    $"Auto {effects}: lifecycle review uses a legal tower foundation.", assertions);
+                var tower = session.SelectedTower!;
+                tower.TickVisual(1);
+                session.CancelPlacement();
+                session.HandleInspectionInput(Pointer(0, 0) with { RightPressed = true });
+                Require(session.TryToggleAutoProtocol(tower.Id),
+                    $"Auto {effects}: the controller is armed before activation.", assertions);
+                var ui = new UIManager(font, display);
+                ConfigureUi(ui, content);
+                _renderer.ReducedEffects = reduced;
+                var at = BattlefieldInteractionArt.AutoControllerPosition(tower.Position,
+                    tower.Definition.Visual.Radius, tower.Definition.Id);
+                var screen = new Rectangle((int)at.X - 5, (int)at.Y - 1, 10, 3);
+                var waiting = ReadState("waiting");
+
+                Require(session.TryOverdriveTower(tower.Id) && tower.IsOverdriven &&
+                        session.OverdriveCooldownRemaining > 0,
+                    $"Auto {effects}: active duration and shared cooldown coexist.", assertions);
+                session.Effects.Clear();
+                var active = ReadState("active");
+                Require(CountChangedPixels(waiting, active, screen) >= 12,
+                    $"Auto {effects}: the production renderer changes the armed tower's display during activation.", assertions);
+                Require(tower.ApplySuppression(.4f, 0) && tower.IsOverdriven &&
+                        CountChangedPixels(active, RenderPixels(ui, GameState.Playing, session), screen) == 0,
+                    $"Auto {effects}: suppression does not misrepresent an active Protocol as waiting.", assertions);
+
+                tower.TickVisual(tower.Protocol.DurationSeconds + .1f);
+                var expired = ReadState("expired");
+                Require(!tower.IsOverdriven && session.OverdriveCooldownRemaining > 0 &&
+                        session.AutoOverdriveTowerId == tower.Id &&
+                        CountChangedPixels(waiting, expired, screen) == 0,
+                    $"Auto {effects}: expiration restores waiting lights while Auto remains armed on cooldown.", assertions);
+
+                Color[] ReadState(string state)
+                {
+                    var checksum = SessionChecksum.Compute(session, 0);
+                    var pixels = RenderPixels(ui, GameState.Playing, session);
+                    scenes.Add(Capture($"44b-auto-{effects}-{state}.png", ui, GameState.Playing, session));
+                    Require(SessionChecksum.Compute(session, 0) == checksum,
+                        $"Auto {effects} {state}: controller rendering preserves synchronized state.", assertions);
+                    return pixels;
+                }
+            }
+        }
+        finally { _renderer.ReducedEffects = previousReduced; }
+    }
+
+    private Color[] AutoControllerPixels(float time, bool reduced, bool active)
+    {
+        const int size = 48;
+        using var target = new RenderTarget2D(GraphicsDevice, size, size,
+            false, SurfaceFormat.Color, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
+        GraphicsDevice.SetRenderTarget(target);
+        GraphicsDevice.Clear(ColorPalette.Rainline.Deck);
+        _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp);
+        BattlefieldInteractionArt.DrawAutoController(_batch, _primitives, new Vector2(24, 12), 12,
+            "needle_turret", time, reduced, active);
+        _batch.End();
+        GraphicsDevice.SetRenderTarget(null);
+        var pixels = new Color[size * size];
+        target.GetData(pixels);
+        return pixels;
     }
 
     private void CaptureInteractionCombat(GameContent content, SpriteFont font, SpriteFont display,

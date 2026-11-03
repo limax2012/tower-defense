@@ -240,7 +240,7 @@ public sealed class MarketingCaptureGame : Game
         _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp,
             null, null, null, Matrix.CreateScale(GameConstants.RenderScale));
         _renderer.Draw(_batch, _primitives, session, foregroundTowerId: ui.RemoteCoOpSelectedTowerId);
-        ui.Draw(_batch, _primitives, GameState.Playing, session);
+        ui.Draw(_batch, _primitives, GameState.Playing, session, Matrix.CreateScale(GameConstants.RenderScale));
         _batch.End();
         GraphicsDevice.SetRenderTarget(null);
         SavePng(target, path, GameConstants.RenderWidth, GameConstants.RenderHeight);

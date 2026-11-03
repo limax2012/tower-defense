@@ -1,0 +1,107 @@
+# Enemy condition rendering
+
+Enemy presentation is a read-only view of authoritative combat state. `EnemyDebuffAuraArt` summarizes timed debuffs with soft colored fog over the chassis. `EnemyConditionPresentation` supplies exact names, values, and source colors for the inspection panel. `GameRenderer` draws durability meters and support-source boundaries without arranging enemy status icons or leader lines.
+
+## Timed debuffs and their sources
+
+The five timed debuffs are defined by `StatusType` in [StatusEffects.cs](../src/MaximalBastion/Effects/StatusEffects.cs). Applications originate in [Behaviors.cs](../src/MaximalBastion/Towers/Behaviors.cs), authored levels and Protocols in [Towers.json](../src/MaximalBastion/ContentData/Towers.json), `GameSession.ApplyProtocolActivation`, and [TacticalDefenseSystem.cs](../src/MaximalBastion/Tactics/TacticalDefenseSystem.cs).
+
+| Debuff | Actual source and recipient | Mechanical meaning | Fog color |
+| --- | --- | --- | --- |
+| Burn | Ember Coil projectiles, both branches, and Flashpoint; struck enemies or eligible splash/Protocol recipients | Timed damage with at most two source stacks. A refresh from the same source preserves its tick phase. Burning also reduces effective armor by 2; that passive reduction does not create an Armor Break status. | `Burn` / Ember red `#FF4540` |
+| Slow | Frost Spire projectiles, both branches, and Flash Freeze; Siege Mortar's Shockwave Shell; Pulse Plate blast recipients | The strongest active magnitude reduces speed, capped at 60%. | `Slow` / Frost blue `#7DCEFF` |
+| Stun | Arc Relay's authored T3 level and branches on the primary target; Stormcall and Pulse Plate area recipients | Movement speed becomes zero. Secondary Arc chain hits do not inherit the primary stun application. | No fog region; fine Arc-blue surface discharges, chassis shudder, stopped movement, and Intel convey the state. |
+| Armor Break | Breaker Cannon's authored T3 level, Piercing Round, Armor Shatter, and Breach Order; struck or eligible area recipients | The strongest active magnitude reduces armor. Ordinary armor piercing is a separate damage rule. | `ArmorBreak` / Breaker gold `#F3C25C` |
+| Expose | Prism Beam and its branches, including Split Beam recipients, plus Phase Burn; Watchtower's Dead Reckoning | Incoming damage increases. Ordinary Watchtower shots do not expose; Prism shield bypass does not create a shield-break debuff. | Prism `ExposeFog` violet `#C888FF`; Watchtower `PrecisionShot` pale green `#E7F0EC` |
+
+The aura reads positive-magnitude statuses with positive remaining duration. Duplicate Burn sources produce one Burn region. Expiry removes the corresponding region; dead and escaped enemies produce none. Elite and Boss rank reduce applied status duration by 30% and 60%, respectively, through `EnemyInstance.ApplyStatus`.
+
+Application effects retain the actual source's color and tower attack artwork. Slow fog uses one consistent color across its multiple sources. `ExposeAccent` resolves the strongest Expose status, then its source ID, matching damage attribution. It reads `session.Statistics.TowerDefinitionByInstance`, so a sold tower retains its source color. The fog renderer uses brighter violet for Prism Expose, including fixtures without a registered source, while Intel and tower effects retain their source palette. All fog combinations share the same opacity field. Watchtower Expose keeps its pale green fog.
+
+## Fog composition and rendering cost
+
+A single sustained debuff produces a full soft envelope. Two use opposing colored regions; three or four use overlapping radial plumes. The fixed order is Burn, Slow, Armor Break, Expose. Stun never occupies a fog region, including when other conditions are active. Irregular density, feathered edges, and mixed centers avoid sharp sector borders. Low-opacity coverage leaves plate edges, dark channels, and hostile reactors visible.
+
+`PrimitiveRenderer` caches all fifteen active-color combinations for both Expose sources and two density layers in one 1040×1040 atlas. Every cell in a density layer has identical alpha; only its RGB colors differ. Full Effects blends two drifting cloud layers per enemy, independent of debuff count. Reduced Effects uses one static cloud layer. Color changes never add sprites, rotate masks, or rebuild textures. The atlas uses approximately 4.1 MB, with no per-frame texture generation or particle allocation.
+
+Color partitions have a fixed world-facing orientation: two colors split vertically, three use equal 120-degree regions, and four use upright quadrants. Boundaries and the center blend softly. Ambient drift, density breathing, and mild stretching use the same motion for every color combination, so changing debuff count cannot change the cloud's shape or restart its movement.
+
+`EnemyVisualTimeline` fades the whole cloud in over 0.10 seconds when the first debuff arrives and out over 0.14 seconds after the last one ends. Changes between nonempty combinations update only the displayed colors. The last combination remains during disappearance; reapplication reverses from current density. Pausing freezes the envelope, and an already-active restored state starts at settled density. Both menu feeds retain separate renderer timelines. Fog is an area-level cue, with exact conditions available through Intel.
+
+Shield grants, native regeneration, and formation-speed bonuses do not add fog regions. Ordinary recipients do not acquire separate acceleration or healing auras.
+
+## Durability and body activity
+
+| State | Source of truth | Presentation |
+| --- | --- | --- |
+| Health | `EnemyInstance.Health` and `MaxHealth` | Every visible live enemy has a health bar, including untouched arrivals. The fill is 2 logical pixels thick inside a closed 1-pixel frame. Width follows family/rank and stays unchanged on hover. |
+| Shield | Positive `EnemyInstance.Shield`, including natural reserves, Boss grants, and Bulwark grants | A quiet convex stand-off shell and a separate 1-pixel shield fill inside a closed 1-pixel frame. The meter uses applicable natural or support capacity and stays unchanged on hover. The shell remains whole while any shield exists and disappears at zero. |
+| Native regeneration | A positive authored regeneration rate, missing health, and `DamagePauseTimer <= 0` | Health recovery appears in the health meter and inspection values; the symmetric chassis stays unchanged. Positive health damage pauses repair for one second; shield-only damage does not. |
+
+Shields absorb non-bypassing damage, persist after a Bulwark source disappears, and do not regenerate by themselves. Shield geometry encloses the chassis rather than filling its internal cutouts. The shield outline is intentionally quieter than the meters and debuff colors.
+
+Durability bars remain screen-facing. Visible hull/shield bounds determine entry eligibility, and meter origins clamp to the applicable rendering bounds. Gameplay uses the battlefield rectangle; the two main-menu simulations each use their own feed rectangle. Both menu feeds follow the same entry visibility, thickness, and shield policy as gameplay.
+
+Burn, Slow, Armor Break, and Expose use fog as their primary sustained presentation. Stun has a separate short-circuit state in `EnemyStunArt`: several independently timed filaments cross family-specific conductive plates, with irregular subdivisions, tapered forks, small spark strokes, pale hot cores, and localized blue contact light. Paths renew at staggered rates around 12–15 discharges per second per route; a rapid bright front precedes their fading branches. The recessed reactor and Aegis opening remain visually distinct from the surface arcs.
+
+Electrical geometry uses fixed-size stack buffers, stable integer hashes of enemy ID and presentation time, and one shared pixel texture for all line work. Full Effects is bounded at 192 sprites per affected enemy, including contact lights; Reduced Effects uses two static routes without glow or spark travel. Expiry, death, and escape immediately stop drawing. Stun does not consume a fog color region.
+
+`EnemyStunMotion` offsets the chassis by less than 0.6 logical pixels with continuous vibration and a 60 ms settling window at the end of Stun. The reactor and its signal aperture follow that offset. Leg roots and upper joints absorb the movement while feet and their contact shadows remain fixed; tracks, durability meters, fog centers, and support-range centers stay anchored. Reduced Effects has no vibration. Neither electrical paths nor vibration modify movement, status duration, random state, snapshots, or checksums.
+
+## Support sources and application boundaries
+
+Signal gem color identifies a capability. `GameSession.RefreshEnemySignalFormation` and `GameSession.TryActivateEnemySignal` determine actual targeting, cooldowns, recipients, and transfers.
+
+| Signal | Reactor identity | Actual application | Persistent boundary/color |
+| --- | --- | --- | --- |
+| Accelerator | Plain white gem | Other live enemies within the support radius receive the formation-speed multiplier. Bonuses do not stack; a source benefits only from another source. | `CounterSupportRadius`, `Acceleration` `#F0F6FA` |
+| Restorer | Plain green gem | Each activation considers up to seven nearest live enemies in radius, including the source. Missing health determines whether a positive transfer occurs. Receiving healing is separate from a recipient's native repair pause. | `CounterSupportRadius`, `Green` `#46D399` |
+| Bulwark | Plain ice-blue faceted gem | Each activation considers up to seven nearest live enemies in radius, including the source. Grants stop at the authored shield capacity. | `CounterSupportRadius`, `Shield` `#61C6F5` |
+| Jammer | Plain orange gem | Eligible non-support towers in suppression range receive reduced attack rate and damage. | No persistent support outline; `Orange` `#F19E47` event feedback |
+| Disruptor | Plain saturated purple gem | One eligible tower, prioritized by invested credits, distance, then ID, receives a firing pause. Support towers are eligible. | No persistent support outline; `Disruption` `#C13FFF` event feedback |
+
+Identity is drawn inside the existing reactor socket as part of the complete body. Signal carriers render as foreground units above ordinary enemies and transient combat effects. Their list order determines overlap between carriers: a front body naturally covers a rear gem. Durability meters remain a separate screen-facing layer. All five signal gems retain ordinary facets without symbols. Disruption uses a saturated purple distinct from Prism's lighter lavender violet. Surrounding faction windows stay magenta.
+
+Jammer transmissions use orange paired rails with traveling radio wavefronts; Disruptor uses purple angular rails and hollow diamond packets. Both retain the authored 0.38-second beam lifetime and a short terminal fade. Reduced Effects holds packet geometry steady. Disruption color is shared by the core, transfer, receiving tower conductors, and status text.
+
+The three support outlines use the authoritative source position and authored radius, so they mark the true geometric eligibility boundary even while the chassis follows a rounded presentation path. Being inside a Restorer or Bulwark circle does not guarantee a transfer on that activation: nearest-seven selection, current health/shield, and cooldowns still apply. The outlines use a single one-pixel colored edge at half opacity, matching the tower and Beacon range line weight, with no filled disk. Accelerator continuously sends one fine white ripple with a restrained soft wake from its center to this fixed boundary every 2.17 simulation seconds. The ripple fades in and out smoothly; its cadence does not gate the continuous speed bonus. Reduced Effects preserves the static boundary without the expanding ripple.
+
+Successful Restorer and Bulwark activations create one 0.46-second ground wave beneath tower and enemy artwork. Restorer uses a fine green circular front with a soft wake; Bulwark uses a narrow segmented angular blue front. The wave expands toward the authored range edge, which briefly brightens at the same one-pixel line weight as it arrives. Reduced Effects uses a short boundary fade without expanding motion. Only positive health or shield grants produce recipient feedback: symmetric green hull-edge glints for healing, or a brief brightening of the complete shield contour. Recipient feedback begins immediately with the grant and remains attached to the recipient's body layer; the expanding wave does not delay application. Full-health and shield-capped candidates do not flash, and an activation with no positive grants produces no success wave.
+
+Outlines are absent when support simulation is disabled or the source is dead or escaped. Stun stops movement but does not disable these support abilities. Support fields and their transient feedback use cached artwork without persistent recipient auras or transfer links. Jammer and Disruptor retain their interference lockout and recovery windows.
+
+## Scale and grounded movement
+
+Presentation size is independent of gameplay collision radius. `EnemyModelArt.BodyRadius` and the authored family contours define the visible body, while `EnemyLocomotion` defines support contacts. Family scale and motion are reviewed at the same rank and camera size.
+
+The faction uses graphite chassis, chamfered gray armor, recessed magenta reactors, and narrow luminous windows on articulated pods. Runner and Crawler have triangular cores; Brute and Aegis surround faceted reactors with segmented radial armor. Regenerator carries a central reactor between symmetric banks of track armor. Plates, polygons, joints, and strokes share a cached atlas so the articulated hardware batches together without per-enemy texture generation. Enemy material colors are owned by `ColorPalette` independently of tower colors.
+
+Directional bevel highlights, dark inner lips, and offset recesses give the armor panels depth. Reactors use layered luminous polygons and a small faceted center. Walking legs carry separate upper and lower armor plates around a round knee joint, with narrow terminal contact pads. Knees follow the hip-to-foot span with a small fore/aft bend. The feet remain fixed during stance as both leg segments articulate around them.
+
+Enemy hulls have a compact dark silhouette offset by one logical pixel horizontally and two vertically. Blue-black contact marks follow the feet and shrink during lift. The renderer draws every enemy shadow below towers and enemy bodies, including foreground signal carriers. A reusable contact buffer supplies the same sampled pose to both shadow and body passes without repeating gait calculations.
+
+| Family | Standard radius | Elite radius | Boss radius | Movement |
+| --- | ---: | ---: | ---: | --- |
+| Runner | 12 | 15 | 20 | Legless interceptor |
+| Crawler | 16 | 18.5 | 22 | Four legs; left rear, left front, right rear, right front |
+| Brute | 20.5 | 22 | 23.5 | Six legs; alternating tripods |
+| Aegis | 30 | 31 | 32 | Eight legs; alternating zigzag groups |
+| Regenerator | 34 | 35 | 36 | Twin tracks with continuous tread travel |
+
+These are logical-pixel construction radii, not circular collision bounds. The actual contour, contacts, and track housing determine usable lane width. Crawler stance occupies 76% of a cycle, retaining three supporting feet while one returns; Brute and Aegis stance occupies 64%, leaving overlap between planted groups. Ground-point return velocity eases over the first and last 25% of the swing, with a steady middle section and zero interpolation velocity and acceleration at both endpoints. A shallow lift settles smoothly at contact.
+
+All five families use shared presentation-only corner steering. Body facing follows a planned turn whose curvature eases over the first and last 45% around a short steady central section. A small, smooth clearance offset brings the chassis closer to the lane center through the bend without adding the tighter center trajectory to its steering motion. Tracked chassis use a separate clearance profile that combines an outward apex adjustment with a slight movement along the turn on the approach and exit, accommodating their broad continuous hull. Arc-length timing follows the adjusted center path and uses a separate eased ramp and plateau, spreading the shorter curve's travel over a broader approach and exit. This local window extends up to 3.8 motion radii on each side and is capped at 48% of either adjacent straight segment; the curve reaches up to 1.8 motion radii within that window. Visual positions rejoin the authoritative path at both ends, so offsets never accumulate across the map. Gameplay movement, targeting positions, collision geometry, and support radii remain authoritative.
+
+Ground contacts derive their phases from actual traveled distance through a shared visual travel-rate profile. Planted feet retain their world position while the body passes them; Slow and Stun therefore affect movement and gait together. Steps shorten gradually near corners, with family weights of 0.50 for Crawler, 0.85 for Brute, and 1.25 for Aegis, multiplied by the smoothed body's travel rate. Contact targets, airborne returns, and knees preserve the lane margin without dragging planted feet. Inside-corner constraints blend toward a shared radial contraction near the two-segment bisector, avoiding a normal-direction snap. Regenerator's visible upper tread run travels toward the nose, fades around the return rollers, and stops with the machine. Runner retains its legless flight and thruster artwork while its center and heading use the shared smooth corner path.
+
+## Inspection, lifecycle, and verification
+
+Clicking an enemy pins its live Intel panel, including condition names, durations or magnitudes, source-colored Expose, shield reserve, movement speed, and native repair pause. Gold corner brackets follow the selected unit. Moving the pointer away or over another enemy keeps the selection; hovering supplies temporary inspection when no enemy is selected. Right click, Escape, an empty battlefield click, or selecting another object releases it. Death, escape, removal, and session changes also clear the selection. Tower and tactical placement retain input priority. Rendering and inspection do not modify combat state, snapshots, or checksums.
+
+Intel portraits use `EnemyLocomotion.RestPose`, a neutral bilateral stance with all contact pads planted. The pose does not depend on enemy ID, traveled distance, or animation time; tracked portraits likewise hold their tread phase and suppress chassis shudder. The complete portrait uses a uniform 70% scale, preserving family and rank size relationships while leaving balanced clearance between the header rule and health row. Portraits omit ground shadows within the compact inspection header.
+
+Enemy instances are created with session-owned IDs and removed by `GameSession.Update` on death or escape. Rendering skips them immediately. Presentation caches reset when the session or timeline changes and prune expired owners.
+
+Diagnostics compare actual rendering with authoritative status state, check zero active gameplay glyphs and leader strips, validate one through four fog colors and buff/Stun exclusion, and cover health/shield meters and persistent enemy selection. Fog checks include Burn/Slow/Expose mixtures, raster buildup and dissipation, identical alpha across color combinations, fixed partition directions, constant sprite budgets, and changing Full Effects density versus the spatially stable Reduced Effects presentation. Support checks compare enabled and disabled rendering, verify outward ripple motion stays within the authored range and leaves the field unfilled, cover dead/escaped sources, match flashes to positive grants, and reject feedback for full or out-of-range recipients. Native crowded-lane captures cover wave onset, expansion, and Reduced Effects; moving support fixtures verify rendering remains checksum-neutral. Main-menu checks count meters in both feeds. Motion checks exercise planted contacts, all authored corners across maps and ranks, neutral portrait symmetry, and silhouette containment. Corner sampling also bounds local travel speed and yaw changes, checks exact straight-path rejoining, and verifies fractional-frame presentation without changing synchronized state.
+
+Dense-scene performance comparisons use matched simulation fixtures and warmed hidden rendering. Present-to-present timing is not a GPU timestamp or interactive gameplay FPS. Captures and numerical assertions establish rendering invariants; human recognition accuracy, response time, and artistic preference require a separate player study.

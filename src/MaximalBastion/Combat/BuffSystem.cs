@@ -18,8 +18,7 @@ public sealed class BuffSystem
             var rangeBonus = tower.EffectiveAuraTowerRangeBonus;
             foreach (var recipient in towers)
             {
-                if (recipient.Id == tower.Id || recipient.IsSupport || recipient.IsSandboxDisabled || recipient.IsDisrupted) continue;
-                if (Vector2.DistanceSquared(tower.Position, recipient.Position) > auraRange * auraRange) continue;
+                if (!CanReachRecipient(tower, recipient, auraRange)) continue;
                 var current = _buffs.TryGetValue(recipient.Id, out var existing) ? existing : new TowerBuff(0, 0);
                 var replacesAttackSpeed = attackSpeedBonus > current.AttackSpeedBonus ||
                     (attackSpeedBonus == current.AttackSpeedBonus && (current.AttackSpeedSourceTowerId == 0 || tower.Id < current.AttackSpeedSourceTowerId));
@@ -35,4 +34,21 @@ public sealed class BuffSystem
     }
 
     public TowerBuff Get(TowerInstance tower) => _buffs.TryGetValue(tower.Id, out var value) ? value : new TowerBuff(0, 0);
+
+    // Presentation checks live coverage without changing the simulation's cached bonuses.
+    public bool HasLiveSupport(TowerInstance recipient, IReadOnlyList<TowerInstance> towers)
+    {
+        if (!Get(recipient).IsActive) return false;
+        foreach (var source in towers)
+        {
+            if (!source.IsSupport || source.IsSandboxDisabled || source.IsDisrupted) continue;
+            if (source.EffectiveAuraAttackSpeedBonus <= 0 && source.EffectiveAuraTowerRangeBonus <= 0) continue;
+            if (CanReachRecipient(source, recipient, source.EffectiveAuraRange)) return true;
+        }
+        return false;
+    }
+
+    private static bool CanReachRecipient(TowerInstance source, TowerInstance recipient, float auraRange) =>
+        recipient.Id != source.Id && !recipient.IsSupport && !recipient.IsSandboxDisabled && !recipient.IsDisrupted &&
+        Vector2.DistanceSquared(source.Position, recipient.Position) <= auraRange * auraRange;
 }

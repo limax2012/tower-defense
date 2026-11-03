@@ -344,7 +344,7 @@ public sealed class MobileSessionController
             stats = Stats(session, tower), upgrades, tower.SellValue, tower.InvestedCredits,
             tower.LifetimeDamage, tower.LifetimeKills, tower.LifetimeControlSeconds, tower.LifetimeSupportDamageEquivalent,
             nodes = session.Map.GetPowerNodes(tower.Position).Select(node => new { node.DisplayName }),
-            buffs = TowerInfo.ActiveBoostSources(session.GetSupportBuff(tower), session.Map.GetPowerNodes(tower.Position), false),
+            buffs = TowerInfo.ActiveBoostSources(session.GetSupportBuff(tower), session.Map.GetPowerNodes(tower.Position)),
             protocol = new
             {
                 tower.Protocol.DisplayName, tower.Protocol.Summary, tower.OverdriveRemaining,

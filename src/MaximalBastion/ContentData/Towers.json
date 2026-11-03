@@ -1,7 +1,7 @@
 [
   {
     "id": "needle_turret", "displayName": "Needle Turret", "role": "Generalist", "behavior": "single_projectile", "purchaseCost": 90, "defaultTargetMode": "First",
-    "visual": { "shape": "square", "primary": "#43DED8", "accent": "#43DED8", "radius": 18, "marks": 1, "ring": true },
+    "visual": { "shape": "square", "primary": "#18EED3", "accent": "#18EED3", "radius": 18, "marks": 1, "ring": true },
     "protocol": { "displayName": "Rapid Cycle", "summary": "Doubles fire rate for six seconds", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 1.0, "autoTriggerMode": "coverage", "autoTriggerCount": 4 },
     "apex": { "upgradeCost": 400, "damageMultiplier": 1.28, "attackSpeedMultiplier": 1.22, "rangeMultiplier": 1.06, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.12 },
     "tier2Doctrines": [
@@ -51,7 +51,7 @@
   },
   {
     "id": "watchtower", "displayName": "Watchtower", "role": "Long range", "behavior": "single_projectile", "purchaseCost": 190, "defaultTargetMode": "Strongest",
-    "visual": { "shape": "square", "primary": "#BACAFF", "accent": "#BACAFF", "radius": 20, "marks": 1, "ring": true },
+    "visual": { "shape": "square", "primary": "#E7F0EC", "accent": "#E7F0EC", "radius": 20, "marks": 1, "ring": true },
     "protocol": { "displayName": "Dead Reckoning", "summary": "Extends reach and marks priority threats", "durationSeconds": 6.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.15, "damageBonus": 0.5, "rangeBonus": 0.2, "armorPierceBonus": 3, "autoTriggerMode": "coverage", "autoTriggerCount": 2, "burstRadius": 220, "burstStatus": "Exposed", "burstStatusMagnitude": 0.18, "burstStatusDuration": 3.5 },
     "apex": { "upgradeCost": 850, "damageMultiplier": 1.35, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.10, "utilityMultiplier": 1.10 },
     "tier2Doctrines": [
@@ -76,7 +76,7 @@
   },
   {
     "id": "frost_spire", "displayName": "Frost Spire", "role": "Control", "behavior": "slow_projectile", "purchaseCost": 140, "defaultTargetMode": "Fastest",
-    "visual": { "shape": "diamond", "primary": "#82E5F5", "accent": "#82E5F5", "radius": 18, "marks": 1, "ring": true },
+    "visual": { "shape": "diamond", "primary": "#6DC8FF", "accent": "#6DC8FF", "radius": 18, "marks": 1, "ring": true },
     "protocol": { "displayName": "Flash Freeze", "summary": "Freezes its field, then widens control", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0.45, "rangeBonus": 0.15, "autoTriggerMode": "protocol_area", "autoTriggerCount": 4, "burstRadius": 170, "burstDamage": 8, "burstStatus": "Slow", "burstStatusMagnitude": 0.5, "burstStatusDuration": 2.5 },
     "apex": { "upgradeCost": 650, "damageMultiplier": 1.20, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.12, "utilityMultiplier": 1.18 },
     "tier2Doctrines": [
@@ -151,7 +151,7 @@
   },
   {
     "id": "arc_relay", "displayName": "Arc Relay", "role": "Chain damage", "behavior": "chain", "purchaseCost": 320, "defaultTargetMode": "First",
-    "visual": { "shape": "circle", "primary": "#43DED8", "accent": "#43DED8", "radius": 20, "marks": 1, "ring": true },
+    "visual": { "shape": "circle", "primary": "#5391FF", "accent": "#5391FF", "radius": 20, "marks": 1, "ring": true },
     "protocol": { "displayName": "Stormcall", "summary": "Discharges a stun pulse and accelerates arcs", "durationSeconds": 5.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.6, "damageBonus": 0.2, "autoTriggerMode": "protocol_area", "autoTriggerCount": 4, "burstRadius": 180, "burstDamage": 18, "burstStatus": "Stun", "burstStatusMagnitude": 1, "burstStatusDuration": 0.55 },
     "apex": { "upgradeCost": 1450, "damageMultiplier": 1.24, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.0, "utilityMultiplier": 1.12 },
     "tier2Doctrines": [
@@ -226,7 +226,7 @@
   },
   {
     "id": "signal_beacon", "displayName": "Signal Beacon", "role": "Support aura", "behavior": "aura", "purchaseCost": 300, "defaultTargetMode": "First",
-    "visual": { "shape": "circle", "primary": "#46D399", "accent": "#46D399", "radius": 19, "marks": 1, "ring": true },
+    "visual": { "shape": "circle", "primary": "#49E06E", "accent": "#49E06E", "radius": 19, "marks": 1, "ring": true },
     "protocol": { "displayName": "Network Surge", "summary": "Temporarily expands and strengthens its aura", "durationSeconds": 6, "cooldownSeconds": 18, "attackSpeedBonus": 0, "auraAttackSpeedBonus": 0.22, "auraRangeBonus": 0.2, "autoTriggerMode": "engaged_recipients", "autoTriggerCount": 2, "autoTriggerTargetCount": 6 },
     "apex": { "upgradeCost": 1250, "damageMultiplier": 1.0, "attackSpeedMultiplier": 1.0, "rangeMultiplier": 1.12, "projectileSpeedMultiplier": 1.0, "utilityMultiplier": 1.18 },
     "tier2Doctrines": [

@@ -35,10 +35,12 @@ public readonly struct PresentationFrame
 
     public Vector2 EnemyPosition(EnemyInstance enemy)
     {
-        if (LeadSeconds <= 0 || enemy.IsDead || enemy.HasEscaped) return enemy.Position;
-        var distance = Math.Clamp(enemy.DistanceAlongPath + enemy.CurrentSpeed * LeadSeconds,
-            0, _session.Map.Path.TotalLength);
-        return _session.Map.Path.GetPosition(distance);
+        if (enemy.IsDead || enemy.HasEscaped) return enemy.Position;
+        var distance = enemy.DistanceAlongPath + enemy.CurrentSpeed * LeadSeconds;
+        var position = LeadSeconds <= 0 ? enemy.Position :
+            _session.Map.Path.GetPosition(Math.Clamp(distance, 0, _session.Map.Path.TotalLength));
+        var path = EnemyLocomotionPath.For(_session.Map);
+        return position + path.VisualPosition(distance, EnemyLocomotion.MotionRadius(enemy), EnemyLocomotion.UsesTracks(enemy)) - path.Position(distance);
     }
 
     public Vector2 ProjectilePosition(ProjectileInstance projectile)
@@ -57,6 +59,24 @@ public readonly struct PresentationFrame
     }
 
     public float EffectRemaining(EffectInstance effect) => MathF.Max(0, effect.Remaining - LeadSeconds);
+
+    public Vector2 RicochetDestination(EffectInstance effect) => EffectTargetPosition(effect);
+
+    public Vector2 EffectTargetPosition(EffectInstance effect) => EffectEnemyPosition(effect.TargetEnemy, effect.End);
+
+    public Vector2 EffectSourcePosition(EffectInstance effect) => EffectEnemyPosition(effect.SourceEnemy, effect.Start);
+
+    private Vector2 EffectEnemyPosition(EnemyInstance? target, Vector2 fallback)
+    {
+        if (target is null) return fallback;
+        if (!target.IsDead && !target.HasEscaped) return EnemyPosition(target);
+
+        // Retain the last displayed center when the target leaves active combat.
+        var path = EnemyLocomotionPath.For(_session.Map);
+        var distance = target.DistanceAlongPath;
+        return target.Position + path.VisualPosition(distance, EnemyLocomotion.MotionRadius(target),
+            EnemyLocomotion.UsesTracks(target)) - path.Position(distance);
+    }
 
     public float TowerScale(TowerInstance tower) => tower.VisualScaleAt(LeadSeconds);
 }

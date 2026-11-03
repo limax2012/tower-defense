@@ -12,6 +12,11 @@ public static class TowerTierVisuals
     public static float MortarBankOffset(int stage) => stage switch { 1 => .46f, 2 => .64f, 3 => .78f, _ => .89f };
     public static float EmberChamberRadius(int stage) => stage switch { 1 => .44f, 2 => .55f, 3 => .63f, _ => .67f };
     public static float EmberNozzleLength(int stage) => stage switch { 1 => .88f, 2 => .96f, 3 => 1.04f, _ => 1.12f };
+    public static float ShardCoreRadius(int stage) => stage switch { 1 => .25f, 2 => .31f, 3 => .37f, _ => .43f };
+    public static float ShardVaneCenter(int stage) => stage switch { 1 => .62f, 2 => .73f, 3 => .82f, _ => .91f };
+    public static float ShardVaneSize(int stage) => stage switch { 1 => .26f, 2 => .29f, 3 => .30f, _ => .34f };
+    public static float ShardVaneSplit(int stage) => stage < 3 ? 0 : stage == 3 ? .32f : .38f;
+    public static float ShardReceiverRadius(int stage) => ShardVaneCenter(stage) + (stage < 3 ? .035f : -.015f);
 
     public static float PrismBarrelLength(int level, bool apex) => Stage(level, apex) switch
     {

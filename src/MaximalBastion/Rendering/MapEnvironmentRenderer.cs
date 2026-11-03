@@ -34,8 +34,13 @@ public static class MapEnvironmentRenderer
         {
             p.Glow(b, center, Math.Min(180, r.Width), c.Accent, .19f);
             p.DrawRect(b, new Rectangle(r.X + 7, r.Y + 9, r.Width, r.Height), c.Detail);
-            for (var x = r.Left; x <= r.Right; x += Math.Max(32, r.Width / 3))
+            p.Line(b, new Vector2(r.Right, r.Top), new Vector2(r.Right + 7, r.Top + 9), c.Edge * .5f);
+            var divisions = Math.Clamp(r.Width / 32, 1, 3);
+            for (var i = 0; i <= divisions; i++)
+            {
+                var x = r.Left + r.Width * i / divisions;
                 p.Line(b, new Vector2(x, r.Bottom), new Vector2(x + 7, r.Bottom + 9), c.Edge * .5f);
+            }
         }
         else
             p.FillRect(b, new Rectangle(r.X + 5, r.Y + 7, r.Width, r.Height), ColorPalette.Ink);
@@ -111,7 +116,8 @@ public static class MapEnvironmentRenderer
         }
     }
 
-    public static void Path(SpriteBatch b, PrimitiveRenderer p, MapDefinition map, float time)
+    public static void Path(SpriteBatch b, PrimitiveRenderer p, MapDefinition map, float time,
+        bool drawEdgeMarkings = true)
     {
         var c = ColorPalette.Environment(map.PathVisual.Style);
         var points = map.Path;
@@ -122,22 +128,27 @@ public static class MapEnvironmentRenderer
         Stroke(b, p, points, Color.Lerp(c.Edge, ColorPalette.Metal, .3f), width);
         Stroke(b, p, points, Color.Lerp(c.Lane, ColorPalette.PanelAlt, .52f), width - 4);
         Stroke(b, p, points, centerColor, width - 12);
+        // Precomposited rail colors keep overlapping segment joins at the same brightness.
         if (style == "prism")
         {
-            Stroke(b, p, points, c.Accent * .12f, 9);
-            Stroke(b, p, points, c.Accent * .5f, 2);
-            centerColor = Color.Lerp(Color.Lerp(centerColor, c.Accent, .12f), c.Accent, .5f);
+            var railBed = Color.Lerp(centerColor, c.Accent, .08f);
+            centerColor = Color.Lerp(railBed, c.Accent, .32f);
+            Stroke(b, p, points, railBed, 9);
+            Stroke(b, p, points, centerColor, 2);
         }
         if (style == "surge")
         {
             centerColor = Color.Lerp(c.Ground, ColorPalette.Panel, .35f);
             Stroke(b, p, points, centerColor, width - 16);
-            Stroke(b, p, points, c.Edge * .65f, 9);
-            Stroke(b, p, points, c.Accent * .4f, 2);
-            centerColor = Color.Lerp(Color.Lerp(centerColor, c.Edge, .65f), c.Accent, .4f);
+            var railBed = Color.Lerp(centerColor, c.Edge, .65f);
+            centerColor = Color.Lerp(railBed, c.Accent, .28f);
+            Stroke(b, p, points, railBed, 9);
+            Stroke(b, p, points, centerColor, 2);
         }
 
-        for (var i = 0; i < points.Count - 1; i++)
+        DrawCornerJoints(b, p, map);
+
+        for (var i = 0; drawEdgeMarkings && i < points.Count - 1; i++)
         {
             var start = points[i].ToVector2();
             var delta = points[i + 1].ToVector2() - start;
@@ -145,8 +156,17 @@ public static class MapEnvironmentRenderer
             if (length < 1) continue;
             var forward = delta / length;
             var normal = new Vector2(-forward.Y, forward.X);
-            for (var d = 16f; d < length - 8; d += style == "foundry" ? 20 : 36)
+            // Whole motifs stop beyond the adjoining lane's footprint at each turn.
+            var cornerClearance = width * .5f + 10;
+            var first = i == 0 ? 16 : cornerClearance;
+            var last = length - (i == points.Count - 2 ? 16 : cornerClearance);
+            var spacing = style == "foundry" ? 20 : 36;
+            if (last < first) continue;
+            var intervals = (int)((last - first) / spacing);
+            var inset = (last - first - intervals * spacing) * .5f;
+            for (var mark = 0; mark <= intervals; mark++)
             {
+                var d = first + inset + mark * spacing;
                 var at = start + forward * d;
                 if (style == "foundry")
                 {
@@ -154,7 +174,7 @@ public static class MapEnvironmentRenderer
                     for (var sign = -1; sign <= 1; sign += 2)
                     {
                         var edge = at + normal * sign * (width / 2f - 4);
-                        p.Line(b, edge - forward * 3 - normal * sign * 3, edge + forward * 4, c.Accent * .7f, 3);
+                        p.Line(b, edge - forward * 3 - normal * sign * 3, edge + forward * 4, c.Accent * .55f, 3);
                     }
                 }
                 else if (style == "trail")
@@ -163,7 +183,7 @@ public static class MapEnvironmentRenderer
                     for (var sign = -1; sign <= 1; sign += 2)
                     {
                         var edge = at + normal * sign * (width / 2f - 4);
-                        p.Line(b, edge, edge + forward * 10, c.Accent * .85f, 2);
+                        p.Line(b, edge - forward * 5, edge + forward * 5, c.Accent * .65f, 2);
                     }
                 }
                 else if (style == "prism")
@@ -181,6 +201,58 @@ public static class MapEnvironmentRenderer
         // Opaque packet ink keeps overlapping corner joins at the same brightness.
         DrawRoutePackets(b, p, points, time, style == "foundry" ? 15 : 28,
             Color.Lerp(centerColor, c.Accent, .65f), style == "foundry" ? 4 : 2);
+    }
+
+    private static void DrawCornerJoints(SpriteBatch b, PrimitiveRenderer p, MapDefinition map)
+    {
+        var colors = ColorPalette.Environment(map.PathVisual.Style);
+        for (var index = 1; index < map.Path.Count - 1; index++)
+        {
+            var corner = map.Path[index].ToVector2();
+            var incoming = Vector2.Normalize(corner - map.Path[index - 1].ToVector2());
+            var outgoing = Vector2.Normalize(map.Path[index + 1].ToVector2() - corner);
+            var turn = incoming.X * outgoing.Y - incoming.Y * outgoing.X;
+            if (MathF.Abs(turn) < .5f) continue;
+            var outer = new Vector2(incoming.Y + outgoing.Y, -incoming.X - outgoing.X) * MathF.Sign(turn);
+            var joint = corner + outer * (map.PathWidth * .5f + 2);
+            var start = joint - incoming * 9;
+            var end = joint + outgoing * 9;
+            var metal = Color.Lerp(colors.Edge, colors.Ground, .42f);
+            Elbow(ColorPalette.Ink, 4);
+            switch (map.PathVisual.Style)
+            {
+                case "trail":
+                    Elbow(metal, 2.4f);
+                    Elbow(Color.Lerp(colors.Ground, colors.Lane, .5f), 1.2f);
+                    p.Line(b, start - outgoing * 1.2f, start + outgoing * 1.2f, colors.Edge, .7f);
+                    p.Line(b, end - incoming * 1.2f, end + incoming * 1.2f, colors.Edge, .7f);
+                    break;
+                case "prism":
+                    p.Line(b, start, joint - incoming * 3, metal, 1.6f);
+                    p.Line(b, joint - incoming * 3, joint + outgoing * 3, colors.Edge, 1.2f);
+                    p.Line(b, joint + outgoing * 3, end, metal, 1.6f);
+                    break;
+                case "surge":
+                    Elbow(metal, 3);
+                    Elbow(Color.Lerp(colors.Ground, colors.Detail, .4f), 1.3f);
+                    p.Line(b, start - outgoing * 1.6f, start + outgoing * 1.6f, colors.Edge, 1.6f);
+                    p.Line(b, end - incoming * 1.6f, end + incoming * 1.6f, colors.Edge, 1.6f);
+                    break;
+                default:
+                    Elbow(Color.Lerp(colors.Edge, colors.Accent, .25f), 2.7f);
+                    Elbow(metal, 1.1f);
+                    p.Circle(b, start + incoming * 1.5f, .85f, ColorPalette.Ink);
+                    p.Circle(b, end - outgoing * 1.5f, .85f, ColorPalette.Ink);
+                    break;
+            }
+
+            void Elbow(Color color, float width)
+            {
+                p.Line(b, start, joint, color, width);
+                p.Line(b, joint, end, color, width);
+                p.Circle(b, joint, width * .5f, color);
+            }
+        }
     }
 
     private static void DrawRoutePackets(SpriteBatch b, PrimitiveRenderer p, IReadOnlyList<PointData> points,
@@ -240,7 +312,7 @@ public static class MapEnvironmentRenderer
             Housing(b, p, r, c, .52f);
             var inner = new Rectangle(r.X + 11, r.Y + 12, r.Width - 22, r.Height - 24);
             p.FillRect(b, inner, c.Ground);
-            p.Glow(b, inner.Center.ToVector2(), Math.Max(inner.Width, inner.Height), c.Accent, .58f);
+            p.Glow(b, inner.Center.ToVector2(), Math.Max(inner.Width, inner.Height), c.Accent, .44f);
             for (var x = inner.Left + 5; x < inner.Right - 2; x += 10)
             {
                 p.FillRect(b, new Rectangle(x, inner.Top + 3, 4, inner.Height - 6), c.Accent * (.36f + .06f * MathF.Sin(time * 1.2f + x)));
@@ -297,7 +369,7 @@ public static class MapEnvironmentRenderer
             var center = archive.Item1 + new Vector2(0, MathF.Sin(time * .5f + archive.Item2) * 3);
             var r = archive.Item2;
             var ceramic = Color.Lerp(ColorPalette.Metal, ColorPalette.Paper, .32f);
-            p.Glow(b, center + new Vector2(0, r * .3f), r * 2, c.Accent, .28f);
+            p.Glow(b, center + new Vector2(0, r * .3f), r * 2, c.Accent, .20f);
             // Suspended memory cabinets use solid armor and exposed luminous bus bars.
             p.DrawPolygon(b, center + new Vector2(7, 17), r, 4, false, ColorPalette.Ink);
             p.DrawPolygon(b, center + new Vector2(0, 10), r, 4, false, c.Structure);
@@ -367,7 +439,7 @@ public static class MapEnvironmentRenderer
             p.DashedRing(b, center, radius * .82f, c.Edge * .6f, 32, 5, MathHelper.Pi / 32);
             p.Ring(b, center, radius * .58f, c.Edge * .65f, 3);
             p.DashedRing(b, center, radius * .46f, c.Accent * .45f, 24, 2, time * .12f);
-            p.Glow(b, center, radius * .8f, c.Accent, .45f + MathF.Sin(time * 1.4f) * .06f);
+            p.Glow(b, center, radius * .8f, c.Accent, .34f + MathF.Sin(time * 1.4f) * .05f);
             p.Circle(b, center, radius * .27f, c.Structure);
             p.Ring(b, center, radius * .27f, ColorPalette.Cyan * .45f, 2);
             p.DrawPolygon(b, center, radius * .17f, 6, false, c.Accent * .7f, time * .07f);

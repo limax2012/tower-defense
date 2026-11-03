@@ -27,14 +27,16 @@ public sealed partial class VisualVerificationGame : Game
     private const int DefaultCoOpPort = 28741;
     private readonly GraphicsDeviceManager _graphics;
     private readonly string _outputDirectory;
+    private readonly string? _enemyLaneVariant;
     private SpriteBatch _batch = null!;
     private PrimitiveRenderer _primitives = null!;
     private GameRenderer _renderer = null!;
     private bool _complete;
 
-    public VisualVerificationGame(string outputDirectory)
+    public VisualVerificationGame(string outputDirectory, string? enemyLaneVariant = null)
     {
         _outputDirectory = outputDirectory;
+        _enemyLaneVariant = enemyLaneVariant;
         _graphics = new GraphicsDeviceManager(this)
         {
             PreferredBackBufferWidth = 640,
@@ -77,6 +79,207 @@ public sealed partial class VisualVerificationGame : Game
         ConfigureUi(ui, content);
 
         var assertions = new List<string>();
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_MENU_BOUNDARY_ONLY") == "1")
+        {
+            var menuScenes = new List<VisualVerificationScene>();
+            VerifyMenuFeedBoundaries(content, font, typography.Display, assertions, menuScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "menu-boundary-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = menuScenes },
+                    new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Menu boundary verification passed: {menuScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_WAVE_BANNER_ONLY") == "1")
+        {
+            var bannerScenes = new List<VisualVerificationScene>();
+            AssertWaveStartPresentation(content, font, typography.Display, assertions, bannerScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "wave-start-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = bannerScenes },
+                    new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Wave start verification passed: {bannerScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_SUPPORT_PULSES_ONLY") == "1")
+        {
+            var supportScenes = new List<VisualVerificationScene>();
+            AssertSupportPulsePresentation(content, font, typography.Display, assertions, supportScenes);
+            if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_SUPPORT_PULSES_ANIMATION") == "1")
+                CaptureSupportPulseMotion(content, font, typography.Display);
+            File.WriteAllText(Path.Combine(_outputDirectory, "support-pulse-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = supportScenes },
+                    new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Support verification passed: {supportScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_RICOCHET_ONLY") == "1")
+        {
+            var ricochetScenes = new List<VisualVerificationScene>();
+            AssertRicochetPresentation(content, font, typography.Display, assertions, ricochetScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "ricochet-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = ricochetScenes },
+                    new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Ricochet verification passed: {ricochetScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_CORNER_MOTION_ONLY") == "1" ||
+            Environment.GetEnvironmentVariable("MAXIMAL_BASTION_RUNNER_CORNER") == "1")
+        {
+            CaptureCornerMotionReview(content, font);
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_UX_ONLY") == "1")
+        {
+            var reviewScenes = new List<VisualVerificationScene>();
+            AssertUnifiedHud(content, font, typography.Display, assertions, reviewScenes);
+            AssertEnemyRestPortraits(content, font, typography.Display, assertions, reviewScenes);
+            AssertEnemySelection(content, font, typography.Display, assertions, reviewScenes);
+            AssertEnemyMeterPresentation(content, font, typography.Display, assertions, reviewScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "ux-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = reviewScenes }, new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"UX verification passed: {reviewScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_ARMOR_ONLY") == "1")
+        {
+            var armorScenes = new List<VisualVerificationScene>();
+            AssertEnemyArmorPresentation(content, font, typography.Display, assertions, armorScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "armor-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = armorScenes }, new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Armor verification passed: {armorScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_STUN_ONLY") == "1")
+        {
+            var stunScenes = new List<VisualVerificationScene>();
+            AssertEnemyStunPresentation(content, font, typography.Display, assertions, stunScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "stun-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = stunScenes }, new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Stun verification passed: {stunScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_FOG_ONLY") == "1")
+        {
+            var fogScenes = new List<VisualVerificationScene>();
+            AssertEnemyFogAnimation(content, font, typography.Display, assertions, fogScenes);
+            AssertEnemyFogTransitions(content, font, assertions, fogScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "fog-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = fogScenes }, new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Fog verification passed: {fogScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_ITERATION05_REVIEW") == "1")
+        {
+            CaptureIteration05Review(content, font, typography.Display);
+            _complete = true;
+            return;
+        }
+        if (_enemyLaneVariant is not null)
+        {
+            if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_GROUND_CONTACTS") == "1")
+                CaptureGroundedLocomotion(content, font, typography.Display);
+            else if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_CROWDED_PILOT") == "1")
+                CaptureCrowdedEnemyPilot(content, font, typography.Display, _enemyLaneVariant);
+            else if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_STATE_EVIDENCE") == "1")
+                CaptureEnemyStateEvidence(content, font, typography.Display, _enemyLaneVariant);
+            else if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_EVIDENCE_ONLY") == "1")
+                CaptureEnemyLaneEvidence(content, font, typography.Display, _enemyLaneVariant);
+            else
+                CaptureEnemyLanePilot(content, font, typography.Display, _enemyLaneVariant);
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_ENEMY_FAMILIES_ONLY") == "1")
+        {
+            var familyScenes = new List<VisualVerificationScene>();
+            AssertEnemyFamilies(content, font, typography.Display, assertions, familyScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "family-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = familyScenes }));
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_CONSTRUCTION_ONLY") == "1")
+        {
+            CaptureEnemyConstructionReview(content, font);
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_CORNERS_ONLY") == "1")
+        {
+            var cornerScenes = new List<VisualVerificationScene>();
+            AssertMapCornerDecoration(content, font, typography.Display, assertions, cornerScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "corner-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = cornerScenes }));
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_STATUS_ONLY") == "1" ||
+            Environment.GetEnvironmentVariable("MAXIMAL_BASTION_HUD_ONLY") == "1")
+        {
+            var statusScenes = new List<VisualVerificationScene>();
+            if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_STATUS_ONLY") == "1")
+                AssertStatusPresentation(content, font, typography.Display, assertions, statusScenes);
+            else AssertTracksideStatusPresentation(content, font, typography.Display, assertions, statusScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "focused-report.json"),
+                System.Text.Json.JsonSerializer.Serialize(new { assertions, scenes = statusScenes }));
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_SIGNAL_ONLY") == "1")
+        {
+            var signalScenes = new List<VisualVerificationScene>();
+            AssertSignalModules(content, font, typography.Display, assertions, signalScenes);
+            AssertSignalBodyOcclusion(content, font, typography.Display, assertions, signalScenes);
+            AssertTowerSignalPolish(content, font, typography.Display, assertions, signalScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "signal-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = signalScenes },
+                    new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Signal verification passed: {signalScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_IMPACT_ONLY") == "1")
+        {
+            var impactScenes = new List<VisualVerificationScene>();
+            AssertAttackImpactCoverage(content, font, typography.Display, assertions, impactScenes);
+            AssertAttackBodyOcclusion(content, font, typography.Display, assertions, impactScenes);
+            CaptureBurstBattlefield(content, font, typography.Display, assertions, impactScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "impact-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = impactScenes },
+                    new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Impact verification passed: {impactScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_BURST_ONLY") == "1")
+        {
+            var burstScenes = new List<VisualVerificationScene>();
+            AssertTransientBursts(content, font, typography.Display, assertions, burstScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "burst-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = burstScenes },
+                    new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Burst verification passed: {burstScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_PROTOCOL_ONLY") == "1")
+        {
+            var protocolScenes = new List<VisualVerificationScene>();
+            AssertProtocolLighting(content, font, typography.Display, assertions, protocolScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "protocol-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = protocolScenes }, new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Protocol verification passed: {protocolScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
         var displayFactor = GameConstants.FontDrawScale * UiTypography.DisplayRasterScale;
         Require(typography.Display.MeasureString("BASTION").X * displayFactor * 2.65f < 400 &&
                 typography.Display.MeasureString("MAXIMAL").X * displayFactor * .8f + 54 < 200,
@@ -89,22 +292,53 @@ public sealed partial class VisualVerificationGame : Game
             "Both bundled typefaces preserve the interface's bullet and degree glyphs.", assertions);
         AssertEveryAuthoredTowerStatSheetFits(font, content, assertions);
         AssertEveryAuthoredTowerIntelLabelFits(font, content, assertions);
+        var hudScenes = new List<VisualVerificationScene>();
+        AssertUnifiedHud(content, font, typography.Display, assertions, hudScenes);
         var mainMenuAtRest = RenderPixels(ui, GameState.MainMenu, null);
+        Require(ui.MainMenuBattleHealthBarCounts.Count == 2 && ui.MainMenuBattleHealthBarCounts[0] > 0 && ui.MainMenuBattleHealthBarCounts[1] > 0,
+            "Both independent main-menu simulations show entry-visible enemy health bars.", assertions);
         var scenes = new List<VisualVerificationScene>
         {
             Capture("00-main-menu-battles.png", ui, GameState.MainMenu, null)
         };
+        scenes.AddRange(hudScenes);
         AssertPathMarkingsCrossCorners(assertions, scenes);
         AssertSubpixelPathCaps(assertions, scenes);
+        AssertMapCornerDecoration(content, font, typography.Display, assertions, scenes);
         AssertMortarShellPresentation(content, font, typography.Display, assertions, scenes);
         AssertProjectileIdentity(content, font, assertions, scenes);
+        AssertRicochetPresentation(content, font, typography.Display, assertions, scenes);
         AssertPrismBeamPresentation(content, font, typography.Display, assertions, scenes);
         scenes.Add(CaptureTowerMountGallery(content, font));
         AssertTowerProgression(content, font, typography.Display, assertions, scenes);
         scenes.Add(CaptureTowerRotationGallery(content, font));
         AssertTowerProtocolPresentation(content, font, assertions, scenes);
         AssertStatusPresentation(content, font, typography.Display, assertions, scenes);
+        AssertTracksideStatusPresentation(content, font, typography.Display, assertions, scenes);
+        AssertEnemyFogAnimation(content, font, typography.Display, assertions, scenes);
+        AssertEnemyFogTransitions(content, font, assertions, scenes);
+        AssertEnemyStunPresentation(content, font, typography.Display, assertions, scenes);
+        AssertEnemyArmorPresentation(content, font, typography.Display, assertions, scenes);
+        AssertEnemyRestPortraits(content, font, typography.Display, assertions, scenes);
+        AssertSignalModules(content, font, typography.Display, assertions, scenes);
+        AssertSupportPulsePresentation(content, font, typography.Display, assertions, scenes);
+        AssertWaveStartPresentation(content, font, typography.Display, assertions, scenes);
+        AssertSignalBodyOcclusion(content, font, typography.Display, assertions, scenes);
+        AssertTowerSignalPolish(content, font, typography.Display, assertions, scenes);
+        AssertEnemyRanks(content, font, typography.Display, assertions, scenes);
+        CaptureLegMotion(content, font, scenes);
+        AssertEnemyFamilies(content, font, typography.Display, assertions, scenes);
+        AssertEnemyReadability(content, font, typography.Display, assertions, scenes);
+        CaptureEnemyReadabilityCombat(content, font, typography.Display, assertions, scenes);
         AssertBattlefieldInteractionPresentation(content, font, typography.Display, assertions, scenes);
+        AssertShardEmitterPresentation(content, font, typography.Display, assertions, scenes);
+        AssertNodeContextPresentation(content, font, typography.Display, assertions, scenes);
+        AssertBeaconSupportPresentation(content, font, typography.Display, assertions, scenes);
+        AssertRadialMachineryMotion(content, font, assertions, scenes);
+        AssertProtocolLighting(content, font, typography.Display, assertions, scenes);
+        AssertTransientBursts(content, font, typography.Display, assertions, scenes);
+        AssertAttackImpactCoverage(content, font, typography.Display, assertions, scenes);
+        AssertAttackBodyOcclusion(content, font, typography.Display, assertions, scenes);
         scenes.Add(CaptureHealthBarGallery(font));
         AssertCombatFeedClipping(content, assertions, scenes);
         var smoothMenu = new UIManager(font, typography.Display);
@@ -180,18 +414,59 @@ public sealed partial class VisualVerificationGame : Game
         {
             var at = UIManager.SetupCardRectangle(2, mode, content.Challenges.Count).Center;
             ui.HandleGameSetup(Pointer(at.X, at.Y, leftPressed: true));
-            Require(ui.HoveredModeDescription.Length > 0, "Every mode has a hover description.", assertions);
+            var expectedDescription = ui.SelectedChallengeId switch
+            {
+                "standard" => "Full arsenal. Standard rules.",
+                "core_six" => "Six core tower types only.",
+                "no_reserves" => "No Plates, Forge, manual Protocols, or selling.",
+                "close_quarters" => "Enemies boost their allies and disrupt your towers.",
+                "sandbox_lab" => "Unlimited resources. Spawn enemies and test defenses.",
+                _ => ""
+            };
+            Require(expectedDescription.Length > 0 && ui.SelectedModeDescription == expectedDescription,
+                $"Selected {ui.SelectedChallengeId} shows its mode description.", assertions);
             ui.HandleGameSetup(Pointer(0, 0));
-            Require(ui.HoveredModeDescription.Length == 0, "Selected modes do not leave a lingering description.", assertions);
+            Require(ui.SelectedModeDescription == expectedDescription,
+                $"Selected {ui.SelectedChallengeId} keeps its description after the pointer leaves.", assertions);
+            scenes.Add(Capture($"00e-mode-selected-{ui.SelectedChallengeId}.png", ui, GameState.GameSetup, null));
+        }
+        Require(content.Challenges.Values.Single(challenge => challenge.Id == "core_six").MenuLabel == "Core Six",
+            "The Core Six selector spells out its tower count.", assertions);
+        for (var difficulty = 0; difficulty < content.Difficulties.Count; difficulty++)
+        {
+            var at = UIManager.SetupCardRectangle(1, difficulty, content.Difficulties.Count).Center;
+            ui.HandleGameSetup(Pointer(at.X, at.Y, leftPressed: true));
+            ui.HandleGameSetup(Pointer(0, 0));
+            var expectedDescription = ui.SelectedDifficultyId switch
+            {
+                "easy" => "Enemy health 94% / Enemy speed 99% / 20 lives",
+                "normal" => "Enemy health 100% / Enemy speed 100% / 12 lives",
+                "hard" => "Enemy health 106% / Enemy speed 101% / 6 lives",
+                "bastion" => "Enemy health 112% / Enemy speed 102% / 1 life",
+                _ => ""
+            };
+            Require(expectedDescription.Length > 0 && ui.SelectedDifficultyDescription == expectedDescription,
+                $"Selected {ui.SelectedDifficultyId} keeps its health, speed, and lives description after the pointer leaves.", assertions);
+            scenes.Add(Capture($"00g-difficulty-selected-{ui.SelectedDifficultyId}.png", ui, GameState.GameSetup, null));
         }
         var standardMode = UIManager.SetupCardRectangle(2, 0, content.Challenges.Count).Center;
         ui.HandleGameSetup(Pointer(standardMode.X, standardMode.Y, leftPressed: true));
         scenes.Add(Capture("00e-mode-hover.png", ui, GameState.GameSetup, null));
         ui.HandleGameSetup(Pointer(0, 0));
         scenes.Add(Capture("00f-mode-unhovered.png", ui, GameState.GameSetup, null));
-        var difficultyHover = UIManager.SetupCardRectangle(1, 1, content.Difficulties.Count).Center;
+        var mediumDifficulty = UIManager.SetupCardRectangle(1, 1, content.Difficulties.Count).Center;
+        ui.HandleGameSetup(Pointer(mediumDifficulty.X, mediumDifficulty.Y, leftPressed: true));
+        var selectedDifficultyDescription = ui.SelectedDifficultyDescription;
+        var difficultyHover = UIManager.SetupCardRectangle(1, 0, content.Difficulties.Count).Center;
         ui.HandleGameSetup(Pointer(difficultyHover.X, difficultyHover.Y));
+        Require(ui.SelectedDifficultyId == "normal" && ui.SelectedDifficultyDescription == selectedDifficultyDescription,
+            "Hovering another difficulty preserves the selected Medium description.", assertions);
         scenes.Add(Capture("00g-difficulty-hover.png", ui, GameState.GameSetup, null));
+        var modeHover = UIManager.SetupCardRectangle(2, 1, content.Challenges.Count).Center;
+        ui.HandleGameSetup(Pointer(modeHover.X, modeHover.Y));
+        Require(ui.SelectedChallengeId == "standard" && ui.SelectedModeDescription == "Full arsenal. Standard rules.",
+            "Hovering another mode preserves the selected Standard description.", assertions);
+        scenes.Add(Capture("00h-mode-other-hover.png", ui, GameState.GameSetup, null));
         ui.HandleGameSetup(Pointer(0, 0));
         var setupAtRest = RenderPixels(ui, GameState.GameSetup, null);
         foreach (var (row, count, label) in new[]
@@ -386,7 +661,7 @@ public sealed partial class VisualVerificationGame : Game
         Require(CountColorPixels(localNodePlacementPixels,
                     new Rectangle((int)expectedNodeMarkerCenter.X - 5, (int)expectedNodeMarkerCenter.Y - 4, 10, 8),
                     amplifierColor) >= 20,
-            "Local tower placement connects the actual node to a node-colored receiving coupler on its foundation.", assertions);
+            "Local tower placement marks covered nodes with a node-colored receiving coupler on its foundation.", assertions);
         var renderedNodeMarkerCenter = ColorPixelCenter(localNodePlacementPixels,
             new Rectangle((int)expectedNodeMarkerCenter.X - 4, (int)expectedNodeMarkerCenter.Y - 2, 8, 4),
             amplifierColor);
@@ -420,7 +695,7 @@ public sealed partial class VisualVerificationGame : Game
         Require(CountColorPixels(remoteNodePlacementPixels,
                     new Rectangle((int)expectedNodeMarkerCenter.X - 5, (int)expectedNodeMarkerCenter.Y - 4, 10, 8),
                     amplifierColor) >= 20,
-            "Remote co-op placement connects to the same foundation coupler at its synchronized snapped position.", assertions);
+            "Remote co-op placement shows the same node-colored foundation coupler at its synchronized snapped position.", assertions);
         ui.SetRemoteCoOpCursor(null, 0);
 
         placementSession.HandleWorldInput(Pointer(100, 200));
@@ -639,8 +914,9 @@ public sealed partial class VisualVerificationGame : Game
         jammerVisual.ArmSignalAbility(0);
         jammerVisualSession.TryActivateEnemySignal(jammerVisual);
         Require(jammerVisualSession.Effects.Effects.Any(effect => effect.Kind == EffectKind.Splash) &&
-                jammerVisualSession.Effects.Effects.All(effect => effect.Kind != EffectKind.Beam),
-            "A successful Jammer activation retains its pulse event without direct attack beams.", assertions);
+                jammerVisualSession.Effects.Effects.Count(effect => effect.Kind == EffectKind.Beam &&
+                    effect.Signal.Role == EnemySignalRole.Jammer) == jammerVisualSession.Towers.Count(tower => tower.IsSuppressed),
+            "A successful Jammer pulse links each affected tower to its source.", assertions);
         scenes.Add(Capture("05c1-signal-gauntlet-jammer-pulse.png", ui, GameState.Playing, jammerVisualSession));
 
         var supportSession = new GameSession(content, "foundry_loop", DifficultyCatalog.DefaultId, "close_quarters");
@@ -664,15 +940,20 @@ public sealed partial class VisualVerificationGame : Game
         supportSession.Enemies.Remove(carrier);
         supportSession.Enemies.Insert(0, carrier);
         Require(CountChangedPixels(ordinaryPixels, supportPixels, supportRegion) >= 12,
-            "A signal carrier's attached hardware remains visible above an overlapping ordinary threat.", assertions);
+            "A signal carrier's inset reactor remains visible above an overlapping ordinary threat.", assertions);
         Require(CountChangedPixels(reorderedSupportPixels, supportPixels, supportRegion) == 0,
-            "Signal-carrier hardware draws above ordinary threats independently of collection order.", assertions);
+            "Signal-carrier reactors draw above ordinary threats independently of collection order.", assertions);
         var shieldedThreat = supportSession.Enemies[2];
-        var shieldBarPosition = shieldedThreat.Position - new Vector2(0, shieldedThreat.Radius + 18);
-        Require(CountColorPixels(supportPixels,
-                    new Rectangle((int)(shieldBarPosition.X - shieldedThreat.Radius * 1.25f),
-                        (int)shieldBarPosition.Y, (int)(shieldedThreat.Radius * 2.5f), 6), ColorPalette.Shield) >= 4,
-            "A shielded threat renders a quantitative cyan bar above its separate health bar.", assertions);
+        Require(_renderer.LastEnemyHealthBarCount == 3 && _renderer.LastEnemyShieldBarCount == 1,
+            "Every visible threat retains a health meter, with a capacity bar for its active shield.", assertions);
+        supportSession.HandleInspectionInput(Pointer(shieldedThreat.Position.X, shieldedThreat.Position.Y));
+        var focusedSupportPixels = RenderPixels(ui, GameState.Playing, supportSession);
+        var shieldBodyRadius = EnemyModelArt.BodyRadius(shieldedThreat);
+        var shieldFrame = EnemyHudPresentation.MeterFrames(shieldedThreat,
+            PresentationFrame.Create(supportSession, 0).EnemyPosition(shieldedThreat), shieldBodyRadius).Shield;
+        Require(CountColorPixels(focusedSupportPixels, shieldFrame, ColorPalette.Shield) >= 4,
+            "An inspected shielded threat renders a quantitative cyan bar above its separate health bar.", assertions);
+        supportSession.HandleInspectionInput(Pointer(0, 0));
         scenes.Add(Capture("05d-signal-support-network.png", ui, GameState.Playing, supportSession));
 
         var crosswindSession = new GameSession(content, "crosswind_basin", DifficultyCatalog.DefaultId,
@@ -758,10 +1039,10 @@ public sealed partial class VisualVerificationGame : Game
         var pauseSpecsSession = new GameSession(content, "crosswind_basin", DifficultyCatalog.DefaultId, "no_reserves");
         var pauseSpecsPixels = RenderPixels(ui, GameState.Paused, pauseSpecsSession);
         Require(CountColorPixels(pauseSpecsPixels, new Rectangle(450, 169, 380, 24), ColorPalette.Muted) >= 50,
-            "Solo pause run specifications use the surrounding muted blue-gray text color.", assertions);
+            "Solo pause game time uses the surrounding muted blue-gray text color.", assertions);
         Require(CountColorPixels(pauseSpecsPixels, UIManager.PauseResumeBounds, ColorPalette.Cyan) == 0,
             "Idle Resume has no cyan selection treatment.", assertions);
-        scenes.Add(Capture("09a-solo-pause-run-specs.png", ui, GameState.Paused, pauseSpecsSession));
+        scenes.Add(Capture("09a-solo-pause-game-time.png", ui, GameState.Paused, pauseSpecsSession));
         var pauseControls = new[]
         {
             (UIManager.PauseResumeBounds, UiAction.Resume),
@@ -889,9 +1170,9 @@ public sealed partial class VisualVerificationGame : Game
         finalActSave.Waves.CurrentWaveNumber = GameConstants.ApexUnlockWave - 1;
         var finalActSession = GameSession.RestoreSaveGame(content, finalActSave);
         Require(finalActSession.StartNextWave(true) &&
-                finalActSession.AnnouncementTitle == "WAVE 21 // RESIDUAL CURRENT",
-            "Final-act announcement scene starts authored wave 21.", assertions);
-        scenes.Add(Capture("10h-long-final-act-announcement.png", ui, GameState.Playing, finalActSession));
+                finalActSession.AnnouncementTitle is null && finalActSession.AnnouncementRemaining == 0,
+            "Authored wave 21 starts with no battlefield announcement.", assertions);
+        scenes.Add(Capture("10h-final-act-wave-start.png", ui, GameState.Playing, finalActSession));
 
         var settings = new UserSettings { AutoStartWaves = true, AutoStartDelaySeconds = 10, ShowHotkeyBadges = true };
         ui.ConfigureSettings(settings);
@@ -1739,11 +2020,14 @@ public sealed partial class VisualVerificationGame : Game
                 var transform = Matrix.CreateScale(scale) * Matrix.CreateTranslation(at.X, at.Y, 0);
                 _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp,
                     null, null, null, transform);
+                if (column > 0)
+                    TowerProtocolArt.DrawEnvelope(_batch, _primitives, Vector2.Zero, tower.Visual.Radius,
+                        tower.Id, 3, column >= 3, time, reduced);
                 NightGridArt.Tower(_batch, _primitives, Vector2.Zero, tower.Visual.Radius, tower.Id,
                     level: 3, angle: angle, time: reduced ? 0 : time, lights: !reduced, apex: column >= 3);
                 if (column > 0)
                     TowerProtocolArt.Draw(_batch, _primitives, Vector2.Zero, tower.Visual.Radius,
-                        tower.Id, 3, column >= 3, angle, time, reduced);
+                        tower.Id, 3, column >= 3, angle, time, reduced, envelope: false);
                 _batch.End();
             }
         }
@@ -1963,10 +2247,12 @@ public sealed partial class VisualVerificationGame : Game
         target.SetSandboxPathDistance(350, session.Map.Path);
         beam.Remaining = .07f;
         var presentation = PresentationFrame.Create(session, 0);
-        var shotDirection = Vector2.Normalize(beam.End - beam.Start);
+        var shotDirection = Vector2.Normalize(presentation.EnemyPosition(target) - emitter.Position);
         var shotAngle = MathF.Atan2(shotDirection.Y, shotDirection.X);
-        Require(MathF.Abs(MathHelper.WrapAngle(GameRenderer.TowerAim(session, emitter, presentation) - shotAngle)) < .0001f,
-            "A visible Prism beam holds its barrel on the fired ray after target movement.", assertions);
+        Require(beam.TargetEnemy == target &&
+                Vector2.Distance(presentation.EffectTargetPosition(beam), presentation.EnemyPosition(target)) < .001f &&
+                MathF.Abs(MathHelper.WrapAngle(GameRenderer.TowerAim(session, emitter, presentation) - shotAngle)) < .0001f,
+            "A visible Prism beam and its barrel follow the struck enemy's displayed position after movement.", assertions);
         var expectedMuzzle = emitter.Position + shotDirection * emitter.Definition.Visual.Radius *
             presentation.TowerScale(emitter) * TowerTierVisuals.PrismBarrelLength(emitter.LevelIndex + 1, emitter.IsApex);
         Require(Vector2.Distance(GameRenderer.PrismBeamOrigin(session, beam, presentation), expectedMuzzle) < .001f &&
@@ -2169,25 +2455,25 @@ public sealed partial class VisualVerificationGame : Game
             var afterCoverage = CountChangedPixels(reference, after, cornerRegion);
             Require(CountChangedPixels(reference, crossing, incomingLeg) > 12 &&
                     CountChangedPixels(reference, crossing, outgoingLeg) > 12,
-                $"{style}: a moving path marking occupies both legs while crossing a right-angle corner.", assertions);
+                $"{style}: a moving center packet occupies both legs while crossing a right-angle corner.", assertions);
             Require(CountChangedPixels(reference, before, incomingLeg) > 24 &&
                     CountChangedPixels(reference, before, outgoingLeg) == 0 &&
                     CountChangedPixels(reference, after, incomingLeg) == 0 &&
                     CountChangedPixels(reference, after, outgoingLeg) > 24,
-                $"{style}: path markings advance continuously from the incoming to the outgoing corner leg.", assertions);
+                $"{style}: center packets advance continuously from the incoming to the outgoing corner leg.", assertions);
             var straightCoverage = (beforeCoverage + afterCoverage) / 2f;
             Require(straightCoverage > 50 && crossingCoverage >= straightCoverage * .75f &&
                     crossingCoverage <= straightCoverage * 1.35f,
-                $"{style}: corner marking coverage remains stable ({beforeCoverage}/{crossingCoverage}/{afterCoverage} pixels before/during/after).", assertions);
+                $"{style}: center-packet coverage remains stable at the turn ({beforeCoverage}/{crossingCoverage}/{afterCoverage} pixels before/during/after).", assertions);
             Require(CountChangedPixels(before, after, cornerRegion) > 50,
-                $"{style}: center path markings visibly move over time.", assertions);
+                $"{style}: center packets visibly move over time.", assertions);
             if (style is "foundry" or "trail")
             {
                 var straightBrightness = (CoreBrightness(before, new Point(290, 300)) +
                                           CoreBrightness(after, new Point(300, 310))) / 2;
                 var cornerBrightness = CoreBrightness(crossing, new Point(300, 300));
                 Require(MathF.Abs(cornerBrightness - straightBrightness) <= MathF.Max(5, straightBrightness * .12f),
-                    $"{style}: the corner join retains the straight marking's brightness ({cornerBrightness:0.#}/{straightBrightness:0.#}).", assertions);
+                    $"{style}: the packet's corner join retains its straight-section brightness ({cornerBrightness:0.#}/{straightBrightness:0.#}).", assertions);
                 scenes.Add(CapturePathCorner($"28-{style}-corner-before.png", map, 84 / speed));
                 scenes.Add(CapturePathCorner($"28-{style}-corner-crossing.png", map, 94 / speed));
                 scenes.Add(CapturePathCorner($"28-{style}-corner-after.png", map, 104 / speed));
@@ -2258,7 +2544,7 @@ public sealed partial class VisualVerificationGame : Game
                         departedCap.Expected >= minimumContrast &&
                         entryCap.Observed >= entryCap.Expected * .45f && exitCap.Observed >= exitCap.Expected * .45f &&
                         departedCap.Observed >= departedCap.Expected * .45f,
-                    $"{style}: subpixel fragments retain full-width caps for direction {direction}, turn {turn} " +
+                    $"{style}: moving center-packet ends retain full-width caps for direction {direction}, turn {turn} " +
                     $"(observed/expected local contrast: entry {entryCap.Observed:0.#}/{entryCap.Expected:0.#}, " +
                     $"exit {exitCap.Observed:0.#}/{exitCap.Expected:0.#}, departed {departedCap.Observed:0.#}/{departedCap.Expected:0.#}).", assertions);
 

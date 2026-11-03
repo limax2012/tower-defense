@@ -13,6 +13,14 @@ public static class ColorPalette
     public static readonly Color Metal = new(43, 63, 80);
     public static readonly Color TowerShadow = new(3, 7, 13);
     public static readonly Color Hostile = new(255, 76, 152);
+    public static readonly Color EnemyChassis = new(29, 27, 39);
+    public static readonly Color EnemyArmor = new(102, 103, 123);
+    public static readonly Color EnemyArmorLight = new(143, 147, 169);
+    public static readonly Color EnemyArmorEdge = new(174, 184, 204);
+    public static readonly Color EnemyRecess = new(10, 9, 17);
+    public static readonly Color EnemyMagenta = new(255, 25, 183);
+    public static readonly Color EnemyHot = new(255, 155, 229);
+    public static readonly Color EnemyCoreRim = new(112, 14, 83);
     public static readonly Color Circuit = new(21, 55, 67);
     public static readonly Color Ink = new(8, 13, 24);
     public static readonly Color Paper = new(226, 244, 250);
@@ -51,19 +59,30 @@ public static class ColorPalette
     public static readonly Color HealthLow = Coral;
     public static readonly Color HealthTrack = new(15, 22, 35);
     public static readonly Color Shield = new(97, 198, 245);
-    public static readonly Color Slow = new(130, 229, 245);
+    public static readonly Color Acceleration = new(240, 246, 250);
+    public static readonly Color AccelerationGem = new(190, 198, 206);
+    public static readonly Color Slow = new(125, 206, 255);
     public static readonly Color Burn = new(255, 69, 64);
     public static readonly Color ArmorBreak = Gold;
+    public static readonly Color Disruption = new(193, 63, 255);
 
-    public static readonly Color NeedleShot = Cyan;
-    public static readonly Color PrecisionShot = new(186, 202, 255);
+    public static readonly Color NeedleShot = new(24, 238, 211);
+    public static readonly Color ArcShot = new(83, 145, 255);
+    public static readonly Color ArcHot = new(211, 233, 255);
+    public static readonly Color PrecisionShot = new(231, 240, 236);
+    public static readonly Color Expose = Violet;
+    public static readonly Color ExposeFog = new(200, 136, 255);
     public static readonly Color ShardShot = new(255, 142, 55);
-    public static readonly Color FrostShot = Slow;
+    public static readonly Color FrostShot = new(109, 200, 255);
+    public static readonly Color FrostHighlight = new(224, 251, 255);
+    public static readonly Color FrostAura = Slow;
     public static readonly Color EmberShot = Burn;
     public static readonly Color EmberFlame = new(255, 99, 57);
     public static readonly Color EmberCore = new(255, 220, 158);
     public static readonly Color BreakerShot = ArmorBreak;
     public static readonly Color MortarShot = new(211, 244, 70);
+    public static readonly Color BeaconEnergy = new(73, 224, 110);
+    public static readonly Color BeaconHighlight = new(103, 228, 138);
 
     public readonly record struct EnvironmentColors(Color Ground, Color Structure, Color Deck,
         Color Lane, Color Edge, Color Accent, Color Detail);

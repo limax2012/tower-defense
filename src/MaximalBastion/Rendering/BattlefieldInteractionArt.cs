@@ -29,13 +29,16 @@ public static class BattlefieldInteractionArt
         for (var i = 0; i < sides; i++)
         {
             var a = rotation + i * MathHelper.TwoPi / sides;
-            var next = a + MathHelper.TwoPi / sides;
-            var first = new Vector2(MathF.Cos(a), MathF.Sin(a)) * (mount + 1.7f);
-            var last = new Vector2(MathF.Cos(next), MathF.Sin(next)) * (mount + 1.7f);
-            var start = center + Vector2.Lerp(first, last, .34f);
-            var end = center + Vector2.Lerp(first, last, .66f);
-            p.Line(b, start, end, ColorPalette.Metal * strength, 3.2f);
-            p.Line(b, start, end, light, selected ? 1.7f : 1f);
+            var step = MathHelper.TwoPi / sides;
+            var corner = center + new Vector2(MathF.Cos(a), MathF.Sin(a)) * (mount + 1.7f);
+            var previous = center + new Vector2(MathF.Cos(a - step), MathF.Sin(a - step)) * (mount + 1.7f);
+            var next = center + new Vector2(MathF.Cos(a + step), MathF.Sin(a + step)) * (mount + 1.7f);
+            var start = Vector2.Lerp(corner, previous, .16f);
+            var end = Vector2.Lerp(corner, next, .16f);
+            p.Line(b, start, corner, ColorPalette.Metal * strength, 3.2f);
+            p.Line(b, corner, end, ColorPalette.Metal * strength, 3.2f);
+            p.Line(b, start, corner, light, selected ? 1.7f : 1f);
+            p.Line(b, corner, end, light, selected ? 1.7f : 1f);
         }
     }
 
@@ -52,22 +55,36 @@ public static class BattlefieldInteractionArt
         center + new Vector2(0, radius * (towerId is "arc_relay" or "signal_beacon" or "shard_fan" ? .66f : 1.02f));
 
     public static void DrawAutoController(SpriteBatch b, PrimitiveRenderer p, Vector2 center, float radius,
-        string towerId, float time, bool reduced)
+        string towerId, float time, bool reduced, bool active = false)
     {
         var at = AutoControllerPosition(center, radius, towerId);
         var color = ColorPalette.Auto;
         p.Line(b, at - new Vector2(0, 5), at, ColorPalette.Metal, 5);
         p.Line(b, at + new Vector2(-7, 1), at + new Vector2(7, 1), ColorPalette.Navy, 8);
-        p.Line(b, at - new Vector2(7, 0), at + new Vector2(7, 0), ColorPalette.Muted, 6);
+        p.Line(b, at - new Vector2(7, 0), at + new Vector2(7, 0), active ? color : ColorPalette.Muted, 6);
         p.Line(b, at - new Vector2(5.7f, 0), at + new Vector2(5.7f, 0), ColorPalette.Navy, 4);
-        for (var i = 0; i < 3; i++)
+        if (active)
         {
-            var x = -3.6f + i * 3.6f;
-            var beat = reduced ? 1 : .70f + .30f * MathF.Sin(time * 5 - i * .8f);
-            p.Line(b, at + new Vector2(x - .9f, 0), at + new Vector2(x + .9f, 0), color * beat, 2.5f);
+            // A steady ON readout distinguishes an energized controller from its waiting lamps.
+            p.Line(b, at + new Vector2(-4, -1.4f), at + new Vector2(-1.4f, -1.4f), ColorPalette.Paper, .8f);
+            p.Line(b, at + new Vector2(-4, 1.4f), at + new Vector2(-1.4f, 1.4f), ColorPalette.Paper, .8f);
+            p.Line(b, at + new Vector2(-4, -1.4f), at + new Vector2(-4, 1.4f), ColorPalette.Paper, .8f);
+            p.Line(b, at + new Vector2(-1.4f, -1.4f), at + new Vector2(-1.4f, 1.4f), ColorPalette.Paper, .8f);
+            p.Line(b, at + new Vector2(1.4f, 1.4f), at + new Vector2(1.4f, -1.4f), ColorPalette.Paper, .8f);
+            p.Line(b, at + new Vector2(1.4f, -1.4f), at + new Vector2(4, 1.4f), ColorPalette.Paper, .8f);
+            p.Line(b, at + new Vector2(4, 1.4f), at + new Vector2(4, -1.4f), ColorPalette.Paper, .8f);
+        }
+        else
+        {
+            for (var i = 0; i < 3; i++)
+            {
+                var x = -3.6f + i * 3.6f;
+                var beat = reduced ? 1 : .70f + .30f * MathF.Sin(time * 5 - i * .8f);
+                p.Line(b, at + new Vector2(x - .9f, 0), at + new Vector2(x + .9f, 0), color * beat, 2.5f);
+            }
         }
         p.Line(b, at + new Vector2(-7, -1), at + new Vector2(-7, 1), color, 1);
         p.Line(b, at + new Vector2(7, -1), at + new Vector2(7, 1), color, 1);
-        if (!reduced) p.Glow(b, at, 11, color, .25f);
+        if (!reduced) p.Glow(b, at, 11, color, active ? .38f : .25f);
     }
 }

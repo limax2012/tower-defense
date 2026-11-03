@@ -167,27 +167,6 @@ public sealed class GameSession
         Statistics = new RunStatistics(this);
         _towerSystem = new TowerSystem(TargetSelector);
         EmergencyInventory = TacticalSystemsEnabled ? Math.Max(0, content.Tactics.EmergencyDefense.StartingInventory) : 0;
-        if (IsSandbox)
-        {
-            AnnouncementTitle = "SANDBOX LAB ONLINE";
-            AnnouncementSubtitle = "Build freely, deploy fixed targets, or replay any campaign wave.";
-            AnnouncementRemaining = 4.2f;
-            AnnouncementPositive = true;
-        }
-        else if (!Challenge.Id.Equals(ChallengeCatalog.DefaultId, StringComparison.OrdinalIgnoreCase))
-        {
-            AnnouncementTitle = Challenge.DisplayName.ToUpperInvariant();
-            AnnouncementSubtitle = Challenge.Description;
-            AnnouncementRemaining = 3.6f;
-            AnnouncementPositive = true;
-        }
-        else if (mapDefinition.PowerNodes.Count > 0)
-        {
-            AnnouncementTitle = mapDefinition.DisplayName.ToUpperInvariant();
-            AnnouncementSubtitle = "Hover a Surge Node; compact fields grant one focused tower bonus.";
-            AnnouncementRemaining = 3.2f;
-            AnnouncementPositive = true;
-        }
     }
 
     public void Update(float unscaledDeltaSeconds)
@@ -843,12 +822,13 @@ public sealed class GameSession
         if (tower.Protocol.BurstRadius > 0 &&
             (tower.Protocol.BurstDamage > 0 || !string.IsNullOrWhiteSpace(tower.Protocol.BurstStatus)))
         {
-            Effects.AddSplash(tower.Position, tower.Definition.Visual.PrimaryColor, tower.Protocol.BurstRadius);
+            Effects.AddSplash(tower.Position, tower.Definition.Visual.PrimaryColor, tower.Protocol.BurstRadius,
+                AttackAppearance.FromTower(tower), purpose: EffectPurpose.ProtocolActivation);
         }
         else
         {
             Effects.AddFlash(tower.Position, tower.Definition.Visual.PrimaryColor, 0.42f, 44,
-                AttackAppearance.FromTower(tower));
+                AttackAppearance.FromTower(tower), purpose: EffectPurpose.ProtocolActivation);
         }
         TowerOverdriven?.Invoke(tower);
         return true;
@@ -1121,11 +1101,10 @@ public sealed class GameSession
         _sandboxGroupTimer = 0;
         _sandboxDelayRemaining = wave.Groups.Count > 0 ? wave.Groups[0].DelayBefore : 0;
         _sandboxQueuedEnemies = wave.Groups.Sum(group => group.Count);
-        AnnouncementTitle = $"TEST WAVE {wave.Number} // {wave.Archetype.ToUpperInvariant()}";
-        var signalStatus = _sandboxWaveSignalsEnabled ? "Wave signals on." : "Wave signals off.";
-        AnnouncementSubtitle = $"{Map.Definition.DisplayName} enemies at {Difficulty.DisplayName} strength. {signalStatus}";
+        AnnouncementTitle = null;
+        AnnouncementSubtitle = null;
         AnnouncementPositive = false;
-        AnnouncementRemaining = 2.8f;
+        AnnouncementRemaining = 0;
         return wave.Groups.Count > 0;
     }
 
@@ -1311,6 +1290,7 @@ public sealed class GameSession
     }
 
     public TowerBuff GetSupportBuff(TowerInstance tower) => _buffSystem.Get(tower);
+    public bool HasLiveSupport(TowerInstance tower) => _buffSystem.HasLiveSupport(tower, Towers);
 
     public float GetEffectiveRange(TowerInstance tower)
     {
@@ -1392,7 +1372,6 @@ public sealed class GameSession
             AnnouncementSubtitle = "Break its shield; expect an overdrive phase at half integrity.";
             AnnouncementPositive = false;
             AnnouncementRemaining = 3.4f;
-            Effects.AddFlash(enemy.Position, ColorPalette.Coral, 0.8f, enemy.Radius + 24);
         }
     }
 
@@ -1402,25 +1381,16 @@ public sealed class GameSession
         AnnouncementSubtitle = "Shield restored. Movement accelerated. Control resistance remains high.";
         AnnouncementPositive = false;
         AnnouncementRemaining = 3.2f;
-        Effects.AddFlash(enemy.Position, ColorPalette.Gold, 0.9f, enemy.Radius + 34);
         BossPhaseChanged?.Invoke(enemy);
     }
 
     public void OnWaveStarted(WaveDefinition wave, int earlyCallBonus = 0)
     {
         EmergencyDirectPurchasesThisWave = 0;
-        AnnouncementTitle = $"WAVE {wave.Number} // {wave.Archetype.ToUpperInvariant()}";
-        var briefing = CounterPressureEnabled ? wave.Number switch
-        {
-            2 => "SIGNAL: ACCELERATOR // Nearby threats move faster.",
-            3 => "SIGNAL: RESTORER // Nearby threats recover health.",
-            4 => "SIGNAL: BULWARK // Nearby threats gain shields.",
-            5 => "SIGNAL: JAMMER // Every nearby combat tower is weakened.",
-            _ => wave.Briefing
-        } : wave.Briefing;
-        AnnouncementSubtitle = earlyCallBonus > 0 ? $"EARLY CALL +{earlyCallBonus} // {briefing}" : briefing;
+        AnnouncementTitle = null;
+        AnnouncementSubtitle = null;
         AnnouncementPositive = false;
-        AnnouncementRemaining = 2.4f;
+        AnnouncementRemaining = 0;
         WaveStarted?.Invoke(wave);
     }
 
@@ -1506,12 +1476,11 @@ public sealed class GameSession
                 if (amount <= 0) continue;
                 restored += amount;
                 var signal = new SignalAppearance(enemy.SignalRole, enemy.Id, target.Id);
-                Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Green, 0.46f, signal: signal);
                 Effects.AddFlash(target.Position, ColorPalette.Green, 0.32f, target.Radius + 4, signal: signal);
             }
             if (restored <= 0) return;
             Effects.AddSplash(enemy.Position, ColorPalette.Green, Challenge.CounterSupportRadius,
-                signal: new(enemy.SignalRole, enemy.Id));
+                signal: new(enemy.SignalRole, enemy.Id), duration: .46f);
             return;
         }
         if (enemy.SignalRole == EnemySignalRole.Bulwark)
@@ -1524,12 +1493,11 @@ public sealed class GameSession
                 if (amount <= 0) continue;
                 granted += amount;
                 var signal = new SignalAppearance(enemy.SignalRole, enemy.Id, target.Id);
-                Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Shield, 0.46f, signal: signal);
                 Effects.AddFlash(target.Position, ColorPalette.Shield, 0.32f, target.Radius + 5, signal: signal);
             }
             if (granted <= 0) return;
             Effects.AddSplash(enemy.Position, ColorPalette.Shield, Challenge.CounterSupportRadius,
-                signal: new(enemy.SignalRole, enemy.Id));
+                signal: new(enemy.SignalRole, enemy.Id), duration: .46f);
             return;
         }
 
@@ -1546,8 +1514,12 @@ public sealed class GameSession
         Effects.AddFlash(enemy.Position, ColorPalette.Orange, 0.38f, enemy.Radius + 8,
             signal: new(enemy.SignalRole, enemy.Id));
         foreach (var tower in affected)
+        {
+            Effects.AddBeam(enemy.Position, tower.Position, ColorPalette.Orange, 0.38f,
+                signal: new(enemy.SignalRole, enemy.Id, TargetTowerId: tower.Id));
             Effects.AddFlash(tower.Position, ColorPalette.Orange, 0.34f,
                 tower.Definition.Visual.Radius + 7, signal: new(enemy.SignalRole, enemy.Id, TargetTowerId: tower.Id));
+        }
     }
 
     private void TryEmitDisruption(EnemyInstance enemy)
@@ -1566,11 +1538,11 @@ public sealed class GameSession
         if (target is null) return;
 
         var signal = new SignalAppearance(enemy.SignalRole, enemy.Id, TargetTowerId: target.Id);
-        Effects.AddFlash(enemy.Position, ColorPalette.Violet, 0.24f, enemy.Radius + 6,
+        Effects.AddFlash(enemy.Position, ColorPalette.Disruption, 0.24f, enemy.Radius + 6,
             signal: new(enemy.SignalRole, enemy.Id));
-        Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Violet, 0.38f, signal: signal);
-        Effects.AddImpact(target.Position, ColorPalette.Violet, target.Definition.Visual.Radius + 7, signal: signal);
-        Effects.AddFlash(target.Position, ColorPalette.Violet, 0.26f, target.Definition.Visual.Radius + 7, signal: signal);
+        Effects.AddBeam(enemy.Position, target.Position, ColorPalette.Disruption, 0.38f, signal: signal);
+        Effects.AddImpact(target.Position, ColorPalette.Disruption, target.Definition.Visual.Radius + 7, signal: signal);
+        Effects.AddFlash(target.Position, ColorPalette.Disruption, 0.26f, target.Definition.Visual.Radius + 7, signal: signal);
     }
 
     public void OnEnemyKilled(EnemyInstance enemy)
@@ -1585,7 +1557,8 @@ public sealed class GameSession
     {
         if (!_resolvedOutcomes.Add(enemy.Id)) return;
         Economy.LoseLives(enemy.LivesLost);
-        Effects.AddFlash(enemy.Position, ColorPalette.Coral, 0.35f, enemy.Radius + 12);
+        Effects.AddFlash(enemy.Position, ColorPalette.Coral, 0.35f, enemy.Radius + 12,
+            purpose: EffectPurpose.EnemyEscape);
         EnemyEscaped?.Invoke(enemy);
     }
 
@@ -1596,7 +1569,8 @@ public sealed class GameSession
     {
         if (Generator is null || EmergencyInventory >= Generator.Level.Capacity) return;
         EmergencyInventory++;
-        Effects.AddFlash(Generator.Position, Generator.Definition.Visual.PrimaryColor, 0.22f, 28);
+        Effects.AddFlash(Generator.Position, Generator.Definition.Visual.PrimaryColor, 0.22f, 28,
+            purpose: EffectPurpose.ForgeCharge);
         EmergencyChargeProduced?.Invoke();
     }
 
@@ -1708,7 +1682,10 @@ public sealed class GameSession
                 throw new InvalidDataException("Network enemy progress is outside the selected map path.");
             var rankHealthMultiplier = savedEnemy.Rank switch { EnemyRank.Elite => 1.85f, EnemyRank.Boss => 4.5f, _ => 1f };
             var maximumHealth = definition.MaxHealth * savedEnemy.HealthMultiplier * rankHealthMultiplier;
-            var maximumShield = definition.Shield + (savedEnemy.Rank == EnemyRank.Boss ? maximumHealth * 0.12f : 0);
+            var shieldCapacityFraction = savedEnemy.Rank == EnemyRank.Boss ? 0.12f : 0;
+            if (session.CounterSupportEnabled)
+                shieldCapacityFraction = MathF.Max(shieldCapacityFraction, session.Challenge.CounterShieldCapacityFraction);
+            var maximumShield = definition.Shield + maximumHealth * shieldCapacityFraction;
             if (!float.IsFinite(maximumHealth) || savedEnemy.Health > maximumHealth + 0.01f ||
                 savedEnemy.Shield > maximumShield + 0.01f)
                 throw new InvalidDataException("Network enemy health or shield exceeds its allowed maximum.");
@@ -1793,10 +1770,6 @@ public sealed class GameSession
         session.CancelPlacement();
         session.IsVictory = false;
         session.IsDefeat = false;
-        session.AnnouncementTitle = "SAVE RESTORED";
-        session.AnnouncementSubtitle = $"{session.Map.Definition.DisplayName} resumed after wave {session.CurrentWave}.";
-        session.AnnouncementRemaining = 2.8f;
-        session.AnnouncementPositive = true;
         return session;
     }
 

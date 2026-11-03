@@ -9,6 +9,7 @@ public static partial class NightGridArt
     public static Color TowerAccent(string id) => id switch
     {
         "needle_turret" => ColorPalette.NeedleShot,
+        "arc_relay" => ColorPalette.ArcShot,
         "watchtower" => ColorPalette.PrecisionShot,
         "shard_fan" => ColorPalette.ShardShot,
         "frost_spire" => ColorPalette.FrostShot,
@@ -17,17 +18,18 @@ public static partial class NightGridArt
         "siege_mortar" => ColorPalette.MortarShot,
         "pulse_plate" => ColorPalette.Gold,
         "prism_beam" => ColorPalette.Violet,
-        "signal_beacon" or "charge_forge" => ColorPalette.Green,
+        "signal_beacon" => ColorPalette.BeaconEnergy,
+        "charge_forge" => ColorPalette.Green,
         _ => ColorPalette.Cyan
     };
 
     public static void Tower(SpriteBatch b, PrimitiveRenderer p, Vector2 center, float radius, string id,
         int level = 1, float angle = -MathHelper.PiOver2, float time = 0, float recoil = 0,
-        float opacity = 1, bool lights = true, bool groundEffects = true, bool apex = false)
+        float opacity = 1, bool lights = true, bool groundEffects = true, bool apex = false, float power = 1)
     {
         if (id is not "pulse_plate" and not "charge_forge")
         {
-            DrawTowerModel(b, p, center, radius, id, level, angle, time, recoil, opacity, lights, groundEffects, apex);
+            DrawTowerModel(b, p, center, radius, id, level, angle, time, recoil, opacity, lights, groundEffects, apex, power);
             return;
         }
         var accent = TowerAccent(id) * opacity;
@@ -153,111 +155,6 @@ public static partial class NightGridArt
             p.Line(b, start, end, ColorPalette.Navy * opacity, width + 1.8f);
             if (lights && groundEffects) p.Glow(b, (start + end) * .5f, radius * .58f, accent, .36f * pulse);
             p.Line(b, start, end, accent * pulse, width);
-        }
-    }
-
-    public static void Enemy(SpriteBatch b, PrimitiveRenderer p, Vector2 center, float r, string id,
-        float angle, float time, bool boss = false, float hit = 0, bool lights = true)
-    {
-        var accent = boss ? ColorPalette.Gold : ColorPalette.Hostile;
-        var armor = Color.Lerp(ColorPalette.Metal, ColorPalette.Paper, Math.Clamp(hit, 0, 1));
-        var shell = Color.Lerp(ColorPalette.Metal, ColorPalette.Muted, .37f + Math.Clamp(hit, 0, 1) * .4f);
-        var direction = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
-        var side = new Vector2(-direction.Y, direction.X);
-        var fast = id.Contains("runner", StringComparison.Ordinal);
-        var heavy = id.Contains("brute", StringComparison.Ordinal) || id.Contains("aegis", StringComparison.Ordinal) || boss;
-        if (lights) p.Glow(b, center, r * 1.9f, accent, .19f);
-        p.DrawPolygon(b, center + new Vector2(2, 3), r * (fast ? 1 : .85f), fast ? 3 : heavy ? 6 : 4,
-            false, ColorPalette.Canvas, angle);
-        if (fast)
-        {
-            p.Line(b, center - direction * r, center - direction * r * 1.65f, accent * .45f, 3);
-            p.DrawPolygon(b, center, r, 3, false, armor, angle);
-            p.DrawPolygon(b, center - direction * r * .1f, r * .7f, 3, false, ColorPalette.Navy, angle);
-            for (var sign = -1; sign <= 1; sign += 2)
-            {
-                var nacelle = center - direction * r * .35f + side * r * .48f * sign;
-                p.Line(b, nacelle - direction * r * .16f, nacelle + direction * r * .39f, shell, r * .16f);
-                p.Circle(b, nacelle - direction * r * .17f, r * .09f, accent);
-            }
-            p.Line(b, center - side * r * .4f, center + direction * r * .7f, accent, 2);
-            p.Line(b, center + side * r * .4f, center + direction * r * .7f, accent, 2);
-        }
-        else
-        {
-            for (var s = -1; s <= 1; s += 2)
-            for (var i = -1; i <= 1; i++)
-            {
-                var root = center + side * r * .5f * s + direction * r * i * .4f;
-                var foot = root + side * r * .5f * s + direction * MathF.Sin(time * 9 + i * 2) * (heavy ? 1 : 3);
-                var knee = Vector2.Lerp(root, foot, .55f) - direction * r * .13f;
-                p.Line(b, root, knee, armor, heavy ? 5 : 3);
-                p.Line(b, knee, foot, shell, heavy ? 3 : 2);
-                p.Circle(b, foot, heavy ? 2 : 1.5f, accent * .75f);
-            }
-            p.DrawPolygon(b, center, r * .85f, heavy ? 6 : 4, false, armor, angle);
-            p.DrawPolygon(b, center, r * .63f, heavy ? 6 : 4, false, ColorPalette.Navy, angle);
-            p.Line(b, center - direction * r * .48f, center + direction * r * .18f, armor, r * .33f);
-            p.Line(b, center - direction * r * .48f, center + direction * r * .18f, accent * .5f, r * .075f);
-            if (heavy)
-            {
-                for (var s = -1; s <= 1; s += 2)
-                {
-                    var shoulder = center + side * r * .65f * s;
-                    p.Line(b, shoulder - direction * r * .44f, shoulder + direction * r * .35f, shell, r * .25f);
-                    p.Line(b, shoulder - direction * r * .03f, shoulder + direction * r * .09f, ColorPalette.Navy, r * .28f);
-                    p.Line(b, shoulder - direction * r * .3f, shoulder - direction * r * .08f, accent * .7f, 2);
-                }
-            }
-            else
-            {
-                for (var sign = -1; sign <= 1; sign += 2)
-                {
-                    var flank = center + side * r * .42f * sign;
-                    p.Line(b, flank - direction * r * .20f, flank + direction * r * .16f, shell, r * .18f);
-                }
-            }
-            p.Line(b, center + direction * r * .4f - side * r * .36f,
-                center + direction * r * .4f + side * r * .36f, accent, 3);
-            if (id.Contains("regenerator", StringComparison.Ordinal))
-            {
-                for (var rib = -1; rib <= 1; rib++)
-                    p.Line(b, center + direction * r * rib * .3f - side * r * .3f,
-                        center + direction * r * rib * .3f + side * r * .3f, armor, 2);
-            }
-            if (id.Contains("aegis", StringComparison.Ordinal))
-            {
-                var casing = Color.Lerp(shell, ColorPalette.Muted, .30f);
-                for (var sign = -1; sign <= 1; sign += 2)
-                {
-                    Vector2 At(float along, float across) => center + direction * r * along + side * r * across * sign;
-                    // Recessed capacitor cells sit inside permanent armored flank housings.
-                    p.Line(b, At(-.48f, .66f), At(.26f, .66f), ColorPalette.Ink, r * .34f);
-                    p.Line(b, At(-.45f, .66f), At(.23f, .66f), casing, r * .28f);
-                    p.Line(b, At(-.34f, .66f), At(.12f, .66f), ColorPalette.Navy, r * .18f);
-                    if (lights) p.Glow(b, At(-.11f, .66f), r * .38f, ColorPalette.Hostile, .18f);
-                    for (var cell = 0; cell < 3; cell++)
-                    {
-                        var along = -.27f + cell * .16f;
-                        p.Line(b, At(along, .61f), At(along, .71f), ColorPalette.Hostile * .85f, r * .065f);
-                    }
-                    p.Line(b, At(-.43f, .55f), At(-.43f, .77f), armor, r * .055f);
-                    p.Line(b, At(.20f, .55f), At(.20f, .77f), armor, r * .055f);
-                }
-            }
-        }
-        p.Circle(b, center, r * .24f, ColorPalette.Ink);
-        p.Circle(b, center, r * .17f, ColorPalette.Hostile);
-        p.Line(b, center - side * r * .08f, center + side * r * .05f, ColorPalette.Paper * .6f, 1);
-        if (boss)
-        {
-            p.Ring(b, center, r * .43f, accent, 2);
-            for (var sign = -1; sign <= 1; sign += 2)
-            {
-                var rear = center - direction * r * .56f + side * r * .27f * sign;
-                p.Line(b, rear, rear - direction * r * .4f, shell, r * .15f);
-                p.Circle(b, rear - direction * r * .42f, r * .075f, ColorPalette.Hostile);
-            }
         }
     }
 

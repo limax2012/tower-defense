@@ -126,7 +126,8 @@ public static class ProjectileArt
 
             case "frost_spire":
             {
-                Halo(17, accent, .8f);
+                var iceHot = Color.Lerp(accent, ColorPalette.FrostHighlight, .62f);
+                Halo(17, ColorPalette.FrostAura, .8f);
                 Wake(11 + stage * 2, 2.5f * growth, accent);
                 if (stage == 1)
                     p.DrawDiamond(batch, position, 4.4f * size, accent, angle);
@@ -140,14 +141,14 @@ public static class ProjectileArt
                         else
                             p.DrawDiamond(batch, position, 5.4f * size * growth, accent, angle);
                         for (var sign = -1; sign <= 1; sign += 2)
-                            p.Line(batch, position, At(-2.5f, sign * (stage == 4 ? 5 : 4.2f) * growth), hot, 1 * size);
+                            p.Line(batch, position, At(-2.5f, sign * (stage == 4 ? 5 : 4.2f) * growth), iceHot, 1 * size);
                     }
                     if (stage == 4)
-                        p.DrawPolygon(batch, position, 4.7f * size, 6, false, hot, angle);
+                        p.DrawPolygon(batch, position, 4.7f * size, 6, false, iceHot, angle);
                 }
-                p.DrawDiamond(batch, position, (2.5f + stage * .25f) * size, ColorPalette.Paper, angle);
+                p.DrawDiamond(batch, position, (2.5f + stage * .25f) * size, ColorPalette.FrostHighlight, angle);
                 if (stage >= 2)
-                    p.Line(batch, At(-4.4f * growth, 0), At(4.4f * growth, 0), ColorPalette.Paper, .8f * size);
+                    p.Line(batch, At(-4.4f * growth, 0), At(4.4f * growth, 0), ColorPalette.FrostHighlight, .8f * size);
                 break;
             }
 
