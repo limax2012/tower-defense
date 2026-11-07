@@ -1,0 +1,26 @@
+﻿[
+    {
+        "startAfterTicks":  0,
+        "endAfterTicks":  6198,
+        "policy":  {
+                       "id":  "first-slowFastest-beamFirst",
+                       "targetingProfileId":  "first",
+                       "decisionTicks":  30,
+                       "spendingDecisionTicks":  60,
+                       "spendingBeforeTactics":  true,
+                       "prepareBeforeStart":  true,
+                       "reactAtBoundary":  false,
+                       "directPlateLimit":  0,
+                       "activePlateLimit":  0,
+                       "plateProgressOffset":  0,
+                       "protocolMinimumEnemies":  1,
+                       "protocolMinimumProgress":  0,
+                       "preferredProtocolBehavior":  null,
+                       "damageTargetMode":  null,
+                       "behaviorTargetModes":  {
+                                                   "beam":  "First",
+                                                   "slow_projectile":  "Fastest"
+                                               }
+                   }
+    }
+]

@@ -37,6 +37,15 @@ Its `smoke` configuration uses 80 rollouts, 15 seconds and initial breadth one p
 
 ## Auditing a selected matrix
 
+`scripts/run-strategy-matrix.ps1` reruns the 64 solo competitive strategies in `tests/MaximalBastion.Tests/Fixtures/Matrix`. Every case starts with normal resources, completes the authored campaign and continues through Endless 31. Fixed recipes preserve the selected layouts, policies, spending rules and tactical segment boundaries; they do not search alternatives or import old runtime checkpoints. A failed recipe records a regression for investigation, not proof that the combination is impossible.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\run-strategy-matrix.ps1 -PlannerAssembly $planner -OutputDirectory .build\strategy-matrix
+Get-Content .build\strategy-matrix\status.json -Raw | ConvertFrom-Json
+```
+
+Use `-Maps relay_divide`, `-Difficulties bastion` or `-Challenges close_quarters` to select cases. Independent map workers can share an output directory; each writes its own status under `_workers`, and each case has a `status.json`. Add `-Resume` to skip completed cases with matching inputs. Changed builds, content or recipes require a new output directory. After parallel workers finish, run the same command without filters and with `-SummarizeOnly` to merge their records. `-ValidateOnly` checks the catalog without simulating. Exit code 2 means at least one selected case is incomplete or did not clear; results retain both the measured outcome and its comparison with the stored baseline.
+
 `scripts/summarize-strategy-matrix.ps1` audits a manifest of selected campaign and Endless receipts and writes `matrix-summary.json`, `.csv`, and `.md`. Each row names `Map`, `Difficulty`, `Challenge`, `CampaignTrace`, `CampaignReceipt`, `Endless31Trace`, and `Endless31Receipt`; optional checkpoint paths permit state-signature and tower-count checks. Relative artifact paths resolve against the manifest directory. `Reused` identifies an existing calibration separately from new cases, and the manifest's expected build/content hashes apply to new cases.
 
 ```powershell
@@ -241,6 +250,8 @@ Restoration requires a matching state signature; if the production snapshot's no
 ```
 
 Use `--blueprint` to enable ordered investment during the continuation, or `--policies` to supply a serialized list of `TacticalPolicy` alternatives. This helper saves the initial state, policy inputs, trial metrics, selected policy segments and any verified clear. A wave clear remains separate from campaign victory.
+
+Use `--segments` instead of `--policies` to replay a fixed list of `TacticalPolicySegment` values. Intervals must be contiguous and start at zero. Decision cadence stays anchored to the initial checkpoint across policy changes; the final policy continues until the wave clears or its rollout budget ends. This supports matched comparisons when a successful strategy changes targeting partway through a wave.
 
 An optional `threatFocus` policy prioritizes signal roles or enemy ranks using only target modes that the production selector can reach. Rules can restrict weapon behaviors, path progress and live-enemy count. After ordinary tactical and spending decisions, ready weapons receive changed `SetTargetMode` commands at the 60 Hz simulation boundary. No enemy can be targeted directly outside the game's selectable modes. The Cinderworks policy prioritizes Bulwarks with damage towers and Restorers with beams and Breakers, while leaving Frost targeting unchanged.
 

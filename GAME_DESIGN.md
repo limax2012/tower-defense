@@ -37,7 +37,7 @@ Modes change available decisions:
 - **Standard** is the complete ruleset.
 - **Signal Gauntlet** adds enemy support and disruption roles while preserving the full defensive toolset.
 - **Core Six** restricts the roster to Needle, Frost, Shard, Ember, Breaker, and Beacon with the standard opening economy.
-- **Entrenched** preserves all permanent towers but removes Plates, Forge, Protocols, and selling.
+- **Entrenched** preserves all permanent towers but removes Plates, Forge, manual and armed Protocol controls, and selling. Apex towers retain automatic Protocol activation.
 - **Sandbox Lab** exposes real combat and campaign waves in a noncompetitive test environment. Test/Reset Protocol affects only the selected tower, bypassing the shared manual cooldown without changing other towers' timers or Apex automation. Reset Test clears targets, plates, tower metrics, and Protocol timers while preserving placed towers. Pulse Plates deploy freely with normal placement and active-field limits. Wave signals are optional and off by default.
 
 Competitive modes use the selected difficulty's opening economy without compensating credits. They never change tower damage or utility over time.
@@ -61,7 +61,7 @@ Each tower has three permanent levels:
 - Level 2 chooses one of two doctrines.
 - Level 3 chooses one of two final roles compatible with either doctrine.
 
-This produces four complete builds per tower. Doctrines emphasize a statistical or delivery approach; final roles provide the larger mechanical identity. Upgrade previews show exact current-to-next values, including utility fields such as slow strength/duration, projectile speed, arcs, splash, Expose, Armor Break, or Beacon aura changes.
+This produces four complete builds per tower. Doctrines emphasize a statistical or delivery approach; final roles provide the larger mechanical identity. Upgrade previews show exact current-to-next values, including utility fields such as slow strength/duration, projectile speed, arcs, splash, Expose, Armor Break, or Beacon aura changes. Slow values show the effective 60% movement cap. An upgrade already above that cap keeps a neutral slow-strength value while showing its actual duration, area, range, and damage improvements.
 
 Wave 21 unlocks one Apex promotion for completed level-three towers. Apex preserves the selected build's identity while raising its late-game ceiling. It is a permanent upgrade, remains available in Entrenched, and is recorded in saves, co-op snapshots, history layouts, and contribution data.
 
@@ -100,6 +100,8 @@ The Charge Forge produces stored Plates only while enemies are being fought. Its
 
 Five enemy families cover light, fast, armored, shielding, and regenerating pressure. Their visible size order is Runner, Crawler, Brute, Aegis, Regenerator. Graphite armor and recessed magenta reactors connect the family designs. Runner uses interceptor propulsion; Crawler has four legs, Brute six, Aegis eight, and Regenerator a symmetric tracked chassis. Elites and Bosses reinforce each family's machinery. At half health, Boss overdrive opens protective components and brightens the core. The Bastion Core lifts paired rear exhaust shutters, with narrow magenta flow directed straight behind the chassis and a brief cyan contour flash when its shield refills. Walking contacts stay planted while supporting the body and return through controlled shallow swings. Turning steps shorten gradually and stay inside the road deck. Actual travel drives feet and track motion, including Slow, Stun, and resume. Campaign waves combine profiles and rank pressure per arena.
 
+Enemy Intel states the exact rank-adjusted escape penalty as `BREACH: LOSE N LIFE/LIVES`. Standard Crawler, Runner, and Brute cost one life; Aegis costs three and Regenerator five. Elite adds one to its family's cost; Boss costs at least ten. Health and speed multipliers do not change this penalty.
+
 Signal Gauntlet adds visible signal roles to ordinary enemies:
 
 - **Accelerator:** increases nearby enemy speed by 20% while the signal enemy remains in formation range.
@@ -111,6 +113,10 @@ Signal Gauntlet adds visible signal roles to ordinary enemies:
 Each arena owns its campaign wave composition. Difficulty profiles scale that same enemy lineup, while Signal Gauntlet deterministically assigns signal roles: Accelerator appears on wave 2, Restorer on wave 3, Bulwark on wave 4, Jammer on wave 5, and later formations alternate signal enemies. Wave 20 narrows the ordinary formation to one Restorer and one Jammer around its boss Disruptor; other elite or boss groups use Disruptor. Sandbox wave replays can enable these assignments for unlimited-resource formation tests; manual Sandbox spawning remains the controlled way to isolate any enemy, rank, health scale, or signal role.
 
 Shield is a separate temporary durability pool above health. Every family displays shield light whenever its shield pool is positive, independently of signal role. Aegis has an authored shield; Bulwark signals can grant shields to nearby recipients from any family. Ordinary hits remove raw shield before armor mitigation is evaluated; shield-bypassing attacks skip that pool and damage health through the normal armor calculation.
+
+Slow reduces movement by at most 60%; additional slow strength above that cap does not reduce speed further. Slow strengths do not add together, and refreshes preserve the stronger active magnitude. Elite and Boss status durations are reduced to 70% and 40%, respectively. Deep Chill Permafrost already reaches the slow cap before Apex; its Apex still improves duration, splash radius, range, damage and firing rate, and enables an independent automatic Protocol.
+
+Burn retains at most two distinct sources. A third distinct source replaces the active burn with the lowest nominal damage per second, even when the incoming burn is weaker or equal. Reapplying the same source refreshes its existing burn. Replacement compares nominal burn damage before enemy armor.
 
 Signal enemies identify their capability through their existing gem: white for Accelerator, green for Restorer, blue for Bulwark, orange for Jammer, and saturated purple for Disruptor. Each complete carrier body renders above ordinary enemies and combat effects; overlapping carriers occlude one another normally, including their gems. The three support sources expose their true application radii with restrained colored outlines. Successful transfers produce brief source and recipient feedback. Disruption dims a tower's powered parts and interrupts its conductors with purple fault contacts; core, diamond transmission, receiving tower, and status label share that color. Disruption purple is more saturated than Prism's lighter lavender violet. Jammer sends orange radio wavefronts to affected receivers.
 

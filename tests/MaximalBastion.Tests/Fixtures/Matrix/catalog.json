@@ -1,0 +1,2764 @@
+﻿{
+    "SchemaVersion":  1,
+    "Id":  "solo-competitive-selected-strategies",
+    "Description":  "Fixed campaign and Endless31 strategy recipes. Every execution starts with normal resources; policy alternatives are excluded.",
+    "Cases":  [
+                  {
+                      "Id":  "relay_divide/easy-standard",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "easy",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/easy-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/easy-close_quarters",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "easy",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/easy-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/easy-core_six",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "easy",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/easy-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/easy-no_reserves",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "easy",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/easy-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/normal-standard",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "normal",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/normal-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/normal-close_quarters",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "normal",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/normal-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/normal-core_six",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "normal",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/normal-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/normal-no_reserves",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "normal",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/normal-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/hard-standard",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "hard",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/hard-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/hard-close_quarters",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "hard",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/hard-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/hard-core_six",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "hard",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/hard-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/hard-no_reserves",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "hard",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/hard-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/bastion-standard",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/bastion-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/bastion-close_quarters",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/bastion-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/bastion-core_six",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/bastion-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "relay_divide/bastion-no_reserves",
+                      "Map":  "relay_divide",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "relay_divide/bastion-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/easy-standard",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "easy",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/easy-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/easy-close_quarters",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "easy",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/easy-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/easy-core_six",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "easy",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/easy-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/easy-no_reserves",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "easy",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/easy-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/normal-standard",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "normal",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/normal-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/normal-close_quarters",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "normal",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/normal-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/normal-core_six",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "normal",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/normal-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/normal-no_reserves",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "normal",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/normal-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/hard-standard",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "hard",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/hard-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/hard-close_quarters",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "hard",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/hard-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/hard-core_six",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "hard",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/hard-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/hard-no_reserves",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "hard",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/hard-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/bastion-standard",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/bastion-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/bastion-close_quarters",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/bastion-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  2,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/bastion-core_six",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/bastion-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "prism_circuit/bastion-no_reserves",
+                      "Map":  "prism_circuit",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "prism_circuit/bastion-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/easy-standard",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "easy",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/easy-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/easy-close_quarters",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "easy",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/easy-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/easy-core_six",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "easy",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/easy-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/easy-no_reserves",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "easy",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/easy-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/normal-standard",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "normal",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/normal-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/normal-close_quarters",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "normal",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/normal-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/normal-core_six",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "normal",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/normal-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/normal-no_reserves",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "normal",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/normal-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/hard-standard",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "hard",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/hard-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/hard-close_quarters",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "hard",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/hard-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/hard-core_six",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "hard",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/hard-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/hard-no_reserves",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "hard",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/hard-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/bastion-standard",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/bastion-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/bastion-close_quarters",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/bastion-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/bastion-core_six",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/bastion-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "crosswind_basin/bastion-no_reserves",
+                      "Map":  "crosswind_basin",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "crosswind_basin/bastion-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/easy-standard",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "easy",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/easy-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/easy-close_quarters",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "easy",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/easy-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/easy-core_six",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "easy",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/easy-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/easy-no_reserves",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "easy",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/easy-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/normal-standard",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "normal",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/normal-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/normal-close_quarters",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "normal",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/normal-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/normal-core_six",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "normal",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/normal-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/normal-no_reserves",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "normal",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/normal-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true,
+                                        "Blueprint":  "endless31-blueprint.json"
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/hard-standard",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "hard",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/hard-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/hard-close_quarters",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "hard",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/hard-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  29,
+                                        "Seconds":  180,
+                                        "RequiredWave":  29
+                                    },
+                                    {
+                                        "Id":  "repair30",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-29.json",
+                                        "Segments":  "repair30-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30,
+                                        "FirstEndless":  false
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "repair30",
+                                        "Checkpoint":  "clear.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "repair30",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "clear.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/hard-core_six",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "hard",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/hard-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  29,
+                                        "Seconds":  180,
+                                        "RequiredWave":  29
+                                    },
+                                    {
+                                        "Id":  "repair30",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-29.json",
+                                        "Segments":  "repair30-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30,
+                                        "FirstEndless":  false,
+                                        "Blueprint":  "repair30-blueprint.json"
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "repair30",
+                                        "Checkpoint":  "clear.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "repair30",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "clear.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/hard-no_reserves",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "hard",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/hard-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true,
+                                        "Blueprint":  "endless31-blueprint.json"
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/bastion-standard",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "standard",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/bastion-standard",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/bastion-close_quarters",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "close_quarters",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/bastion-close_quarters",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/bastion-core_six",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "core_six",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/bastion-core_six",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  28,
+                                        "Seconds":  180,
+                                        "RequiredWave":  28
+                                    },
+                                    {
+                                        "Id":  "repair29",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-28.json",
+                                        "Segments":  "repair29-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  29,
+                                        "FirstEndless":  false,
+                                        "Blueprint":  "repair29-blueprint.json"
+                                    },
+                                    {
+                                        "Id":  "repair30",
+                                        "Kind":  "forecast",
+                                        "After":  "repair29",
+                                        "Checkpoint":  "clear.json",
+                                        "Segments":  "repair30-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30,
+                                        "FirstEndless":  false,
+                                        "Blueprint":  "repair30-blueprint.json"
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "endless",
+                                        "After":  "repair30",
+                                        "Checkpoint":  "clear.json",
+                                        "Plan":  "endless31.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "repair30",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "clear.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "trace.json",
+                                             "Receipt":  "verification.json",
+                                             "Checkpoint":  "checkpoint.json"
+                                         }
+                  },
+                  {
+                      "Id":  "foundry_loop/bastion-no_reserves",
+                      "Map":  "foundry_loop",
+                      "Difficulty":  "bastion",
+                      "Challenge":  "no_reserves",
+                      "Seed":  1337,
+                      "CoOp":  false,
+                      "Directory":  "foundry_loop/bastion-no_reserves",
+                      "Baseline":  "baseline.json",
+                      "Steps":  [
+                                    {
+                                        "Id":  "campaign",
+                                        "Kind":  "campaign",
+                                        "Plan":  "campaign.json",
+                                        "Trials":  30,
+                                        "Seconds":  180,
+                                        "RequiredWave":  30
+                                    },
+                                    {
+                                        "Id":  "endless31",
+                                        "Kind":  "forecast",
+                                        "After":  "campaign",
+                                        "Checkpoint":  "wave-30.json",
+                                        "Segments":  "endless31-segments.json",
+                                        "Trials":  1,
+                                        "Seconds":  180,
+                                        "RequiredWave":  31,
+                                        "FirstEndless":  true,
+                                        "Blueprint":  "endless31-blueprint.json"
+                                    }
+                                ],
+                      "CampaignProof":  {
+                                            "Step":  "campaign",
+                                            "Trace":  "witness.json",
+                                            "Receipt":  "witness-verification.json",
+                                            "Checkpoint":  "wave-30.json"
+                                        },
+                      "Endless31Proof":  {
+                                             "Step":  "endless31",
+                                             "Trace":  "clear-trace.json",
+                                             "Receipt":  "clear-trace-verification.json",
+                                             "Checkpoint":  "clear.json"
+                                         }
+                  }
+              ]
+}

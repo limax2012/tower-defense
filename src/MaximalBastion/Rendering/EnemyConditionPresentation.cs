@@ -140,7 +140,7 @@ public static class EnemyConditionPresentation
     public static string Detail(EnemyInstance enemy, EnemyCondition condition) => condition switch
     {
         EnemyCondition.Stun => $"MOVEMENT PAUSED / {Remaining(enemy, StatusType.Stun):0.0}s",
-        EnemyCondition.Slow => $"SPEED -{Math.Min(.60f, enemy.StatusEffects.SlowFactor):P0} / {Remaining(enemy, StatusType.Slow):0.0}s",
+        EnemyCondition.Slow => $"SPEED -{EnemyInstance.EffectiveSlowFraction(enemy.StatusEffects.SlowFactor):P0} / {Remaining(enemy, StatusType.Slow):0.0}s",
         EnemyCondition.ArmorBreak => $"ARMOR -{enemy.StatusEffects.ArmorReduction:0.#} / {Remaining(enemy, StatusType.ArmorBreak):0.0}s",
         EnemyCondition.Exposed => $"DAMAGE +{enemy.StatusEffects.DamageMultiplier - 1:P0} / {Remaining(enemy, StatusType.Exposed):0.0}s",
         EnemyCondition.Burn => $"{BurnDamage(enemy):0.#} DAMAGE/S / {Remaining(enemy, StatusType.Burn):0.0}s",

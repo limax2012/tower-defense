@@ -27,10 +27,25 @@ Needle is the best opening filler and remains useful wherever several firing win
 
 Frost is strongest where its area can repeatedly touch a busy lane. It defaults to Fastest so it distributes slow toward enemies most likely to escape instead of repeatedly choosing an already-controlled front target.
 
-- **Deep Chill → Permafrost:** maximum slow area, strength, and duration. Best when several other towers exploit the added firing time.
+- **Deep Chill → Permafrost:** reaches the 60% slow cap with the widest area and longest duration. Best when several other towers exploit the added firing time.
 - **Frost Bolt → Hail Barrage:** more direct damage with lighter control. Best when the defense already has enough slowing.
 - **Targeting:** Fastest is the general choice. Support is situational in Signal Gauntlet if the carrier is the immediate danger.
 - **Pairing:** any damage tower benefits from Frost. Arc gains no special damage multiplier; the combination is useful because both affect groups and layer slow with stun.
+
+Frost costs 140 to place and 85 for either doctrine. Deep Chill at tier two applies 49.56% slow for 2.596 seconds; Frost Bolt applies 31.5% for 1.65 seconds and deals more direct damage. Permafrost costs another 140, Hail Barrage 155, and Apex 650. The completed branches trade control against damage rather than making one doctrine universally better.
+
+Each pair below shows the completed branch **before / after Apex**, without support, nodes or an active Protocol. Values are rounded; raw DPS is damage per shot times firing rate, before armor or additional splash recipients.
+
+| Doctrine → final role | Total credits | Effective slow | Slow seconds | Splash radius | Range | Raw DPS |
+|---|---:|---:|---:|---:|---:|---:|
+| Deep Chill → Permafrost | 365 / 1,015 | 60% / 60% | 4.01 / 4.73 | 49.56 / 58.48 | 178 / 192.24 | 3.12 / 4.30 |
+| Frost Bolt → Permafrost | 365 / 1,015 | 46.5% / 54.9% | 2.55 / 3.01 | 31.50 / 37.17 | 181.56 / 196.08 | 5.81 / 8.02 |
+| Deep Chill → Hail Barrage | 380 / 1,030 | 41.3% / 48.7% | 2.12 / 2.51 | 37.76 / 44.56 | 175 / 189 | 11.40 / 15.73 |
+| Frost Bolt → Hail Barrage | 380 / 1,030 | 26.3% / 31.0% | 1.35 / 1.59 | 24 / 28.32 | 178.50 / 192.78 | 21.26 / 29.34 |
+
+Deep Chill Permafrost gains no further slow strength from Apex. Its value is longer and wider control, more reach, 38% more raw DPS, faster projectiles, and its own automatic Flash Freeze. Flash Freeze applies 50% slow for 2.5 seconds within radius 170 and grants 45% attack rate and 15% range for six seconds, with an 18-second cooldown. Apex automation remains available in Entrenched. Whether that is worth 650 depends on coverage, available space and the need for independent Protocols; an extra tower can be better where it opens another useful firing window.
+
+Elite and Boss status durations are 70% and 40% of the listed duration. Longer duration therefore matters even when strength is capped. Multiple slows do not add strength; a weaker application can refresh the stronger active slow's duration.
 
 ### Shard Fan — close crowd coverage
 
@@ -58,6 +73,8 @@ Ember is a delayed-output tower: the burn continues after impact, so its contrib
 - **Intense Flame → Piercing Burn:** durable-target burn, range, and armor pierce.
 - **Targeting:** First for spreading pressure through the route; Strongest for the single-target branch.
 - **Pairing:** control helps enemies remain inside Ember coverage long enough for repeated applications.
+
+Only two distinct burn sources can remain on one enemy. A third distinct source replaces the active burn with the lowest nominal burn DPS, even when the incoming burn is weaker or equal. The same source refreshes its own burn. More Ember towers can still add direct hits and cover other enemies, but crowding them onto one target does not create unlimited burn stacks and can replace a stronger active burn. Replacement uses damage before armor, not the final damage a particular branch would deal to that enemy.
 
 ### Breaker Cannon — armor and shield counter
 
@@ -130,7 +147,9 @@ The lower starting economy assumes early node use. Large nodes can geometrically
 - **Hard:** 106% health, 101% speed, six lives, and a 30-wave campaign.
 - **Bastion:** 112% health, 102% speed, one life, and the same complete 30-wave campaign. Any breach ends the run.
 
-Standard tests the complete toolset. Signal Gauntlet adds support carriers and tower disruption. Core Six is a roster puzzle rather than a universal numerical handicap. Entrenched tests permanent planning by removing tactical reserves, Protocols, selling, and the Forge.
+Check Enemy Intel's `BREACH: LOSE N LIFE/LIVES` before deciding to accept a leak. Crawler, Runner and Brute cost one life at Standard rank; Aegis costs three and Regenerator five. Elite adds one life and Boss costs at least ten. An Elite Regenerator therefore costs six lives even on Easy, independently of its remaining health or the difficulty's health multiplier.
+
+Standard tests the complete toolset. Signal Gauntlet adds support carriers and tower disruption. Core Six is a roster puzzle rather than a universal numerical handicap. Entrenched tests permanent planning by removing tactical reserves, manual and armed Protocol controls, selling, and the Forge. Apex automatic Protocols remain available.
 
 ## What the Experienced simulation agent represents
 

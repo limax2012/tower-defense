@@ -1,0 +1,25 @@
+﻿[
+    {
+        "startAfterTicks":  0,
+        "endAfterTicks":  6375,
+        "policy":  {
+                       "id":  "first-forward-plates",
+                       "targetingProfileId":  "first",
+                       "decisionTicks":  30,
+                       "spendingDecisionTicks":  60,
+                       "spendingBeforeTactics":  true,
+                       "prepareBeforeStart":  true,
+                       "reactAtBoundary":  false,
+                       "directPlateLimit":  16,
+                       "activePlateLimit":  2,
+                       "plateProgressOffset":  0.05,
+                       "protocolMinimumEnemies":  1,
+                       "protocolMinimumProgress":  0,
+                       "preferredProtocolBehavior":  null,
+                       "damageTargetMode":  null,
+                       "behaviorTargetModes":  {
+                                                   "slow_projectile":  "Fastest"
+                                               }
+                   }
+    }
+]

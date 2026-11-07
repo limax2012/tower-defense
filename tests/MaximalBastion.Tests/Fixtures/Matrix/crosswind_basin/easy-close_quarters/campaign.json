@@ -1,0 +1,1758 @@
+﻿{
+    "schemaVersion":  1,
+    "id":  "rainline-easy-close_quarters-transfer",
+    "scenario":  {
+                     "mapId":  "crosswind_basin",
+                     "difficultyId":  "easy",
+                     "challengeId":  "close_quarters",
+                     "seed":  1337,
+                     "coOp":  false,
+                     "horizon":  30,
+                     "endless":  false,
+                     "startingProfile":  "fresh",
+                     "informationProfile":  "oracle",
+                     "executionProfile":  "expert",
+                     "forbidCombatSales":  true
+                 },
+    "layout":  {
+                   "id":  "rainline-reference-layout",
+                   "mapId":  "crosswind_basin",
+                   "towers":  [
+                                  {
+                                      "key":  "goal-1",
+                                      "towerId":  "needle_turret",
+                                      "x":  190,
+                                      "y":  210,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "needle_cycler",
+                                      "specializationId":  "rail_pin",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-2",
+                                      "towerId":  "needle_turret",
+                                      "x":  309.99,
+                                      "y":  210,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "needle_calibrator",
+                                      "specializationId":  "rail_pin",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-3",
+                                      "towerId":  "needle_turret",
+                                      "x":  430,
+                                      "y":  439.99,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "needle_cycler",
+                                      "specializationId":  "rapid_array",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-4",
+                                      "towerId":  "needle_turret",
+                                      "x":  549.99,
+                                      "y":  439.99,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "needle_calibrator",
+                                      "specializationId":  "rail_pin",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-5",
+                                      "towerId":  "needle_turret",
+                                      "x":  670,
+                                      "y":  250,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "needle_cycler",
+                                      "specializationId":  "rapid_array",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-6",
+                                      "towerId":  "frost_spire",
+                                      "x":  190.90466,
+                                      "y":  250.66287,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "frost_deep_chill",
+                                      "specializationId":  "permafrost",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-7",
+                                      "towerId":  "breaker_cannon",
+                                      "x":  247.22614,
+                                      "y":  449.61594,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "breaker_repeater",
+                                      "specializationId":  "breach_round",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-8",
+                                      "towerId":  "needle_turret",
+                                      "x":  789.99,
+                                      "y":  250,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "needle_calibrator",
+                                      "specializationId":  "rail_pin",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-9",
+                                      "towerId":  "watchtower",
+                                      "x":  490.98148,
+                                      "y":  334.39545,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "watch_spotter",
+                                      "specializationId":  "deadeye_post",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-10",
+                                      "towerId":  "prism_beam",
+                                      "x":  489.9573,
+                                      "y":  293.8151,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "prism_aperture",
+                                      "specializationId":  "core_lance",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-11",
+                                      "towerId":  "arc_relay",
+                                      "x":  190.23894,
+                                      "y":  291.8236,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "arc_fork",
+                                      "specializationId":  "storm_lattice",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-13",
+                                      "towerId":  "frost_spire",
+                                      "x":  431.31717,
+                                      "y":  398.33002,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "frost_deep_chill",
+                                      "specializationId":  "permafrost",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-15",
+                                      "towerId":  "ember_coil",
+                                      "x":  190.8762,
+                                      "y":  333.64154,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "ember_kindling",
+                                      "specializationId":  "wildfire_matrix",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-16",
+                                      "towerId":  "siege_mortar",
+                                      "x":  490.4694,
+                                      "y":  252.7027,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "mortar_loader",
+                                      "specializationId":  "quake_shell",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-17",
+                                      "towerId":  "arc_relay",
+                                      "x":  430.85345,
+                                      "y":  358.06827,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "arc_capacitor",
+                                      "specializationId":  "lockdown_coil",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-18",
+                                      "towerId":  "signal_beacon",
+                                      "x":  246.71405,
+                                      "y":  334.90753,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "beacon_amplifier",
+                                      "specializationId":  "tempo_beacon",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-19",
+                                      "towerId":  "shard_fan",
+                                      "x":  191.33994,
+                                      "y":  374.70554,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "shard_scatter",
+                                      "specializationId":  "razor_bloom",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-20",
+                                      "towerId":  "prism_beam",
+                                      "x":  430.99854,
+                                      "y":  317.05264,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "prism_aperture",
+                                      "specializationId":  "spectrum_split",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-21",
+                                      "towerId":  "breaker_cannon",
+                                      "x":  431.44235,
+                                      "y":  276.74252,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "breaker_bored",
+                                      "specializationId":  "shatter_shell",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-22",
+                                      "towerId":  "breaker_cannon",
+                                      "x":  246.71405,
+                                      "y":  293.8151,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "breaker_repeater",
+                                      "specializationId":  "breach_round",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-23",
+                                      "towerId":  "prism_beam",
+                                      "x":  245.68987,
+                                      "y":  375.1209,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "prism_aperture",
+                                      "specializationId":  "core_lance",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-24",
+                                      "towerId":  "ember_coil",
+                                      "x":  247.22614,
+                                      "y":  210,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "ember_hot_core",
+                                      "specializationId":  "wildfire_matrix",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-25",
+                                      "towerId":  "arc_relay",
+                                      "x":  309.43097,
+                                      "y":  251.90042,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "arc_capacitor",
+                                      "specializationId":  "lockdown_coil",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-26",
+                                      "towerId":  "frost_spire",
+                                      "x":  430,
+                                      "y":  230,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "frost_deep_chill",
+                                      "specializationId":  "hail_lancer",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-27",
+                                      "towerId":  "siege_mortar",
+                                      "x":  249.2745,
+                                      "y":  253.40826,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "mortar_loader",
+                                      "specializationId":  "salvo_rack",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-28",
+                                      "towerId":  "prism_beam",
+                                      "x":  549.99,
+                                      "y":  230,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "prism_aperture",
+                                      "specializationId":  "core_lance",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-29",
+                                      "towerId":  "shard_fan",
+                                      "x":  548.27875,
+                                      "y":  271.5818,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "shard_temper",
+                                      "specializationId":  "lance_fan",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-30",
+                                      "towerId":  "breaker_cannon",
+                                      "x":  190,
+                                      "y":  449.99,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "breaker_repeater",
+                                      "specializationId":  "breach_round",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-31",
+                                      "towerId":  "frost_spire",
+                                      "x":  207.51347,
+                                      "y":  413.40256,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "frost_deep_chill",
+                                      "specializationId":  "permafrost",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-32",
+                                      "towerId":  "siege_mortar",
+                                      "x":  309.99,
+                                      "y":  449.99,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "mortar_survey",
+                                      "specializationId":  "salvo_rack",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-33",
+                                      "towerId":  "ember_coil",
+                                      "x":  309.6728,
+                                      "y":  408.4751,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "ember_hot_core",
+                                      "specializationId":  "searing_brand",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-34",
+                                      "towerId":  "breaker_cannon",
+                                      "x":  268.41534,
+                                      "y":  413.81793,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "breaker_bored",
+                                      "specializationId":  "breach_round",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-35",
+                                      "towerId":  "arc_relay",
+                                      "x":  309.57608,
+                                      "y":  367.60455,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "arc_capacitor",
+                                      "specializationId":  "storm_lattice",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-36",
+                                      "towerId":  "prism_beam",
+                                      "x":  309.1607,
+                                      "y":  327.39117,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "prism_frequency",
+                                      "specializationId":  "spectrum_split",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-37",
+                                      "towerId":  "watchtower",
+                                      "x":  294.0398,
+                                      "y":  289.28308,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "watch_heavy_optics",
+                                      "specializationId":  "deadeye_post",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-38",
+                                      "towerId":  "arc_relay",
+                                      "x":  549.6017,
+                                      "y":  311.84354,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "arc_capacitor",
+                                      "specializationId":  "lockdown_coil",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-39",
+                                      "towerId":  "ember_coil",
+                                      "x":  549.9886,
+                                      "y":  353.17783,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "ember_hot_core",
+                                      "specializationId":  "searing_brand",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-40",
+                                      "towerId":  "breaker_cannon",
+                                      "x":  549.4082,
+                                      "y":  398.7454,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "breaker_bored",
+                                      "specializationId":  "breach_round",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-41",
+                                      "towerId":  "prism_beam",
+                                      "x":  671.68134,
+                                      "y":  290.23898,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "prism_frequency",
+                                      "specializationId":  "core_lance",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-42",
+                                      "towerId":  "signal_beacon",
+                                      "x":  490.4694,
+                                      "y":  374.7539,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "beacon_amplifier",
+                                      "specializationId":  "tempo_beacon",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-43",
+                                      "towerId":  "breaker_cannon",
+                                      "x":  491.49356,
+                                      "y":  415.25748,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "breaker_repeater",
+                                      "specializationId":  "breach_round",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-44",
+                                      "towerId":  "watchtower",
+                                      "x":  670,
+                                      "y":  332.34708,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "watch_heavy_optics",
+                                      "specializationId":  "sentinel_array",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-45",
+                                      "towerId":  "arc_relay",
+                                      "x":  670.9274,
+                                      "y":  372.734,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "arc_fork",
+                                      "specializationId":  "lockdown_coil",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-46",
+                                      "towerId":  "breaker_cannon",
+                                      "x":  671.5078,
+                                      "y":  413.47937,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "breaker_repeater",
+                                      "specializationId":  "breach_round",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-48",
+                                      "towerId":  "shard_fan",
+                                      "x":  671.5163,
+                                      "y":  455.47086,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "shard_temper",
+                                      "specializationId":  "razor_bloom",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-49",
+                                      "towerId":  "prism_beam",
+                                      "x":  670.02844,
+                                      "y":  496.5633,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "prism_frequency",
+                                      "specializationId":  "core_lance",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-50",
+                                      "towerId":  "siege_mortar",
+                                      "x":  724.495,
+                                      "y":  293.94025,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "mortar_loader",
+                                      "specializationId":  "salvo_rack",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-51",
+                                      "towerId":  "arc_relay",
+                                      "x":  722.95874,
+                                      "y":  253.02133,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "arc_capacitor",
+                                      "specializationId":  "lockdown_coil",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-52",
+                                      "towerId":  "prism_beam",
+                                      "x":  725.51917,
+                                      "y":  334.00854,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "prism_aperture",
+                                      "specializationId":  "spectrum_split",
+                                      "apexFromWave":  0
+                                  },
+                                  {
+                                      "key":  "goal-53",
+                                      "towerId":  "breaker_cannon",
+                                      "x":  725.0071,
+                                      "y":  374.19345,
+                                      "levelIndex":  2,
+                                      "doctrineId":  "breaker_bored",
+                                      "specializationId":  "breach_round",
+                                      "apexFromWave":  28
+                                  }
+                              ],
+                   "automaticProtocolPreference":  [
+                                                       "goal-18"
+                                                   ]
+               },
+    "waves":  [
+                  {
+                      "firstWave":  1,
+                      "lastWave":  1,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  2,
+                      "lastWave":  2,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  3,
+                      "lastWave":  3,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  4,
+                      "lastWave":  4,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  5,
+                      "lastWave":  5,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  6,
+                      "lastWave":  6,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  7,
+                      "lastWave":  7,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  8,
+                      "lastWave":  8,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  9,
+                      "lastWave":  9,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  10,
+                      "lastWave":  10,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  11,
+                      "lastWave":  11,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  12,
+                      "lastWave":  12,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  13,
+                      "lastWave":  13,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  14,
+                      "lastWave":  14,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  15,
+                      "lastWave":  15,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  16,
+                      "lastWave":  16,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  17,
+                      "lastWave":  17,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  18,
+                      "lastWave":  18,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  19,
+                      "lastWave":  19,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  20,
+                      "lastWave":  20,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  60,
+                                     "spendingDecisionTicks":  60,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  21,
+                      "lastWave":  21,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "split-control",
+                                     "targetingProfileId":  "split",
+                                     "decisionTicks":  15,
+                                     "spendingDecisionTicks":  15,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+                                                                 "slow_projectile":  "Fastest"
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  22,
+                      "lastWave":  22,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "split-control",
+                                     "targetingProfileId":  "split",
+                                     "decisionTicks":  15,
+                                     "spendingDecisionTicks":  15,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+                                                                 "slow_projectile":  "Fastest"
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  23,
+                      "lastWave":  23,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "split-control",
+                                     "targetingProfileId":  "split",
+                                     "decisionTicks":  15,
+                                     "spendingDecisionTicks":  15,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+                                                                 "slow_projectile":  "Fastest"
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  24,
+                      "lastWave":  24,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "split-control",
+                                     "targetingProfileId":  "split",
+                                     "decisionTicks":  15,
+                                     "spendingDecisionTicks":  15,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+                                                                 "slow_projectile":  "Fastest"
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  25,
+                      "lastWave":  25,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "split-control",
+                                     "targetingProfileId":  "split",
+                                     "decisionTicks":  15,
+                                     "spendingDecisionTicks":  15,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+                                                                 "slow_projectile":  "Fastest"
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  26,
+                      "lastWave":  26,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "split-control",
+                                     "targetingProfileId":  "split",
+                                     "decisionTicks":  15,
+                                     "spendingDecisionTicks":  15,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+                                                                 "slow_projectile":  "Fastest"
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  27,
+                      "lastWave":  27,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "split-control",
+                                     "targetingProfileId":  "split",
+                                     "decisionTicks":  15,
+                                     "spendingDecisionTicks":  15,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+                                                                 "slow_projectile":  "Fastest"
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  28,
+                      "lastWave":  28,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "split-control",
+                                     "targetingProfileId":  "split",
+                                     "decisionTicks":  15,
+                                     "spendingDecisionTicks":  15,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+                                                                 "slow_projectile":  "Fastest"
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  29,
+                      "lastWave":  29,
+                      "spendOnLayout":  true,
+                      "applyScheduledApex":  true,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "split-control",
+                                     "targetingProfileId":  "split",
+                                     "decisionTicks":  15,
+                                     "spendingDecisionTicks":  15,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  0,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+                                                                 "slow_projectile":  "Fastest"
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  },
+                  {
+                      "firstWave":  30,
+                      "lastWave":  30,
+                      "spendOnLayout":  false,
+                      "applyScheduledApex":  false,
+                      "allocation":  {
+                                         "reserveCredits":  0,
+                                         "maximumCommands":  256,
+                                         "positionTolerance":  0.01,
+                                         "allowApexUpgrades":  true
+                                     },
+                      "salvage":  {
+                                      "maximumSales":  0,
+                                      "reserveCredits":  350,
+                                      "rangeSafetyMultiplier":  1.5,
+                                      "pathSafetyMargin":  64,
+                                      "sampleSpacing":  5
+                                  },
+                      "policy":  {
+                                     "id":  "first-15-0",
+                                     "targetingProfileId":  "first",
+                                     "decisionTicks":  15,
+                                     "spendingDecisionTicks":  15,
+                                     "spendingBeforeTactics":  true,
+                                     "prepareBeforeStart":  true,
+                                     "reactAtBoundary":  false,
+                                     "directPlateLimit":  16,
+                                     "activePlateLimit":  8,
+                                     "plateProgressOffset":  0,
+                                     "protocolMinimumEnemies":  1,
+                                     "protocolMinimumProgress":  0,
+                                     "preferredProtocolBehavior":  null,
+                                     "damageTargetMode":  null,
+                                     "behaviorTargetModes":  {
+                                                                 "slow_projectile":  "Fastest"
+                                                             }
+                                 },
+                      "alternatives":  [
+
+                                       ]
+                  }
+              ]
+}

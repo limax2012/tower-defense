@@ -339,6 +339,8 @@ public sealed partial class VisualVerificationGame : Game
             Capture("00-main-menu-battles.png", ui, GameState.MainMenu, null)
         };
         scenes.AddRange(hudScenes);
+        AssertEffectiveSlowDisplay(content, font, typography.Display, assertions, scenes);
+        AssertEnemyBreachIntel(content, font, typography.Display, assertions, scenes);
         AssertPathMarkingsCrossCorners(assertions, scenes);
         AssertSubpixelPathCaps(assertions, scenes);
         AssertMapCornerDecoration(content, font, typography.Display, assertions, scenes);

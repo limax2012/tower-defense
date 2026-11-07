@@ -1,0 +1,25 @@
+﻿[
+    {
+        "startAfterTicks":  0,
+        "endAfterTicks":  5621,
+        "policy":  {
+                       "id":  "armored-60-8",
+                       "targetingProfileId":  "armored",
+                       "decisionTicks":  60,
+                       "spendingDecisionTicks":  60,
+                       "spendingBeforeTactics":  true,
+                       "prepareBeforeStart":  true,
+                       "reactAtBoundary":  false,
+                       "directPlateLimit":  8,
+                       "activePlateLimit":  8,
+                       "plateProgressOffset":  0,
+                       "protocolMinimumEnemies":  1,
+                       "protocolMinimumProgress":  0,
+                       "preferredProtocolBehavior":  null,
+                       "damageTargetMode":  null,
+                       "behaviorTargetModes":  {
+                                                   "slow_projectile":  "Fastest"
+                                               }
+                   }
+    }
+]

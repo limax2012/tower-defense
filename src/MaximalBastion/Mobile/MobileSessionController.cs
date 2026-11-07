@@ -308,7 +308,12 @@ public sealed class MobileSessionController
             },
             wave = wave is null ? null : new
             {
-                intel = WaveIntel.Analyze(wave, _content.Enemies), wave.Groups,
+                intel = WaveIntel.Analyze(wave, _content.Enemies),
+                groups = wave.Groups.Select(group => new
+                {
+                    group.EnemyId, group.Rank, group.Count, group.SpawnInterval, group.DelayBefore,
+                    breach = EnemyInfo.Breach(_content.Enemies[group.EnemyId], group.Rank)
+                }),
                 healthScale = wave.HealthMultiplier * session.Difficulty.EnemyHealthMultiplier,
                 speedScale = wave.SpeedMultiplier * session.Difficulty.EnemySpeedMultiplier
             },

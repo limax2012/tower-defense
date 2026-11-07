@@ -98,7 +98,9 @@ public sealed partial class UIManager
             new Vector2(980, 537), ColorPalette.Paper, .51f, 274);
         DrawFittedText(batch, $"ARMOR {enemy.EffectiveArmor:0.#}    SHIELD {enemy.Shield:0}    SPEED {enemy.CurrentSpeed:0}",
             new Vector2(980, 556), ColorPalette.Muted, .42f, 274);
-        p.Line(batch, new Vector2(980, 575), new Vector2(1260, 575), ColorPalette.Divider, 1);
+        DrawFittedText(batch, EnemyInfo.Breach(enemy).Summary,
+            new Vector2(980, 576), ColorPalette.Hostile, .46f, 274);
+        p.Line(batch, new Vector2(980, 595), new Vector2(1260, 595), ColorPalette.Divider, 1);
 
         Span<EnemyCondition> active = stackalloc EnemyCondition[8];
         var count = EnemyConditionPresentation.CopyActive(enemy, active);
@@ -108,14 +110,14 @@ public sealed partial class UIManager
             var accent = condition == EnemyCondition.Exposed ? EnemyConditionPresentation.ExposeAccent(session, enemy) :
                 EnemyConditionPresentation.Accent(condition);
             var x = 980 + index % 2 * 140;
-            var y = 586 + index / 2 * 27;
+            var y = 604 + index / 2 * 23;
             DrawFittedText(batch, EnemyConditionPresentation.Name(condition), new Vector2(x, y - 2),
                 accent, .39f, 134);
             DrawFittedText(batch, EnemyConditionPresentation.Detail(enemy, condition), new Vector2(x, y + 10),
                 ColorPalette.Paper, .37f, 134);
         }
         if (count == 0)
-            DrawText(batch, "NO ACTIVE CONDITIONS", new Vector2(980, 588), ColorPalette.Muted, .45f);
+            DrawText(batch, "NO ACTIVE CONDITIONS", new Vector2(980, 606), ColorPalette.Muted, .45f);
         var note = enemy.BossPhaseActive ? "OVERDRIVE / DRIVE AND SHIELD SURGE" :
             enemy.Definition.RegenerationPerSecond > 0 && enemy.DamagePauseTimer > 0
                 ? $"REPAIR PAUSED  {enemy.DamagePauseTimer:0.0}s" :

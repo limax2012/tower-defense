@@ -1,0 +1,47 @@
+﻿{
+    "id":  "helix-standing-board-wave-31",
+    "preparationTicks":  0,
+    "layout":  null,
+    "wave":  {
+                 "firstWave":  31,
+                 "lastWave":  31,
+                 "spendOnLayout":  false,
+                 "applyScheduledApex":  false,
+                 "allocation":  {
+                                    "reserveCredits":  0,
+                                    "maximumCommands":  256,
+                                    "positionTolerance":  0.01,
+                                    "allowApexUpgrades":  true
+                                },
+                 "salvage":  {
+                                 "maximumSales":  0,
+                                 "reserveCredits":  350,
+                                 "rangeSafetyMultiplier":  1.5,
+                                 "pathSafetyMargin":  64,
+                                 "sampleSpacing":  5
+                             },
+                 "policy":  {
+                                "id":  "existing-orders",
+                                "targetingProfileId":  "split",
+                                "decisionTicks":  15,
+                                "spendingDecisionTicks":  60,
+                                "spendingBeforeTactics":  true,
+                                "prepareBeforeStart":  false,
+                                "reactAtBoundary":  true,
+                                "keepExistingOrders":  true,
+                                "directPlateLimit":  16,
+                                "activePlateLimit":  8,
+                                "plateProgressOffset":  0,
+                                "protocolMinimumEnemies":  1,
+                                "protocolMinimumProgress":  0,
+                                "preferredProtocolBehavior":  null,
+                                "damageTargetMode":  null,
+                                "behaviorTargetModes":  {
+                                                            "slow_projectile":  "Fastest"
+                                                        }
+                            },
+                 "alternatives":  [
+
+                                  ]
+             }
+}

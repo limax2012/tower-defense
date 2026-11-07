@@ -32,6 +32,7 @@ internal static class PlannerCli
                 PlannerAdapterTests.Run(); AutoPlayerCommandTests.Run(content); PlanningCandidateTests.Run();
                 PlanningCompetenceTests.Run(); PlannerSearchTests.Run(); ApexAllocationSearchTests.Run();
                 LayoutBlueprintTests.Run(); LayoutCampaignRunnerTests.Run(); TacticalForecastTests.Run();
+                TacticalSegmentRunnerTests.Run();
                 SelectableThreatFocusTests.Run();
                 EndlessLayoutContinuationTests.Run(); HistoryLayoutImportTests.Run();
                 HelixCalibrationTests.Run(); PrismCalibrationTests.Run(); RainlineCalibrationTests.Run();
@@ -244,8 +245,15 @@ internal static class PlannerCli
             : ReadSearchCheckpoint(content, args, new PlanningScenario());
         var layout = Value(args, "--blueprint") is { } layoutPath ? PlannerStore.Read<LayoutBlueprint>(layoutPath) : null;
         layout?.Validate(content);
+        var segments = Value(args, "--segments") is { } segmentPath
+            ? PlannerStore.Read<List<TacticalPolicySegment>>(segmentPath) : null;
+        if (segments is not null && Value(args, "--policies") is not null)
+            throw new ArgumentException("Specify either a fixed segment schedule or a policy search set.");
+        if (segments?.Any(segment => segment is null || segment.Policy is null) == true)
+            throw new ArgumentException("Policy segments and their policies must not be null.");
         var policies = Value(args, "--policies") is { } policyPath
-            ? PlannerStore.Read<List<TacticalPolicy>>(policyPath) : TacticalForecastSearch.DefaultPolicies();
+            ? PlannerStore.Read<List<TacticalPolicy>>(policyPath)
+            : segments?.Select(segment => segment.Policy).ToArray() ?? TacticalForecastSearch.DefaultPolicies();
         var options = new TacticalForecastOptions
         {
             MaximumTrials = Integer(args, "--simulations", 512), MaximumWallSeconds = Number(args, "--seconds", 300),
@@ -260,9 +268,11 @@ internal static class PlannerCli
         TacticalForecastResult result;
         try
         {
-            result = TacticalForecastSearch.Search(content, initial, policies, options,
-                layout is null ? null : adapter => LayoutBlueprintSpending.Apply(content, adapter, layout,
-                    adapter.Session.CurrentWave + (adapter.Session.Waves.IsActive ? 0 : 1)), cancellation: stop.Token);
+            Action<PlannerSession>? spending = layout is null ? null : adapter => LayoutBlueprintSpending.Apply(content, adapter, layout,
+                adapter.Session.CurrentWave + (adapter.Session.Waves.IsActive ? 0 : 1));
+            result = segments is null
+                ? TacticalForecastSearch.Search(content, initial, policies, options, spending, cancellation: stop.Token)
+                : TacticalSegmentRunner.Run(content, initial, segments, options, spending, stop.Token);
         }
         finally { Console.CancelKeyPress -= forecastCancel; }
         var success = result.SuccessfulTrial;
@@ -281,6 +291,7 @@ internal static class PlannerCli
         {
             Outcome = outcome, initial.Scenario, initial.BuildHash, initial.ContentHash,
             FromNormalStart = initial.OriginSaveJson is null, Options = options, Blueprint = layout,
+            Method = segments is null ? "policy search" : "fixed policy segments", RequestedSegments = segments,
             result.Trials, result.Segments, result.StopReason, result.WallSeconds
         });
         Console.WriteLine($"{outcome}; {result.Trials.Count} full-wave forecasts; {result.StopReason}\n{Path.Combine(output, "forecast.json")}");

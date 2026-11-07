@@ -1,0 +1,56 @@
+﻿[
+    {
+        "startAfterTicks":  0,
+        "endAfterTicks":  6859,
+        "policy":  {
+                       "id":  "first-120-0.05",
+                       "targetingProfileId":  "first",
+                       "decisionTicks":  120,
+                       "spendingDecisionTicks":  1,
+                       "spendingBeforeTactics":  false,
+                       "prepareBeforeStart":  true,
+                       "reactAtBoundary":  false,
+                       "directPlateLimit":  16,
+                       "activePlateLimit":  8,
+                       "plateProgressOffset":  0.05,
+                       "protocolMinimumEnemies":  1,
+                       "protocolMinimumProgress":  0,
+                       "preferredProtocolBehavior":  null,
+                       "damageTargetMode":  null,
+                       "threatFocus":  {
+                                           "rules":  [
+                                                         {
+                                                             "signalRole":  "Bulwark",
+                                                             "rank":  null,
+                                                             "priority":  200,
+                                                             "behaviors":  [
+
+                                                                           ],
+                                                             "minimumProgress":  0,
+                                                             "maximumProgress":  1,
+                                                             "maximumActiveEnemies":  10000
+                                                         },
+                                                         {
+                                                             "signalRole":  "Restorer",
+                                                             "rank":  null,
+                                                             "priority":  100,
+                                                             "behaviors":  [
+                                                                               "beam",
+                                                                               "armor_projectile"
+                                                                           ],
+                                                             "minimumProgress":  0,
+                                                             "maximumProgress":  1,
+                                                             "maximumActiveEnemies":  10000
+                                                         }
+                                                     ],
+                                           "excludedBehaviors":  [
+                                                                     "slow_projectile"
+                                                                 ],
+                                           "readyWithinTicks":  1
+                                       },
+                       "behaviorTargetModes":  {
+                                                   "slow_projectile":  "Fastest"
+                                               }
+                   }
+    }
+]

@@ -1,4 +1,5 @@
 using MaximalBastion.Data;
+using MaximalBastion.Enemies;
 using MaximalBastion.Maps;
 using MaximalBastion.Towers;
 
@@ -47,6 +48,9 @@ public static class TowerInfo
             ? stat.Value
             : $"{stat.PreviousValue} -> {stat.Value}";
 
+    public static string ComparisonStatLabelText(TowerStatDisplay stat) =>
+        stat.Label == "SLOW" ? $"SLOW CAP {EnemyInstance.MaximumSlowFraction:P0}" : stat.Label;
+
     public static IReadOnlyList<TowerStatDisplay> ComparisonStats(
         TowerDefinition definition,
         TowerLevelDefinition current,
@@ -88,7 +92,8 @@ public static class TowerInfo
         AddPotential("CAP", level => level.SplashTargetLimit, current.SplashTargetLimit, shown.SplashTargetLimit, "0");
         AddPotential("RICOCHET", level => level.RicochetDamageMultiplier, current.RicochetDamageMultiplier, shown.RicochetDamageMultiplier, "P0");
         AddPotential("RICO RANGE", level => level.RicochetRange, current.RicochetRange, shown.RicochetRange, "0");
-        AddPotential("SLOW", level => level.SlowPercent, current.SlowPercent, shown.SlowPercent, "P0");
+        AddPotential("SLOW", level => level.SlowPercent, EnemyInstance.EffectiveSlowFraction(current.SlowPercent),
+            EnemyInstance.EffectiveSlowFraction(shown.SlowPercent), "P0");
         AddPotential("SLOW TIME", level => level.SlowDuration, current.SlowDuration, shown.SlowDuration, "0.#", "s");
         AddPotential("BURN", level => level.BurnDamagePerSecond, current.BurnDamagePerSecond * damageMultiplier,
             shown.BurnDamagePerSecond * damageMultiplier, "0.#", "/s");
@@ -244,7 +249,7 @@ public static class TowerInfo
     private static string ProtocolStatusBonus(TowerProtocolDefinition protocol) =>
         protocol.BurstStatus.ToLowerInvariant() switch
         {
-            "slow" => $"SLOW {protocol.BurstStatusMagnitude:P0}/{protocol.BurstStatusDuration:0.##}s",
+            "slow" => $"SLOW {EnemyInstance.EffectiveSlowFraction(protocol.BurstStatusMagnitude):P0}/{protocol.BurstStatusDuration:0.##}s",
             "burn" => $"BURN {protocol.BurstStatusMagnitude:0.#}/s/{protocol.BurstStatusDuration:0.##}s",
             "exposed" => $"EXPOSE +{protocol.BurstStatusMagnitude:P0}/{protocol.BurstStatusDuration:0.##}s",
             "armorbreak" => $"BREAK {protocol.BurstStatusMagnitude:0.#}/{protocol.BurstStatusDuration:0.##}s",
@@ -273,7 +278,7 @@ public static class TowerInfo
         {
             "single_projectile" => DirectProjectileSummary(level),
             "pellet_burst" => $"{level.PelletCount} projectiles; spread {level.PelletSpreadDegrees:0.#}deg; pierce {level.ArmorPierce:0.#}",
-            "slow_projectile" => $"Impact area {level.SplashRadius:0}; slow {level.SlowPercent:P0} for {level.SlowDuration:0.#}s",
+            "slow_projectile" => $"Area {level.SplashRadius:0}; slow {EnemyInstance.EffectiveSlowFraction(level.SlowPercent):P0}/{level.SlowDuration:0.#}s; cap {EnemyInstance.MaximumSlowFraction:P0}",
             "burn_projectile" => level.SplashRadius > 0
                 ? $"Burn {level.BurnDamagePerSecond:0.#}/s for {level.BurnDuration:0.#}s; area {level.SplashRadius:0}; armor -2"
                 : $"Burn {level.BurnDamagePerSecond:0.#}/s for {level.BurnDuration:0.#}s; armor -2",
@@ -324,7 +329,7 @@ public static class TowerInfo
         "single_projectile" when definition.Id == "watchtower" => "Limit: slow fire and high cost",
         "single_projectile" => "Limit: armor reduces each small hit",
         "pellet_burst" => "Limit: short range; weak into armor",
-        "slow_projectile" => "Limit: very low direct damage",
+        "slow_projectile" => $"Limit: low damage; slow caps at {EnemyInstance.MaximumSlowFraction:P0}",
         "burn_projectile" => "Limit: needs time; armor checks each tick",
         "armor_projectile" => "Limit: ordinary against light targets",
         "chain" => "Limit: weak against isolated enemies",
@@ -394,8 +399,10 @@ public static class TowerInfo
         if (Changed(current.RicochetDamageMultiplier, next.RicochetDamageMultiplier) ||
             Changed(current.RicochetRange, next.RicochetRange))
             changes["RICOCHET"] = $"RICOCHET {current.RicochetDamageMultiplier:P0}>{next.RicochetDamageMultiplier:P0} / REACH {current.RicochetRange:0}>{next.RicochetRange:0}";
-        if (Changed(current.SlowPercent, next.SlowPercent) || Changed(current.SlowDuration, next.SlowDuration))
-            changes["SLOW"] = $"SLOW {current.SlowPercent:P0} {current.SlowDuration:0.#}s>{next.SlowPercent:P0} {next.SlowDuration:0.#}s";
+        var currentSlow = EnemyInstance.EffectiveSlowFraction(current.SlowPercent);
+        var nextSlow = EnemyInstance.EffectiveSlowFraction(next.SlowPercent);
+        if (Changed(currentSlow, nextSlow) || Changed(current.SlowDuration, next.SlowDuration))
+            changes["SLOW"] = $"SLOW {currentSlow:P0} {current.SlowDuration:0.#}s>{nextSlow:P0} {next.SlowDuration:0.#}s (CAP {EnemyInstance.MaximumSlowFraction:P0})";
         if (Changed(current.BurnDamagePerSecond, next.BurnDamagePerSecond) || Changed(current.BurnDuration, next.BurnDuration))
             changes["BURN"] = $"BURN {current.BurnDamagePerSecond * damageMultiplier:0.#}/s {current.BurnDuration:0.#}s>{next.BurnDamagePerSecond * damageMultiplier:0.#}/s {next.BurnDuration:0.#}s";
         AddFloat("PIERCE", "PIERCE", current.ArmorPierce + powerBuff.ArmorPierceBonus,

@@ -21,7 +21,7 @@ Cinderworks finishes the campaign with 38 towers, three Apex upgrades, a maxed F
 
 ## Competitive possibility matrix
 
-The solo competitive possibility matrix has a legal winning witness for every map/difficulty/directive combination: 60 new fresh-start proofs plus the four Bastion/Signal Gauntlet calibrations, all at seed 1337. Each continues through Endless 31 with zero sales and all campaign towers retained. Lower difficulties may finish with leaks; these are existence proofs, not optimized safety margins.
+The solo competitive possibility matrix has fresh legal winning witnesses for all 64 map/difficulty/directive combinations at seed 1337, including all four Bastion/Signal Gauntlet calibrations. Each continues through Endless 31 with zero sales and all campaign towers retained. The fixed recipes reproduce both campaign and Endless final state signatures from the baseline in all 64 cases; the effective-slow and breach-cost displays have no measured mechanical balance impact. Lower difficulties may finish with leaks; these are existence proofs, not optimized safety margins. The [matrix runner](docs/strategy-solver.md#auditing-a-selected-matrix) rebuilds every case from normal resources and records comparisons with its stored baseline.
 
 Strategy transfer requires adapting to the actual rules. Core Six's cheaper roster can leave enough money for substantially more Apex investment. Entrenched needs permanent coverage and damage that replace manual Protocols and Plates; opening order and early area damage matter on Prism and Rainline. Targeting and Plate timing can also require adjustment when difficulty changes enemy timing. This evidence establishes possibility across the matrix, but does not establish that Signal Gauntlet is the hardest directive for every map or measure human execution difficulty.
 
@@ -92,6 +92,8 @@ Several strategic cores remain viable:
 Needle remains efficient late in good positions, especially with Ricochet or Piercing Rail. Replacing isolated Needles with completed Breaker or Prism roles is sensible when armor and shields dominate. Mortar output remains bounded by impact target caps. Beacon value depends on distinct recipients, not Beacon count.
 
 The detailed use case for every tower and branch is documented in [STRATEGY_GUIDE.md](STRATEGY_GUIDE.md).
+
+Frost's effective slow is capped at 60%, and Intel reports that effective value. Deep Chill to Permafrost still raises slow from 49.56% to 60%, duration from 2.596 to 4.012 seconds and splash radius from 37.76 to 49.56 for 140 credits. Its 650-credit Apex adds no slow strength, but adds 18% duration and splash radius, 8% range, 38% raw direct DPS and an independent automatic Protocol. Another completed Deep Chill Permafrost costs 365 credits, so the Apex needs a useful coverage, space or Protocol advantage to justify its opportunity cost. The other three Frost paths remain below the cap and gain slow strength from Apex. These are marginal-value tradeoffs; successful whole-defense witnesses do not establish an optimal price or a universally best branch.
 
 ## Economy and progression
 

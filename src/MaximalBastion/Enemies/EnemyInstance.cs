@@ -9,6 +9,12 @@ namespace MaximalBastion.Enemies;
 
 public sealed class EnemyInstance
 {
+    public const float MaximumSlowFraction = 0.60f;
+    public static float EffectiveSlowFraction(float fraction) => MathHelper.Clamp(fraction, 0, MaximumSlowFraction);
+    public static int GetBreachLives(EnemyDefinition definition, EnemyRank rank) => rank == EnemyRank.Boss
+        ? Math.Max(10, definition.LivesLost)
+        : definition.LivesLost + (rank == EnemyRank.Elite ? 1 : 0);
+
     public int Id { get; }
     public EnemyDefinition Definition { get; }
     public Vector2 Position { get; private set; }
@@ -41,7 +47,7 @@ public sealed class EnemyInstance
     public StatusEffectController StatusEffects { get; } = new();
 
     public float EffectiveArmor => MathF.Max(0, BaseArmor - StatusEffects.ArmorReduction - (StatusEffects.IsBurning ? 2f : 0f));
-    public float SpeedMultiplier => StatusEffects.IsStunned ? 0 : 1f - MathHelper.Clamp(StatusEffects.SlowFactor, 0, 0.60f);
+    public float SpeedMultiplier => StatusEffects.IsStunned ? 0 : 1f - EffectiveSlowFraction(StatusEffects.SlowFactor);
     public float CurrentSpeed => Definition.Speed * _speedMultiplier * _rankSpeedMultiplier * FormationSpeedMultiplier *
         (BossPhaseActive ? 1.28f : 1f) * SpeedMultiplier;
 
@@ -59,7 +65,7 @@ public sealed class EnemyInstance
         Shield = definition.Shield + (IsBoss ? MaxHealth * 0.12f : 0);
         BaseArmor = definition.Armor + (IsBoss ? 4 : IsElite ? 2 : 0);
         Reward = (int)MathF.Round(definition.Reward * (IsBoss ? 5f : IsElite ? 2f : 1f));
-        LivesLost = IsBoss ? Math.Max(10, definition.LivesLost) : definition.LivesLost + (IsElite ? 1 : 0);
+        LivesLost = GetBreachLives(definition, Rank);
         Position = path.GetPosition(0);
         DistanceAlongPath = 0;
         PathProgress = 0;

@@ -1399,13 +1399,20 @@ class _BastionHomeState extends State<BastionHome> with WidgetsBindingObserver {
     final enemy = objects(engine.catalog['enemies'])
         .where((enemy) => enemy['id'] == group['enemyId'])
         .firstOrNull;
+    final breach = object(group['breach']);
     return ListTile(
       contentPadding: EdgeInsets.zero,
       title: Text(
         '${group['count']} × ${enemy?['displayName'] ?? group['enemyId']}',
       ),
-      subtitle: Text(
-        '${group['rank'] ?? 'Standard'} · spawn interval ${group['spawnInterval'] ?? group['interval'] ?? '–'}s',
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${group['rank'] ?? 'Standard'} · spawn interval ${group['spawnInterval'] ?? group['interval'] ?? '–'}s',
+          ),
+          if (breach['summary'] != null) Text(breach['summary'].toString()),
+        ],
       ),
     );
   }

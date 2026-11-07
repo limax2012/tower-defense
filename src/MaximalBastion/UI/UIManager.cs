@@ -2699,7 +2699,7 @@ public sealed partial class UIManager
             // Labels and values always receive separate lines. The larger base
             // scales matter when the 1280x720 canvas is displayed in a smaller
             // window; DrawFittedText only reduces individual long entries.
-            DrawFittedText(batch, stat.Label, position, ColorPalette.Muted,
+            DrawFittedText(batch, TowerInfo.ComparisonStatLabelText(stat), position, ColorPalette.Muted,
                 TowerStatGridLabelScale(stats.Count), columnWidth - 6);
             DrawFittedText(batch, TowerInfo.ComparisonStatValueText(stat),
                 position + new Vector2(0, stats.Count > 6 ? 10 : 12), color,
@@ -2823,7 +2823,7 @@ public sealed partial class UIManager
         var bonus = session.Generator?.Level.DefenseDamageBonus ?? 0;
         DrawFittedText(batch, $"{definition.Charges} PULSES   DAMAGE {definition.Damage * (1 + bonus):0.#}   BLAST {definition.BlastRadius:0}",
             new Vector2(980, 542), ColorPalette.Ink, 0.59f, 280);
-        DrawText(batch, $"PUSH {definition.KnockbackDistance:0}   SLOW {definition.SlowPercent:P0} / {definition.SlowDuration:0.#}s", new Vector2(980, 565), ColorPalette.Ink, 0.55f);
+        DrawFittedText(batch, $"PUSH {definition.KnockbackDistance:0}   SLOW {EnemyInstance.EffectiveSlowFraction(definition.SlowPercent):P0}/{definition.SlowDuration:0.#}s (CAP {EnemyInstance.MaximumSlowFraction:P0})", new Vector2(980, 565), ColorPalette.Ink, 0.55f, 280);
         var directIntel = session.IsSandbox ? "Free deployment. Reset Test clears plates."
             : session.Waves.IsActive
             ? $"BUY {session.CurrentEmergencyDirectPurchaseCost}  /  +{definition.DirectPurchaseCostIncrease} EACH THIS WAVE"
@@ -3776,7 +3776,7 @@ public sealed partial class UIManager
         var level = tower.Level;
         return tower.Definition.Behavior.ToLowerInvariant() switch
         {
-            "slow_projectile" => $"AoE {level.SplashRadius:0}; slow {level.SlowPercent:P0}",
+            "slow_projectile" => $"AoE {level.SplashRadius:0}; slow {EnemyInstance.EffectiveSlowFraction(level.SlowPercent):P0}; cap {EnemyInstance.MaximumSlowFraction:P0}",
             "burn_projectile" => $"Burn {level.BurnDamagePerSecond:0.#}/s",
             "armor_projectile" => $"Pierce {level.ArmorPierce:0.#}",
             "chain" => $"Chain {level.ChainCount} targets",
