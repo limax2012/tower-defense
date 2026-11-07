@@ -1,0 +1,52 @@
+{
+  "id": "cinderworks-standing-board-endless31",
+  "preparationTicks": 1080,
+  "wave": {
+    "firstWave": 31,
+    "lastWave": 31,
+    "policy": {
+      "id": "standing-board-armored-focus",
+      "targetingProfileId": "armored",
+      "decisionTicks": 60,
+      "spendingDecisionTicks": 1,
+      "spendingBeforeTactics": false,
+      "prepareBeforeStart": true,
+      "reactAtBoundary": false,
+      "directPlateLimit": 16,
+      "activePlateLimit": 8,
+      "plateProgressOffset": 0,
+      "protocolMinimumEnemies": 1,
+      "protocolMinimumProgress": 0,
+      "preferredProtocolBehavior": null,
+      "damageTargetMode": null,
+      "behaviorTargetModes": {
+        "slow_projectile": "Fastest",
+        "armor_projectile": "Armored",
+        "burn_projectile": "Strongest",
+        "beam": "Strongest"
+      },
+      "threatFocus": {
+        "rules": [
+          {
+            "priority": 200,
+            "signalRole": "Bulwark"
+          },
+          {
+            "behaviors": [
+              "beam",
+              "armor_projectile"
+            ],
+            "priority": 100,
+            "signalRole": "Restorer"
+          }
+        ],
+        "excludedBehaviors": [
+          "slow_projectile"
+        ],
+        "readyWithinTicks": 1
+      }
+    },
+    "spendOnLayout": false,
+    "applyScheduledApex": false
+  }
+}

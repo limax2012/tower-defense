@@ -132,12 +132,6 @@ internal static class DefenseTerminalArt
             UtilityPlatform(26, 23, 15, 25);
             UtilityPlatform(55, 25, 15, 20);
             UtilityPlatform(84, 27, 15, 26);
-            for (var rain = 0; rain < 12; rain++)
-            {
-                var x = 4 + rain * 29 % 111;
-                var y = 3 + (rain * 19 + time * 13) % 62;
-                p.Line(b, At(x, y), At(x - 1, y + 3), c.Edge * .25f, 1);
-            }
         }
         else if (style == "prism")
         {
@@ -194,6 +188,15 @@ internal static class DefenseTerminalArt
         {
             p.Line(b, Project(path[i - 1]), Project(path[i]), ColorPalette.Canvas, Math.Max(5, (int)(4 * scale)));
             p.Line(b, Project(path[i - 1]), Project(path[i]), c.Accent * .8f, Math.Max(2, (int)(1.5f * scale)));
+        }
+        if (style == "trail")
+        {
+            for (var rain = 0; rain < 12; rain++)
+            {
+                var x = 4 + rain * 29 % 111;
+                var y = 3 + (rain * 19 + time * 13) % 62;
+                p.Line(b, At(x, y), At(x - 1, y + 3), c.Edge * .25f, 1);
+            }
         }
         p.DrawRect(b, r, hovered ? c.Accent : c.Edge * .6f);
         p.FillRect(b, new Rectangle(r.X + 1, r.Bottom - 42, r.Width - 2, 41), ColorPalette.Panel);

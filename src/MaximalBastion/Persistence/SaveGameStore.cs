@@ -267,7 +267,7 @@ public sealed class SaveSlotRepository
         return data;
     }
 
-    private static void ValidateSaveStructure(SaveGameData data)
+    internal static void ValidateSaveStructure(SaveGameData data)
     {
         if (string.IsNullOrWhiteSpace(data.MapId) || data.MapId.Length > 128 ||
             data.DifficultyId is null || data.DifficultyId.Length > 128 || data.ChallengeId is null || data.ChallengeId.Length > 128 ||

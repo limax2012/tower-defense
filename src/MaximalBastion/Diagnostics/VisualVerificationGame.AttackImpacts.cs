@@ -81,7 +81,7 @@ public sealed partial class VisualVerificationGame
             if (area)
                 Require(MathF.Abs(contact.Radius - shot.SplashRadius) < .001f && contact.Start == shot.Position &&
                         contact.TargetEnemy is not null && session.Enemies.Contains(contact.TargetEnemy),
-                    $"{fixture.Label}: the ground splash retains its actual projectile radius and fixed impact center.", assertions);
+                    $"{fixture.Label}: the splash retains its actual projectile radius and fixed impact center.", assertions);
             else
                 Require(contact.TargetEnemy == shot.Target,
                     $"{fixture.Label}: the compact contact belongs to the struck enemy.", assertions);

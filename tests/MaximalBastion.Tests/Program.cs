@@ -58,6 +58,9 @@ internal static class Program
 
     private static int Main(string[] args)
     {
+        if (args.Any(x => x.StartsWith("--planner", StringComparison.OrdinalIgnoreCase)))
+            return PlannerCli.Run(new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load(), args);
+
         if (args.Any(x => x.Equals("--simulate", StringComparison.OrdinalIgnoreCase) ||
                           x.Equals("--simulate-full", StringComparison.OrdinalIgnoreCase) ||
                           x.Equals("--optimize-strategy", StringComparison.OrdinalIgnoreCase)))
@@ -75,6 +78,24 @@ internal static class Program
 
         var tests = new (string Name, Action Test)[]
         {
+            ("planner checkpoint and replay", PlannerAdapterTests.Run),
+            ("authenticated visual trace playback", PlanningTracePlayerTests.Run),
+            ("strategy replay export options", StrategyReplayOptionsTests.Run),
+            ("autoplayer command dispatch", AutoPlayerCommandTests.Run),
+            ("planner candidates and scenarios", PlanningCandidateTests.Run),
+            ("planner finite competence puzzles", PlanningCompetenceTests.Run),
+            ("planner frontier and backtracking", PlannerSearchTests.Run),
+            ("planner joint Apex allocations", ApexAllocationSearchTests.Run),
+            ("planner tactical forecasts", TacticalForecastTests.Run),
+            ("planner selectable threat focus", SelectableThreatFocusTests.Run),
+            ("Cinderworks campaign and standing Endless calibration", CinderworksCalibrationTests.Run),
+            ("planner ordered layout allocation", LayoutBlueprintTests.Run),
+            ("planner layout campaign alternatives", LayoutCampaignRunnerTests.Run),
+            ("planner campaign to Endless continuation", EndlessLayoutContinuationTests.Run),
+            ("Helix Bastion Signal campaign certificate", HelixCalibrationTests.Run),
+            ("history layout import", HistoryLayoutImportTests.Run),
+            ("Prism Bastion Signal campaign certificate", PrismCalibrationTests.Run),
+            ("Rainline Bastion Signal campaign and Endless certificate", RainlineCalibrationTests.Run),
             ("content counts", ContentCounts),
             ("mobile shared-engine bridge", MobileControllerTests.Run),
             ("release identity and notes", ReleaseIdentityAndNotes),

@@ -506,7 +506,7 @@ public sealed partial class VisualVerificationGame
                 for (var step = 0; step < 300; step++) session.Update(1f / 60);
                 Require(session.AnnouncementRemaining <= 0 && session.Enemies.Count == 15 &&
                         session.Enemies.All(enemy => !enemy.IsDead && !enemy.HasEscaped),
-                    $"{map.Id}: all fifteen family and rank variants remain alive after the boss announcement clears.", assertions);
+                    $"{map.Id}: all fifteen family and rank variants are present with a clear announcement area.", assertions);
                 for (var index = 0; index < session.Enemies.Count; index++)
                     session.Enemies[index].SetSandboxPathDistance(
                         200 + index * (session.Map.Path.TotalLength - 850) / 15, session.Map.Path);

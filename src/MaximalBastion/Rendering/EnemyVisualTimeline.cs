@@ -7,7 +7,8 @@ internal readonly record struct EnemyVisualFeedback(
     float OverdriveOpening, float OverdriveTransition, float ShieldImpact, float ShieldBreak,
     float FrostSpread = 1, float BurnIgnition = 0, float StunDischarge = 0,
     float MaterialTime = 0, float OrnamentScale = 1,
-    IReadOnlyList<EnemyMaterialParticle>? Particles = null);
+    IReadOnlyList<EnemyMaterialParticle>? Particles = null,
+    float OverdriveElapsed = float.PositiveInfinity);
 
 internal enum EnemyMaterialParticleKind { Ember, Vapor, IceFlake }
 
@@ -100,7 +101,8 @@ internal sealed class EnemyVisualTimeline
             Fade(state.ShieldBrokenAt, .42f),
             float.IsNegativeInfinity(state.FrostAt) ? 1 :
                 .32f + .68f * MathHelper.SmoothStep(0, 1, Math.Clamp((time - state.FrostAt) / .45f, 0, 1)),
-            Fade(state.BurnAt, .24f), Fade(state.StunAt, .16f), time, state.OrnamentScale, state.Particles);
+            Fade(state.BurnAt, .24f), Fade(state.StunAt, .16f), time, state.OrnamentScale, state.Particles,
+            time - state.OverdriveAt);
 
         float Fade(float start, float duration) => Math.Clamp(1 - (time - start) / duration, 0, 1);
     }

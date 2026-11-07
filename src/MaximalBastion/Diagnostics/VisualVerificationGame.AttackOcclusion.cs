@@ -106,6 +106,7 @@ public sealed partial class VisualVerificationGame
                 scenes.Add(SaveTierScene(board, $"attack-body-depth-{weapon}-{(reduced ? "reduced" : "full")}.png"));
             }
             AssertIncomingAttackDepth(content, assertions, scenes, cell);
+            AssertSplashBodyOcclusion(content, font, assertions, scenes);
         }
         finally { _renderer = originalRenderer; }
     }

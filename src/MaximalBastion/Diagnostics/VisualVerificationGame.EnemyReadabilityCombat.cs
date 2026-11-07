@@ -57,11 +57,11 @@ public sealed partial class VisualVerificationGame
                     session.Enemies[^1].SetSandboxPathDistance(
                         90 + index * (session.Map.Path.TotalLength - 800) / 36, session.Map.Path);
                 }
-                // Let the authored announcements and initial signal delays elapse before the comparison.
+                // Let the initial signal delays elapse before the comparison.
                 for (var step = 0; step < 222; step++) session.Update(1f / 60);
                 Require(session.AnnouncementRemaining <= 0 && session.Enemies.Count == 36 &&
                         session.Enemies.All(enemy => !enemy.IsDead && !enemy.HasEscaped),
-                    $"{map.Id}: the crowded review keeps all thirty-six enemies alive after the boss announcement clears.", assertions);
+                    $"{map.Id}: all thirty-six enemies are present with a clear announcement area.", assertions);
 
                 var sources = new Dictionary<StatusType, int>
                 {

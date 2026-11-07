@@ -128,15 +128,15 @@ public sealed partial class VisualVerificationGame
             var fullPixels = StatusEnemyPixels(full, .23f, reduced, scale: 1, materialOnly: true);
             Require(activePixels.SequenceEqual(fullPixels) && pausedPixels.SequenceEqual(fullPixels) &&
                     fullPixels.All(pixel => pixel == ColorPalette.Canvas),
-                $"Regenerator {(reduced ? "Reduced" : "Full")}: native repair adds no asymmetric surface marks at full health, during damage pause, or while healing.", assertions);
+                $"Regenerator {(reduced ? "Reduced" : "Full")}: native repair leaves the separate status-overlay layer empty.", assertions);
             var fullBody = StatusEnemyPixels(full, .23f, reduced, scale: 1, runtimePresentation: true);
             Require(StatusEnemyPixels(paused, .23f, reduced, scale: 1, runtimePresentation: true).SequenceEqual(fullBody) &&
-                    StatusEnemyPixels(healing, .23f, reduced, scale: 1, runtimePresentation: true).SequenceEqual(fullBody),
-                $"Regenerator {(reduced ? "Reduced" : "Full")}: runtime chassis and durability decoration retain identical symmetry across health and repair states.", assertions);
+                    !StatusEnemyPixels(healing, .23f, reduced, scale: 1, runtimePresentation: true).SequenceEqual(fullBody),
+                $"Regenerator {(reduced ? "Reduced" : "Full")}: the chassis shows a repair cue only while health recovery is active.", assertions);
         }
-        Require(StatusEnemyPixels(healing, .23f, true, materialOnly: true)
-                .SequenceEqual(StatusEnemyPixels(healing, .87f, true, materialOnly: true)),
-            "Reduced Effects keeps native repair free of animated surface decoration.", assertions);
+        Require(StatusEnemyPixels(healing, .23f, true, runtimePresentation: true)
+                .SequenceEqual(StatusEnemyPixels(healing, .87f, true, runtimePresentation: true)),
+            "Reduced Effects holds the active repair cue steady.", assertions);
         var burned = StatusSample(content, "t5_regenerator", "BURN / PAUSED");
         burned.Enemy.ApplyHealthDamage(100);
         ApplyReviewStatus(burned, "BURN");

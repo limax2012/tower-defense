@@ -1,0 +1,20 @@
+{
+  "id": "rainline-bastion-signal-standing-31",
+  "wave": {
+    "firstWave": 31,
+    "lastWave": 31,
+    "spendOnLayout": false,
+    "applyScheduledApex": false,
+    "policy": {
+      "id": "support-control-no-purchases",
+      "targetingProfileId": "support",
+      "decisionTicks": 15,
+      "prepareBeforeStart": true,
+      "reactAtBoundary": false,
+      "directPlateLimit": 0,
+      "behaviorTargetModes": {
+        "slow_projectile": "Fastest"
+      }
+    }
+  }
+}

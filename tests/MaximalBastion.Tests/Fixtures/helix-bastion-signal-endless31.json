@@ -1,0 +1,22 @@
+{
+  "id": "helix-standing-board-wave-31",
+  "wave": {
+    "firstWave": 31,
+    "lastWave": 31,
+    "spendOnLayout": false,
+    "applyScheduledApex": false,
+    "policy": { "id": "existing-orders", "keepExistingOrders": true },
+    "alternatives": [
+      {
+        "id": "first-forward-plates",
+        "targetingProfileId": "first",
+        "decisionTicks": 30,
+        "prepareBeforeStart": true,
+        "reactAtBoundary": false,
+        "activePlateLimit": 2,
+        "plateProgressOffset": 0.05,
+        "behaviorTargetModes": { "slow_projectile": "Fastest" }
+      }
+    ]
+  }
+}

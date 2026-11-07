@@ -111,6 +111,10 @@ public sealed class GameSession
     public string? AnnouncementSubtitle { get; private set; }
     public float AnnouncementRemaining { get; private set; }
     public bool AnnouncementPositive { get; private set; }
+    private const string BossArrivalSignal = "BOSS SIGNAL // BASTION CORE";
+    private const string BossOverdriveSignal = "BASTION CORE // OVERDRIVE";
+    public bool HasVisibleAnnouncement => AnnouncementRemaining > 0 && !string.IsNullOrWhiteSpace(AnnouncementTitle) &&
+        AnnouncementTitle is not (BossArrivalSignal or BossOverdriveSignal);
     public int CurrentWave => Waves.CurrentWaveNumber;
     public int TotalWaves => Waves.TotalWaves;
     public int AuthoredWaveCount => Waves.AuthoredWaveCount;
@@ -1368,7 +1372,7 @@ public sealed class GameSession
         EnemySpawned?.Invoke(enemy);
         if (enemy.IsBoss)
         {
-            AnnouncementTitle = "BOSS SIGNAL // BASTION CORE";
+            AnnouncementTitle = BossArrivalSignal;
             AnnouncementSubtitle = "Break its shield; expect an overdrive phase at half integrity.";
             AnnouncementPositive = false;
             AnnouncementRemaining = 3.4f;
@@ -1377,7 +1381,7 @@ public sealed class GameSession
 
     public void OnBossPhaseChanged(EnemyInstance enemy)
     {
-        AnnouncementTitle = "BASTION CORE // OVERDRIVE";
+        AnnouncementTitle = BossOverdriveSignal;
         AnnouncementSubtitle = "Shield restored. Movement accelerated. Control resistance remains high.";
         AnnouncementPositive = false;
         AnnouncementRemaining = 3.2f;

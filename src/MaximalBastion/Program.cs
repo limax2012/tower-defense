@@ -7,6 +7,21 @@ public static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0].Equals("--render-strategy-replay", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var capture = new StrategyReplayCaptureGame(StrategyReplayOptions.Parse(args));
+                capture.Run();
+                return 0;
+            }
+            catch (Exception exception)
+            {
+                Console.Error.WriteLine($"Strategy replay export failed: {exception}");
+                return 1;
+            }
+        }
+
         if (args.Length > 0 && args[0].Equals("--capture-enemy-lane", StringComparison.OrdinalIgnoreCase))
         {
             try

@@ -31,7 +31,7 @@ Tower Intel stages selected hardware above its current statistics and actions. A
 | Screen | Default information and primary action | Additional information |
 | --- | --- | --- |
 | Home | One evenly spaced column of Play, Co-op, Load, History, Settings, and supported Quit | Play is taller; live defense feeds are decorative |
-| Run setup | Map, difficulty, mode, Start Run | Persistent descriptions beneath the selected difficulty and mode |
+| Run setup | Map, difficulty, mode, Start Run | Delayed hover tooltips for difficulty and mode |
 | Settings | Display, Audio, Gameplay tabs | Only the active category receives input |
 | Achievements | Name, completion state, progress, short requirement | Medals and Records tabs; independent pages |
 | History | Map, result, difficulty, wave, date | Run details and read-only final layout |
@@ -45,7 +45,7 @@ Home actions share a 12-unit gap and are centered inside the connecting wire enc
 
 Solo and co-op pause menus use the same 12-unit vertical spacing. Resume is taller than the remaining actions, with a gold accent distinct from Restart's coral. The solo menu keeps every action at a shared width; the compact co-op menu follows the same structure within the sidebar.
 
-Play opens one setup screen. Map cards occur in that setup; selecting one does not launch a run. Start Run commits the selected map, difficulty, and mode. Difficulty and Mode use bright Oxanium SemiBold headings with a 14-unit letter height, centered above their complete option rows and visually larger than the choices below. Selected difficulties and modes keep their descriptions centered beneath their buttons with a 16-unit offset and bounded text width. A dark navy backing with softened edges keeps the pale description text clear of the infrastructure artwork. Each backing closely fits its measured text with small, symmetric padding and no interactive border. Difficulty descriptions show enemy health, enemy speed, and starting lives separated by slashes. The persistent cyan underline reinforces difficulty and mode selection. Hosting uses the same setup structure with supported modes.
+Play opens one setup screen. Map cards occur in that setup; selecting one does not launch a run. Start Run commits the selected map, difficulty, and mode. Difficulty and Mode use bright Oxanium SemiBold headings with a 12-unit letter height, centered above their complete option rows and visually larger than the choices below. After a 0.6-second hover, the tooltip beside the pointer fades in over 0.1 seconds. When the pointer leaves the option, the tooltip follows the cursor while fading out over 0.1 seconds from its current opacity. Entering another option starts its hover delay immediately. Tooltips flip at the edges of the setup frame. The gap above Difficulty matches the gap before Mode. The action row sits 37 units below the mode options. Difficulty descriptions show enemy health, enemy speed, and starting lives separated by slashes. A continuous cyan border and bold corners mark the selected difficulty and mode. Hosting uses the same setup structure with supported modes.
 
 Escape dismisses expanded result details before navigating away. Save deletion and restarting require an explicit second action, with concise confirmation text. No modal layer should allow clicks to affect covered gameplay controls.
 

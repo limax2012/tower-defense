@@ -156,7 +156,7 @@ public sealed class MarketingCaptureGame : Game
             for (var tick = 0; tick < 55 * 60 && session.Waves.IsActive && !session.IsDefeat; tick++)
             {
                 Advance(session, player, tick);
-                if (tick * step < minimumSeconds || session.AnnouncementRemaining > 0) continue;
+                if (tick * step < minimumSeconds || session.HasVisibleAnnouncement) continue;
                 var enemies = session.Enemies.Where(enemy => !enemy.IsDead).ToArray();
                 var middle = enemies.Count(enemy => enemy.PathProgress is >= .20f and <= .85f);
                 var central = enemies.Count(enemy => enemy.Position.X is >= 160 and <= 800 &&

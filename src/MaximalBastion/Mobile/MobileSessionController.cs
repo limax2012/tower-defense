@@ -275,6 +275,7 @@ public sealed class MobileSessionController
         var session = Session;
         if (session is null) return new { screen = "menu", notice = Notice, settings = Settings };
         var wave = session.Waves.ActiveWave ?? session.Waves.NextWave;
+        var showAnnouncement = session.HasVisibleAnnouncement;
         return new
         {
             screen = InspectingHistory ? "inspect" : session.IsDefeat ? "defeat" : session.IsVictory ? "victory" : "playing",
@@ -311,7 +312,9 @@ public sealed class MobileSessionController
                 healthScale = wave.HealthMultiplier * session.Difficulty.EnemyHealthMultiplier,
                 speedScale = wave.SpeedMultiplier * session.Difficulty.EnemySpeedMultiplier
             },
-            session.AnnouncementTitle, session.AnnouncementSubtitle, session.AnnouncementRemaining,
+            AnnouncementTitle = showAnnouncement ? session.AnnouncementTitle : null,
+            AnnouncementSubtitle = showAnnouncement ? session.AnnouncementSubtitle : null,
+            AnnouncementRemaining = showAnnouncement ? session.AnnouncementRemaining : 0,
             sandbox = new { session.SandboxWaveActive, session.SandboxWaveSignalsEnabled },
             result = session.IsDefeat || session.IsVictory ? RunHistoryEntry.FromSession(session) : null
         };

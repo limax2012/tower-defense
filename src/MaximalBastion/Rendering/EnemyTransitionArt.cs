@@ -34,6 +34,23 @@ internal static class EnemyTransitionArt
             }
         }
         if (feedback.OverdriveTransition <= 0 || !enemy.IsBoss) return;
+        if (enemy.Definition.Id == "t5_regenerator")
+        {
+            if (enemy.Shield <= 0) return;
+            var elapsed = (1 - feedback.OverdriveTransition) * .65f;
+            var progress = Math.Clamp(elapsed / .62f, 0, 1);
+            var flash = MathF.Pow(MathF.Max(0, MathF.Sin(progress * MathHelper.Pi)), 1.5f);
+            var extent = radius * (1.015f + .112f * MathHelper.SmoothStep(0, 1, progress));
+            for (var edge = 0; edge < sides; edge++)
+            {
+                var first = At(envelope[edge], extent);
+                var last = At(envelope[(edge + 1) % sides], extent);
+                if (!reducedEffects) p.Line(batch, first, last, ColorPalette.Shield * (.17f * flash), 2.8f);
+                p.Line(batch, first, last, Color.Lerp(ColorPalette.Shield, ColorPalette.Paper, .75f) *
+                    ((reducedEffects ? .42f : .88f) * flash), .95f);
+            }
+            return;
+        }
         var fade = feedback.OverdriveTransition;
         var release = (1 - fade) * (reducedEffects ? 2 : 7);
         for (var sign = -1; sign <= 1; sign += 2)

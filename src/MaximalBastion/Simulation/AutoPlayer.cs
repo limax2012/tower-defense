@@ -1,6 +1,7 @@
 using MaximalBastion.Core;
 using MaximalBastion.Data;
 using MaximalBastion.Enemies;
+using MaximalBastion.Multiplayer;
 using MaximalBastion.Towers;
 using Microsoft.Xna.Framework;
 
@@ -19,11 +20,13 @@ public sealed class AutoPlayer
     private readonly bool _holdBuild;
     private readonly bool _holdFootprint;
     private readonly WavePlan? _wavePlan;
+    private readonly Func<GameCommand, bool>? _applyCommand;
     private int _salesWave = -1;
     private int _salesThisWave;
     private int _directEmergencyPurchasesThisWave;
 
-    public AutoPlayer(GameSession session, AutoPlayerStrategy strategy, int seed, SimulationOptions? options = null)
+    public AutoPlayer(GameSession session, AutoPlayerStrategy strategy, int seed, SimulationOptions? options = null,
+        Func<GameCommand, bool>? applyCommand = null)
     {
         _strategy = strategy;
         _random = new Random(seed);
@@ -36,6 +39,7 @@ public sealed class AutoPlayer
         _holdBuild = options?.HoldBuild ?? false;
         _holdFootprint = options?.HoldFootprint ?? false;
         _wavePlan = options?.WavePlan;
+        _applyCommand = applyCommand;
     }
 
     public void PrepareForWave(GameSession session)
@@ -121,7 +125,7 @@ public sealed class AutoPlayer
             if (buyScore <= 0 && upgradeScore <= 0) return;
             if (purchase is { } buy && buyScore >= upgradeScore)
             {
-                if (!session.TryPlaceTower(buy.Definition.Id, buy.Position)) return;
+                if (!TryPlaceTower(session, buy.Definition.Id, buy.Position)) return;
                 ConfigureTargeting(session, session.Towers[^1], threat);
                 continue;
             }
@@ -129,10 +133,10 @@ public sealed class AutoPlayer
             if (upgrade is { } up)
             {
                 var upgraded = up.DoctrineId is not null
-                    ? session.TryChooseTowerDoctrine(up.Tower.Id, up.DoctrineId)
+                    ? TryChooseTowerDoctrine(session, up.Tower.Id, up.DoctrineId)
                     : up.SpecializationId is not null
-                        ? session.TrySpecializeTower(up.Tower.Id, up.SpecializationId)
-                        : session.TryUpgradeTower(up.Tower.Id);
+                        ? TrySpecializeTower(session, up.Tower.Id, up.SpecializationId)
+                        : TryUpgradeTower(session, up.Tower.Id);
                 if (upgraded)
                 {
                     ConfigureTargeting(session, up.Tower, threat);
@@ -163,7 +167,7 @@ public sealed class AutoPlayer
             var id = ids[(combatTowerCount + offset) % ids.Length];
             if (!session.Content.Towers.TryGetValue(id, out var definition) || definition.PurchaseCost > spendable) continue;
             var position = FindBestPosition(session, definition, threat);
-            if (position is null || !session.TryPlaceTower(id, position.Value)) continue;
+            if (position is null || !TryPlaceTower(session, id, position.Value)) continue;
             ConfigureTargeting(session, session.Towers[^1], threat);
             return true;
         }
@@ -301,7 +305,7 @@ public sealed class AutoPlayer
             if (definition.PurchaseCost <= spendable)
             {
                 var position = FindBestPosition(session, definition, threat);
-                if (position is not null && session.TryPlaceTower(definition.Id, position.Value))
+                if (position is not null && TryPlaceTower(session, definition.Id, position.Value))
                 {
                     ConfigureTargeting(session, session.Towers[^1], threat);
                     return true;
@@ -326,7 +330,7 @@ public sealed class AutoPlayer
             var position = FindBestPosition(session, beacon, threat);
             if (position is not null && ExperiencedSupportPositionScore(session, beacon, position.Value) >= 12f)
             {
-                if (beacon.PurchaseCost <= spendable && session.TryPlaceTower(beacon.Id, position.Value)) return true;
+                if (beacon.PurchaseCost <= spendable && TryPlaceTower(session, beacon.Id, position.Value)) return true;
                 if (session.Economy.Credits < beacon.PurchaseCost) savingForPriority = true;
             }
         }
@@ -389,7 +393,7 @@ public sealed class AutoPlayer
             if (!session.IsTowerAvailable(id) || !session.Content.Towers.TryGetValue(id, out var definition) || definition.PurchaseCost > spendable) continue;
             var position = FindBestPosition(session, definition, threat);
             if (position is null) continue;
-            if (!session.TryPlaceTower(definition.Id, position.Value)) continue;
+            if (!TryPlaceTower(session, definition.Id, position.Value)) continue;
             ConfigureTargeting(session, session.Towers[^1], threat);
             return true;
         }
@@ -633,7 +637,7 @@ public sealed class AutoPlayer
         if (apexCount >= apexLimit) return false;
         var candidate = ExperiencedApexCandidate(session, threat);
         if (candidate is null || candidate.Value.Tower.ApexUpgradeCost > spendable ||
-            !session.TryUpgradeTower(candidate.Value.Tower.Id)) return false;
+            !TryUpgradeTower(session, candidate.Value.Tower.Id)) return false;
         ConfigureTargeting(session, candidate.Value.Tower, threat);
         return true;
     }
@@ -827,7 +831,7 @@ public sealed class AutoPlayer
                 .OrderByDescending(candidate => candidate.Score)
                 .ThenBy(candidate => candidate.Definition.Id)
                 .FirstOrDefault();
-            return doctrine is not null && session.TryChooseTowerDoctrine(tower.Id, doctrine.Definition.Id);
+            return doctrine is not null && TryChooseTowerDoctrine(session, tower.Id, doctrine.Definition.Id);
         }
 
         if (tower.RequiresSpecialization)
@@ -851,11 +855,11 @@ public sealed class AutoPlayer
                 .OrderByDescending(candidate => candidate.Score)
                 .ThenBy(candidate => candidate.Definition.Id)
                 .FirstOrDefault();
-            return specialization is not null && session.TrySpecializeTower(tower.Id, specialization.Definition.Id);
+            return specialization is not null && TrySpecializeTower(session, tower.Id, specialization.Definition.Id);
         }
 
         if (tower.CanUpgrade && tower.UpgradeCost <= spendable)
-            return session.TryUpgradeTower(tower.Id);
+            return TryUpgradeTower(session, tower.Id);
         return false;
     }
 
@@ -1419,7 +1423,7 @@ public sealed class AutoPlayer
     {
         if (_strategy == AutoPlayerStrategy.Experienced)
         {
-            session.TrySetTargetMode(tower.Id,
+            TrySetTargetMode(session, tower.Id,
                 ExperiencedTargetMode(session, tower, threat, duringWave: false));
             return;
         }
@@ -1431,7 +1435,7 @@ public sealed class AutoPlayer
             "frost_spire" => threat.HasBoss ? TargetMode.Strongest : TargetMode.First,
             _ => threat.Fast > 0.35f ? TargetMode.First : tower.TargetMode
         };
-        session.TrySetTargetMode(tower.Id, mode);
+        TrySetTargetMode(session, tower.Id, mode);
     }
 
     private void ConfigureExperiencedTargeting(
@@ -1440,7 +1444,7 @@ public sealed class AutoPlayer
         bool duringWave)
     {
         foreach (var tower in session.Towers.Where(tower => !tower.IsSupport).OrderBy(tower => tower.Id))
-            session.TrySetTargetMode(tower.Id,
+            TrySetTargetMode(session, tower.Id,
                 ExperiencedTargetMode(session, tower, threat, duringWave));
     }
 
@@ -1638,9 +1642,9 @@ public sealed class AutoPlayer
             var selectedApexCost = apexCandidate?.Tower.ApexUpgradeCost ?? int.MaxValue;
             if (selectedApexCost == int.MaxValue || session.Economy.Credits >= selectedApexCost) return;
             var weakest = ExperiencedWeakestSaleCandidate(session, selectedApexCost);
-            if (weakest is null || !session.TrySellTower(weakest.Id)) return;
+            if (weakest is null || !TrySellTower(session, weakest.Id)) return;
             _salesThisWave++;
-            if (session.TryUpgradeTower(apexCandidate!.Value.Tower.Id))
+            if (TryUpgradeTower(session, apexCandidate!.Value.Tower.Id))
                 ConfigureTargeting(session, apexCandidate.Value.Tower, threat);
             return;
         }
@@ -1653,7 +1657,7 @@ public sealed class AutoPlayer
         else if (threat.Swarm > 0.65f)
             mismatch = session.Towers.FirstOrDefault(x => x.LevelIndex == 0 && x.Definition.Id == "breaker_cannon");
         if (mismatch is null || session.Towers.Count <= 6) return;
-        if (session.TrySellTower(mismatch.Id)) _salesThisWave++;
+        if (TrySellTower(session, mismatch.Id)) _salesThisWave++;
     }
 
     private void ResetSalesForWave(GameSession session)
@@ -1697,7 +1701,7 @@ public sealed class AutoPlayer
         var maximumLevelIndex = (int)PlanParameter("plateSaleMaxLevel", 1f, 0f, 2f);
         var weakest = ExperiencedWeakestSaleCandidate(session, requiredCredits, maximumLevelIndex);
         if (weakest is null) return false;
-        if (!session.TrySellTower(weakest.Id)) return false;
+        if (!TrySellTower(session, weakest.Id)) return false;
         _salesThisWave++;
         return true;
     }
@@ -1807,7 +1811,7 @@ public sealed class AutoPlayer
                 .OrderByDescending(x => session.Map.Path.DistanceToPath(x))
                 .Take(6)
                 .ToArray();
-            if (candidates.Length > 0) session.TryPlaceGenerator(candidates[_random.Next(candidates.Length)]);
+            if (candidates.Length > 0) TryPlaceGenerator(session, candidates[_random.Next(candidates.Length)]);
             return;
         }
 
@@ -1816,7 +1820,7 @@ public sealed class AutoPlayer
             ? generator.LevelIndex == 0 ? 18 : 24
             : generator.LevelIndex == 0 ? 11 : 16;
         if (nextWave >= upgradeWave && generator.CanUpgrade && session.Economy.Credits >= generator.UpgradeCost + ReserveCredits(session, false))
-            session.TryUpgradeGenerator();
+            TryUpgradeGenerator(session);
     }
 
     private void TryUseEmergencyDefense(GameSession session)
@@ -1889,7 +1893,7 @@ public sealed class AutoPlayer
         if (directPurchase && session.Economy.Credits < requiredCredits &&
             !TrySellForEmergencyDefense(session, lead.PathProgress, requiredCredits)) return;
         if (directPurchase && session.Economy.Credits < requiredCredits) return;
-        if (!session.TryDeployEmergencyDefense(position.Value)) return;
+        if (!TryDeployEmergencyDefense(session, position.Value)) return;
         if (directPurchase) _directEmergencyPurchasesThisWave++;
     }
 
@@ -2033,7 +2037,7 @@ public sealed class AutoPlayer
             .OrderByDescending(choice => choice.Score)
             .ThenBy(x => x.Tower.Id)
             .FirstOrDefault();
-        if (candidate is not null) session.TryOverdriveTower(candidate.Tower.Id);
+        if (candidate is not null) TryOverdriveTower(session, candidate.Tower.Id);
     }
 
     private static float ManualProtocolInvestmentValue(GameSession session, TowerInstance tower)
@@ -2132,6 +2136,62 @@ public sealed class AutoPlayer
         }
         return points.Select(x => new Vector2(x.X, x.Y)).OrderBy(x => x.Y).ThenBy(x => x.X).ToList();
     }
+
+    private bool ApplyCommand(GameCommand command, Func<bool> directAction) =>
+        _applyCommand is null ? directAction() : _applyCommand(command);
+
+    private bool TryPlaceTower(GameSession session, string definitionId, Vector2 position) =>
+        ApplyCommand(new GameCommand
+        {
+            PlayerId = 1, Type = GameCommandType.PlaceTower, TowerDefinitionId = definitionId,
+            X = position.X, Y = position.Y
+        }, () => session.TryPlaceTower(definitionId, position));
+
+    private bool TryUpgradeTower(GameSession session, int towerId) =>
+        ApplyCommand(new GameCommand { PlayerId = 1, Type = GameCommandType.UpgradeTower, EntityId = towerId },
+            () => session.TryUpgradeTower(towerId));
+
+    private bool TryChooseTowerDoctrine(GameSession session, int towerId, string doctrineId) =>
+        ApplyCommand(new GameCommand
+        {
+            PlayerId = 1, Type = GameCommandType.ChooseDoctrine, EntityId = towerId, DoctrineId = doctrineId
+        }, () => session.TryChooseTowerDoctrine(towerId, doctrineId));
+
+    private bool TrySpecializeTower(GameSession session, int towerId, string specializationId) =>
+        ApplyCommand(new GameCommand
+        {
+            PlayerId = 1, Type = GameCommandType.SpecializeTower, EntityId = towerId, SpecializationId = specializationId
+        }, () => session.TrySpecializeTower(towerId, specializationId));
+
+    private bool TrySetTargetMode(GameSession session, int towerId, TargetMode mode) =>
+        ApplyCommand(new GameCommand
+        {
+            PlayerId = 1, Type = GameCommandType.SetTargetMode, EntityId = towerId, TargetMode = mode
+        }, () => session.TrySetTargetMode(towerId, mode));
+
+    private bool TrySellTower(GameSession session, int towerId) =>
+        ApplyCommand(new GameCommand { PlayerId = 1, Type = GameCommandType.SellTower, EntityId = towerId },
+            () => session.TrySellTower(towerId));
+
+    private bool TryPlaceGenerator(GameSession session, Vector2 position) =>
+        ApplyCommand(new GameCommand
+        {
+            PlayerId = 1, Type = GameCommandType.PlaceGenerator, X = position.X, Y = position.Y
+        }, () => session.TryPlaceGenerator(position));
+
+    private bool TryUpgradeGenerator(GameSession session) =>
+        ApplyCommand(new GameCommand { PlayerId = 1, Type = GameCommandType.UpgradeGenerator },
+            () => session.TryUpgradeGenerator());
+
+    private bool TryDeployEmergencyDefense(GameSession session, Vector2 position) =>
+        ApplyCommand(new GameCommand
+        {
+            PlayerId = 1, Type = GameCommandType.DeployEmergencyDefense, X = position.X, Y = position.Y
+        }, () => session.TryDeployEmergencyDefense(position));
+
+    private bool TryOverdriveTower(GameSession session, int towerId) =>
+        ApplyCommand(new GameCommand { PlayerId = 1, Type = GameCommandType.OverdriveTower, EntityId = towerId },
+            () => session.TryOverdriveTower(towerId));
 
     private readonly record struct ApexInvestmentOption(TowerInstance Tower, float Score);
 }

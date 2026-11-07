@@ -74,10 +74,6 @@ public sealed partial class UIManager
         _ => index is 5 or 6
     };
 
-    internal string SelectedModeDescription => ModeSummary(_challenges.ElementAtOrDefault(_selectedChallengeIndex)?.Id ?? "");
-
-    internal string SelectedDifficultyDescription => _difficulties.ElementAtOrDefault(_selectedDifficultyIndex)?.Description ?? "";
-
     private static string ModeSummary(string id) => id switch
     {
         "standard" => "Full arsenal. Standard rules.",

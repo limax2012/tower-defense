@@ -418,7 +418,9 @@ public sealed partial class PrimitiveRenderer : IDisposable
     {
         _graphicsDevice = graphicsDevice;
         _rasterQuality = Math.Clamp(rasterQuality, 1, GameConstants.MaximumRenderScale);
+        _mapSelectionCheck = CreateMapSelectionCheck(graphicsDevice, _rasterQuality);
         _supportMasks = CreateSupportMasks(graphicsDevice);
+        _bossExhaustAtlas = CreateBossExhaustAtlas(graphicsDevice);
         Pixel = new Texture2D(graphicsDevice, 1, 1);
         Pixel.SetData(new[] { Color.White });
         const int armorCircleTop = ArmorShapeSize * 2 + ArmorPlateHeight + 4;
@@ -877,7 +879,9 @@ public sealed partial class PrimitiveRenderer : IDisposable
         Pixel.Dispose();
         _debuffFog.Dispose();
         _armorShapes.Dispose();
+        _mapSelectionCheck.Dispose();
         _supportMasks.Dispose();
+        _bossExhaustAtlas.Dispose();
 #if !BLAZORGL
         _glow?.Dispose();
         foreach (var texture in _energyEnvelopes) texture.Dispose();

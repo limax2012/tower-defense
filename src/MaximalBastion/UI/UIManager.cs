@@ -194,8 +194,9 @@ public sealed partial class UIManager
     private readonly Dictionary<string, string> _towerDisplayNames = new(StringComparer.OrdinalIgnoreCase);
     private readonly Rectangle _mainMenuReleaseNotesButton = new(530, 668, 220, 25);
     private readonly Rectangle _releaseNotesBackButton = new(500, 520, 280, 46);
-    private readonly Rectangle _setupConfirmButton = new(438, 586, 270, 46);
-    private readonly Rectangle _setupBackButton = new(722, 586, 120, 46);
+    private const int SetupActionTop = 579;
+    private readonly Rectangle _setupConfirmButton = new(438, SetupActionTop, 270, 46);
+    private readonly Rectangle _setupBackButton = new(722, SetupActionTop, 120, 46);
     private readonly Rectangle[] _saveSlotRows =
     {
         new(330, 130, 620, 66),
@@ -294,6 +295,7 @@ public sealed partial class UIManager
     {
         if (!float.IsFinite(elapsedSeconds) || elapsedSeconds <= 0) return;
         _visualTimeSeconds = (_visualTimeSeconds + Math.Min(elapsedSeconds, 0.25f)) % 120f;
+        AdvanceSetupTooltip(elapsedSeconds);
         _creditPulse = MathF.Max(0, _creditPulse - elapsedSeconds);
     }
 
@@ -549,6 +551,7 @@ public sealed partial class UIManager
     public void PrepareGameSetup(bool forCoOp)
     {
         _setupForCoOp = forCoOp;
+        ResetSetupTooltip();
         if (forCoOp && _challenges.ElementAtOrDefault(_selectedChallengeIndex)?.IsSandbox == true)
         {
             var defaultIndex = _challenges.FindIndex(challenge => challenge.Id.Equals(ChallengeCatalog.DefaultId, StringComparison.OrdinalIgnoreCase));
@@ -560,26 +563,36 @@ public sealed partial class UIManager
     {
         _hudPointer = input.IsMouseOverLogicalCanvas ? input.MousePosition : new Vector2(-1, -1);
         _hudPressed = input.LeftPressed;
-        if (input.EscapePressed) return _setupForCoOp ? UiAction.CoOp : UiAction.MainMenu;
-        if (!input.LeftPressed) return UiAction.None;
-        var point = input.MousePosition.ToPoint();
-        for (var index = 0; index < _maps.Count; index++)
+        if (input.EscapePressed)
         {
-            if (!SetupCardRectangle(0, index, _maps.Count).Contains(point)) continue;
-            _selectedMapIndex = index;
-            return UiAction.None;
+            ResetSetupTooltip();
+            return _setupForCoOp ? UiAction.CoOp : UiAction.MainMenu;
         }
+        var point = _hudPointer.ToPoint();
         for (var index = 0; index < _difficulties.Count; index++)
         {
-            if (!SetupCardRectangle(1, index, _difficulties.Count).Contains(point)) continue;
-            _selectedDifficultyIndex = index;
+            var option = SetupCardRectangle(1, index, _difficulties.Count);
+            if (!option.Contains(point)) continue;
+            SetSetupHover(option, _difficulties[index].Description);
+            if (input.LeftPressed) _selectedDifficultyIndex = index;
             return UiAction.None;
         }
         var setupChallenges = SetupChallenges();
         for (var index = 0; index < setupChallenges.Count; index++)
         {
-            if (!SetupCardRectangle(2, index, setupChallenges.Count).Contains(point)) continue;
-            _selectedChallengeIndex = _challenges.IndexOf(setupChallenges[index]);
+            var option = SetupCardRectangle(2, index, setupChallenges.Count);
+            if (!option.Contains(point)) continue;
+            var mode = setupChallenges[index];
+            SetSetupHover(option, ModeSummary(mode.Id));
+            if (input.LeftPressed) _selectedChallengeIndex = _challenges.IndexOf(mode);
+            return UiAction.None;
+        }
+        SetSetupHover(Rectangle.Empty, "");
+        if (!input.LeftPressed) return UiAction.None;
+        for (var index = 0; index < _maps.Count; index++)
+        {
+            if (!SetupCardRectangle(0, index, _maps.Count).Contains(point)) continue;
+            _selectedMapIndex = index;
             return UiAction.None;
         }
         if (_setupConfirmButton.Contains(point))
@@ -604,7 +617,7 @@ public sealed partial class UIManager
         var gap = row == 0 ? 16 : 8;
         var safeCount = Math.Max(1, count);
         var width = (totalWidth - gap * (safeCount - 1)) / safeCount;
-        var y = row switch { 0 => 114, 1 => 398, _ => 502 };
+        var y = row switch { 0 => 114, 1 => 407, _ => 502 };
         return new Rectangle(left + index * (width + gap), y, width, row == 0 ? 238 : 40);
     }
 
@@ -2103,14 +2116,14 @@ public sealed partial class UIManager
 
     private void DrawAnnouncement(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session)
     {
-        if (session.AnnouncementRemaining <= 0 || string.IsNullOrWhiteSpace(session.AnnouncementTitle)) return;
+        if (!session.HasVisibleAnnouncement || session.AnnouncementTitle is not { } title) return;
         var fade = MathHelper.Clamp(session.AnnouncementRemaining / 0.35f, 0, 1);
         var alpha = (byte)(232 * fade);
         var accent = session.AnnouncementPositive ? ColorPalette.Green : ColorPalette.Gold;
         var rect = new Rectangle(240, 64, 480, 48);
         p.FillRect(batch, rect, ColorPalette.WithPremultipliedAlpha(ColorPalette.Navy, alpha));
         p.FillRect(batch, new Rectangle(rect.X, rect.Y, 5, rect.Height), ColorPalette.WithPremultipliedAlpha(accent, alpha));
-        DrawFittedCenteredText(batch, session.AnnouncementTitle, new Vector2(rect.Center.X, rect.Y + 14),
+        DrawFittedCenteredText(batch, title, new Vector2(rect.Center.X, rect.Y + 14),
             ColorPalette.Paper * fade, 0.59f, rect.Width - 32);
         DrawFittedCenteredText(batch, session.AnnouncementSubtitle ?? "", new Vector2(rect.Center.X, rect.Y + 34),
             ColorPalette.Muted * fade, 0.44f, rect.Width - 32);
@@ -3011,17 +3024,15 @@ public sealed partial class UIManager
             if (selected)
             {
                 p.DrawRect(batch, card, accent, 2);
-                p.FillRect(batch, new Rectangle(card.X + 12, card.Y + 12, 22, 22), ColorPalette.Panel);
-                p.Line(batch, new Vector2(card.X + 17, card.Y + 23), new Vector2(card.X + 21, card.Y + 27), accent, 2);
-                p.Line(batch, new Vector2(card.X + 21, card.Y + 27), new Vector2(card.X + 29, card.Y + 18), accent, 2);
+                var badge = new Rectangle(card.X + 12, card.Y + 12, 22, 22);
+                p.FillRect(batch, badge, ColorPalette.Panel);
+                p.MapSelectionCheck(batch, badge, accent);
             }
         }
         DrawSetupSectionHeader(batch, "DIFFICULTY", 1, _difficulties.Count);
         for (var index = 0; index < _difficulties.Count; index++)
             DrawSetupChoice(batch, p, SetupCardRectangle(1, index, _difficulties.Count), _difficulties[index].DisplayName,
-                ColorPalette.Cyan, index == _selectedDifficultyIndex);
-        if (SelectedDifficultyDescription.Length > 0)
-            DrawSetupDescription(batch, p, SelectedDifficultyDescription, 1, _selectedDifficultyIndex, _difficulties.Count);
+                ColorPalette.Cyan, index == _selectedDifficultyIndex, useMapBorder: true);
 
         var setupChallenges = SetupChallenges();
         DrawSetupSectionHeader(batch, "MODE", 2, setupChallenges.Count);
@@ -3029,13 +3040,12 @@ public sealed partial class UIManager
         {
             var challengeIndex = _challenges.IndexOf(setupChallenges[index]);
             DrawSetupChoice(batch, p, SetupCardRectangle(2, index, setupChallenges.Count), setupChallenges[index].MenuLabel,
-                ColorPalette.Cyan, challengeIndex == _selectedChallengeIndex);
-            if (challengeIndex == _selectedChallengeIndex && SelectedModeDescription.Length > 0)
-                DrawSetupDescription(batch, p, SelectedModeDescription, 2, index, setupChallenges.Count);
+                ColorPalette.Cyan, challengeIndex == _selectedChallengeIndex, useMapBorder: true);
         }
 
         DrawButton(batch, p, _setupConfirmButton, _setupForCoOp ? "HOST" : "START", true, ColorPalette.Gold, primary: true);
         DrawButton(batch, p, _setupBackButton, "BACK", true, ColorPalette.CardOutline);
+        DrawSetupTooltip(batch, p);
     }
 
     private string _loadingTransitionTitle = "LOADING DEFENSE SYSTEMS";
@@ -3080,47 +3090,29 @@ public sealed partial class UIManager
         var bounds = SetupChoiceRowBounds(row, count);
         var measured = _displayFont.MeasureString(label);
         var ink = TextInkExtents(_displayFont, label);
-        var scale = 14f / MathF.Max(1, ink.Y - ink.X);
+        var scale = 12f / MathF.Max(1, ink.Y - ink.X);
         var origin = new Vector2(measured.X * .5f, (ink.X + ink.Y) * .5f);
         batch.DrawString(_displayFont, label, new Vector2(bounds.Center.X, bounds.Top - 20),
             ColorPalette.Paper, 0, origin, scale, SpriteEffects.None, 0);
     }
 
-    private void DrawSetupDescription(SpriteBatch batch, PrimitiveRenderer p, string text, int row, int index, int count)
+    private void DrawSetupChoice(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string label, Color accent,
+        bool selected, string? mapStyle = null, bool useMapBorder = false)
     {
-        var bounds = SetupCardRectangle(row, index, count);
-        var (caption, scale) = FitCenteredText(text, .46f, bounds.Width - 16);
-        var position = new Vector2(bounds.Center.X, bounds.Bottom + 16);
-        var measured = _font.MeasureString(caption);
-        var factor = scale * GameConstants.FontDrawScale;
-        var ink = TextInkExtents(_font, caption);
-        var halfWidth = (int)MathF.Ceiling(measured.X * factor * .5f);
-        var top = (int)MathF.Floor(position.Y + (ink.X - measured.Y * .5f) * factor);
-        var bottom = (int)MathF.Ceiling(position.Y + (ink.Y - measured.Y * .5f) * factor);
-        var backing = new Rectangle(bounds.Center.X - halfWidth - 5, top - 3,
-            halfWidth * 2 + 10, bottom - top + 6);
-        p.FillRect(batch, backing, ColorPalette.Navy * .4f);
-        backing.Inflate(-1, -1);
-        p.FillRect(batch, backing, ColorPalette.Navy);
-        DrawText(batch, caption, position, ColorPalette.Tint(ColorPalette.Muted, .16f), scale, true);
-    }
-
-    private void DrawSetupChoice(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, string label, Color accent, bool selected, string? mapStyle = null)
-    {
-        DrawSetupCardFrame(batch, p, rect, accent, selected);
+        DrawSetupCardFrame(batch, p, rect, accent, selected, useMapBorder);
         if (mapStyle is not null)
             MapEnvironmentRenderer.Emblem(batch, p, new Vector2(rect.X + 24, rect.Center.Y), mapStyle, 10);
         DrawFittedCenteredText(batch, label.ToUpperInvariant(), new Vector2(rect.Center.X + (mapStyle is null ? 0 : 14), rect.Center.Y),
             selected ? ColorPalette.ReadableAccent(accent, ColorPalette.Panel) : ColorPalette.Navy, 0.60f, rect.Width - (mapStyle is null ? 12 : 68));
     }
 
-    private void DrawSetupCardFrame(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, Color accent, bool selected)
+    private void DrawSetupCardFrame(SpriteBatch batch, PrimitiveRenderer p, Rectangle rect, Color accent, bool selected, bool useMapBorder)
     {
         var hovered = rect.Contains(_hudPointer.ToPoint());
         p.FillRect(batch, rect, selected ? ColorPalette.Surface(accent, .22f) : ColorPalette.Panel);
-        p.DrawRect(batch, rect, selected || hovered ? accent : ColorPalette.CardOutline);
-        if (selected) p.FillRect(batch, new Rectangle(rect.X + 6, rect.Bottom - 3, rect.Width - 12, 2), accent);
-        if (hovered) p.Brackets(batch, rect, accent, 6);
+        p.DrawRect(batch, rect, selected || hovered ? accent : ColorPalette.CardOutline, useMapBorder && selected ? 2 : 1);
+        if (selected && !useMapBorder) p.FillRect(batch, new Rectangle(rect.X + 6, rect.Bottom - 3, rect.Width - 12, 2), accent);
+        if (hovered || (useMapBorder && selected)) p.Brackets(batch, rect, accent, useMapBorder ? 10 : 6);
     }
 
     private void DrawVolumeSlider(SpriteBatch batch, PrimitiveRenderer p, Rectangle bounds, string label, float volume,

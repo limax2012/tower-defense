@@ -15,6 +15,16 @@ All profiles require the final ten authored waves. Wave 21 unlocks Apex, and wav
 
 Core Six uses the standard opening economy. Its six-tower roster remains unusually effective for the deterministic agent, so a large credit bonus made its intended constraint easier rather than clearer.
 
+Independent 60 Hz replays establish fresh-start Bastion / Signal Gauntlet victories on all four maps: [Helix Reactor](docs/helix-calibration.md), [Prism Nullspace](docs/prism-calibration.md), [Rainline Heights](docs/rainline-calibration.md), and [Cinderworks](docs/cinderworks-calibration.md). Each has a variant that retains every tower and survives generated Endless wave 31 with zero sales. Rainline's continuation requires no further purchases; Cinderworks requires no further permanent investment. These use supplied layout goals and searched tactical decisions. Human execution margins and success rates remain separate validation questions.
+
+Cinderworks finishes the campaign with 38 towers, three Apex upgrades, a maxed Forge and 321 credits. An 18-second preparation interval and the verified targeting policy retain that defense through wave 31 with 298 credits. Bulwark shielding and Restorer healing are important tactical constraints: global Support targeting does not always select the intended signal enemy. The supplied witness establishes possibility under oracle/expert execution; the [general spending search](docs/cinderworks-search.md) still stops at wave 28 within its recorded budget.
+
+## Competitive possibility matrix
+
+The solo competitive possibility matrix has a legal winning witness for every map/difficulty/directive combination: 60 new fresh-start proofs plus the four Bastion/Signal Gauntlet calibrations, all at seed 1337. Each continues through Endless 31 with zero sales and all campaign towers retained. Lower difficulties may finish with leaks; these are existence proofs, not optimized safety margins.
+
+Strategy transfer requires adapting to the actual rules. Core Six's cheaper roster can leave enough money for substantially more Apex investment. Entrenched needs permanent coverage and damage that replace manual Protocols and Plates; opening order and early area damage matter on Prism and Rainline. Targeting and Plate timing can also require adjustment when difficulty changes enemy timing. This evidence establishes possibility across the matrix, but does not establish that Signal Gauntlet is the hardest directive for every map or measure human execution difficulty.
+
 ## Experienced-agent assessment
 
 The Experienced policy is a deterministic heuristic created to model known strong human practices. It is not machine learning and its completion rate is not a forecast of human win probability. It improves on the general policies by:

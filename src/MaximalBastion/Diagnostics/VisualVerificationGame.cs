@@ -79,6 +79,43 @@ public sealed partial class VisualVerificationGame : Game
         ConfigureUi(ui, content);
 
         var assertions = new List<string>();
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_SPLASH_DEPTH_ONLY") == "1")
+        {
+            var splashScenes = new List<VisualVerificationScene>();
+            AssertSplashBodyOcclusion(content, font, assertions, splashScenes);
+            File.WriteAllText(Path.Combine(_outputDirectory, "splash-depth-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = splashScenes },
+                    new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Splash depth verification passed: {splashScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_REPAIR_PULSE_ONLY") == "1")
+        {
+            var repairScenes = new List<VisualVerificationScene>();
+            AssertRegeneratorRepair(content, font, typography.Display, assertions, repairScenes);
+            if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_REPAIR_PULSE_ANIMATION") == "1")
+                CaptureRegeneratorRepairMotion(content, font, typography.Display);
+            File.WriteAllText(Path.Combine(_outputDirectory, "regenerator-repair-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = repairScenes },
+                    new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Regenerator repair verification passed: {repairScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
+        if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_BOSS_EXHAUST_ONLY") == "1")
+        {
+            var exhaustScenes = new List<VisualVerificationScene>();
+            AssertBossExhaust(content, font, typography.Display, assertions, exhaustScenes);
+            if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_BOSS_EXHAUST_ANIMATION") == "1")
+                CaptureBossExhaustMotion(content, font, typography.Display);
+            File.WriteAllText(Path.Combine(_outputDirectory, "boss-exhaust-report.json"),
+                JsonSerializer.Serialize(new { assertions, scenes = exhaustScenes },
+                    new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Boss exhaust verification passed: {exhaustScenes.Count} scenes, {assertions.Count} assertions.");
+            _complete = true;
+            return;
+        }
         if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_MENU_BOUNDARY_ONLY") == "1")
         {
             var menuScenes = new List<VisualVerificationScene>();
@@ -320,6 +357,7 @@ public sealed partial class VisualVerificationGame : Game
         AssertEnemyStunPresentation(content, font, typography.Display, assertions, scenes);
         AssertEnemyArmorPresentation(content, font, typography.Display, assertions, scenes);
         AssertEnemyRestPortraits(content, font, typography.Display, assertions, scenes);
+        AssertRegeneratorRepair(content, font, typography.Display, assertions, scenes);
         AssertSignalModules(content, font, typography.Display, assertions, scenes);
         AssertSupportPulsePresentation(content, font, typography.Display, assertions, scenes);
         AssertWaveStartPresentation(content, font, typography.Display, assertions, scenes);
@@ -410,63 +448,7 @@ public sealed partial class VisualVerificationGame : Game
                 $"Setup selects {districtIds[index]} without starting a run.", assertions);
             scenes.Add(Capture($"00b-setup-map-{index}.png", ui, GameState.GameSetup, null));
         }
-        for (var mode = 0; mode < content.Challenges.Count; mode++)
-        {
-            var at = UIManager.SetupCardRectangle(2, mode, content.Challenges.Count).Center;
-            ui.HandleGameSetup(Pointer(at.X, at.Y, leftPressed: true));
-            var expectedDescription = ui.SelectedChallengeId switch
-            {
-                "standard" => "Full arsenal. Standard rules.",
-                "core_six" => "Six core tower types only.",
-                "no_reserves" => "No Plates, Forge, manual Protocols, or selling.",
-                "close_quarters" => "Enemies boost their allies and disrupt your towers.",
-                "sandbox_lab" => "Unlimited resources. Spawn enemies and test defenses.",
-                _ => ""
-            };
-            Require(expectedDescription.Length > 0 && ui.SelectedModeDescription == expectedDescription,
-                $"Selected {ui.SelectedChallengeId} shows its mode description.", assertions);
-            ui.HandleGameSetup(Pointer(0, 0));
-            Require(ui.SelectedModeDescription == expectedDescription,
-                $"Selected {ui.SelectedChallengeId} keeps its description after the pointer leaves.", assertions);
-            scenes.Add(Capture($"00e-mode-selected-{ui.SelectedChallengeId}.png", ui, GameState.GameSetup, null));
-        }
-        Require(content.Challenges.Values.Single(challenge => challenge.Id == "core_six").MenuLabel == "Core Six",
-            "The Core Six selector spells out its tower count.", assertions);
-        for (var difficulty = 0; difficulty < content.Difficulties.Count; difficulty++)
-        {
-            var at = UIManager.SetupCardRectangle(1, difficulty, content.Difficulties.Count).Center;
-            ui.HandleGameSetup(Pointer(at.X, at.Y, leftPressed: true));
-            ui.HandleGameSetup(Pointer(0, 0));
-            var expectedDescription = ui.SelectedDifficultyId switch
-            {
-                "easy" => "Enemy health 94% / Enemy speed 99% / 20 lives",
-                "normal" => "Enemy health 100% / Enemy speed 100% / 12 lives",
-                "hard" => "Enemy health 106% / Enemy speed 101% / 6 lives",
-                "bastion" => "Enemy health 112% / Enemy speed 102% / 1 life",
-                _ => ""
-            };
-            Require(expectedDescription.Length > 0 && ui.SelectedDifficultyDescription == expectedDescription,
-                $"Selected {ui.SelectedDifficultyId} keeps its health, speed, and lives description after the pointer leaves.", assertions);
-            scenes.Add(Capture($"00g-difficulty-selected-{ui.SelectedDifficultyId}.png", ui, GameState.GameSetup, null));
-        }
-        var standardMode = UIManager.SetupCardRectangle(2, 0, content.Challenges.Count).Center;
-        ui.HandleGameSetup(Pointer(standardMode.X, standardMode.Y, leftPressed: true));
-        scenes.Add(Capture("00e-mode-hover.png", ui, GameState.GameSetup, null));
-        ui.HandleGameSetup(Pointer(0, 0));
-        scenes.Add(Capture("00f-mode-unhovered.png", ui, GameState.GameSetup, null));
-        var mediumDifficulty = UIManager.SetupCardRectangle(1, 1, content.Difficulties.Count).Center;
-        ui.HandleGameSetup(Pointer(mediumDifficulty.X, mediumDifficulty.Y, leftPressed: true));
-        var selectedDifficultyDescription = ui.SelectedDifficultyDescription;
-        var difficultyHover = UIManager.SetupCardRectangle(1, 0, content.Difficulties.Count).Center;
-        ui.HandleGameSetup(Pointer(difficultyHover.X, difficultyHover.Y));
-        Require(ui.SelectedDifficultyId == "normal" && ui.SelectedDifficultyDescription == selectedDifficultyDescription,
-            "Hovering another difficulty preserves the selected Medium description.", assertions);
-        scenes.Add(Capture("00g-difficulty-hover.png", ui, GameState.GameSetup, null));
-        var modeHover = UIManager.SetupCardRectangle(2, 1, content.Challenges.Count).Center;
-        ui.HandleGameSetup(Pointer(modeHover.X, modeHover.Y));
-        Require(ui.SelectedChallengeId == "standard" && ui.SelectedModeDescription == "Full arsenal. Standard rules.",
-            "Hovering another mode preserves the selected Standard description.", assertions);
-        scenes.Add(Capture("00h-mode-other-hover.png", ui, GameState.GameSetup, null));
+        VerifySetupTooltips(content, font, typography.Display, assertions, scenes);
         ui.HandleGameSetup(Pointer(0, 0));
         var setupAtRest = RenderPixels(ui, GameState.GameSetup, null);
         foreach (var (row, count, label) in new[]
@@ -475,14 +457,17 @@ public sealed partial class VisualVerificationGame : Game
                      (2, content.Challenges.Count, "mode")
                  })
         {
-            var selectedRails = Enumerable.Range(0, count).Select(index =>
-            {
-                var bounds = UIManager.SetupCardRectangle(row, index, count);
-                return CountColorPixels(setupAtRest,
-                    new Rectangle(bounds.Left + 6, bounds.Bottom - 3, bounds.Width - 12, 2), ColorPalette.Cyan);
-            }).ToArray();
-            Require(selectedRails.Count(coverage => coverage > 0) == 1 && selectedRails.Max() >= 100,
-                $"Setup keeps exactly one clear cyan {label} selection rail after the pointer leaves.", assertions);
+            var selectedIndex = row == 1 ? 1 : 0;
+            Require(Enumerable.Range(0, count).All(index => MatchesOptionFrame(setupAtRest,
+                    UIManager.SetupCardRectangle(row, index, count), selected: index == selectedIndex, hovered: false)),
+                $"The selected {label} has a bold cyan frame and corners, and idle options have quiet edges.", assertions);
+            var hoveredIndex = (selectedIndex + 1) % count;
+            var hoveredCard = UIManager.SetupCardRectangle(row, hoveredIndex, count);
+            ui.HandleGameSetup(Pointer(hoveredCard.Center.X, hoveredCard.Center.Y));
+            var hoverView = RenderPixels(ui, GameState.GameSetup, null);
+            Require(MatchesOptionFrame(hoverView, hoveredCard, selected: false, hovered: true) &&
+                    MatchesOptionFrame(hoverView, UIManager.SetupCardRectangle(row, selectedIndex, count), selected: true, hovered: false),
+                $"Hovering another {label} adds corners while the selected option keeps its stronger edge.", assertions);
         }
         var firstMap = UIManager.SetupCardRectangle(0, 0, districtIds.Length).Center;
         ui.HandleGameSetup(Pointer(firstMap.X, firstMap.Y, leftPressed: true));
@@ -1616,6 +1601,181 @@ public sealed partial class VisualVerificationGame : Game
         // Review scenes are rendered explicitly in LoadContent, so the hidden
         // helper never needs to present a normal backbuffer frame.
         base.Draw(gameTime);
+    }
+
+    private static bool MatchesOptionFrame(IReadOnlyList<Color> pixels, Rectangle card, bool selected, bool hovered)
+    {
+        var thickness = selected ? 2 : 1;
+        var color = selected || hovered ? ColorPalette.Cyan : ColorPalette.CardOutline;
+        var edges = new[]
+        {
+            new Rectangle(card.Center.X - 2, card.Top, 4, thickness),
+            new Rectangle(card.Center.X - 2, card.Bottom - thickness, 4, thickness),
+            new Rectangle(card.Left, card.Center.Y - 2, thickness, 4),
+            new Rectangle(card.Right - thickness, card.Center.Y - 2, thickness, 4)
+        };
+        var corners = new[]
+        {
+            new Rectangle(card.Left + 2, card.Top - 1, 4, 1), new Rectangle(card.Right - 6, card.Top - 1, 4, 1),
+            new Rectangle(card.Left + 2, card.Bottom, 4, 1), new Rectangle(card.Right - 6, card.Bottom, 4, 1)
+        };
+        return edges.All(edge => CountColorPixels(pixels, edge, color) ==
+                edge.Width * edge.Height * GameConstants.RenderScale * GameConstants.RenderScale) &&
+            corners.All(corner => (CountColorPixels(pixels, corner, ColorPalette.Cyan) > 0) == (selected || hovered)) &&
+            CountColorPixels(pixels, new Rectangle(card.Center.X - 2, card.Bottom - 3, 4, 1), ColorPalette.Cyan) == 0;
+    }
+
+    private void VerifySetupTooltips(GameContent content, SpriteFont font, SpriteFont display,
+        ICollection<string> assertions, ICollection<VisualVerificationScene> scenes)
+    {
+        var ui = new UIManager(font, display);
+        ui.ConfigureMaps(content.Maps.Values);
+        ui.ConfigureDifficulties(content.Difficulties.Values);
+        ui.ConfigureChallenges(content.Challenges.Values);
+        ui.PrepareGameSetup(false);
+
+        Select(0, 1, content.Maps.Count);
+        Require(ui.SelectedMapId == "crosswind_basin", "Setup tooltip scenes select Rainline Heights.", assertions);
+        var standardView = RenderPixels(ui, GameState.GameSetup, null);
+        Select(1, 0, content.Difficulties.Count);
+        Select(2, content.Challenges.Count - 1, content.Challenges.Count);
+        var alternateView = RenderPixels(ui, GameState.GameSetup, null);
+        foreach (var (row, count) in new[] { (1, content.Difficulties.Count), (2, content.Challenges.Count) })
+        {
+            var card = UIManager.SetupCardRectangle(row, 0, count);
+            var below = new Rectangle(0, card.Bottom + 2, GameConstants.LogicalWidth, 28);
+            Require(CountChangedPixels(standardView, alternateView, below) == 0,
+                "Changing selection with the pointer away leaves the space below each option row clear.", assertions);
+        }
+        Select(1, 1, content.Difficulties.Count);
+        Select(2, 0, content.Challenges.Count);
+        scenes.Add(Capture("00e-setup-rainline.png", ui, GameState.GameSetup, null));
+
+        CheckRow(1, [
+            ("easy", "Enemy health 94% / Enemy speed 99% / 20 lives"),
+            ("normal", "Enemy health 100% / Enemy speed 100% / 12 lives"),
+            ("hard", "Enemy health 106% / Enemy speed 101% / 6 lives"),
+            ("bastion", "Enemy health 112% / Enemy speed 102% / 1 life")
+        ]);
+        CheckRow(2, [
+            ("standard", "Full arsenal. Standard rules."),
+            ("core_six", "Six core tower types only."),
+            ("no_reserves", "No Plates, Forge, manual Protocols, or selling."),
+            ("close_quarters", "Enemies boost their allies and disrupt your towers."),
+            ("sandbox_lab", "Unlimited resources. Spawn enemies and test defenses.")
+        ]);
+        Require(ui.SelectedDifficultyId == "normal" && ui.SelectedChallengeId == "standard",
+            "Reading other options leaves the selected difficulty and mode intact.", assertions);
+        Require(content.Challenges.Values.Single(challenge => challenge.Id == "core_six").MenuLabel == "Core Six",
+            "The Core Six selector spells out its tower count.", assertions);
+
+        var sandbox = UIManager.SetupCardRectangle(2, content.Challenges.Count - 1, content.Challenges.Count).Center;
+        var outgoing = ui.SetupTooltipBounds.GetValueOrDefault();
+        var outgoingText = ui.SetupTooltipText;
+        var fullSandbox = RenderPixels(ui, GameState.GameSetup, null);
+        var exitPointer = new Point(300, sandbox.Y + 30);
+        ui.HandleGameSetup(Pointer(exitPointer.X, exitPointer.Y));
+        ui.AdvanceVisualTime(.025f);
+        var leftExit = ui.SetupTooltipBounds.GetValueOrDefault();
+        Require(leftExit.Size == outgoing.Size && leftExit.Left > exitPointer.X && leftExit.Top > exitPointer.Y &&
+                ui.SetupTooltipText == outgoingText, "The exiting tooltip follows the cursor into the gap below the mode row.", assertions);
+        exitPointer = new Point(1230, exitPointer.Y + 2);
+        ui.HandleGameSetup(Pointer(exitPointer.X, exitPointer.Y));
+        ui.AdvanceVisualTime(.025f);
+        var rightExit = ui.SetupTooltipBounds.GetValueOrDefault();
+        var canvas = new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight);
+        Require(rightExit != leftExit && rightExit.Size == outgoing.Size && canvas.Contains(rightExit) &&
+                rightExit.Right < exitPointer.X && rightExit.Top > exitPointer.Y && ui.SetupTooltipText == outgoingText,
+            "The fading tooltip tracks the next cursor position and flips at the screen edge.", assertions);
+        ui.HandleGameSetup(Pointer(0, 0) with { IsMouseOverLogicalCanvas = false });
+        Require(ui.SetupTooltipBounds == rightExit, "Off-canvas input retains the last visible cursor anchor during the exit.", assertions);
+        var fadingSandbox = RenderPixels(ui, GameState.GameSetup, null);
+        ui.AdvanceVisualTime(.051f);
+        Require(ui.SetupTooltipBounds is null && ui.SetupTooltipText.Length == 0,
+            "The tooltip disappears after 100 ms away from its option.", assertions);
+        var hiddenSandbox = RenderPixels(ui, GameState.GameSetup, null);
+        Require(CountColorPixels(fadingSandbox, rightExit, ColorPalette.Paper) < CountColorPixels(fullSandbox, outgoing, ColorPalette.Paper) &&
+                CountChangedPixels(fadingSandbox, hiddenSandbox, rightExit) > 20,
+            "The tooltip renders a partially visible exit frame before disappearing.", assertions);
+        ui.HandleGameSetup(Pointer(sandbox.X, sandbox.Y));
+        ui.AdvanceVisualTime(.25f);
+        Require(ui.SetupTooltipBounds is null, "Returning to the same option starts a fresh hover delay.", assertions);
+
+        ui.AdvanceVisualTime(.25f);
+        ui.AdvanceVisualTime(.13f);
+        var entering = ui.SetupTooltipBounds.GetValueOrDefault();
+        var interrupted = RenderPixels(ui, GameState.GameSetup, null);
+        ui.HandleGameSetup(Pointer(0, 0) with { IsMouseOverLogicalCanvas = false });
+        var exitStart = RenderPixels(ui, GameState.GameSetup, null);
+        var inkBand = new Rectangle(entering.X + 4, entering.Y + 7, entering.Width - 8, entering.Height - 11);
+        Require(ui.SetupTooltipBounds == entering && ui.SetupTooltipText == outgoingText &&
+                CountChangedPixels(interrupted, exitStart, inkBand) == 0,
+            "Leaving mid-entry starts the exit from the visible lettering without flashing to full opacity.", assertions);
+        ui.PrepareGameSetup(true);
+        Require(ui.SetupTooltipBounds is null && ui.SetupTooltipText.Length == 0,
+            "Reentering setup clears an outgoing tooltip.", assertions);
+        var coOpModes = content.Challenges.Values.Count(mode => !mode.IsSandbox);
+        var gauntlet = UIManager.SetupCardRectangle(2, coOpModes - 1, coOpModes).Center;
+        ui.HandleGameSetup(Pointer(gauntlet.X, gauntlet.Y));
+        ui.AdvanceVisualTime(.25f);
+        ui.AdvanceVisualTime(.25f);
+        ui.AdvanceVisualTime(.23f);
+        Require(ui.SetupTooltipText == "Enemies boost their allies and disrupt your towers." && ui.SetupTooltipBounds.HasValue,
+            "Host setup resolves the hovered Gauntlet option in its co-op mode row.", assertions);
+        scenes.Add(Capture("00e-setup-host-tooltip.png", ui, GameState.GameSetup, null));
+
+        void Select(int row, int index, int count)
+        {
+            var center = UIManager.SetupCardRectangle(row, index, count).Center;
+            ui.HandleGameSetup(Pointer(center.X, center.Y, leftPressed: true));
+            ui.HandleGameSetup(Pointer(0, 0));
+        }
+
+        void CheckRow(int row, (string Id, string Text)[] options)
+        {
+            for (var index = 0; index < options.Length; index++)
+            {
+                var (id, expected) = options[index];
+                var card = UIManager.SetupCardRectangle(row, index, options.Length);
+                var rightEdge = index == options.Length - 1;
+                var x = rightEdge ? card.Right - 3 : card.Center.X;
+                var precedingBounds = ui.SetupTooltipBounds;
+                var precedingText = ui.SetupTooltipText;
+                ui.HandleGameSetup(Pointer(x, card.Center.Y));
+                var followsCursor = precedingBounds is { } previous
+                    ? ui.SetupTooltipBounds is { } moved && moved.Size == previous.Size && moved != previous
+                    : ui.SetupTooltipBounds is null;
+                Require(followsCursor && ui.SetupTooltipText == precedingText,
+                    $"Entering {id} moves the preceding tooltip with the pointer as the new hover delay begins.", assertions);
+                ui.AdvanceVisualTime(.2f);
+                ui.HandleGameSetup(Pointer(x - 2, card.Center.Y));
+                ui.AdvanceVisualTime(.2f);
+                ui.AdvanceVisualTime(.19f);
+                Require(ui.SetupTooltipBounds is null, $"The {id} tooltip stays hidden at 0.59 seconds.", assertions);
+                var beforeFade = id == "core_six" ? RenderPixels(ui, GameState.GameSetup, null) : null;
+                ui.AdvanceVisualTime(.02f);
+                var bounds = ui.SetupTooltipBounds;
+                Require(bounds is { Width: > 0, Height: > 0 } visible &&
+                        new Rectangle(0, 0, GameConstants.LogicalWidth, GameConstants.LogicalHeight).Contains(visible) &&
+                        ui.SetupTooltipText == expected,
+                    $"The {id} tooltip appears within the canvas after dwelling on that option.", assertions);
+                if (rightEdge)
+                    Require(bounds.HasValue && bounds.Value.Right <= x - 2,
+                        $"The {id} tooltip opens to the left of a pointer at the right edge.", assertions);
+                ui.AdvanceVisualTime(.03f);
+                var midFade = beforeFade is null ? null : RenderPixels(ui, GameState.GameSetup, null);
+                ui.AdvanceVisualTime(.09f);
+                if (beforeFade is not null && midFade is not null && bounds is { } tooltip)
+                {
+                    var full = RenderPixels(ui, GameState.GameSetup, null);
+                    Require(CountChangedPixels(beforeFade, midFade, tooltip) > 20 &&
+                            CountChangedPixels(midFade, full, tooltip) > 20 &&
+                            CountColorPixels(midFade, tooltip, ColorPalette.Paper) < CountColorPixels(full, tooltip, ColorPalette.Paper),
+                        "The setup tooltip passes through a partially visible state before its text reaches full brightness.", assertions);
+                }
+                scenes.Add(Capture($"00e-setup-tooltip-{id}.png", ui, GameState.GameSetup, null));
+            }
+        }
     }
 
     private static void ConfigureUi(UIManager ui, GameContent content)

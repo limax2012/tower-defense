@@ -8,5 +8,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MaximalBastion\MaximalBastion.csproj" />
     <None Include="..\..\src\MaximalBastion\ContentData\**\*.json" Link="ContentData\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures\**\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

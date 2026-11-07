@@ -41,7 +41,8 @@ public static partial class EnemyModelArt
     public static void Draw(SpriteBatch batch, PrimitiveRenderer p, EnemyInstance enemy, Vector2 center,
         float heading, float time, bool reducedEffects, float travelDistance = 0, float hit = 0,
         float overdriveOpening = 1f, EnemyLocomotionPath? movementPath = null, bool atRest = false,
-        bool castShadows = true, scoped ReadOnlySpan<EnemyGroundContact> groundContacts = default)
+        bool castShadows = true, scoped ReadOnlySpan<EnemyGroundContact> groundContacts = default,
+        float overdriveElapsed = float.PositiveInfinity)
     {
         if (enemy.IsDead || enemy.HasEscaped) return;
         var f = new Chassis(batch, p, enemy, center, heading, time, reducedEffects, hit,
@@ -54,13 +55,19 @@ public static partial class EnemyModelArt
             groundContacts = sampled[..contactCount];
         }
         if (castShadows) DrawGroundShadow(f, groundContacts);
+        var exhaustBoss = enemy.IsBoss && enemy.Definition.Id == "t5_regenerator";
+        if (exhaustBoss && enemy.BossPhaseActive && !atRest)
+            p.BossExhaust(batch, f.Center, f.Radius, heading, time, overdriveElapsed, reducedEffects);
         if (!reducedEffects) p.Glow(batch, f.Center, f.Radius * .65f, f.Energy, .16f);
         DrawLegs(f, groundContacts);
         DrawHull(batch, p, enemy, f.Center, f.Radius, heading, f.Armor);
         DrawArmoredFamily(f);
         DrawRankArmor(f);
         if (enemy.BossPhaseActive) DrawOverdrivePanels(f);
-        DrawFacetedCore(f);
+        if (exhaustBoss)
+            p.BossExhaustShutters(batch, f.Center, f.Radius, heading,
+                enemy.BossPhaseActive ? reducedEffects || atRest ? 1 : overdriveElapsed : -1);
+        DrawFacetedCore(f, time);
     }
 
     internal static void SampleGroundContacts(EnemyInstance enemy, Vector2 center, float heading,

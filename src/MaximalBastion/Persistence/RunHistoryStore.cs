@@ -446,9 +446,9 @@ public sealed class RunHistoryRepository
             .ToArray();
     }
 
-    private static void ValidateEntries(IReadOnlyList<RunHistoryEntry> entries, string? argumentName = null)
+    internal static void ValidateEntries(IReadOnlyList<RunHistoryEntry> entries, string? argumentName = null)
     {
-        var valid = entries.Count <= MaximumHistoryEntries &&
+        var valid = entries.Count <= MaximumHistoryEntries && entries.All(entry => entry is not null) &&
             entries.Select(entry => entry.RunId).Distinct(StringComparer.OrdinalIgnoreCase).Count() == entries.Count &&
             entries.All(IsValidEntry);
         if (valid) return;
@@ -474,9 +474,9 @@ public sealed class RunHistoryRepository
             float.IsFinite(entry.DefenseSeconds) && entry.DefenseSeconds >= 0 &&
             float.IsFinite(entry.TopTowerContribution) && entry.TopTowerContribution >= 0 &&
             entry.QueuedEnemiesRemaining >= 0 && entry.RemainingEnemies is not null &&
-            entry.RemainingEnemies.Count <= 128 && entry.RemainingEnemies.All(IsValidRemainingEnemyEntry) &&
-            entry.Towers is not null && entry.Towers.Count <= 128 && entry.Towers.All(IsValidTowerEntry) &&
-            entry.Enemies is not null && entry.Enemies.Count <= 128 && entry.Enemies.All(IsValidEnemyEntry) &&
+            entry.RemainingEnemies.Count <= 128 && entry.RemainingEnemies.All(enemy => enemy is not null && IsValidRemainingEnemyEntry(enemy)) &&
+            entry.Towers is not null && entry.Towers.Count <= 128 && entry.Towers.All(tower => tower is not null && IsValidTowerEntry(tower)) &&
+            entry.Enemies is not null && entry.Enemies.Count <= 128 && entry.Enemies.All(enemy => enemy is not null && IsValidEnemyEntry(enemy)) &&
             (entry.FinalLayout is null || IsValidLayout(entry.FinalLayout));
     }
 
@@ -500,11 +500,11 @@ public sealed class RunHistoryRepository
 
     private static bool IsValidLayout(RunHistoryLayoutSnapshot layout) =>
         layout.StoredPlates >= 0 && layout.AutoProtocolTowerId >= 0 &&
-        layout.Towers is not null && layout.Towers.Count <= 1024 &&
+        layout.Towers is not null && layout.Towers.Count <= 1024 && layout.Towers.All(tower => tower is not null) &&
         layout.Towers.Select(tower => tower.Id).Distinct().Count() == layout.Towers.Count &&
         layout.Towers.All(IsValidPlacedTower) &&
         (layout.AutoProtocolTowerId == 0 || layout.Towers.Any(tower => tower.Id == layout.AutoProtocolTowerId)) &&
-        layout.PulsePlates is not null && layout.PulsePlates.Count <= 256 &&
+        layout.PulsePlates is not null && layout.PulsePlates.Count <= 256 && layout.PulsePlates.All(plate => plate is not null) &&
         layout.PulsePlates.Select(plate => plate.Id).Distinct().Count() == layout.PulsePlates.Count &&
         layout.PulsePlates.All(IsValidPlacedPlate) &&
         (layout.Generator is null || IsValidGenerator(layout.Generator));

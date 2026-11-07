@@ -14,6 +14,7 @@ public sealed partial class VisualVerificationGame
         ICollection<string> assertions, ICollection<VisualVerificationScene> scenes)
     {
         AssertEnemySelection(content, font, display, assertions, scenes);
+        AssertBossExhaust(content, font, display, assertions, scenes);
         var ranks = new[] { "Standard", "Elite", "Boss" };
         var families = content.Enemies.Values.ToArray();
         var samples = families.SelectMany(definition => ranks.Select(rank =>
@@ -246,7 +247,7 @@ public sealed partial class VisualVerificationGame
         var radius = EnemyModelArt.BodyRadius(enemy);
         _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp);
         EnemyModelArt.Draw(_batch, _primitives, enemy, position, sample.Heading, time, reduced,
-            overdriveOpening: feedback.OverdriveOpening);
+            overdriveOpening: feedback.OverdriveOpening, overdriveElapsed: feedback.OverdriveElapsed);
         if (!bodyOnly)
         {
             EnemyStatusArt.Draw(_batch, _primitives, enemy, position, radius, sample.Heading, time, reduced);

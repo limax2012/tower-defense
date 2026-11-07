@@ -429,6 +429,8 @@ public sealed class GameRenderer
                 case EffectKind.Impact:
                     break;
                 case EffectKind.Splash:
+                    // The area outlives its compact contact but keeps the recipient's draw order.
+                    AddEnemyAttack(effect.TargetEnemy!.Id, null, effect);
                     var contactDuration = MathF.Min(.12f, effect.Duration);
                     progress = MathHelper.Clamp(1 - MathF.Max(0, effect.Duration - remaining) /
                         MathF.Max(.001f, contactDuration), 0, 1);
@@ -487,7 +489,15 @@ public sealed class GameRenderer
                 else if (attack.Effect is { } effect)
                 {
                     var remaining = presentation.EffectRemaining(effect);
-                    if (effect.Kind == EffectKind.Ricochet)
+                    if (effect.Kind == EffectKind.Splash)
+                    {
+                        var appearance = effect.Appearance.Resolve(session, effect.SourceTowerId);
+                        TowerAttackArt.DrawSplash(batch, p, appearance.TowerId!, effect.Start,
+                            effect.Color, effect.Radius,
+                            MathHelper.Clamp(remaining / MathF.Max(.001f, effect.Duration), 0, 1),
+                            presentation.TimeSeconds, ReducedEffects, appearance.Level, appearance.IsApex);
+                    }
+                    else if (effect.Kind == EffectKind.Ricochet)
                         RicochetArt.Draw(batch, p, effect, remaining, presentation.TimeSeconds, ReducedEffects,
                             presentation.RicochetDestination(effect));
                     else
@@ -592,7 +602,8 @@ public sealed class GameRenderer
                 enemy.DistanceAlongPath + enemy.CurrentSpeed * presentation.LeadSeconds,
                 Math.Clamp((enemy.DamagePauseTimer - .88f) * 6, 0, .7f), feedback.OverdriveOpening, _enemyLocomotion,
                 castShadows: false,
-                groundContacts: _enemyGroundContacts.AsSpan(index * 8, EnemyLocomotion.ContactSlots(enemy).Length));
+                groundContacts: _enemyGroundContacts.AsSpan(index * 8, EnemyLocomotion.ContactSlots(enemy).Length),
+                overdriveElapsed: feedback.OverdriveElapsed);
 
             LastEnemyAuraRegionCount += EnemyDebuffAuraArt.Draw(batch, p, session, enemy, position, radius, time,
                 ReducedEffects, _enemyVisuals.FogFeedback(enemy, time));
@@ -745,6 +756,7 @@ public sealed class GameRenderer
             }
             if (appearance.IsKnown && effect.Kind == EffectKind.Splash)
             {
+                if (bodyBound) continue;
                 TowerAttackArt.DrawSplash(batch, p, appearance.TowerId!, effect.Start,
                     effect.Color, effect.Radius, progress, presentation.TimeSeconds, ReducedEffects,
                     appearance.Level, appearance.IsApex);

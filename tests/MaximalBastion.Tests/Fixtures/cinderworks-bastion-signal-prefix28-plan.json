@@ -1,0 +1,646 @@
+{
+  "schemaVersion": 1,
+  "id": "cinderworks-bastion-signal-prefix28",
+  "scenario": {
+    "mapId": "foundry_loop",
+    "difficultyId": "bastion",
+    "challengeId": "close_quarters",
+    "seed": 1337,
+    "coOp": false,
+    "horizon": 28,
+    "endless": false,
+    "startingProfile": "fresh",
+    "informationProfile": "oracle",
+    "executionProfile": "expert",
+    "forbidCombatSales": true
+  },
+  "layout": {
+    "id": "cinderworks-history-expanded-prefix",
+    "mapId": "foundry_loop",
+    "towers": [
+      {
+        "key": "goal-1",
+        "towerId": "needle_turret",
+        "x": 170,
+        "y": 199.99,
+        "levelIndex": 2,
+        "doctrineId": "needle_cycler",
+        "specializationId": "rapid_array",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-2",
+        "towerId": "needle_turret",
+        "x": 309.99,
+        "y": 199.99,
+        "levelIndex": 2,
+        "doctrineId": "needle_calibrator",
+        "specializationId": "rail_pin",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-3",
+        "towerId": "shard_fan",
+        "x": 170.09866,
+        "y": 158.39323,
+        "levelIndex": 2,
+        "doctrineId": "shard_scatter",
+        "specializationId": "razor_bloom",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-4",
+        "towerId": "breaker_cannon",
+        "x": 268.3099,
+        "y": 199.60266,
+        "levelIndex": 2,
+        "doctrineId": "breaker_repeater",
+        "specializationId": "shatter_shell",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-5",
+        "towerId": "frost_spire",
+        "x": 211.20404,
+        "y": 198.0381,
+        "levelIndex": 2,
+        "doctrineId": "frost_deep_chill",
+        "specializationId": "permafrost",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-6",
+        "towerId": "ember_coil",
+        "x": 210.53474,
+        "y": 157.28656,
+        "levelIndex": 2,
+        "doctrineId": "ember_kindling",
+        "specializationId": "wildfire_matrix",
+        "apexFromWave": 27
+      },
+      {
+        "key": "goal-7",
+        "towerId": "watchtower",
+        "x": 309.6711,
+        "y": 159.39178,
+        "levelIndex": 2,
+        "doctrineId": "watch_spotter",
+        "specializationId": "sentinel_array",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-8",
+        "towerId": "arc_relay",
+        "x": 69.99,
+        "y": 170,
+        "levelIndex": 2,
+        "doctrineId": "arc_fork",
+        "specializationId": "storm_lattice",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-9",
+        "towerId": "siege_mortar",
+        "x": 410,
+        "y": 234.99,
+        "levelIndex": 2,
+        "doctrineId": "mortar_survey",
+        "specializationId": "quake_shell",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-10",
+        "towerId": "signal_beacon",
+        "x": 261.18063,
+        "y": 155.96498,
+        "levelIndex": 2,
+        "doctrineId": "beacon_repeater",
+        "specializationId": "tempo_beacon",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-11",
+        "towerId": "breaker_cannon",
+        "x": 410.57495,
+        "y": 194.76852,
+        "levelIndex": 2,
+        "doctrineId": "breaker_repeater",
+        "specializationId": "shatter_shell",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-12",
+        "towerId": "prism_beam",
+        "x": 450.08023,
+        "y": 233.99475,
+        "levelIndex": 2,
+        "doctrineId": "prism_aperture",
+        "specializationId": "spectrum_split",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-13",
+        "towerId": "frost_spire",
+        "x": 450.92172,
+        "y": 192.54013,
+        "levelIndex": 2,
+        "doctrineId": "frost_ice_needle",
+        "specializationId": "hail_lancer",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-14",
+        "towerId": "prism_beam",
+        "x": 491.51257,
+        "y": 234.44136,
+        "levelIndex": 2,
+        "doctrineId": "prism_frequency",
+        "specializationId": "core_lance",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-15",
+        "towerId": "frost_spire",
+        "x": 560,
+        "y": 510,
+        "levelIndex": 2,
+        "doctrineId": "frost_deep_chill",
+        "specializationId": "permafrost",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-16",
+        "towerId": "prism_beam",
+        "x": 608,
+        "y": 510,
+        "levelIndex": 2,
+        "doctrineId": "prism_frequency",
+        "specializationId": "spectrum_split",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-17",
+        "towerId": "signal_beacon",
+        "x": 608,
+        "y": 444,
+        "levelIndex": 2,
+        "doctrineId": "beacon_repeater",
+        "specializationId": "horizon_beacon",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-18",
+        "towerId": "breaker_cannon",
+        "x": 560,
+        "y": 444,
+        "levelIndex": 2,
+        "doctrineId": "breaker_repeater",
+        "specializationId": "shatter_shell",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-19",
+        "towerId": "prism_beam",
+        "x": 656,
+        "y": 510,
+        "levelIndex": 2,
+        "doctrineId": "prism_frequency",
+        "specializationId": "spectrum_split",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-20",
+        "towerId": "frost_spire",
+        "x": 704,
+        "y": 510,
+        "levelIndex": 2,
+        "doctrineId": "frost_deep_chill",
+        "specializationId": "permafrost",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-21",
+        "towerId": "prism_beam",
+        "x": 656,
+        "y": 444,
+        "levelIndex": 2,
+        "doctrineId": "prism_frequency",
+        "specializationId": "spectrum_split",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-22",
+        "towerId": "siege_mortar",
+        "x": 704,
+        "y": 444,
+        "levelIndex": 2,
+        "doctrineId": "mortar_survey",
+        "specializationId": "quake_shell",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-23",
+        "towerId": "prism_beam",
+        "x": 752,
+        "y": 510,
+        "levelIndex": 2,
+        "doctrineId": "prism_frequency",
+        "specializationId": "core_lance",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-24",
+        "towerId": "watchtower",
+        "x": 760,
+        "y": 690,
+        "levelIndex": 2,
+        "doctrineId": "watch_spotter",
+        "specializationId": "deadeye_post",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-25",
+        "towerId": "prism_beam",
+        "x": 434,
+        "y": 550,
+        "levelIndex": 2,
+        "doctrineId": "prism_frequency",
+        "specializationId": "spectrum_split",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-26",
+        "towerId": "frost_spire",
+        "x": 434,
+        "y": 500,
+        "levelIndex": 2,
+        "doctrineId": "frost_deep_chill",
+        "specializationId": "permafrost",
+        "apexFromWave": 0
+      },
+      {
+        "key": "goal-27",
+        "towerId": "prism_beam",
+        "x": 434,
+        "y": 600,
+        "levelIndex": 2,
+        "doctrineId": "prism_frequency",
+        "specializationId": "spectrum_split",
+        "apexFromWave": 0
+      }
+    ],
+    "automaticProtocolPreference": [
+      "goal-17",
+      "goal-10"
+    ]
+  },
+  "waves": [
+    {
+      "firstWave": 1,
+      "lastWave": 18,
+      "spendOnLayout": true,
+      "applyScheduledApex": true,
+      "allocation": {
+        "reserveCredits": 0,
+        "maximumCommands": 256,
+        "positionTolerance": 0.01,
+        "allowApexUpgrades": true
+      },
+      "salvage": {
+        "maximumSales": 0,
+        "reserveCredits": 350,
+        "rangeSafetyMultiplier": 1.5,
+        "pathSafetyMargin": 64,
+        "sampleSpacing": 5
+      },
+      "policy": {
+        "id": "first",
+        "targetingProfileId": "first",
+        "decisionTicks": 60,
+        "spendingDecisionTicks": 60,
+        "spendingBeforeTactics": true,
+        "prepareBeforeStart": true,
+        "reactAtBoundary": false,
+        "directPlateLimit": 0,
+        "activePlateLimit": 8,
+        "plateProgressOffset": 0,
+        "protocolMinimumEnemies": 1,
+        "protocolMinimumProgress": 0,
+        "preferredProtocolBehavior": null,
+        "damageTargetMode": null,
+        "behaviorTargetModes": {}
+      },
+      "alternatives": []
+    },
+    {
+      "firstWave": 19,
+      "lastWave": 20,
+      "spendOnLayout": true,
+      "applyScheduledApex": true,
+      "allocation": {
+        "reserveCredits": 0,
+        "maximumCommands": 256,
+        "positionTolerance": 0.01,
+        "allowApexUpgrades": true
+      },
+      "salvage": {
+        "maximumSales": 0,
+        "reserveCredits": 350,
+        "rangeSafetyMultiplier": 1.5,
+        "pathSafetyMargin": 64,
+        "sampleSpacing": 5
+      },
+      "policy": {
+        "id": "first",
+        "targetingProfileId": "first",
+        "decisionTicks": 60,
+        "spendingDecisionTicks": 60,
+        "spendingBeforeTactics": true,
+        "prepareBeforeStart": true,
+        "reactAtBoundary": false,
+        "directPlateLimit": 2,
+        "activePlateLimit": 8,
+        "plateProgressOffset": 0,
+        "protocolMinimumEnemies": 1,
+        "protocolMinimumProgress": 0,
+        "preferredProtocolBehavior": null,
+        "damageTargetMode": null,
+        "behaviorTargetModes": {}
+      },
+      "alternatives": []
+    },
+    {
+      "firstWave": 21,
+      "lastWave": 21,
+      "spendOnLayout": true,
+      "applyScheduledApex": true,
+      "allocation": {
+        "reserveCredits": 0,
+        "maximumCommands": 256,
+        "positionTolerance": 0.01,
+        "allowApexUpgrades": true
+      },
+      "salvage": {
+        "maximumSales": 0,
+        "reserveCredits": 350,
+        "rangeSafetyMultiplier": 1.5,
+        "pathSafetyMargin": 64,
+        "sampleSpacing": 5
+      },
+      "policy": {
+        "id": "split-control",
+        "targetingProfileId": "split",
+        "decisionTicks": 15,
+        "spendingDecisionTicks": 15,
+        "spendingBeforeTactics": true,
+        "prepareBeforeStart": true,
+        "reactAtBoundary": false,
+        "directPlateLimit": 0,
+        "activePlateLimit": 8,
+        "plateProgressOffset": 0,
+        "protocolMinimumEnemies": 1,
+        "protocolMinimumProgress": 0,
+        "preferredProtocolBehavior": null,
+        "damageTargetMode": null,
+        "behaviorTargetModes": {
+          "slow_projectile": "Fastest"
+        }
+      },
+      "alternatives": []
+    },
+    {
+      "firstWave": 22,
+      "lastWave": 22,
+      "spendOnLayout": true,
+      "applyScheduledApex": true,
+      "allocation": {
+        "reserveCredits": 0,
+        "maximumCommands": 256,
+        "positionTolerance": 0.01,
+        "allowApexUpgrades": true
+      },
+      "salvage": {
+        "maximumSales": 0,
+        "reserveCredits": 350,
+        "rangeSafetyMultiplier": 1.5,
+        "pathSafetyMargin": 64,
+        "sampleSpacing": 5
+      },
+      "policy": {
+        "id": "split-control",
+        "targetingProfileId": "split",
+        "decisionTicks": 15,
+        "spendingDecisionTicks": 15,
+        "spendingBeforeTactics": true,
+        "prepareBeforeStart": true,
+        "reactAtBoundary": false,
+        "directPlateLimit": 4,
+        "activePlateLimit": 8,
+        "plateProgressOffset": 0,
+        "protocolMinimumEnemies": 1,
+        "protocolMinimumProgress": 0,
+        "preferredProtocolBehavior": null,
+        "damageTargetMode": null,
+        "behaviorTargetModes": {
+          "slow_projectile": "Fastest"
+        }
+      },
+      "alternatives": []
+    },
+    {
+      "firstWave": 23,
+      "lastWave": 24,
+      "spendOnLayout": true,
+      "applyScheduledApex": true,
+      "allocation": {
+        "reserveCredits": 0,
+        "maximumCommands": 256,
+        "positionTolerance": 0.01,
+        "allowApexUpgrades": true
+      },
+      "salvage": {
+        "maximumSales": 0,
+        "reserveCredits": 350,
+        "rangeSafetyMultiplier": 1.5,
+        "pathSafetyMargin": 64,
+        "sampleSpacing": 5
+      },
+      "policy": {
+        "id": "split-control",
+        "targetingProfileId": "split",
+        "decisionTicks": 15,
+        "spendingDecisionTicks": 15,
+        "spendingBeforeTactics": true,
+        "prepareBeforeStart": true,
+        "reactAtBoundary": false,
+        "directPlateLimit": 0,
+        "activePlateLimit": 8,
+        "plateProgressOffset": 0,
+        "protocolMinimumEnemies": 1,
+        "protocolMinimumProgress": 0,
+        "preferredProtocolBehavior": null,
+        "damageTargetMode": null,
+        "behaviorTargetModes": {
+          "slow_projectile": "Fastest"
+        }
+      },
+      "alternatives": []
+    },
+    {
+      "firstWave": 25,
+      "lastWave": 25,
+      "spendOnLayout": false,
+      "applyScheduledApex": false,
+      "allocation": {
+        "reserveCredits": 0,
+        "maximumCommands": 256,
+        "positionTolerance": 0.01,
+        "allowApexUpgrades": true
+      },
+      "salvage": {
+        "maximumSales": 0,
+        "reserveCredits": 350,
+        "rangeSafetyMultiplier": 1.5,
+        "pathSafetyMargin": 64,
+        "sampleSpacing": 5
+      },
+      "policy": {
+        "id": "bank-armored-dt60-cap0",
+        "targetingProfileId": "armored",
+        "decisionTicks": 60,
+        "spendingDecisionTicks": 60,
+        "spendingBeforeTactics": true,
+        "prepareBeforeStart": true,
+        "reactAtBoundary": false,
+        "directPlateLimit": 0,
+        "activePlateLimit": 8,
+        "plateProgressOffset": 0,
+        "protocolMinimumEnemies": 1,
+        "protocolMinimumProgress": 0,
+        "preferredProtocolBehavior": null,
+        "damageTargetMode": null,
+        "behaviorTargetModes": {
+          "slow_projectile": "Fastest"
+        }
+      },
+      "alternatives": []
+    },
+    {
+      "firstWave": 26,
+      "lastWave": 26,
+      "spendOnLayout": false,
+      "applyScheduledApex": false,
+      "allocation": {
+        "reserveCredits": 0,
+        "maximumCommands": 256,
+        "positionTolerance": 0.01,
+        "allowApexUpgrades": true
+      },
+      "salvage": {
+        "maximumSales": 0,
+        "reserveCredits": 350,
+        "rangeSafetyMultiplier": 1.5,
+        "pathSafetyMargin": 64,
+        "sampleSpacing": 5
+      },
+      "policy": {
+        "id": "bank-split-dt60-cap0",
+        "targetingProfileId": "split",
+        "decisionTicks": 60,
+        "spendingDecisionTicks": 60,
+        "spendingBeforeTactics": true,
+        "prepareBeforeStart": true,
+        "reactAtBoundary": false,
+        "directPlateLimit": 0,
+        "activePlateLimit": 8,
+        "plateProgressOffset": 0,
+        "protocolMinimumEnemies": 1,
+        "protocolMinimumProgress": 0,
+        "preferredProtocolBehavior": null,
+        "damageTargetMode": null,
+        "behaviorTargetModes": {
+          "slow_projectile": "Fastest"
+        }
+      },
+      "alternatives": []
+    },
+    {
+      "firstWave": 27,
+      "lastWave": 27,
+      "spendOnLayout": false,
+      "applyScheduledApex": true,
+      "allocation": {
+        "reserveCredits": 0,
+        "maximumCommands": 256,
+        "positionTolerance": 0.01,
+        "allowApexUpgrades": true
+      },
+      "salvage": {
+        "maximumSales": 0,
+        "reserveCredits": 350,
+        "rangeSafetyMultiplier": 1.5,
+        "pathSafetyMargin": 64,
+        "sampleSpacing": 5
+      },
+      "policy": {
+        "id": "bank-armored-dt60-cap8",
+        "targetingProfileId": "armored",
+        "decisionTicks": 60,
+        "spendingDecisionTicks": 60,
+        "spendingBeforeTactics": true,
+        "prepareBeforeStart": true,
+        "reactAtBoundary": false,
+        "directPlateLimit": 8,
+        "activePlateLimit": 8,
+        "plateProgressOffset": 0,
+        "protocolMinimumEnemies": 1,
+        "protocolMinimumProgress": 0,
+        "preferredProtocolBehavior": null,
+        "damageTargetMode": null,
+        "behaviorTargetModes": {
+          "slow_projectile": "Fastest"
+        }
+      },
+      "alternatives": []
+    },
+    {
+      "firstWave": 28,
+      "lastWave": 28,
+      "spendOnLayout": false,
+      "applyScheduledApex": true,
+      "allocation": {
+        "reserveCredits": 0,
+        "maximumCommands": 256,
+        "positionTolerance": 0.01,
+        "allowApexUpgrades": true
+      },
+      "salvage": {
+        "maximumSales": 0,
+        "reserveCredits": 350,
+        "rangeSafetyMultiplier": 1.5,
+        "pathSafetyMargin": 64,
+        "sampleSpacing": 5
+      },
+      "policy": {
+        "id": "bank-split-dt60-cap0",
+        "targetingProfileId": "split",
+        "decisionTicks": 60,
+        "spendingDecisionTicks": 60,
+        "spendingBeforeTactics": true,
+        "prepareBeforeStart": true,
+        "reactAtBoundary": false,
+        "directPlateLimit": 0,
+        "activePlateLimit": 8,
+        "plateProgressOffset": 0,
+        "protocolMinimumEnemies": 1,
+        "protocolMinimumProgress": 0,
+        "preferredProtocolBehavior": null,
+        "damageTargetMode": null,
+        "behaviorTargetModes": {
+          "slow_projectile": "Fastest"
+        }
+      },
+      "alternatives": []
+    }
+  ]
+}

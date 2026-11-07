@@ -2,6 +2,18 @@
 
 Maximal Bastion includes a headless simulation CLI in `tests/MaximalBastion.Tests`. It uses the production content loader, map geometry, placement validation, tower/enemy systems, wave manager, economy, tactical systems, and fixed gameplay rules. It is designed for repeatable comparisons and regression detection, not as a literal prediction of human win probability.
 
+The [strategy solver](docs/strategy-solver.md) adds legal command traces, detached active-wave checkpoints, persistent spending search, independent replay verification, content-matrix reports, and synthetic competence diagnostics. Its simulation uses the authoritative 60 Hz tick at speed one. The legacy `--simulate`/`--optimize-strategy` harness described below defaults to 0.05-second steps; historical results from that path require a new 60 Hz replay before they can support a solver `VERIFIED WIN` claim. See the [strategy ledger](docs/strategy-ledger.md) for recovered human evidence and current mechanics.
+
+The [Helix/Bastion/Signal calibration](docs/helix-calibration.md) is a verified 30-wave normal-start victory under current rules. Its reusable goal-layout policy runner and archived replay are both regression-tested; `scripts/strategy-audit.ps1` includes it as a demonstration-guided positive control.
+
+The [Prism Nullspace/Bastion/Signal calibration](docs/prism-calibration.md) imports an existing history layout, purchases it from a fresh start and searches paid Plate budgets. It verifies both campaign victory and survival through the first generated Endless wave with the standing board. The audit script includes its campaign plan as a second positive control.
+
+The [Rainline Heights/Bastion/Signal calibration](docs/rainline-calibration.md) also rebuilds a historical layout under current rules. It clears the campaign with 35 towers and seven paid Plates on wave 30, then survives wave 31 with targeting changes and no further purchases. Both traces contain zero sales and zero leaks.
+
+The [Cinderworks/Bastion/Signal calibration](docs/cinderworks-calibration.md) verifies all 30 waves and generated Endless 31 with the same 38 towers, three Apex upgrades and maxed Forge. Selective targeting prioritizes Bulwarks and Restorers through legal target modes. Both stages have zero leaks and zero sales; wave 31 requires no additional permanent investment. Its goal-layout plan is the audit's fourth positive control. The separate [general search](docs/cinderworks-search.md) reaches wave 28 without supplied layout goals.
+
+The solo competitive possibility matrix covers all four maps, four difficulties and four directives at seed 1337. Sixty new cases have independently verified fresh campaign victories and same-prefix Endless 31 continuations; four existing Bastion/Signal Gauntlet proofs supply the remaining cases. Every selected witness uses zero sales and retains its campaign towers. These are supplied-layout and tactical-search witnesses under oracle/expert execution, not cold-search success rates. The [matrix audit](docs/strategy-solver.md#auditing-a-selected-matrix) records per-case proof paths, build/content identities, lives and retained defenses. Co-op and noncompetitive Sandbox are outside this matrix.
+
 ## Running the harness
 
 Build and run from the repository root:
@@ -50,7 +62,7 @@ Examples:
 & $dotnet run --project tests\MaximalBastion.Tests -c Release --no-build -- --simulate-full --save-file C:\path\checkpoint.json --max-wave 50 --hold-footprint
 ```
 
-Internal content IDs include `normal` for Medium, `close_quarters` for Signal Gauntlet, `no_reserves` for Entrenched, and `relay_divide` for Surge Divide.
+Internal content IDs include `normal` for Medium, `close_quarters` for Signal Gauntlet, `no_reserves` for Entrenched, and `relay_divide` for Helix Reactor.
 
 ## Agent policies
 

@@ -104,10 +104,10 @@ public static partial class EnemyModelArt
         Vector2 center, float heading, float time, bool reducedEffects)
     {
         if (enemy.IsDead || enemy.HasEscaped || enemy.SignalRole == EnemySignalRole.None) return;
-        DrawFacetedCore(new Chassis(batch, p, enemy, center, heading, time, reducedEffects, 0, 0, 1, atRest: true), glow: false);
+        DrawFacetedCore(new Chassis(batch, p, enemy, center, heading, time, reducedEffects, 0, 0, 1, atRest: true), time, glow: false);
     }
 
-    private static void DrawFacetedCore(Chassis f, bool glow = true)
+    private static void DrawFacetedCore(Chassis f, float time, bool glow = true)
     {
         var triangular = f.Enemy.Definition.Id is "t2_runner" or "t1_crawler";
         var sides = triangular ? 3 : f.Enemy.Definition.Id == "t3_brute" ? 6 : 8;
@@ -121,7 +121,7 @@ public static partial class EnemyModelArt
             signal ? Color.Lerp(energy, ColorPalette.Paper, .60f) : ColorPalette.EnemyHot;
         var rim = signal ? Color.Lerp(ColorPalette.EnemyRecess, energy, .30f) : ColorPalette.EnemyCoreRim;
         f.P.ArmorPolygon(f.Batch, f.Center + new Vector2(0, .8f), radius * 1.12f, sides, ColorPalette.EnemyRecess, angle);
-        f.P.ArmorPolygon(f.Batch, f.Center, radius, sides, ColorPalette.EnemyArmorEdge, angle);
+        f.P.ArmorPolygon(f.Batch, f.Center, radius, sides, RepairBezelColor(f, time), angle);
         f.P.ArmorPolygon(f.Batch, f.Center, radius * .89f, sides, rim, angle);
         if (glow && !f.Reduced) f.P.Glow(f.Batch, f.Center, radius * 1.5f, energy, .24f * f.Reactor);
         f.P.ArmorPolygon(f.Batch, f.Center, radius * .68f, sides, energy * f.Reactor, angle);
