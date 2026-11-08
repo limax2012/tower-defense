@@ -23,6 +23,55 @@ internal static class EnemyReadabilityTests
         DebuffAuraComposition(content);
         VitalViewportBounds(content);
         SourceColoredExpose(content);
+        ActiveBurnInspection(content);
+    }
+
+    private static void ActiveBurnInspection(GameContent content)
+    {
+        var session = new GameSession(content, "foundry_loop", "normal", "sandbox_lab");
+        var enemy = new EnemyInstance(1, new EnemyDefinition
+        {
+            Id = "burn_intel", MaxHealth = 1000, Armor = 12
+        }, session.Map.Path, 1, 1);
+        session.Enemies.Add(enemy);
+        ApplyBurn(1, 30, 2, 0);
+        ApplyBurn(2, 14, 3, 10);
+        ApplyBurn(3, 20, 8, 0);
+        var checksum = SessionChecksum.Compute(session, 0);
+        Check.Equal($"{24f:0.#} DAMAGE/S / {8f:0.0}s",
+            EnemyConditionPresentation.Detail(enemy, EnemyCondition.Burn),
+            "burn Intel sums only the two contributing sources after armor and retains the full condition lifetime");
+        Check.Equal(checksum, SessionChecksum.Compute(session, 0),
+            "burn inspection cannot advance active or dormant tick phases");
+
+        enemy.GrantShield(100, 100);
+        Check.Equal($"{44f:0.#} DAMAGE/S / {8f:0.0}s",
+            EnemyConditionPresentation.Detail(enemy, EnemyCondition.Burn),
+            "burn Intel includes shield damage from the sources selected by armor alone");
+        enemy.ApplyStatus(new StatusApplication
+        {
+            Type = StatusType.Exposed, Magnitude = .5f, Duration = 1
+        });
+        Check.True(enemy.GetActiveBurns().Select(status => status.SourceId).Order().SequenceEqual(new[] { 1, 2 }),
+            "shields and Expose cannot change the two sources shown in burn Intel");
+        Check.Equal($"{66f:0.#} DAMAGE/S / {8f:0.0}s",
+            EnemyConditionPresentation.Detail(enemy, EnemyCondition.Burn),
+            "burn Intel includes Expose in the selected sources' shield damage estimate");
+        enemy.AbsorbShield(enemy.Shield);
+        Check.Equal($"{46f:0.#} DAMAGE/S / {8f:0.0}s",
+            EnemyConditionPresentation.Detail(enemy, EnemyCondition.Burn),
+            "burn Intel includes Expose before armor when estimating the selected sources' health damage");
+        enemy.StatusEffects.Update(2.1f);
+        Check.Equal($"{14f:0.#} DAMAGE/S / {5.9f:0.0}s",
+            EnemyConditionPresentation.Detail(enemy, EnemyCondition.Burn),
+            "burn Intel follows surviving sources after an active source expires");
+
+        void ApplyBurn(int sourceId, float magnitude, float duration, float pierce) =>
+            enemy.ApplyStatus(new StatusApplication
+            {
+                Type = StatusType.Burn, SourceId = sourceId, Magnitude = magnitude,
+                Duration = duration, ArmorPierce = pierce, TickInterval = .5f
+            });
     }
 
     private static void DebuffAuraComposition(GameContent content)

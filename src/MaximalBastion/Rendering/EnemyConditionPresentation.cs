@@ -161,8 +161,8 @@ public static class EnemyConditionPresentation
     private static float BurnDamage(EnemyInstance enemy)
     {
         var damage = 0f;
-        foreach (var status in enemy.StatusEffects.Active)
-            if (status.Type == StatusType.Burn) damage += status.Magnitude;
+        foreach (var status in enemy.GetActiveBurns())
+            damage += enemy.GetExpectedBurnDamagePerSecond(status);
         return damage;
     }
 }

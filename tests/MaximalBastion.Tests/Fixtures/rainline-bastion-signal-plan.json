@@ -515,9 +515,9 @@
       "spendOnLayout": false,
       "applyScheduledApex": false,
       "policy": {
-        "id": "first-15-0",
+        "id": "first-30-0",
         "targetingProfileId": "first",
-        "decisionTicks": 15,
+        "decisionTicks": 30,
         "spendingDecisionTicks": 15,
         "prepareBeforeStart": true,
         "reactAtBoundary": false,

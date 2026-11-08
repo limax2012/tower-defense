@@ -58,11 +58,6 @@ public sealed class StatusEffectController
             }
             else
             {
-                if (_statuses.Count(x => x.Type == StatusType.Burn) >= 2)
-                {
-                    var weakest = _statuses.Where(x => x.Type == StatusType.Burn).OrderBy(x => x.Magnitude).First();
-                    _statuses.Remove(weakest);
-                }
                 _statuses.Add(new ActiveStatus
                 {
                     Type = StatusType.Burn,
@@ -94,13 +89,73 @@ public sealed class StatusEffectController
 
     public float ConsumeBurnDamage(float deltaSeconds) => ConsumeBurnTicks(deltaSeconds).Sum(x => x.Damage);
 
-    public IReadOnlyList<BurnTick> ConsumeBurnTicks(float deltaSeconds)
+    public IReadOnlyList<ActiveStatus> GetActiveBurns(float effectiveArmor = 0)
+    {
+        var (first, second) = SelectBurns(effectiveArmor);
+        if (first is null) return Array.Empty<ActiveStatus>();
+        return second is null ? new[] { first } : new[] { first, second };
+    }
+
+    public static float ArmorAdjustedBurnDamagePerSecond(ActiveStatus burn, float effectiveArmor = 0)
+    {
+        var interval = MathF.Max(0.05f, burn.TickInterval);
+        return MathF.Max(0, burn.Magnitude - MathF.Max(0, effectiveArmor - burn.ArmorPierce) / interval);
+    }
+
+    public float GetExpectedBurnDamagePerSecond(ActiveStatus burn, float effectiveArmor = 0, float shield = 0) =>
+        ExpectedBurnDamagePerSecond(burn, effectiveArmor, shield, DamageMultiplier);
+
+    private static float ExpectedBurnDamagePerSecond(ActiveStatus burn, float effectiveArmor, float shield,
+        float damageMultiplier)
+    {
+        // Estimate one source's full tick for inspection, independently of source selection.
+        var interval = MathF.Max(0.05f, burn.TickInterval);
+        var damage = burn.Magnitude * interval * damageMultiplier;
+        var shieldDamage = MathF.Min(damage, MathF.Max(0, shield));
+        var healthDamage = MathF.Max(0, damage - shieldDamage - MathF.Max(0, effectiveArmor - burn.ArmorPierce));
+        return (shieldDamage + healthDamage) / interval;
+    }
+
+    private (ActiveStatus? First, ActiveStatus? Second) SelectBurns(float effectiveArmor)
+    {
+        ActiveStatus? first = null, second = null;
+        var firstScore = float.NegativeInfinity;
+        var secondScore = float.NegativeInfinity;
+        foreach (var burn in _statuses)
+        {
+            if (burn.Type != StatusType.Burn || burn.RemainingSeconds <= 0) continue;
+            var score = ArmorAdjustedBurnDamagePerSecond(burn, effectiveArmor);
+            if (RanksBefore(burn, score, first, firstScore))
+            {
+                second = first;
+                secondScore = firstScore;
+                first = burn;
+                firstScore = score;
+            }
+            else if (RanksBefore(burn, score, second, secondScore))
+            {
+                second = burn;
+                secondScore = score;
+            }
+        }
+        return (first, second);
+    }
+
+    private static bool RanksBefore(ActiveStatus burn, float score, ActiveStatus? other, float otherScore) =>
+        other is null || score > otherScore || score == otherScore &&
+        (burn.Magnitude > other.Magnitude || burn.Magnitude == other.Magnitude && burn.SourceId < other.SourceId);
+
+    public IReadOnlyList<BurnTick> ConsumeBurnTicks(float deltaSeconds, float effectiveArmor = 0)
     {
         if (deltaSeconds <= 0) return Array.Empty<BurnTick>();
 
+        var (first, second) = SelectBurns(effectiveArmor);
+        if (first is null) return Array.Empty<BurnTick>();
         var ticks = new List<BurnTick>();
-        foreach (var status in _statuses.Where(x => x.Type == StatusType.Burn))
+        foreach (var status in _statuses)
         {
+            // Inactive sources retain earned tick progress, but never accrue deferred damage.
+            if (!ReferenceEquals(status, first) && !ReferenceEquals(status, second)) continue;
             var activeSeconds = MathF.Min(deltaSeconds, MathF.Max(0, status.RemainingSeconds));
             status.TickProgress += activeSeconds;
             var interval = MathF.Max(0.05f, status.TickInterval);

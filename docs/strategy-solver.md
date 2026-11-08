@@ -46,6 +46,12 @@ Get-Content .build\strategy-matrix\status.json -Raw | ConvertFrom-Json
 
 Use `-Maps relay_divide`, `-Difficulties bastion` or `-Challenges close_quarters` to select cases. Independent map workers can share an output directory; each writes its own status under `_workers`, and each case has a `status.json`. Add `-Resume` to skip completed cases with matching inputs. Changed builds, content or recipes require a new output directory. After parallel workers finish, run the same command without filters and with `-SummarizeOnly` to merge their records. `-ValidateOnly` checks the catalog without simulating. Exit code 2 means at least one selected case is incomplete or did not clear; results retain both the measured outcome and its comparison with the stored baseline.
 
+`Fixtures/MatrixBurnSelection/catalog.json` provides five additional fixed witnesses adapted to retained-source burn selection. It keeps the original layouts and adjusts late-wave targeting or tactical timing; Cinderworks Bastion/Core Six uses a fixed sequence of wave-30 policy segments. Run it separately from the unchanged 64-case catalog. These are adapted possibility witnesses, not matched controls; their original stored baselines include both the gameplay change and policy adaptation in any measured delta.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\run-strategy-matrix.ps1 -PlannerAssembly $planner -Catalog tests\MaximalBastion.Tests\Fixtures\MatrixBurnSelection\catalog.json -OutputDirectory .build\burn-selection-adapted-matrix
+```
+
 `scripts/summarize-strategy-matrix.ps1` audits a manifest of selected campaign and Endless receipts and writes `matrix-summary.json`, `.csv`, and `.md`. Each row names `Map`, `Difficulty`, `Challenge`, `CampaignTrace`, `CampaignReceipt`, `Endless31Trace`, and `Endless31Receipt`; optional checkpoint paths permit state-signature and tower-count checks. Relative artifact paths resolve against the manifest directory. `Reused` identifies an existing calibration separately from new cases, and the manifest's expected build/content hashes apply to new cases.
 
 ```powershell

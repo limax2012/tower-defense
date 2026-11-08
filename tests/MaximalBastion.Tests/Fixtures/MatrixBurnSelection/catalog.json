@@ -1,0 +1,241 @@
+{
+  "SchemaVersion": 1,
+  "Id": "retained-source-burn-adapted-strategies",
+  "Description": "Fixed campaign and Endless31 witnesses adapted to retained-source burn selection. These five recipes preserve the original layouts with adjusted tactical policies and are separate from the unchanged 64-case controls. Stored baselines are the original reference measurements.",
+  "Cases": [
+    {
+      "Id": "crosswind_basin/bastion-close_quarters",
+      "Map": "crosswind_basin",
+      "Difficulty": "bastion",
+      "Challenge": "close_quarters",
+      "Seed": 1337,
+      "CoOp": false,
+      "Directory": "crosswind_basin/bastion-close_quarters",
+      "Baseline": "baseline.json",
+      "Steps": [
+        {
+          "Id": "campaign",
+          "Kind": "campaign",
+          "Plan": "campaign.json",
+          "Trials": 30,
+          "Seconds": 180,
+          "RequiredWave": 30
+        },
+        {
+          "Id": "endless31",
+          "Kind": "endless",
+          "After": "campaign",
+          "Checkpoint": "wave-30.json",
+          "Plan": "endless31.json",
+          "Trials": 1,
+          "Seconds": 180,
+          "RequiredWave": 31
+        }
+      ],
+      "CampaignProof": {
+        "Step": "campaign",
+        "Trace": "witness.json",
+        "Receipt": "witness-verification.json",
+        "Checkpoint": "wave-30.json"
+      },
+      "Endless31Proof": {
+        "Step": "endless31",
+        "Trace": "trace.json",
+        "Receipt": "verification.json",
+        "Checkpoint": "checkpoint.json"
+      }
+    },
+    {
+      "Id": "crosswind_basin/bastion-core_six",
+      "Map": "crosswind_basin",
+      "Difficulty": "bastion",
+      "Challenge": "core_six",
+      "Seed": 1337,
+      "CoOp": false,
+      "Directory": "crosswind_basin/bastion-core_six",
+      "Baseline": "baseline.json",
+      "Steps": [
+        {
+          "Id": "campaign",
+          "Kind": "campaign",
+          "Plan": "campaign.json",
+          "Trials": 30,
+          "Seconds": 180,
+          "RequiredWave": 30
+        },
+        {
+          "Id": "endless31",
+          "Kind": "endless",
+          "After": "campaign",
+          "Checkpoint": "wave-30.json",
+          "Plan": "endless31.json",
+          "Trials": 1,
+          "Seconds": 180,
+          "RequiredWave": 31
+        }
+      ],
+      "CampaignProof": {
+        "Step": "campaign",
+        "Trace": "witness.json",
+        "Receipt": "witness-verification.json",
+        "Checkpoint": "wave-30.json"
+      },
+      "Endless31Proof": {
+        "Step": "endless31",
+        "Trace": "trace.json",
+        "Receipt": "verification.json",
+        "Checkpoint": "checkpoint.json"
+      }
+    },
+    {
+      "Id": "foundry_loop/easy-core_six",
+      "Map": "foundry_loop",
+      "Difficulty": "easy",
+      "Challenge": "core_six",
+      "Seed": 1337,
+      "CoOp": false,
+      "Directory": "foundry_loop/easy-core_six",
+      "Baseline": "baseline.json",
+      "Steps": [
+        {
+          "Id": "campaign",
+          "Kind": "campaign",
+          "Plan": "campaign.json",
+          "Trials": 30,
+          "Seconds": 180,
+          "RequiredWave": 30
+        },
+        {
+          "Id": "endless31",
+          "Kind": "endless",
+          "After": "campaign",
+          "Checkpoint": "wave-30.json",
+          "Plan": "endless31.json",
+          "Trials": 1,
+          "Seconds": 180,
+          "RequiredWave": 31
+        }
+      ],
+      "CampaignProof": {
+        "Step": "campaign",
+        "Trace": "witness.json",
+        "Receipt": "witness-verification.json",
+        "Checkpoint": "wave-30.json"
+      },
+      "Endless31Proof": {
+        "Step": "endless31",
+        "Trace": "trace.json",
+        "Receipt": "verification.json",
+        "Checkpoint": "checkpoint.json"
+      }
+    },
+    {
+      "Id": "foundry_loop/hard-core_six",
+      "Map": "foundry_loop",
+      "Difficulty": "hard",
+      "Challenge": "core_six",
+      "Seed": 1337,
+      "CoOp": false,
+      "Directory": "foundry_loop/hard-core_six",
+      "Baseline": "baseline.json",
+      "Steps": [
+        {
+          "Id": "campaign",
+          "Kind": "campaign",
+          "Plan": "campaign.json",
+          "Trials": 30,
+          "Seconds": 180,
+          "RequiredWave": 30
+        },
+        {
+          "Id": "endless31",
+          "Kind": "endless",
+          "After": "campaign",
+          "Checkpoint": "wave-30.json",
+          "Plan": "endless31.json",
+          "Trials": 1,
+          "Seconds": 180,
+          "RequiredWave": 31
+        }
+      ],
+      "CampaignProof": {
+        "Step": "campaign",
+        "Trace": "witness.json",
+        "Receipt": "witness-verification.json",
+        "Checkpoint": "wave-30.json"
+      },
+      "Endless31Proof": {
+        "Step": "endless31",
+        "Trace": "trace.json",
+        "Receipt": "verification.json",
+        "Checkpoint": "checkpoint.json"
+      }
+    },
+    {
+      "Id": "foundry_loop/bastion-core_six",
+      "Map": "foundry_loop",
+      "Difficulty": "bastion",
+      "Challenge": "core_six",
+      "Seed": 1337,
+      "CoOp": false,
+      "Directory": "foundry_loop/bastion-core_six",
+      "Baseline": "baseline.json",
+      "Steps": [
+        {
+          "Id": "campaign",
+          "Kind": "campaign",
+          "Plan": "campaign.json",
+          "Trials": 28,
+          "Seconds": 180,
+          "RequiredWave": 28
+        },
+        {
+          "Id": "repair29",
+          "Kind": "forecast",
+          "After": "campaign",
+          "Checkpoint": "wave-28.json",
+          "Segments": "repair29-segments.json",
+          "Trials": 1,
+          "Seconds": 180,
+          "RequiredWave": 29,
+          "FirstEndless": false,
+          "Blueprint": "repair29-blueprint.json"
+        },
+        {
+          "Id": "repair30",
+          "Kind": "forecast",
+          "After": "repair29",
+          "Checkpoint": "clear.json",
+          "Segments": "repair30-segments.json",
+          "Trials": 8,
+          "Seconds": 180,
+          "RequiredWave": 30,
+          "FirstEndless": false,
+          "Blueprint": "repair30-blueprint.json"
+        },
+        {
+          "Id": "endless31",
+          "Kind": "endless",
+          "After": "repair30",
+          "Checkpoint": "clear.json",
+          "Plan": "endless31.json",
+          "Trials": 1,
+          "Seconds": 180,
+          "RequiredWave": 31
+        }
+      ],
+      "CampaignProof": {
+        "Step": "repair30",
+        "Trace": "witness.json",
+        "Receipt": "witness-verification.json",
+        "Checkpoint": "clear.json"
+      },
+      "Endless31Proof": {
+        "Step": "endless31",
+        "Trace": "trace.json",
+        "Receipt": "verification.json",
+        "Checkpoint": "checkpoint.json"
+      }
+    }
+  ]
+}

@@ -51,6 +51,11 @@ public sealed class EnemyInstance
     public float CurrentSpeed => Definition.Speed * _speedMultiplier * _rankSpeedMultiplier * FormationSpeedMultiplier *
         (BossPhaseActive ? 1.28f : 1f) * SpeedMultiplier;
 
+    public IReadOnlyList<ActiveStatus> GetActiveBurns() => StatusEffects.GetActiveBurns(EffectiveArmor);
+
+    public float GetExpectedBurnDamagePerSecond(ActiveStatus burn) =>
+        StatusEffects.GetExpectedBurnDamagePerSecond(burn, EffectiveArmor, Shield);
+
     public EnemyInstance(int id, EnemyDefinition definition, PathRuntime path, float healthMultiplier, float speedMultiplier,
         string rank = "Standard", bool sandboxImmortal = false, EnemySignalRole signalRole = EnemySignalRole.None)
     {

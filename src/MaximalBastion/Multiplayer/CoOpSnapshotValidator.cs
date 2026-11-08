@@ -10,7 +10,8 @@ internal static class CoOpSnapshotValidator
     private const int MaximumEnemies = 4096;
     private const int MaximumProjectiles = 4096;
     private const int MaximumPulsePlates = 256;
-    private const int MaximumStatusesPerEnemy = 8;
+    private const int MaximumStatusesPerEnemy = MaximumTowers + MaximumProjectiles + 4;
+    private const int MaximumTotalStatuses = 32_768;
     private const int MaximumStatisticsEntries = 4096;
     private const int MaximumRunIdLength = 64;
     private const int MaximumAnnouncementTitleLength = 128;
@@ -92,6 +93,7 @@ internal static class CoOpSnapshotValidator
         ValidateCount(enemies.Count, MaximumEnemies, "enemy");
         if (enemies.Any(enemy => enemy is null) || enemies.Select(enemy => enemy.Id).Distinct().Count() != enemies.Count)
             throw new InvalidDataException("Co-op snapshot enemy identities are structurally invalid.");
+        var totalStatuses = 0;
         foreach (var enemy in enemies)
         {
             var statuses = enemy.Statuses ?? throw new InvalidDataException("Co-op snapshot enemy statuses are missing.");
@@ -108,6 +110,14 @@ internal static class CoOpSnapshotValidator
                     !IsNonnegativeFinite(status.TickProgress) || status.TickProgress >= status.TickInterval ||
                     !IsNonnegativeFinite(status.ArmorPierce)))
                 throw new InvalidDataException("Co-op snapshot enemy state is structurally invalid.");
+            totalStatuses += statuses.Count;
+            if (totalStatuses > MaximumTotalStatuses)
+                throw new InvalidDataException("Co-op snapshot contains too many status entries.");
+            var burnSources = new HashSet<int>();
+            var otherTypes = new HashSet<StatusType>();
+            foreach (var status in statuses)
+                if (status.Type == StatusType.Burn ? !burnSources.Add(status.SourceId) : !otherTypes.Add(status.Type))
+                    throw new InvalidDataException("Co-op snapshot enemy status identities are duplicated.");
         }
         if (enemies.Any(enemy => enemy.Id >= snapshot.NextEnemyId))
             throw new InvalidDataException("Co-op snapshot enemy identity state is inconsistent.");

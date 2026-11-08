@@ -17,16 +17,19 @@ public sealed class EnemySystem
             }
             session.TryActivateEnemySignal(enemy);
 
-            foreach (var burnTick in enemy.StatusEffects.ConsumeBurnTicks(deltaSeconds))
+            if (enemy.StatusEffects.IsBurning)
             {
-                session.DamageResolver.Apply(enemy, new MaximalBastion.Combat.DamagePayload
+                foreach (var burnTick in enemy.StatusEffects.ConsumeBurnTicks(deltaSeconds, enemy.EffectiveArmor))
                 {
-                    Damage = burnTick.Damage,
-                    ArmorPierce = burnTick.ArmorPierce,
-                    IsDamageOverTime = true,
-                    IgnoreShield = false,
-                    SourceTowerId = burnTick.SourceId
-                });
+                    session.DamageResolver.Apply(enemy, new MaximalBastion.Combat.DamagePayload
+                    {
+                        Damage = burnTick.Damage,
+                        ArmorPierce = burnTick.ArmorPierce,
+                        IsDamageOverTime = true,
+                        IgnoreShield = false,
+                        SourceTowerId = burnTick.SourceId
+                    });
+                }
             }
             enemy.StatusEffects.Update(deltaSeconds);
             enemy.Regenerate(deltaSeconds);

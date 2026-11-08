@@ -74,7 +74,9 @@ Ember is a delayed-output tower: the burn continues after impact, so its contrib
 - **Targeting:** First for spreading pressure through the route; Strongest for the single-target branch.
 - **Pairing:** control helps enemies remain inside Ember coverage long enough for repeated applications.
 
-Only two distinct burn sources can remain on one enemy. A third distinct source replaces the active burn with the lowest nominal burn DPS, even when the incoming burn is weaker or equal. The same source refreshes its own burn. More Ember towers can still add direct hits and cover other enemies, but crowding them onto one target does not create unlimited burn stacks and can replace a stronger active burn. Replacement uses damage before armor, not the final damage a particular branch would deal to that enemy.
+Each enemy retains one burn per source, but only the two with the highest armor-adjusted burn rates contribute at once. Selection subtracts armor left after the source's pierce from each tick, converts that to a damage rate, and floors the result at zero. Current Armor Break and burning's single 2-point armor reduction lower that armor. Shields and Expose affect actual damage but do not change which sources contribute. Equal scores favor higher stored burn DPS, then the lower source ID.
+
+Other sources keep losing duration while they wait and can take over when selected burns expire or effective armor changes. More Ember towers still add direct hits and cover other enemies, but crowding them onto one target does not create unlimited simultaneous burn damage. A lower-ranked distinct source does not displace a higher-ranked contributor. The same source refreshes its own duration and replaces its damage and pierce, so a shot fired during suppression can weaken that tower's existing burn.
 
 ### Breaker Cannon — armor and shield counter
 

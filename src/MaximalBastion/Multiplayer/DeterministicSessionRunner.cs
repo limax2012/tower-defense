@@ -215,6 +215,10 @@ public static class SessionChecksum
                 Add(ref hash, status.TickProgress);
                 Add(ref hash, status.ArmorPierce);
             }
+            // Burn application order affects shield absorption and damage attribution.
+            Add(ref hash, enemy.StatusEffects.Active.Count(status => status.Type == StatusType.Burn));
+            foreach (var status in enemy.StatusEffects.Active)
+                if (status.Type == StatusType.Burn) Add(ref hash, status.SourceId);
         }
 
         foreach (var projectile in session.Projectiles.Projectiles)

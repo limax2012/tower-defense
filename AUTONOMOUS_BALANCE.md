@@ -4,15 +4,19 @@ Maximal Bastion includes a headless simulation CLI in `tests/MaximalBastion.Test
 
 The [strategy solver](docs/strategy-solver.md) adds legal command traces, detached active-wave checkpoints, persistent spending search, independent replay verification, content-matrix reports, and synthetic competence diagnostics. Its simulation uses the authoritative 60 Hz tick at speed one. The legacy `--simulate`/`--optimize-strategy` harness described below defaults to 0.05-second steps; historical results from that path require a new 60 Hz replay before they can support a solver `VERIFIED WIN` claim. See the [strategy ledger](docs/strategy-ledger.md) for recovered human evidence and current mechanics.
 
-The [Helix/Bastion/Signal calibration](docs/helix-calibration.md) is a verified 30-wave normal-start victory under current rules. Its reusable goal-layout policy runner and archived replay are both regression-tested; `scripts/strategy-audit.ps1` includes it as a demonstration-guided positive control.
+Current armor-adjusted burn selection reproduces 59/64 campaign and Endless-31 wins with the unchanged reference matrix recipes. Five separately stored [adapted recipes](tests/MaximalBastion.Tests/Fixtures/MatrixBurnSelection/catalog.json) provide current-build wins for the remaining combinations. Together, the verified witnesses cover all 64 combinations through wave 31 with zero sales and every campaign tower retained. The original controls remain separate so changes in mechanics and changes in policy are not conflated. See [the balance assessment](BALANCE_REPORT.md#competitive-possibility-matrix) for measured comparisons.
 
-The [Prism Nullspace/Bastion/Signal calibration](docs/prism-calibration.md) imports an existing history layout, purchases it from a fresh start and searches paid Plate budgets. It verifies both campaign victory and survival through the first generated Endless wave with the standing board. The audit script includes its campaign plan as a second positive control.
+Reference measurements below belong to their recorded builds. Archived traces and fixed recipes support matched replays; their recorded outcomes do not substitute for current-build verification.
 
-The [Rainline Heights/Bastion/Signal calibration](docs/rainline-calibration.md) also rebuilds a historical layout under current rules. It clears the campaign with 35 towers and seven paid Plates on wave 30, then survives wave 31 with targeting changes and no further purchases. Both traces contain zero sales and zero leaks.
+The [Helix/Bastion/Signal calibration](docs/helix-calibration.md) records a verified 30-wave normal-start victory. Its reusable goal-layout policy runner and archived replay have regression coverage; `scripts/strategy-audit.ps1` includes it as a demonstration-guided positive control.
 
-The [Cinderworks/Bastion/Signal calibration](docs/cinderworks-calibration.md) verifies all 30 waves and generated Endless 31 with the same 38 towers, three Apex upgrades and maxed Forge. Selective targeting prioritizes Bulwarks and Restorers through legal target modes. Both stages have zero leaks and zero sales; wave 31 requires no additional permanent investment. Its goal-layout plan is the audit's fourth positive control. The separate [general search](docs/cinderworks-search.md) reaches wave 28 without supplied layout goals.
+The [Prism Nullspace/Bastion/Signal calibration](docs/prism-calibration.md) imports an existing history layout, purchases it from a fresh start and searches paid Plate budgets. Its reference results verify both campaign victory and survival through the first generated Endless wave with the standing board. The audit script includes its campaign plan as a second positive control.
 
-The solo competitive possibility matrix covers all four maps, four difficulties and four directives at seed 1337. All 64 cases have independently verified fresh campaign victories and same-prefix Endless 31 continuations. Every selected witness uses zero sales and retains its campaign towers. The fixed recipes reproduce both final state signatures from the baseline in all 64 cases. These are supplied-layout and tactical-search witnesses under oracle/expert execution, not cold-search success rates. The [matrix runner and audit](docs/strategy-solver.md#auditing-a-selected-matrix) rebuild every case from normal resources and record per-case proof paths, build/content identities, baseline deltas, lives and retained defenses. Co-op and noncompetitive Sandbox are outside this matrix.
+The [Rainline Heights/Bastion/Signal calibration](docs/rainline-calibration.md) rebuilds a historical layout under current rules. It clears the campaign with 35 towers and seven paid Plates on wave 30, then survives wave 31 with targeting changes and no further purchases. Both verified traces contain zero sales and zero leaks.
+
+The [Cinderworks/Bastion/Signal calibration](docs/cinderworks-calibration.md) records all 30 waves and generated Endless 31 with the same 38 towers, three Apex upgrades and maxed Forge. Selective targeting prioritizes Bulwarks and Restorers through legal target modes. Both recorded stages have zero leaks and zero sales; wave 31 requires no additional permanent investment. Its goal-layout plan is the audit's fourth positive control. The separate reference [general search](docs/cinderworks-search.md) reached wave 28 without supplied layout goals.
+
+The reference solo competitive possibility matrix covers all four maps, four difficulties and four directives at seed 1337. Its 64 cases have independently verified fresh campaign victories and same-prefix Endless 31 continuations on the reference build. Every selected witness uses zero sales and retains its campaign towers. Fixed recipes and final state signatures provide matched controls for gameplay changes. These are supplied-layout and tactical-search witnesses under oracle/expert execution, not cold-search success rates. The [matrix runner and audit](docs/strategy-solver.md#auditing-a-selected-matrix) rebuild every case from normal resources and record per-case proof paths, build/content identities, baseline deltas, lives and retained defenses. Co-op and noncompetitive Sandbox are outside this matrix.
 
 ## Running the harness
 
@@ -112,9 +116,9 @@ Static wave checks measure total health and shield, armor-adjusted damage demand
 
 Support/control attribution is deliberately separate from direct damage. Signal Beacon, Frost Spire, Prism Beam, Breaker Cannon, and Arc Relay cannot be assessed fairly from kills alone.
 
-## Current Experienced baseline
+## Experienced reference baseline
 
-The latest complete validation sweep used two seeds for all four arenas and all four competitive modes, or 32 runs per difficulty:
+This archived legacy-harness sweep used two seeds for all four arenas and all four competitive modes, or 32 runs per difficulty. It precedes retained-source burn selection and is separate from both the 60 Hz recipe matrix and the ten-seed reference sweep in [BALANCE_REPORT.md](BALANCE_REPORT.md):
 
 | Difficulty | Completion | Average wave | Average lives |
 | --- | ---: | ---: | ---: |

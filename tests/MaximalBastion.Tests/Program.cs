@@ -127,6 +127,7 @@ internal static class Program
             ("damage over time floor", DamageOverTimeFloor),
             ("ember piercing burn", EmberPiercingBurn),
             ("status effects", StatusEffects),
+            ("burn selection by armor-adjusted damage", BurnSelectionTests.Run),
             ("effective slow display", EffectiveSlowDisplayTests.Run),
             ("enemy breach display", EnemyBreachDisplayTests.Run),
             ("enemy readability and local transitions", EnemyReadabilityTests.Run),
@@ -164,6 +165,7 @@ internal static class Program
             ("co-op tactical state reconstruction", CoOpTacticalStateReconstruction),
             ("co-op malformed snapshot rejection", CoOpMalformedSnapshotRejection),
             ("co-op checksum coverage", CoOpChecksumCoverage),
+            ("retained burn network snapshots", BurnSnapshotTests.Run),
             ("co-op reconnect combat soak", CoOpReconnectCombatSoak),
             ("co-op wave ready", CoOpWaveReady),
             ("co-op cursor presence", CoOpCursorPresence),
@@ -1999,7 +2001,8 @@ internal static class Program
         statuses.Apply(new StatusApplication { Type = StatusType.Burn, Duration = 2, Magnitude = 5, SourceId = 1 });
         statuses.Apply(new StatusApplication { Type = StatusType.Burn, Duration = 2, Magnitude = 7, SourceId = 2 });
         statuses.Apply(new StatusApplication { Type = StatusType.Burn, Duration = 2, Magnitude = 9, SourceId = 3 });
-        Check.Equal(2, statuses.Active.Count(x => x.Type == StatusType.Burn), "burn cap");
+        Check.Equal(3, statuses.Active.Count(x => x.Type == StatusType.Burn), "unexpired burn sources are retained");
+        Check.Equal(2, statuses.GetActiveBurns().Count, "two burn sources deal damage at once");
         Check.Nearly(16, statuses.ConsumeBurnDamage(1), "burn tick");
         statuses.Update(2.1f);
         Check.Equal(0, statuses.Active.Count, "status expiry");

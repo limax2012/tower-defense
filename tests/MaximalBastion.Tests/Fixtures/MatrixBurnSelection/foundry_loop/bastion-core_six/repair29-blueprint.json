@@ -1,0 +1,397 @@
+﻿{
+    "id":  "cinderworks-bastion-signal-standing38",
+    "mapId":  "foundry_loop",
+    "towers":  [
+                   {
+                       "key":  "R-170-199",
+                       "towerId":  "needle_turret",
+                       "x":  170,
+                       "y":  199,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_cycler",
+                       "specializationId":  "rapid_array",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-309.99-199",
+                       "towerId":  "needle_turret",
+                       "x":  309.99,
+                       "y":  199,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "S-170-155",
+                       "towerId":  "shard_fan",
+                       "x":  170,
+                       "y":  155,
+                       "levelIndex":  2,
+                       "doctrineId":  "shard_scatter",
+                       "specializationId":  "razor_bloom",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "F-212-199",
+                       "towerId":  "frost_spire",
+                       "x":  212,
+                       "y":  199,
+                       "levelIndex":  2,
+                       "doctrineId":  "frost_deep_chill",
+                       "specializationId":  "permafrost",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "B-268-199",
+                       "towerId":  "breaker_cannon",
+                       "x":  268,
+                       "y":  199,
+                       "levelIndex":  2,
+                       "doctrineId":  "breaker_repeater",
+                       "specializationId":  "shatter_shell",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "E-212-155",
+                       "towerId":  "ember_coil",
+                       "x":  212,
+                       "y":  155,
+                       "levelIndex":  2,
+                       "doctrineId":  "ember_kindling",
+                       "specializationId":  "wildfire_matrix",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "T-260-155",
+                       "towerId":  "signal_beacon",
+                       "x":  260,
+                       "y":  155,
+                       "levelIndex":  2,
+                       "doctrineId":  "beacon_amplifier",
+                       "specializationId":  "tempo_beacon",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-309.99-155",
+                       "towerId":  "needle_turret",
+                       "x":  309.99,
+                       "y":  155,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "F-454-234",
+                       "towerId":  "frost_spire",
+                       "x":  454,
+                       "y":  234,
+                       "levelIndex":  2,
+                       "doctrineId":  "frost_deep_chill",
+                       "specializationId":  "permafrost",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-410-234",
+                       "towerId":  "needle_turret",
+                       "x":  410,
+                       "y":  234,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-586-234",
+                       "towerId":  "needle_turret",
+                       "x":  586,
+                       "y":  234,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "B-498-234",
+                       "towerId":  "breaker_cannon",
+                       "x":  498,
+                       "y":  234,
+                       "levelIndex":  2,
+                       "doctrineId":  "breaker_repeater",
+                       "specializationId":  "shatter_shell",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "E-542-234",
+                       "towerId":  "ember_coil",
+                       "x":  542,
+                       "y":  234,
+                       "levelIndex":  2,
+                       "doctrineId":  "ember_kindling",
+                       "specializationId":  "wildfire_matrix",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "H-498-190",
+                       "towerId":  "signal_beacon",
+                       "x":  498,
+                       "y":  190,
+                       "levelIndex":  2,
+                       "doctrineId":  "beacon_amplifier",
+                       "specializationId":  "horizon_beacon",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-454-190",
+                       "towerId":  "breaker_cannon",
+                       "x":  454,
+                       "y":  190,
+                       "levelIndex":  2,
+                       "doctrineId":  "breaker_repeater",
+                       "specializationId":  "shatter_shell",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-542-190",
+                       "towerId":  "breaker_cannon",
+                       "x":  542,
+                       "y":  190,
+                       "levelIndex":  2,
+                       "doctrineId":  "breaker_repeater",
+                       "specializationId":  "shatter_shell",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-410-190",
+                       "towerId":  "needle_turret",
+                       "x":  410,
+                       "y":  190,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-586-190",
+                       "towerId":  "needle_turret",
+                       "x":  586,
+                       "y":  190,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "F-556-478",
+                       "towerId":  "frost_spire",
+                       "x":  556,
+                       "y":  478,
+                       "levelIndex":  2,
+                       "doctrineId":  "frost_deep_chill",
+                       "specializationId":  "permafrost",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-602-478",
+                       "towerId":  "needle_turret",
+                       "x":  602,
+                       "y":  478,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-556-436",
+                       "towerId":  "needle_turret",
+                       "x":  556,
+                       "y":  436,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "B-602-436",
+                       "towerId":  "breaker_cannon",
+                       "x":  602,
+                       "y":  436,
+                       "levelIndex":  2,
+                       "doctrineId":  "breaker_repeater",
+                       "specializationId":  "shatter_shell",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "E-648-478",
+                       "towerId":  "ember_coil",
+                       "x":  648,
+                       "y":  478,
+                       "levelIndex":  2,
+                       "doctrineId":  "ember_kindling",
+                       "specializationId":  "wildfire_matrix",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "H-648-436",
+                       "towerId":  "signal_beacon",
+                       "x":  648,
+                       "y":  436,
+                       "levelIndex":  2,
+                       "doctrineId":  "beacon_amplifier",
+                       "specializationId":  "horizon_beacon",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-694-478",
+                       "towerId":  "needle_turret",
+                       "x":  694,
+                       "y":  478,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-740-478",
+                       "towerId":  "needle_turret",
+                       "x":  740,
+                       "y":  478,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "F-740-519",
+                       "towerId":  "frost_spire",
+                       "x":  740,
+                       "y":  519,
+                       "levelIndex":  2,
+                       "doctrineId":  "frost_deep_chill",
+                       "specializationId":  "permafrost",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-694-519",
+                       "towerId":  "needle_turret",
+                       "x":  694,
+                       "y":  519,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-648-519",
+                       "towerId":  "needle_turret",
+                       "x":  648,
+                       "y":  519,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-602-519",
+                       "towerId":  "ember_coil",
+                       "x":  602,
+                       "y":  519,
+                       "levelIndex":  2,
+                       "doctrineId":  "ember_kindling",
+                       "specializationId":  "wildfire_matrix",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-556-519",
+                       "towerId":  "needle_turret",
+                       "x":  556,
+                       "y":  519,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-740-436",
+                       "towerId":  "needle_turret",
+                       "x":  740,
+                       "y":  436,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "N-694-436",
+                       "towerId":  "needle_turret",
+                       "x":  694,
+                       "y":  436,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "P-434-490",
+                       "towerId":  "ember_coil",
+                       "x":  434,
+                       "y":  490,
+                       "levelIndex":  2,
+                       "doctrineId":  "ember_kindling",
+                       "specializationId":  "wildfire_matrix",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "F-434-534",
+                       "towerId":  "frost_spire",
+                       "x":  434,
+                       "y":  534,
+                       "levelIndex":  2,
+                       "doctrineId":  "frost_deep_chill",
+                       "specializationId":  "permafrost",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "P-434-578",
+                       "towerId":  "ember_coil",
+                       "x":  434,
+                       "y":  578,
+                       "levelIndex":  2,
+                       "doctrineId":  "ember_kindling",
+                       "specializationId":  "wildfire_matrix",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "P-434-622",
+                       "towerId":  "breaker_cannon",
+                       "x":  434,
+                       "y":  622,
+                       "levelIndex":  2,
+                       "doctrineId":  "breaker_repeater",
+                       "specializationId":  "shatter_shell",
+                       "apexFromWave":  21
+                   },
+                   {
+                       "key":  "W-786-680",
+                       "towerId":  "needle_turret",
+                       "x":  786,
+                       "y":  680,
+                       "levelIndex":  2,
+                       "doctrineId":  "needle_calibrator",
+                       "specializationId":  "rail_pin",
+                       "apexFromWave":  21
+                   }
+               ],
+    "automaticProtocolPreference":  [
+                                        "H-648-436",
+                                        "H-498-190",
+                                        "T-260-155"
+                                    ],
+    "generator":  {
+                      "x":  200,
+                      "y":  600,
+                      "levelIndex":  2,
+                      "fromWave":  12
+                  }
+}
