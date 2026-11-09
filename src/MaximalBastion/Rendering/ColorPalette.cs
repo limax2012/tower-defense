@@ -26,6 +26,7 @@ public static class ColorPalette
     public static readonly Color EnemyVentEdge = new(163, 162, 183);
     public static readonly Color EnemyVentRecess = new(34, 26, 44);
     public static readonly Color EnemyExhaustHighlight = new(255, 226, 246);
+    public static readonly Color EnemyOverdriveWhite = new(246, 250, 255);
     public static readonly Color Circuit = new(21, 55, 67);
     public static readonly Color Ink = new(8, 13, 24);
     public static readonly Color Paper = new(226, 244, 250);

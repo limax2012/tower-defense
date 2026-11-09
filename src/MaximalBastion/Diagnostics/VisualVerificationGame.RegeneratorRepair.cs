@@ -41,18 +41,35 @@ public sealed partial class VisualVerificationGame
                     $"{rank} Regenerator: natural healing resumes after the one-second damage pause.", assertions);
                 var active = Pixels(time);
                 var changed = Enumerable.Range(0, active.Length).Where(i => active[i] != full[i]).ToArray();
-                var radius = EnemyModelArt.BodyRadius(enemy);
+                var bezelLimit = RepairBezelLimit(enemy);
                 Require(changed.Length > 45 && changed.All(i =>
-                        Vector2.Distance(new Vector2(i % 128 + .5f, i / 128 + .5f), new Vector2(64)) < radius * .41f),
+                        Vector2.Distance(new Vector2(i % 128 + .5f, i / 128 + .5f), new Vector2(64)) < bezelLimit),
                     $"{rank} Regenerator: active repair is visible at native size and confined to the jewel's octagonal bezel, preserving the outer body bevels.", assertions);
                 var changedMask = changed.ToHashSet();
                 var mirrored = changed.Count(i => changedMask.Contains(i / 128 * 128 + 127 - i % 128) &&
                                                  changedMask.Contains((127 - i / 128) * 128 + i % 128));
                 Require(mirrored >= changed.Length * .88f,
                     $"{rank} Regenerator: repair lights have matching opposing sides and ends.", assertions);
-                Require(Enumerable.Range(0, active.Length).Where(i =>
-                        RepairCoveredSurface(new Vector2(i % 128 + .5f, i / 128 + .5f) - new Vector2(64), radius))
-                    .All(i => active[i] == full[i]),
+                var coveredChanges = Enumerable.Range(0, active.Length).Where(i => active[i] != full[i] &&
+                    RepairCoveredSurface(new Vector2(i % 128 + .5f, i / 128 + .5f) - new Vector2(64), enemy)).ToArray();
+                if (coveredChanges.Length > 0)
+                    File.WriteAllText(Path.Combine(_outputDirectory, $"regenerator-repair-protected-{rank.ToLowerInvariant()}.json"),
+                        JsonSerializer.Serialize(new
+                        {
+                            rank, bodyRadius = EnemyModelArt.BodyRadius(enemy), coreRadius = EnemyModelArt.CoreRadius(enemy),
+                            pixels = coveredChanges.Select(i =>
+                            {
+                                var local = new Vector2(i % 128 + .5f, i / 128 + .5f) - new Vector2(64);
+                                return new
+                                {
+                                    x = local.X, y = local.Y, distance = local.Length(),
+                                    coreFraction = local.Length() / EnemyModelArt.CoreRadius(enemy),
+                                    before = new { full[i].R, full[i].G, full[i].B, full[i].A },
+                                    after = new { active[i].R, active[i].G, active[i].B, active[i].A }
+                                };
+                            }).ToArray()
+                        }, new JsonSerializerOptions { WriteIndented = true }));
+                Require(coveredChanges.Length == 0,
                     $"{rank} Regenerator: repair lighting preserves the reactor gem and cannot shine through its side armor.", assertions);
                 var checksum = SessionChecksum.Compute(sample.Session, 917);
                 var pulseSamples = Enumerable.Range(0, 7).Select(i => Pixels(time + i * .2f)).ToArray();
@@ -123,10 +140,29 @@ public sealed partial class VisualVerificationGame
             new DamagePayload { Damage = 200, IgnoreShield = true, ArmorPierce = 1000 });
     }
 
-    private static bool RepairCoveredSurface(Vector2 local, float radius) =>
-        local.LengthSquared() < radius * radius * .30f * .30f ||
-        MathF.Abs(local.X) < radius * .40f && MathF.Abs(local.Y) > radius * .435f &&
-        MathF.Abs(local.Y) < radius * .595f;
+    private static float RepairBezelLimit(EnemyInstance enemy) =>
+        EnemyModelArt.CoreRadius(enemy) + EnemyModelArt.BodyRadius(enemy) * .03f;
+
+    private static bool RepairCoveredSurface(Vector2 local, EnemyInstance enemy)
+    {
+        var radius = EnemyModelArt.BodyRadius(enemy);
+        var across = MathF.Max(MathF.Max(MathF.Abs(local.X), MathF.Abs(local.Y)),
+            (MathF.Abs(local.X) + MathF.Abs(local.Y)) * MathF.Sqrt(2) * .5f);
+        // Bilinear edge coverage is outside the exact-color interior comparison.
+        var protectedCore = enemy.Rank == EnemyRank.Standard
+            ? local.LengthSquared() < radius * radius * .30f * .30f
+            : across < EnemyModelArt.CoreRadius(enemy) * .89f * MathF.Cos(MathHelper.Pi / 8) - 1f;
+        var sideCenter = enemy.Rank == EnemyRank.Standard ? .515f : .585f;
+        var sideLength = enemy.Rank switch
+        {
+            EnemyRank.Elite => .49f,
+            EnemyRank.Boss => .575f,
+            _ => .40f
+        };
+        return protectedCore ||
+            MathF.Abs(local.X) < radius * sideLength && MathF.Abs(local.Y) > radius * (sideCenter - .08f) &&
+            MathF.Abs(local.Y) < radius * (sideCenter + .08f);
+    }
 
     private void AssertRegeneratorRepairFog(GameContent content, SpriteFont font, SpriteFont display,
         ICollection<string> assertions, ICollection<VisualVerificationScene> scenes)
@@ -165,9 +201,9 @@ public sealed partial class VisualVerificationGame
                 var center = PresentationFrame.Create(session, 0).EnemyPosition(enemy);
                 var crop = new Rectangle((int)center.X - 64, (int)center.Y - 64, 128, 128);
                 var forward = EnemyLocomotionPath.For(session.Map).Forward(enemy.DistanceAlongPath,
-                    EnemyLocomotion.MotionRadius(enemy), EnemyLocomotion.UsesTracks(enemy));
+                    EnemyLocomotion.MotionRadius(enemy), EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy));
                 var side = new Vector2(-forward.Y, forward.X);
-                var radius = EnemyModelArt.BodyRadius(enemy);
+                var bezelLimit = RepairBezelLimit(enemy);
                 var active = Pixels();
                 enemy.ApplyHealthDamage(200);
                 enemy.TickRuntimeTimers(.2f);
@@ -179,9 +215,9 @@ public sealed partial class VisualVerificationGame
                 {
                     var offset = new Vector2(crop.X + pixel % 128 + .5f, crop.Y + pixel / 128 + .5f) - center;
                     var local = new Vector2(Vector2.Dot(offset, forward), Vector2.Dot(offset, side));
-                    if (RepairCoveredSurface(local, radius) && active[pixel] != paused[pixel]) coveredChanged++;
+                    if (RepairCoveredSurface(local, enemy) && active[pixel] != paused[pixel]) coveredChanged++;
                     var color = active[pixel];
-                    if (offset.LengthSquared() > radius * radius * .41f * .41f ||
+                    if (offset.LengthSquared() > bezelLimit * bezelLimit ||
                         color.G < color.R + 8 || color.G < color.B + 3 || color.G < paused[pixel].G + 4) continue;
                     if (local.X > 0) greenFront++; else greenRear++;
                 }

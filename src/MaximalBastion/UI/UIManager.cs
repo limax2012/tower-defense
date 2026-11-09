@@ -260,7 +260,6 @@ public sealed partial class UIManager
     private readonly Rectangle _musicVolumeButton = new(350, 312, 580, 54);
     private readonly Rectangle _settingsBackButton = new(500, 526, 280, 48);
     private static readonly int[] SandboxGroupSizes = [1, 5, 12];
-    private static readonly EnemyRank[] SandboxRanks = [EnemyRank.Standard, EnemyRank.Elite, EnemyRank.Boss];
     private static readonly EnemySignalRole[] SandboxSignals = Enum.GetValues<EnemySignalRole>();
 
     public string JoinHostInput => _joinHostInput;
@@ -1238,7 +1237,7 @@ public sealed partial class UIManager
             if (input.SandboxEnemyPreviousPressed) CycleSandboxEnemy(session, -1);
             if (input.SandboxEnemyNextPressed) CycleSandboxEnemy(session, 1);
             if (input.GeneratorPressed) CycleSandboxGroup();
-            if (input.SandboxRankPressed) CycleSandboxRank();
+            if (input.SandboxRankPressed) CycleSandboxRank(session);
             if (input.SandboxHealthPressed) CycleSandboxHealth();
             if (input.SandboxSignalPressed) CycleSandboxSignal();
         }
@@ -1433,7 +1432,7 @@ public sealed partial class UIManager
         }
         if (_sandboxRankButton.Contains(point))
         {
-            CycleSandboxRank();
+            CycleSandboxRank(session);
             return true;
         }
         if (_sandboxHealthButton.Contains(point))
@@ -1498,13 +1497,25 @@ public sealed partial class UIManager
         if (enemies.Count == 0) return;
         _sandboxEnemyIndex = (_sandboxEnemyIndex + direction) % enemies.Count;
         if (_sandboxEnemyIndex < 0) _sandboxEnemyIndex += enemies.Count;
+        _sandboxRankIndex = Math.Min(_sandboxRankIndex, EnemyRoster.RanksFor(enemies[_sandboxEnemyIndex].Id).Count - 1);
     }
 
     private void CycleSandboxGroup() =>
         _sandboxGroupIndex = (_sandboxGroupIndex + 1) % SandboxGroupSizes.Length;
 
-    private void CycleSandboxRank() =>
-        _sandboxRankIndex = (_sandboxRankIndex + 1) % SandboxRanks.Length;
+    private void CycleSandboxRank(MaximalBastion.GameSession session)
+    {
+        var enemies = SandboxEnemies(session);
+        if (enemies.Count == 0) return;
+        var enemy = enemies[Math.Clamp(_sandboxEnemyIndex, 0, enemies.Count - 1)];
+        _sandboxRankIndex = (_sandboxRankIndex + 1) % EnemyRoster.RanksFor(enemy.Id).Count;
+    }
+
+    private EnemyRank SelectedSandboxRank(string enemyId)
+    {
+        var ranks = EnemyRoster.RanksFor(enemyId);
+        return ranks[Math.Clamp(_sandboxRankIndex, 0, ranks.Count - 1)];
+    }
 
     private void CycleSandboxHealth() =>
         _sandboxHealthIndex = (_sandboxHealthIndex + 1) % 4;
@@ -1527,7 +1538,7 @@ public sealed partial class UIManager
             enemies[_sandboxEnemyIndex].Id,
             SandboxGroupSizes[_sandboxGroupIndex],
             healthMultiplier,
-            SandboxRanks[_sandboxRankIndex].ToString(),
+            SelectedSandboxRank(enemies[_sandboxEnemyIndex].Id).ToString(),
             _sandboxHealthIndex == 3,
             SandboxSignals[_sandboxSignalIndex]);
     }
@@ -2426,7 +2437,8 @@ public sealed partial class UIManager
             5 => "5 PACK",
             _ => "12 SWARM"
         };
-        var rankLabel = SandboxRanks[_sandboxRankIndex].ToString().ToUpperInvariant();
+        var rank = SelectedSandboxRank(enemy?.Id ?? "");
+        var rankLabel = rank.ToString().ToUpperInvariant();
         var healthLabel = _sandboxHealthIndex switch
         {
             1 => $"W10 {session.SandboxHealthMultiplierForWave(Math.Min(10, session.TotalWaves)):0.##}x",
@@ -2446,7 +2458,7 @@ public sealed partial class UIManager
         };
         DrawSandboxButton(batch, p, _sandboxGroupButton, groupLabel, true, ColorPalette.Cobalt, "G");
         DrawSandboxButton(batch, p, _sandboxRankButton, rankLabel, true,
-            SandboxRanks[_sandboxRankIndex] == EnemyRank.Boss ? ColorPalette.Coral : ColorPalette.Violet, "K");
+            rank == EnemyRank.Boss ? ColorPalette.Coral : ColorPalette.Violet, "K");
         DrawSandboxButton(batch, p, _sandboxHealthButton, healthLabel, true,
             _sandboxHealthIndex == 3 ? ColorPalette.Gold : ColorPalette.Cyan, "H");
         DrawSandboxButton(batch, p, _sandboxSignalButton, signalLabel, true,
@@ -2823,7 +2835,7 @@ public sealed partial class UIManager
         var bonus = session.Generator?.Level.DefenseDamageBonus ?? 0;
         DrawFittedText(batch, $"{definition.Charges} PULSES   DAMAGE {definition.Damage * (1 + bonus):0.#}   BLAST {definition.BlastRadius:0}",
             new Vector2(980, 542), ColorPalette.Ink, 0.59f, 280);
-        DrawFittedText(batch, $"PUSH {definition.KnockbackDistance:0}   SLOW {EnemyInstance.EffectiveSlowFraction(definition.SlowPercent):P0}/{definition.SlowDuration:0.#}s (CAP {EnemyInstance.MaximumSlowFraction:P0})", new Vector2(980, 565), ColorPalette.Ink, 0.55f, 280);
+        DrawFittedText(batch, $"PUSH {definition.KnockbackDistance:0}   SLOW {EnemyInstance.EffectiveSlowFraction(definition.SlowPercent):P0}/{definition.SlowDuration:0.#}s", new Vector2(980, 565), ColorPalette.Ink, 0.55f, 280);
         var directIntel = session.IsSandbox ? "Free deployment. Reset Test clears plates."
             : session.Waves.IsActive
             ? $"BUY {session.CurrentEmergencyDirectPurchaseCost}  /  +{definition.DirectPurchaseCostIncrease} EACH THIS WAVE"
@@ -2905,6 +2917,7 @@ public sealed partial class UIManager
 
     private void DrawPlacementStatus(SpriteBatch batch, PrimitiveRenderer p, MaximalBastion.GameSession session)
     {
+        if (session.IsSandbox) return;
         var pointerOnMap = IsPointerOnMap(session.PlacementPosition);
         var valid = pointerOnMap && session.HasPlacementPreview && session.PlacementFailure == PlacementFailure.None;
         var color = valid ? ColorPalette.Green : ColorPalette.Coral;
@@ -3776,7 +3789,7 @@ public sealed partial class UIManager
         var level = tower.Level;
         return tower.Definition.Behavior.ToLowerInvariant() switch
         {
-            "slow_projectile" => $"AoE {level.SplashRadius:0}; slow {EnemyInstance.EffectiveSlowFraction(level.SlowPercent):P0}; cap {EnemyInstance.MaximumSlowFraction:P0}",
+            "slow_projectile" => $"AoE {level.SplashRadius:0}; slow {EnemyInstance.EffectiveSlowFraction(level.SlowPercent):P0}",
             "burn_projectile" => $"Burn {level.BurnDamagePerSecond:0.#}/s",
             "armor_projectile" => $"Pierce {level.ArmorPierce:0.#}",
             "chain" => $"Chain {level.ChainCount} targets",

@@ -1,3 +1,4 @@
+using MaximalBastion.Core;
 using MaximalBastion.Multiplayer;
 using MaximalBastion.Rendering;
 using Microsoft.Xna.Framework;
@@ -43,10 +44,11 @@ public sealed partial class VisualVerificationGame
                 var forward = new Vector2(MathF.Cos(heading), MathF.Sin(heading));
                 var lateral = new Vector2(-forward.Y, forward.X);
                 var radius = EnemyModelArt.BodyRadius(sample.Enemy);
-                var hull = new Vector2[EnemyModelArt.HullVertexCount(sample.Enemy)];
+                var outline = EnemyModelContours.Shapes[EnemyModelContours.ArmorOutlineId(sample.Enemy)];
+                var hull = new Vector2[outline.Length];
                 for (var vertex = 0; vertex < hull.Length; vertex++)
                 {
-                    var local = EnemyModelArt.HullVertex(sample.Enemy, vertex);
+                    var local = outline[vertex];
                     hull[vertex] = center + new Vector2(1, 2) +
                         (forward * local.X + lateral * local.Y) * radius;
                 }
@@ -87,7 +89,7 @@ public sealed partial class VisualVerificationGame
                 });
                 Require(covered > 20 && maximumAlpha == 255 && outsideFootprint == 0 && visibleContacts == slots.Length,
                     $"{sample.Enemy.Definition.Id} {sample.Enemy.Rank}, heading {direction * 90}, phase {phase}/4: " +
-                    $"ground shadow covers its opaque hull and compact foot contacts without spreading outside them " +
+                    $"ground shadow covers its outer armor and compact foot contacts without spreading outside them " +
                     $"({covered} pixels, alpha {maximumAlpha}/255, {outsideFootprint} outside, {visibleContacts}/{slots.Length} contacts).",
                     assertions);
             }
@@ -121,6 +123,7 @@ public sealed partial class VisualVerificationGame
     private VisualVerificationScene CaptureEnemyGroundShadows(IReadOnlyList<StatusReviewEnemy> samples,
         SpriteFont font)
     {
+        var standards = samples.Where(sample => sample.Enemy.Rank == EnemyRank.Standard).ToArray();
         const int width = 1280;
         const int height = 1030;
         var ground = ColorPalette.Rainline.Deck;
@@ -143,7 +146,7 @@ public sealed partial class VisualVerificationGame
         for (var family = 0; family < 5; family++)
         {
             var y = 224 + family * 156;
-            StatusLabel(font, samples[family * 3].Enemy.Definition.DisplayName.ToUpperInvariant(),
+            StatusLabel(font, standards[family].Enemy.Definition.DisplayName.ToUpperInvariant(),
                 new Vector2(20, y + 64), .45f);
             for (var direction = 0; direction < 3; direction++)
             {
@@ -158,7 +161,7 @@ public sealed partial class VisualVerificationGame
         for (var family = 0; family < 5; family++)
         for (var direction = 0; direction < 3; direction++)
         {
-            var sample = samples[family * 3];
+            var sample = standards[family];
             var y = 297 + family * 156;
             var distance = EnemyLocomotion.StrideDistance(sample.Enemy) * direction / 3;
             DrawEnemyArmorBody(sample, new Vector2(250 + direction * 370, y), 2, headings[direction], .43f, distance);

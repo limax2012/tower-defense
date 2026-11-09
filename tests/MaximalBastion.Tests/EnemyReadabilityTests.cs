@@ -259,13 +259,13 @@ internal static class EnemyReadabilityTests
         var before = SessionChecksum.Compute(session, 0);
         timeline.Observe(session, .25f);
         var opening = timeline.Feedback(enemy, .25f);
-        Check.Nearly(0, opening.OverdriveOpening, "newly observed overdrive begins with closed mechanical panels");
+        Check.Nearly(0, opening.OverdriveOpening, "newly observed overdrive begins at zero onset strength");
         Check.Nearly(1, opening.OverdriveTransition, "overdrive has one transition release");
         timeline.Observe(session, .425f);
-        Check.Nearly(.5f, timeline.Feedback(enemy, .425f).OverdriveOpening, "panels open continuously during the transition");
+        Check.Nearly(.5f, timeline.Feedback(enemy, .425f).OverdriveOpening, "the onset envelope eases continuously during the transition");
         timeline.Observe(session, 1);
         var settled = timeline.Feedback(enemy, 1);
-        Check.Nearly(1, settled.OverdriveOpening, "overdrive panels settle fully open");
+        Check.Nearly(1, settled.OverdriveOpening, "the overdrive onset envelope reaches full strength");
         Check.Nearly(0, settled.OverdriveTransition, "overdrive release expires without a persistent halo");
         Check.Nearly(0, settled.ShieldBreak, "depletion fragments expire");
         Check.Equal(before, SessionChecksum.Compute(session, 0), "presentation timing never enters synchronized state");

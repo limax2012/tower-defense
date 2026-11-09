@@ -21,6 +21,11 @@ internal static class MobileControllerTests
             var catalog = Send("catalog").GetProperty("result");
             Assert(catalog.GetProperty("towers").GetArrayLength() == content.Towers.Count, "The roster is read from shared content.");
             Assert(catalog.GetProperty("maps").GetArrayLength() == content.Maps.Count, "Every authored map is exposed.");
+            var enemyRanks = catalog.GetProperty("enemyRanks");
+            Assert(enemyRanks.GetProperty("t5_regenerator").EnumerateArray().Any(rank => rank.GetString() == "Boss") &&
+                   content.Enemies.Keys.Where(key => key != "t5_regenerator").All(key =>
+                       enemyRanks.GetProperty(key).EnumerateArray().All(rank => rank.GetString() != "Boss")),
+                "Mobile rank choices expose Boss only for Regenerator.");
             Send("newRun", new { mapId = "foundry_loop", difficultyId = "normal", challengeId = "standard" });
             var baseline = new GameSession(content, "foundry_loop", "normal", "standard");
             Apply(new GameCommand { Type = GameCommandType.PlaceTower, PlayerId = 1,
@@ -92,6 +97,10 @@ internal static class MobileControllerTests
             Assert(mobile.Session!.Towers.Count == 1, "Backgrounding refreshes the current between-wave checkpoint.");
 
             Send("newRun", new { mapId = "foundry_loop", difficultyId = "normal", challengeId = "sandbox_lab" });
+            Send("sandbox", new { operation = "spawn", enemyId = "t3_brute", rank = "Boss" }, accepted: false);
+            Assert(mobile.Session!.Enemies.Count == 0, "The bridge rejects unsupported Boss spawns without deploying targets.");
+            Send("sandbox", new { operation = "spawn", enemyId = "t5_regenerator", rank = "Boss" });
+            Assert(mobile.Session!.Enemies.Single().IsBoss, "The bridge deploys the supported Regenerator Boss.");
             var sandboxTactical = State().GetProperty("tactical");
             Assert(sandboxTactical.GetProperty("pulsePlatesEnabled").GetBoolean() &&
                    !sandboxTactical.GetProperty("tacticalSystemsEnabled").GetBoolean(),

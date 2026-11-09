@@ -45,7 +45,7 @@ Each pair below shows the completed branch **before / after Apex**, without supp
 
 Deep Chill Permafrost gains no further slow strength from Apex. Its value is longer and wider control, more reach, 38% more raw DPS, faster projectiles, and its own automatic Flash Freeze. Flash Freeze applies 50% slow for 2.5 seconds within radius 170 and grants 45% attack rate and 15% range for six seconds, with an 18-second cooldown. Apex automation remains available in Entrenched. Whether that is worth 650 depends on coverage, available space and the need for independent Protocols; an extra tower can be better where it opens another useful firing window.
 
-Elite and Boss status durations are 70% and 40% of the listed duration. Longer duration therefore matters even when strength is capped. Multiple slows do not add strength; a weaker application can refresh the stronger active slow's duration.
+Elite and Boss status durations are 70% and 40% of the listed duration. Longer duration therefore matters even when strength is capped. Slow retains the strongest active magnitude, up to the 60% movement-reduction cap, with one shared timer. Each hit sets that timer to the greater of its current remaining time and the incoming duration; durations do not add together. Weaker Frost shots, Flash Freeze, or Pulse Plates can therefore maintain an already stronger Slow.
 
 ### Shard Fan — close crowd coverage
 

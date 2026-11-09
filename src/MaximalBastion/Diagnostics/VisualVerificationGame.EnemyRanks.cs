@@ -15,16 +15,15 @@ public sealed partial class VisualVerificationGame
     private void AssertEnemyRanks(GameContent content, SpriteFont font, SpriteFont display,
         ICollection<string> assertions, ICollection<VisualVerificationScene> scenes)
     {
-        var ranks = new[] { "Standard", "Elite", "Boss" };
-        var samples = content.Enemies.Values.SelectMany(definition => ranks.Select(rank =>
-            EnemyRankSample(content, definition.Id, rank))).ToArray();
+        var samples = content.Enemies.Values.SelectMany(definition => EnemyRoster.RanksFor(definition.Id).Select(rank =>
+            EnemyRankSample(content, definition.Id, rank.ToString()))).ToArray();
         var checksums = samples.Select(sample => SessionChecksum.Compute(sample.Session, 0)).ToArray();
         scenes.Add(CaptureEnemyRankAtlas(samples, font, "ENEMY CONSTRUCTION / STANDARD, ELITE, BOSS",
-            "59-enemy-rank-construction.png"));
+            "59-enemy-rank-construction.png", alignRanks: true));
         for (var turn = 0; turn < 4; turn++)
             scenes.Add(CaptureEnemyRankAtlas(samples.Select(sample => sample with
                 { Heading = turn * MathHelper.PiOver2 }).ToArray(), font,
-                $"ENEMY CONSTRUCTION / {turn * 90} DEGREE HEADING", $"59a-enemy-rank-heading-{turn}.png"));
+                $"ENEMY CONSTRUCTION / {turn * 90} DEGREE HEADING", $"59a-enemy-rank-heading-{turn}.png", alignRanks: true));
         for (var index = 0; index < samples.Length; index++)
         {
             var sample = samples[index];
@@ -47,24 +46,24 @@ public sealed partial class VisualVerificationGame
             for (var rank = 1; rank < family.Length; rank++)
                 Require(EnemyRankPixels(family[rank - 1], .17f, true)
                         .Zip(EnemyRankPixels(family[rank], .17f, true), (a, b) => a != b).Count(value => value) > 40,
-                    $"{definition.Id}: {ranks[rank]} has visible structural differences at gameplay scale.", assertions);
-            var conditions = Enum.GetValues<EnemySignalRole>().SelectMany(role => ranks.Select(rank =>
-                EnemyRankSample(content, definition.Id, rank, role, stacked: true))).ToArray();
+                    $"{definition.Id}: {family[rank].Enemy.Rank} has visible structural differences at gameplay scale.", assertions);
+            var conditions = Enum.GetValues<EnemySignalRole>().SelectMany(role => EnemyRoster.RanksFor(definition.Id).Select(rank =>
+                EnemyRankSample(content, definition.Id, rank.ToString(), role, stacked: true))).ToArray();
             scenes.Add(CaptureEnemyRankAtlas(conditions, font,
                 $"{definition.DisplayName.ToUpperInvariant()} / SIGNALS WITH STACKED CONDITIONS",
-                $"59b-enemy-rank-signals-{definition.Id}.png"));
+                $"59b-enemy-rank-signals-{definition.Id}.png", alignRanks: true));
         }
-        var unshielded = content.Enemies.Values.SelectMany(definition => ranks.Select(rank =>
-            EnemyRankSample(content, definition.Id, rank))).ToArray();
+        var unshielded = content.Enemies.Values.SelectMany(definition => EnemyRoster.RanksFor(definition.Id).Select(rank =>
+            EnemyRankSample(content, definition.Id, rank.ToString()))).ToArray();
         foreach (var sample in unshielded) sample.Enemy.AbsorbShield(sample.Enemy.Shield);
         scenes.Add(CaptureEnemyRankAtlas(unshielded, font, "ENEMY CONSTRUCTION / SHIELDS DEPLETED",
-            "59e-enemy-rank-unshielded.png"));
+            "59e-enemy-rank-unshielded.png", alignRanks: true));
         AssertEnemyRankFootSupport(content, assertions);
         CaptureEnemyRankPaths(content, font, display, assertions, scenes);
         if (Environment.GetEnvironmentVariable("MAXIMAL_BASTION_ENEMY_RANK_ANIMATION") != "1") return;
         for (var frame = 0; frame < 72; frame++)
             scenes.Add(CaptureEnemyRankAtlas(samples, font, "ENEMY CONSTRUCTION / STANDARD, ELITE, BOSS",
-                $"enemy-rank-animation/construction-{frame:000}.png", frame / 24f));
+                $"enemy-rank-animation/construction-{frame:000}.png", frame / 24f, alignRanks: true));
     }
 
     // Gray material includes textured bevels and antialiased edges; emissive magenta remains separate.
@@ -108,10 +107,10 @@ public sealed partial class VisualVerificationGame
     {
         foreach (var map in content.Maps.Values)
         foreach (var definition in content.Enemies.Values.Where(definition => definition.Id != "t2_runner"))
-        foreach (var rank in new[] { "Standard", "Elite", "Boss" })
+        foreach (var rank in EnemyRoster.RanksFor(definition.Id))
         {
             var session = new GameSession(content, map.Id, "normal", "sandbox_lab");
-            session.SpawnEnemy(definition.Id, 1, 1, rank);
+            session.SpawnEnemy(definition.Id, 1, 1, rank.ToString());
             var enemy = session.Enemies.Single();
             var movementPath = new EnemyLocomotionPath(session.Map);
             var distances = new List<float>();
@@ -131,8 +130,8 @@ public sealed partial class VisualVerificationGame
             for (var phase = 0; phase < 48; phase++)
             {
                 var sampledDistance = Math.Clamp(distance + (phase - 24) * .25f, 0, session.Map.Path.TotalLength);
-                var position = movementPath.VisualPosition(sampledDistance, EnemyLocomotion.MotionRadius(enemy), EnemyLocomotion.UsesTracks(enemy));
-                var direction = movementPath.Forward(sampledDistance, EnemyLocomotion.MotionRadius(enemy), EnemyLocomotion.UsesTracks(enemy));
+                var position = movementPath.VisualPosition(sampledDistance, EnemyLocomotion.MotionRadius(enemy), EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy));
+                var direction = movementPath.Forward(sampledDistance, EnemyLocomotion.MotionRadius(enemy), EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy));
                 var heading = MathF.Atan2(direction.Y, direction.X);
                 foreach (var (side, leg) in EnemyLocomotion.ContactSlots(enemy))
                 {
@@ -145,7 +144,9 @@ public sealed partial class VisualVerificationGame
                     sampleCount++;
                 }
             }
-            var supportingHalfWidth = map.PathWidth * .5f - 2;
+            var supportingHalfWidth = rank == EnemyRank.Standard
+                ? map.PathWidth * .5f - 2
+                : map.PathWidth * .5f + (map.PathVisual.Style == "trail" ? 7 : 4) - .25f;
             Require(maximumEdgeDistance <= supportingHalfWidth + .01f,
                 $"{map.Id} {definition.Id} {rank}: {sampleCount} animated foot contacts fit the {supportingHalfWidth * 2:0.#}px supporting deck, including corners (maximum edge distance {maximumEdgeDistance:0.00}px).", assertions);
             Require(maximumRadialDistance <= EnemyLocomotion.MaximumReach(enemy),
@@ -172,12 +173,22 @@ public sealed partial class VisualVerificationGame
     }
 
     private VisualVerificationScene CaptureEnemyRankAtlas(IReadOnlyList<StatusReviewEnemy> samples,
-        SpriteFont font, string title, string fileName, float time = .43f)
+        SpriteFont font, string title, string fileName, float time = .43f, bool alignRanks = false)
     {
         const int columns = 3;
         const int cellWidth = 380;
         const int cellHeight = 275;
-        var rows = (samples.Count + columns - 1) / columns;
+        var cells = new Point[samples.Count];
+        var row = -1;
+        var previousRank = columns;
+        for (var index = 0; index < samples.Count; index++)
+        {
+            var column = alignRanks ? (int)samples[index].Enemy.Rank : index % columns;
+            if (alignRanks && column <= previousRank) row++;
+            cells[index] = new Point(column, alignRanks ? row : index / columns);
+            previousRank = column;
+        }
+        var rows = cells.Length == 0 ? 0 : cells.Max(cell => cell.Y) + 1;
         using var target = new RenderTarget2D(GraphicsDevice, columns * cellWidth, 100 + rows * cellHeight,
             false, SurfaceFormat.Color, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
         GraphicsDevice.SetRenderTarget(target);
@@ -187,16 +198,16 @@ public sealed partial class VisualVerificationGame
         StatusLabel(font, "3x DETAIL / GAMEPLAY SIZE: FULL LEFT, REDUCED RIGHT", new Vector2(24, 55), .60f);
         for (var index = 0; index < samples.Count; index++)
         {
-            var x = index % columns * cellWidth;
-            var y = 100 + index / columns * cellHeight;
+            var x = cells[index].X * cellWidth;
+            var y = 100 + cells[index].Y * cellHeight;
             _primitives.FillRect(_batch, new Rectangle(x + 8, y, cellWidth - 16, cellHeight - 8), ColorPalette.Panel);
             StatusLabel(font, samples[index].Label, new Vector2(x + 18, y + 12), .53f);
         }
         _batch.End();
         for (var index = 0; index < samples.Count; index++)
         {
-            var x = index % columns * cellWidth;
-            var y = 100 + index / columns * cellHeight;
+            var x = cells[index].X * cellWidth;
+            var y = 100 + cells[index].Y * cellHeight;
             DrawAt(new Vector2(x + cellWidth * .5f, y + 125), 3, false);
             DrawAt(new Vector2(x + cellWidth * .32f, y + 231), 1, false);
             DrawAt(new Vector2(x + cellWidth * .68f, y + 231), 1, true);
@@ -241,13 +252,12 @@ public sealed partial class VisualVerificationGame
                     distance += Vector2.Distance(map.Path[point - 1].ToVector2(), map.Path[point].ToVector2());
                     corners.Add(distance);
                 }
-                var bodies = content.Enemies.Keys.ToArray();
-                var ranks = new[] { "Standard", "Elite", "Boss" };
-                for (var index = 0; index < 15; index++)
+                var roster = content.Enemies.Keys.SelectMany(id => EnemyRoster.RanksFor(id)
+                    .Select(rank => (Id: id, Rank: rank))).ToArray();
+                for (var index = 0; index < roster.Length; index++)
                 {
-                    var id = bodies[index / 3];
                     var role = (EnemySignalRole)(index % 6);
-                    session.SpawnEnemy(id, 100, 1, ranks[index % 3], role);
+                    session.SpawnEnemy(roster[index].Id, 100, 1, roster[index].Rank.ToString(), role);
                     var enemy = session.Enemies[^1];
                     var corner = corners[index % corners.Count];
                     var offset = index < corners.Count ? -24 : 40 + index * 3;

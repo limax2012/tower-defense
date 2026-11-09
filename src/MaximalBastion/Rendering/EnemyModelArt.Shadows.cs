@@ -15,8 +15,8 @@ public static partial class EnemyModelArt
 
     private static void DrawGroundShadow(Chassis f, ReadOnlySpan<EnemyGroundContact> contacts)
     {
-        DrawHull(f.Batch, f.P, f.Enemy, f.GroundCenter + new Vector2(1, 2), f.Radius,
-            f.Heading, ColorPalette.Canvas);
+        f.P.DrawAuthoredShape(f.Batch, f.GroundCenter + new Vector2(1, 2), f.Radius,
+            EnemyModelContours.ArmorOutlineId(f.Enemy), ColorPalette.Canvas, f.Heading);
         foreach (var contact in contacts)
         {
             var pad = contact.Pose.ContactRadius;

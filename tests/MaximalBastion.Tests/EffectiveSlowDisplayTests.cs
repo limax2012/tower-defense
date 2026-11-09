@@ -33,8 +33,8 @@ internal static class EffectiveSlowDisplayTests
             "authored growth above the cap does not imply an effective slow improvement");
         Check.True(slow.PreviousValue is null && TowerInfo.ComparisonStatValueText(slow) == cap,
             "an unchanged capped slow does not display a misleading arrow");
-        Check.Equal($"SLOW CAP {cap}", TowerInfo.ComparisonStatLabelText(slow),
-            "the current and preview grid disclose the movement cap");
+        Check.Equal("SLOW", TowerInfo.ComparisonStatLabelText(slow),
+            "the current and preview grid use the slow stat name as the heading");
         Check.Equal(TowerStatDirection.Increase, stats.Single(stat => stat.Label == "SLOW TIME").Direction,
             "Apex still reports its real duration improvement");
         Check.Equal(TowerStatDirection.Increase, stats.Single(stat => stat.Label == "AREA").Direction,
@@ -64,12 +64,13 @@ internal static class EffectiveSlowDisplayTests
         var final = permafrost.Level.WithDoctrine(chill);
         var cap = EnemyInstance.MaximumSlowFraction.ToString("P0");
         var branch = TowerInfo.SpecializationSummary(frost, current, permafrost, chill);
-        Check.True(branch.Contains(cap, StringComparison.Ordinal) && branch.Contains($"CAP {cap}", StringComparison.Ordinal) &&
+        Check.True(branch.Contains(cap, StringComparison.Ordinal) && !branch.Contains("cap", StringComparison.OrdinalIgnoreCase) &&
                 !branch.Contains(final.SlowPercent.ToString("P0"), StringComparison.Ordinal),
-            "branch summaries show the effective strength and explain the cap");
+            "branch summaries show effective strength without an extra cap explanation");
         Check.True(TowerInfo.Special(frost, final).Contains($"slow {cap}", StringComparison.Ordinal) &&
-                TowerInfo.Special(frost, final).Contains($"cap {cap}", StringComparison.Ordinal),
-            "the descriptive attack summary uses the same effective cap");
+                !TowerInfo.Special(frost, final).Contains("cap", StringComparison.OrdinalIgnoreCase) &&
+                !TowerInfo.Limitation(frost).Contains("cap", StringComparison.OrdinalIgnoreCase),
+            "attack and limitation summaries use ordinary stat wording");
         var unchangedBranch = new TowerSpecializationDefinition
         {
             Id = "capped-preview", DisplayName = "Capped preview", Summary = "Equal effective slow",

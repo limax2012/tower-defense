@@ -91,8 +91,8 @@ internal static class EnemyStunPresentationTests
             for (var distance = radius; distance < session.Map.Path.TotalLength - radius; distance += 12)
             {
                 var tracked = enemy.Definition.Id == "t5_regenerator";
-                var center = path.VisualPosition(distance, motionRadius, tracked);
-                var forward = path.Forward(distance, motionRadius, tracked);
+                var center = path.VisualPosition(distance, motionRadius, tracked, EnemyLocomotion.UsesHeavyTracks(enemy));
+                var forward = path.Forward(distance, motionRadius, tracked, EnemyLocomotion.UsesHeavyTracks(enemy));
                 var heading = MathF.Atan2(forward.Y, forward.X);
                 var lateral = new Vector2(-forward.Y, forward.X);
                 for (var sample = 0; sample < 8; sample++)
@@ -119,10 +119,11 @@ internal static class EnemyStunPresentationTests
             var label = $"{map.Id} {family} {rank}";
             Check.True(stableFeet && rootsFollowShell && reducedUnchanged,
                 $"{label}: rendered leg deformation moves roots with the shell while preserving exact foot contacts and Reduced Effects geometry");
-            Check.True(clearance >= .75f,
-                $"{label}: the shuddering hull retains a clean paved-lane margin ({clearance:0.000}px)");
+            var boundaryClearance = clearance + (rank == "Standard" ? 0 : EnemyRankArtTests.OutlineExtension(map));
+            Check.True(boundaryClearance >= (rank == "Standard" ? .75f : .25f),
+                $"{label}: the shuddering hull retains a clean path-boundary margin ({boundaryClearance:0.000}px)");
             Check.Equal(checksum, SessionChecksum.Compute(session, 0), $"{label}: stunned articulation is read-only");
-            minimumClearance = MathF.Min(minimumClearance, clearance);
+            minimumClearance = MathF.Min(minimumClearance, boundaryClearance);
         }
         Console.WriteLine($"Stun geometry: sampled minimum hull-to-lane margin {minimumClearance:0.000}px; ground contacts unchanged.");
     }

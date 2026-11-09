@@ -9,21 +9,32 @@ public readonly record struct EnemyLegPose(Vector2 Root, Vector2 Knee, Vector2 F
 /// <summary>Family-specific armor and distance-driven articulation within the road's supporting deck.</summary>
 public static partial class EnemyModelArt
 {
+    internal const float StandardAegisScale = .90f;
+    internal const float EliteAegisBodyScale = .91f;
+
+    internal static int VisualRank(EnemyInstance enemy) => enemy.IsBoss
+        ? enemy.Definition.Id == "t5_regenerator" ? 2 : 1
+        : enemy.IsElite ? 1 : 0;
+
     public static float BodyRadius(EnemyInstance enemy)
     {
-        var rank = enemy.IsBoss ? 2 : enemy.IsElite ? 1 : 0;
+        var rank = VisualRank(enemy);
         return enemy.Definition.Id switch
         {
-            "t1_crawler" => rank == 2 ? 22 : rank == 1 ? 18.5f : 16,
-            "t2_runner" => rank == 2 ? 20 : rank == 1 ? 15 : 12,
-            "t3_brute" => rank == 2 ? 23.5f : rank == 1 ? 22 : 20.5f,
-            "t4_aegis" => rank == 2 ? 32 : rank == 1 ? 31 : 30,
-            "t5_regenerator" => rank == 2 ? 36 : rank == 1 ? 35 : 34,
+            "t1_crawler" => rank == 1 ? 21.5f : 16,
+            "t2_runner" => rank == 1 ? 15 : 12,
+            "t3_brute" => rank == 1 ? 25 : 20.5f,
+            "t4_aegis" => rank == 1 ? 32f : 30 * StandardAegisScale,
+            "t5_regenerator" => rank == 2 ? 40 : rank == 1 ? 37.5f : 34,
             _ => MathF.Min(26, enemy.Radius)
         };
     }
 
     public static int HullVertexCount(EnemyInstance enemy) => Contour(enemy).Length;
+
+    internal static float LimbDetailScale(EnemyInstance enemy) =>
+        enemy.Definition.Id == "t4_aegis" && VisualRank(enemy) == 0 ? StandardAegisScale : 1;
+
     public static Vector2 HullVertex(EnemyInstance enemy, int index) => Contour(enemy)[index];
     private static Vector2[] Contour(EnemyInstance enemy) => EnemyModelContours.Shapes[EnemyModelContours.ShapeId(enemy)];
 
@@ -46,7 +57,7 @@ public static partial class EnemyModelArt
     {
         if (enemy.IsDead || enemy.HasEscaped) return;
         var f = new Chassis(batch, p, enemy, center, heading, time, reducedEffects, hit,
-            atRest ? 0 : travelDistance, overdriveOpening, atRest);
+            atRest ? 0 : travelDistance, overdriveOpening, atRest, overdriveElapsed);
         Span<EnemyGroundContact> sampled = stackalloc EnemyGroundContact[8];
         var contactCount = EnemyLocomotion.ContactSlots(enemy).Length;
         if (groundContacts.Length != contactCount)
@@ -56,18 +67,20 @@ public static partial class EnemyModelArt
         }
         if (castShadows) DrawGroundShadow(f, groundContacts);
         var exhaustBoss = enemy.IsBoss && enemy.Definition.Id == "t5_regenerator";
+        var exhaustCenter = f.Center - f.Forward * (f.Radius * .14f);
         if (exhaustBoss && enemy.BossPhaseActive && !atRest)
-            p.BossExhaust(batch, f.Center, f.Radius, heading, time, overdriveElapsed, reducedEffects);
+            p.BossExhaust(batch, exhaustCenter, f.Radius, heading, time, overdriveElapsed, reducedEffects);
         if (!reducedEffects) p.Glow(batch, f.Center, f.Radius * .65f, f.Energy, .16f);
         DrawLegs(f, groundContacts);
         DrawHull(batch, p, enemy, f.Center, f.Radius, heading, f.Armor);
         DrawArmoredFamily(f);
         DrawRankArmor(f);
-        if (enemy.BossPhaseActive) DrawOverdrivePanels(f);
+        DrawEliteSilhouetteArmor(f);
         if (exhaustBoss)
-            p.BossExhaustShutters(batch, f.Center, f.Radius, heading,
+            p.BossExhaustShutters(batch, exhaustCenter, f.Radius, heading,
                 enemy.BossPhaseActive ? reducedEffects || atRest ? 1 : overdriveElapsed : -1);
         DrawFacetedCore(f, time);
+        if (exhaustBoss && enemy.BossPhaseActive) DrawOverdriveReactor(f);
     }
 
     internal static void SampleGroundContacts(EnemyInstance enemy, Vector2 center, float heading,
@@ -86,40 +99,43 @@ public static partial class EnemyModelArt
 
     private static void DrawLegs(Chassis f, ReadOnlySpan<EnemyGroundContact> contacts)
     {
+        var detailScale = LimbDetailScale(f.Enemy);
         foreach (var contact in contacts)
         {
             var pose = DisplaceLegPose(contact.Pose, f.BodyDisplacement);
             var upper = pose.Knee - pose.Root;
             var upperAngle = MathF.Atan2(upper.Y, upper.X);
             var upperCenter = Vector2.Lerp(pose.Root, pose.Knee, .51f);
-            var upperWidth = (f.Enemy.Definition.Id == "t1_crawler" ? 4.6f : 5.2f) + f.Rank * .3f;
-            f.P.ArmorLine(f.Batch, pose.Root, pose.Knee, ColorPalette.EnemyRecess, upperWidth + .8f);
+            var upperWidth = ((f.Enemy.Definition.Id == "t1_crawler" ? 4.6f : 5.2f) + f.Rank * 1.2f) * detailScale;
+            f.P.ArmorLine(f.Batch, pose.Root, pose.Knee, ColorPalette.EnemyRecess, upperWidth + .8f * detailScale);
             f.P.ArmorPlate(f.Batch, upperCenter, upper.Length() * .92f, upperWidth, upperAngle, f.Shell);
-            f.P.ArmorCircle(f.Batch, pose.Knee, 1.5f + f.Rank * .15f, ColorPalette.EnemyRecess);
-            f.P.ArmorCircle(f.Batch, pose.Knee, .85f, f.Shell);
+            f.P.ArmorCircle(f.Batch, pose.Knee, (1.5f + f.Rank * .15f) * detailScale, ColorPalette.EnemyRecess);
+            f.P.ArmorCircle(f.Batch, pose.Knee, .85f * detailScale, f.Shell);
             var delta = pose.Foot - pose.Knee;
             var length = delta.Length();
             var direction = delta / MathF.Max(.001f, length);
             var angle = MathF.Atan2(delta.Y, delta.X);
-            var center = Vector2.Lerp(pose.Knee, pose.Foot, f.Enemy.Definition.Id == "t4_aegis" ? .24f : .32f);
-            var armorLength = MathF.Max(3.6f, length * .85f);
-            var width = (f.Enemy.Definition.Id == "t1_crawler" ? 4.8f : 5.4f) + f.Rank * .35f;
-            f.P.ArmorLine(f.Batch, pose.Knee, pose.Foot, ColorPalette.EnemyRecess, 2.2f);
-            f.P.ArmorPlate(f.Batch, center + new Vector2(.1f, .35f), armorLength + .6f, width + .4f,
+            var armorCenter = f.Enemy.Definition.Id == "t4_aegis" ? f.Rank > 0 ? .50f : .24f : .32f;
+            var center = Vector2.Lerp(pose.Knee, pose.Foot, armorCenter);
+            var armorLength = MathF.Max(3.6f * detailScale, length * .85f);
+            var width = ((f.Enemy.Definition.Id == "t1_crawler" ? 4.8f : 5.4f) + f.Rank * 1.4f) * detailScale;
+            f.P.ArmorLine(f.Batch, pose.Knee, pose.Foot, ColorPalette.EnemyRecess, 2.2f * detailScale);
+            f.P.ArmorPlate(f.Batch, center + new Vector2(.1f, .35f) * detailScale,
+                armorLength + .6f * detailScale, width + .4f * detailScale,
                 angle, ColorPalette.EnemyRecess);
             f.P.ArmorPlate(f.Batch, center, armorLength, width, angle, f.Edge);
             var lampStart = center - direction * armorLength * .16f;
             var lampEnd = center + direction * armorLength * .22f;
-            f.P.ArmorLine(f.Batch, lampStart, lampEnd, ColorPalette.EnemyRecess, 1.6f);
-            f.P.ArmorLine(f.Batch, lampStart, lampEnd, f.Energy * f.Reactor, .9f);
-            f.P.ArmorLine(f.Batch, lampStart, Vector2.Lerp(lampStart, lampEnd, .6f), ColorPalette.EnemyHot * .8f, .4f);
-            f.P.ArmorLine(f.Batch, pose.Foot - direction * .9f, pose.Foot + direction * .45f,
+            f.P.ArmorLine(f.Batch, lampStart, lampEnd, ColorPalette.EnemyRecess, 1.6f * detailScale);
+            f.P.ArmorLine(f.Batch, lampStart, lampEnd, f.Energy * f.Reactor, .9f * detailScale);
+            f.P.ArmorLine(f.Batch, lampStart, Vector2.Lerp(lampStart, lampEnd, .6f), ColorPalette.EnemyHot * .8f, .4f * detailScale);
+            f.P.ArmorLine(f.Batch, pose.Foot - direction * (.9f * detailScale), pose.Foot + direction * (.45f * detailScale),
                 contact.Planted ? f.Shell : f.Armor, pose.ContactRadius * 1.05f);
         }
     }
 
     public static (float HalfLength, float HalfWidth, float LateralOffset) TrackGeometry(EnemyInstance enemy) =>
-        enemy.IsBoss ? (.28f, .08f, .59f) : enemy.IsElite ? (.26f, .105f, .59f) : (.29f, .11f, .59f);
+        enemy.IsBoss ? (.55f, .105f, .59f) : enemy.IsElite ? (.43f, .105f, .59f) : (.29f, .11f, .59f);
 
     private static void DrawTracks(Chassis f)
     {
@@ -131,9 +147,10 @@ public static partial class EnemyModelArt
             Pod(-track.HalfLength, y, track.HalfLength, y, ColorPalette.EnemyChassis, track.HalfWidth * 1.5f);
             Rail(-track.HalfLength, y + sign * (track.HalfWidth - .015f),
                 track.HalfLength, y + sign * (track.HalfWidth - .015f), f.Shell, .02f);
-            for (var tread = 0; tread < 6; tread++)
+            var treadCount = f.Rank == 2 ? 10 : f.Rank == 1 ? 8 : 6;
+            for (var tread = 0; tread < treadCount; tread++)
             {
-                var cleat = EnemyLocomotion.TrackCleat(tread, f.TravelDistance, f.Radius, track.HalfLength);
+                var cleat = EnemyLocomotion.TrackCleat(tread, f.TravelDistance, f.Radius, track.HalfLength, treadCount);
                 var x = cleat.Along;
                 var fade = cleat.Opacity;
                 Rail(x, y - sign * .06f, x, y + sign * (track.HalfWidth - .02f), f.Edge * fade, .037f);
@@ -151,29 +168,20 @@ public static partial class EnemyModelArt
         }
     }
 
-    private static void DrawOverdrivePanels(Chassis f)
-    {
-        for (var sign = -1; sign <= 1; sign += 2)
-        {
-            var spread = .28f + f.Opening * .12f;
-            Plate(f, new(-.05f, sign * spread), .46f, .10f, 0, f.Edge);
-            Window(f, new(-.23f, sign * (spread + .025f)), new(.14f, sign * (spread + .025f)), .035f);
-        }
-    }
-
     private readonly struct Chassis
     {
         public readonly SpriteBatch Batch;
         public readonly PrimitiveRenderer P;
         public readonly EnemyInstance Enemy;
         public readonly Vector2 Center, GroundCenter, BodyDisplacement, Forward, Side;
-        public readonly float Heading, Radius, Reactor, TravelDistance, Opening;
+        public readonly float Heading, Radius, Reactor, TravelDistance, Opening, Time, OverdriveElapsed;
         public readonly bool Reduced, AtRest;
         public readonly int Rank;
         public readonly Color Armor, Shell, Edge, Energy;
 
         public Chassis(SpriteBatch batch, PrimitiveRenderer p, EnemyInstance enemy, Vector2 center,
-            float heading, float time, bool reduced, float hit, float travelDistance, float overdriveOpening, bool atRest = false)
+            float heading, float time, bool reduced, float hit, float travelDistance, float overdriveOpening,
+            bool atRest = false, float overdriveElapsed = float.PositiveInfinity)
         {
             Batch = batch;
             P = p;
@@ -185,9 +193,11 @@ public static partial class EnemyModelArt
             Heading = heading;
             Radius = BodyRadius(enemy);
             TravelDistance = travelDistance;
+            Time = time;
+            OverdriveElapsed = overdriveElapsed;
             Reduced = reduced;
             Opening = enemy.BossPhaseActive ? reduced ? 1f : Math.Clamp(overdriveOpening, 0, 1) : 0;
-            Rank = enemy.IsBoss ? 2 : enemy.IsElite ? 1 : 0;
+            Rank = VisualRank(enemy);
             Forward = new(MathF.Cos(heading), MathF.Sin(heading));
             Side = new(-Forward.Y, Forward.X);
             Armor = Color.Lerp(ColorPalette.EnemyArmor, ColorPalette.Paper, Math.Clamp(hit, 0, 1));

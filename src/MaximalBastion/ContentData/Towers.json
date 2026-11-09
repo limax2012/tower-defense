@@ -6,7 +6,7 @@
     "apex": { "upgradeCost": 400, "damageMultiplier": 1.28, "attackSpeedMultiplier": 1.22, "rangeMultiplier": 1.06, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.12 },
     "tier2Doctrines": [
       { "id": "needle_cycler", "displayName": "Quick Feed", "shortLabel": "QUICK", "summary": "Favors fire rate over shot damage", "upgradeCost": 45, "damageMultiplier": 0.92, "attackSpeedMultiplier": 1.12, "rangeMultiplier": 1.0, "utilityMultiplier": 1.0 },
-      { "id": "needle_calibrator", "displayName": "Precision Feed", "shortLabel": "PRECISION", "summary": "Favors shot damage and range over fire rate", "upgradeCost": 45, "damageMultiplier": 1.10, "attackSpeedMultiplier": 0.91, "rangeMultiplier": 1.06, "utilityMultiplier": 1.03 }
+      { "id": "needle_calibrator", "displayName": "Heavy Needles", "shortLabel": "HEAVY", "summary": "Favors shot damage and range over fire rate", "upgradeCost": 45, "damageMultiplier": 1.10, "attackSpeedMultiplier": 0.91, "rangeMultiplier": 1.06, "utilityMultiplier": 1.03 }
     ],
     "levels": [
       { "range": 125, "damage": 8, "attacksPerSecond": 2.0, "projectileSpeed": 500, "upgradeCost": 45 },
@@ -30,7 +30,7 @@
     "protocol": { "displayName": "Razorstorm", "summary": "Fires a free fan, then boosts shard rate and damage", "durationSeconds": 5, "cooldownSeconds": 18, "attackSpeedBonus": 0.75, "damageBonus": 0.2, "fireOnActivation": true, "autoTriggerMode": "coverage", "autoTriggerCount": 5 },
     "apex": { "upgradeCost": 650, "damageMultiplier": 1.25, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.15, "utilityMultiplier": 1.15 },
     "tier2Doctrines": [
-      { "id": "shard_scatter", "displayName": "Wide Scatter", "shortLabel": "WIDE", "summary": "Favors shard count and wider spread", "upgradeCost": 90, "damageMultiplier": 0.90, "attackSpeedMultiplier": 0.94, "rangeMultiplier": 0.96, "utilityMultiplier": 0.92, "pelletCountBonus": 1 },
+      { "id": "shard_scatter", "displayName": "Shard Swarm", "shortLabel": "SWARM", "summary": "Favors shard count and group coverage", "upgradeCost": 90, "damageMultiplier": 0.90, "attackSpeedMultiplier": 0.94, "rangeMultiplier": 0.96, "utilityMultiplier": 0.92, "pelletCountBonus": 1 },
       { "id": "shard_temper", "displayName": "Focused Shards", "shortLabel": "FOCUS", "summary": "Favors damage, range, and armor pierce", "upgradeCost": 90, "damageMultiplier": 1.05, "attackSpeedMultiplier": 0.94, "rangeMultiplier": 1.04, "utilityMultiplier": 1.08 }
     ],
     "levels": [
@@ -155,7 +155,7 @@
     "protocol": { "displayName": "Stormcall", "summary": "Discharges a stun pulse and accelerates arcs", "durationSeconds": 5.5, "cooldownSeconds": 18, "attackSpeedBonus": 0.6, "damageBonus": 0.2, "autoTriggerMode": "protocol_area", "autoTriggerCount": 4, "burstRadius": 180, "burstDamage": 18, "burstStatus": "Stun", "burstStatusMagnitude": 1, "burstStatusDuration": 0.55 },
     "apex": { "upgradeCost": 1450, "damageMultiplier": 1.24, "attackSpeedMultiplier": 1.15, "rangeMultiplier": 1.08, "projectileSpeedMultiplier": 1.0, "utilityMultiplier": 1.12 },
     "tier2Doctrines": [
-      { "id": "arc_fork", "displayName": "Forked Arcs", "shortLabel": "FORK", "summary": "Adds two chain arcs for dense groups", "upgradeCost": 220, "damageMultiplier": 0.82, "attackSpeedMultiplier": 1.06, "rangeMultiplier": 0.98, "utilityMultiplier": 0.96, "chainCountBonus": 1 },
+      { "id": "arc_fork", "displayName": "Arc Cascade", "shortLabel": "CASCADE", "summary": "Adds two chain arcs for dense groups", "upgradeCost": 220, "damageMultiplier": 0.82, "attackSpeedMultiplier": 1.06, "rangeMultiplier": 0.98, "utilityMultiplier": 0.96, "chainCountBonus": 1 },
       { "id": "arc_capacitor", "displayName": "Charged Arc", "shortLabel": "CHARGE", "summary": "Favors damage and longer chain reach", "upgradeCost": 220, "damageMultiplier": 1.07, "attackSpeedMultiplier": 0.92, "rangeMultiplier": 1.04, "utilityMultiplier": 1.12 }
     ],
     "levels": [
@@ -219,7 +219,7 @@
         "level": { "range": 255, "damage": 17, "attacksPerSecond": 4.0, "armorPierce": 12, "exposePercent": 0.25, "exposeDuration": 2.5, "ignoreShield": true, "upgradeCost": null }
       },
       {
-        "id": "spectrum_split", "displayName": "Split Beam", "shortLabel": "SPLIT", "summary": "Beam branches to two nearby enemies", "upgradeCost": 420,
+        "id": "spectrum_split", "displayName": "Chain Beam", "shortLabel": "CHAIN", "summary": "Beam chains through two additional enemies", "upgradeCost": 420,
         "level": { "range": 235, "damage": 9, "attacksPerSecond": 4.8, "armorPierce": 5, "exposePercent": 0.12, "exposeDuration": 1.8, "chainCount": 2, "chainDamage": 8, "chainRange": 90, "upgradeCost": null }
       }
     ]
@@ -244,7 +244,7 @@
         "level": { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 180, "auraAttackSpeedBonus": 0.45, "auraRangeBonus": 0.12, "upgradeCost": null }
       },
       {
-        "id": "horizon_beacon", "displayName": "Extended Field", "shortLabel": "EXTENDED", "summary": "Maximum field and tower-range bonus", "upgradeCost": 255,
+        "id": "horizon_beacon", "displayName": "Range Relay", "shortLabel": "RANGE", "summary": "Maximum field and tower-range bonus", "upgradeCost": 255,
         "level": { "range": 0, "damage": 0, "attacksPerSecond": 0, "auraRange": 215, "auraAttackSpeedBonus": 0.22, "auraRangeBonus": 0.35, "upgradeCost": null }
       }
     ]

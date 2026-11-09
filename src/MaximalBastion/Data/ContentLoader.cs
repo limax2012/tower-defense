@@ -1,6 +1,7 @@
 using System.Text.Json;
 using MaximalBastion.Core;
 using MaximalBastion.Effects;
+using MaximalBastion.Enemies;
 using Microsoft.Xna.Framework;
 
 namespace MaximalBastion.Data;
@@ -352,7 +353,8 @@ public static class DataValidator
             {
                 if (!enemyIds.Contains(group.EnemyId) || group.Count <= 0 || group.SpawnInterval <= 0 || group.DelayBefore < 0)
                     throw new InvalidDataException($"Invalid wave group in wave {wave.Number}: {group.EnemyId}");
-                if (!Enum.TryParse<EnemyRank>(group.Rank, true, out _))
+                if (!Enum.TryParse<EnemyRank>(group.Rank, true, out var rank) ||
+                    !EnemyRoster.SupportsRank(group.EnemyId, rank))
                     throw new InvalidDataException($"Invalid enemy rank in wave {wave.Number}: {group.Rank}");
             }
         }

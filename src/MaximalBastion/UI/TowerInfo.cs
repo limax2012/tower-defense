@@ -48,8 +48,7 @@ public static class TowerInfo
             ? stat.Value
             : $"{stat.PreviousValue} -> {stat.Value}";
 
-    public static string ComparisonStatLabelText(TowerStatDisplay stat) =>
-        stat.Label == "SLOW" ? $"SLOW CAP {EnemyInstance.MaximumSlowFraction:P0}" : stat.Label;
+    public static string ComparisonStatLabelText(TowerStatDisplay stat) => stat.Label;
 
     public static IReadOnlyList<TowerStatDisplay> ComparisonStats(
         TowerDefinition definition,
@@ -278,7 +277,7 @@ public static class TowerInfo
         {
             "single_projectile" => DirectProjectileSummary(level),
             "pellet_burst" => $"{level.PelletCount} projectiles; spread {level.PelletSpreadDegrees:0.#}deg; pierce {level.ArmorPierce:0.#}",
-            "slow_projectile" => $"Area {level.SplashRadius:0}; slow {EnemyInstance.EffectiveSlowFraction(level.SlowPercent):P0}/{level.SlowDuration:0.#}s; cap {EnemyInstance.MaximumSlowFraction:P0}",
+            "slow_projectile" => $"Area {level.SplashRadius:0}; slow {EnemyInstance.EffectiveSlowFraction(level.SlowPercent):P0}/{level.SlowDuration:0.#}s",
             "burn_projectile" => level.SplashRadius > 0
                 ? $"Burn {level.BurnDamagePerSecond:0.#}/s for {level.BurnDuration:0.#}s; area {level.SplashRadius:0}; armor -2"
                 : $"Burn {level.BurnDamagePerSecond:0.#}/s for {level.BurnDuration:0.#}s; armor -2",
@@ -329,7 +328,7 @@ public static class TowerInfo
         "single_projectile" when definition.Id == "watchtower" => "Limit: slow fire and high cost",
         "single_projectile" => "Limit: armor reduces each small hit",
         "pellet_burst" => "Limit: short range; weak into armor",
-        "slow_projectile" => $"Limit: low damage; slow caps at {EnemyInstance.MaximumSlowFraction:P0}",
+        "slow_projectile" => "Limit: low direct damage",
         "burn_projectile" => "Limit: needs time; armor checks each tick",
         "armor_projectile" => "Limit: ordinary against light targets",
         "chain" => "Limit: weak against isolated enemies",
@@ -402,7 +401,7 @@ public static class TowerInfo
         var currentSlow = EnemyInstance.EffectiveSlowFraction(current.SlowPercent);
         var nextSlow = EnemyInstance.EffectiveSlowFraction(next.SlowPercent);
         if (Changed(currentSlow, nextSlow) || Changed(current.SlowDuration, next.SlowDuration))
-            changes["SLOW"] = $"SLOW {currentSlow:P0} {current.SlowDuration:0.#}s>{nextSlow:P0} {next.SlowDuration:0.#}s (CAP {EnemyInstance.MaximumSlowFraction:P0})";
+            changes["SLOW"] = $"SLOW {currentSlow:P0} {current.SlowDuration:0.#}s>{nextSlow:P0} {next.SlowDuration:0.#}s";
         if (Changed(current.BurnDamagePerSecond, next.BurnDamagePerSecond) || Changed(current.BurnDuration, next.BurnDuration))
             changes["BURN"] = $"BURN {current.BurnDamagePerSecond * damageMultiplier:0.#}/s {current.BurnDuration:0.#}s>{next.BurnDamagePerSecond * damageMultiplier:0.#}/s {next.BurnDuration:0.#}s";
         AddFloat("PIERCE", "PIERCE", current.ArmorPierce + powerBuff.ArmorPierceBonus,

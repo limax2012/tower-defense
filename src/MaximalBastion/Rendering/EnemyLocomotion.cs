@@ -14,6 +14,7 @@ public sealed class EnemyLocomotionPath
     private float _lastDistance = float.NaN;
     private float _lastRadius;
     private bool _lastTracked;
+    private bool _lastHeavyTracked;
     private Vector2 _lastPosition, _lastForward;
     public MapRuntime Map { get; }
 
@@ -35,7 +36,8 @@ public sealed class EnemyLocomotionPath
             var angle = MathF.Atan2(first.X * last.Y - first.Y * last.X, Vector2.Dot(first, last));
             if (MathF.Abs(angle) < .0001f) continue;
             corners.Add(new(distance, points[index].ToVector2(), first, last,
-                MathF.Min(incoming.Length(), outgoing.Length()) * .48f, new TurnShape(angle), new TurnShape(angle, true)));
+                MathF.Min(incoming.Length(), outgoing.Length()) * .48f,
+                new TurnShape(angle), new TurnShape(angle, true), new TurnShape(angle, true, true)));
         }
         _corners = corners.ToArray();
     }
@@ -49,42 +51,43 @@ public sealed class EnemyLocomotionPath
         return path.GetPosition(distance);
     }
 
-    public Vector2 VisualPosition(float distance, float radius, bool tracked = false)
+    public Vector2 VisualPosition(float distance, float radius, bool tracked = false, bool heavyTracked = false)
     {
-        SampleTurn(distance, radius, tracked, out var position, out _);
+        SampleTurn(distance, radius, tracked, heavyTracked, out var position, out _);
         return position;
     }
 
-    public Vector2 Forward(float distance, float radius, bool tracked = false)
+    public Vector2 Forward(float distance, float radius, bool tracked = false, bool heavyTracked = false)
     {
-        SampleTurn(distance, radius, tracked, out _, out var forward);
+        SampleTurn(distance, radius, tracked, heavyTracked, out _, out var forward);
         return forward;
     }
 
-    private void SampleTurn(float distance, float radius, bool tracked, out Vector2 position, out Vector2 forward)
+    private void SampleTurn(float distance, float radius, bool tracked, bool heavyTracked, out Vector2 position, out Vector2 forward)
     {
-        if (distance == _lastDistance && radius == _lastRadius && tracked == _lastTracked)
+        if (distance == _lastDistance && radius == _lastRadius && tracked == _lastTracked && heavyTracked == _lastHeavyTracked)
         {
             position = _lastPosition;
             forward = _lastForward;
             return;
         }
-        ComputeTurn(distance, radius, tracked, out position, out forward);
+        ComputeTurn(distance, radius, tracked, heavyTracked, out position, out forward);
         _lastDistance = distance;
         _lastRadius = radius;
         _lastTracked = tracked;
+        _lastHeavyTracked = heavyTracked;
         _lastPosition = position;
         _lastForward = forward;
     }
 
-    private void ComputeTurn(float distance, float radius, bool tracked, out Vector2 position, out Vector2 forward)
+    private void ComputeTurn(float distance, float radius, bool tracked, bool heavyTracked, out Vector2 position, out Vector2 forward)
     {
         foreach (var corner in _corners)
         {
             var window = MathF.Min(radius * 3.8f, corner.MaximumWindow);
             var delta = distance - corner.Distance;
             if (MathF.Abs(delta) >= window) continue;
-            var shape = tracked ? corner.TrackedShape : corner.Shape;
+            var shape = heavyTracked ? corner.HeavyTrackedShape : tracked ? corner.TrackedShape : corner.Shape;
             var reach = MathF.Min(radius * 1.8f, window);
             var length = shape.Length * reach;
             var deficit = reach * 2 - length;
@@ -152,7 +155,7 @@ public sealed class EnemyLocomotionPath
         private readonly float[] _arcPositions = new float[Steps + 1];
         public float Length { get; }
 
-        public TurnShape(float angle, bool tracked = false)
+        public TurnShape(float angle, bool tracked = false, bool heavyTracked = false)
         {
             _angle = angle;
             _directions[0] = Vector2.UnitX;
@@ -165,7 +168,7 @@ public sealed class EnemyLocomotionPath
             var end = Vector2.UnitX + _directions[^1];
             var steeringLength = end.Length() / _positions[^1].Length();
             var outward = Vector2.UnitX - _directions[^1];
-            var apexClearance = tracked ? .03f : .06f;
+            var apexClearance = heavyTracked ? -.02f : tracked ? .03f : .06f;
             var alongTurn = (Vector2.UnitX + _directions[^1]) * (tracked ? .02f : 0);
             for (var index = 0; index <= Steps; index++)
             {
@@ -176,6 +179,14 @@ public sealed class EnemyLocomotionPath
                 var sineFourth = sineSquared * sineSquared;
                 var clearance = apexClearance * sineFourth * sineSquared;
                 var clearanceRate = MathHelper.Pi * 6 * apexClearance * sineFourth * sine * cosine;
+                if (heavyTracked)
+                {
+                    // Long tracks need extra inside clearance while entering and leaving a bend.
+                    const float shoulderClearance = .46f;
+                    clearance -= shoulderClearance * sineFourth * sineSquared * cosine * cosine;
+                    clearanceRate -= MathHelper.Pi * shoulderClearance *
+                        (6 * sineFourth * sine * cosine * cosine * cosine - 2 * sineFourth * sineSquared * sine * cosine);
+                }
                 // The chassis stays near the lane center while its facing eases through the planned turn.
                 _positions[index] = _positions[index] * steeringLength + outward * clearance + alongTurn * (sineFourth * cosine);
                 _tangents[index] = _directions[index] * steeringLength + outward * clearanceRate +
@@ -218,10 +229,10 @@ public sealed class EnemyLocomotionPath
         }
     }
 
-    public Vector2 ConstrainContact(Vector2 point, float padRadius)
+    public Vector2 ConstrainContact(Vector2 point, float padRadius, float edgeInset = 3f)
     {
         var projection = Map.Path.Project(point);
-        var limit = Map.Definition.PathWidth * .5f - 3f - padRadius;
+        var limit = Map.Definition.PathWidth * .5f - edgeInset - padRadius;
         if (projection.DistanceToPath <= limit) return point;
         var constrained = projection.Position + (point - projection.Position) * (limit / projection.DistanceToPath);
         foreach (var corner in _corners)
@@ -309,7 +320,7 @@ public sealed class EnemyLocomotionPath
     }
 
     private readonly record struct Corner(float Distance, Vector2 Position, Vector2 Incoming,
-        Vector2 Outgoing, float MaximumWindow, TurnShape Shape, TurnShape TrackedShape);
+        Vector2 Outgoing, float MaximumWindow, TurnShape Shape, TurnShape TrackedShape, TurnShape HeavyTrackedShape);
 }
 
 public readonly record struct EnemyGroundContact(EnemyLegPose Pose, Vector2 GroundPoint, bool Planted, float Lift,
@@ -330,6 +341,7 @@ public static class EnemyLocomotion
         (UsesTracks(enemy) ? .60f : enemy.Definition.Id == "t2_runner" ? 1.45f : 1);
 
     public static bool UsesTracks(EnemyInstance enemy) => enemy.Definition.Id == "t5_regenerator";
+    public static bool UsesHeavyTracks(EnemyInstance enemy) => UsesTracks(enemy) && enemy.IsBoss;
 
     public static ReadOnlySpan<(int Side, int Leg)> ContactSlots(EnemyInstance enemy) => enemy.Definition.Id switch
     {
@@ -348,11 +360,12 @@ public static class EnemyLocomotion
     public static float MaximumReach(EnemyInstance enemy)
     {
         var radius = EnemyModelArt.BodyRadius(enemy);
-        var rank = enemy.IsBoss ? 2 : enemy.IsElite ? 1 : 0;
-        var along = radius * (enemy.Definition.Id == "t1_crawler" ? .60f : enemy.Definition.Id == "t3_brute" ? .61f : .90f) +
+        var rank = EnemyModelArt.VisualRank(enemy);
+        var along = radius * (enemy.Definition.Id == "t1_crawler" ? rank > 0 ? .78f : .60f :
+            enemy.Definition.Id == "t3_brute" ? rank > 0 ? .74f : .61f : .90f) +
             StrideDistance(enemy) * StanceDuration(enemy) * .5f;
-        var spread = enemy.Definition.Id == "t1_crawler" ? radius * .83f :
-            enemy.Definition.Id == "t3_brute" ? radius * .86f : 22.8f + rank * .15f;
+        var spread = enemy.Definition.Id == "t1_crawler" ? radius * (rank > 0 ? 1.02f : .83f) :
+            enemy.Definition.Id == "t3_brute" ? radius * (rank > 0 ? .98f : .86f) : rank > 0 ? 25.3f : 22.8f * EnemyModelArt.StandardAegisScale;
         return MathF.Sqrt(along * along + spread * spread) + 4.5f;
     }
 
@@ -368,18 +381,18 @@ public static class EnemyLocomotion
         var radius = EnemyModelArt.BodyRadius(enemy);
         var crawler = enemy.Definition.Id == "t1_crawler";
         var brute = enemy.Definition.Id == "t3_brute";
-        var rank = enemy.IsBoss ? 2 : enemy.IsElite ? 1 : 0;
+        var rank = EnemyModelArt.VisualRank(enemy);
         var forward = new Vector2(MathF.Cos(heading), MathF.Sin(heading));
         var lateral = new Vector2(-forward.Y, forward.X);
-        var along = crawler || brute ? legIndex * radius * (crawler ? .60f : .61f) :
+        var along = crawler || brute ? legIndex * radius * (crawler ? rank > 0 ? .78f : .60f : rank > 0 ? .74f : .61f) :
             Math.Sign(legIndex) * radius * (Math.Abs(legIndex) == 3 ? .90f : .34f);
-        var spread = crawler ? radius * .83f : brute ? radius * .86f : 22.8f + rank * .15f;
+        var spread = crawler ? radius * (rank > 0 ? 1.02f : .83f) : brute ? radius * (rank > 0 ? .98f : .86f) : rank > 0 ? 25.3f : 22.8f * EnemyModelArt.StandardAegisScale;
         var rootAlong = legIndex * radius * (crawler ? .46f : brute ? .48f : .19f);
         var rootSpread = crawler ? .38f : brute ? .48f : .47f;
         var root = center + forward * rootAlong + lateral * (side * radius * rootSpread);
         var foot = center + forward * along + lateral * (side * spread);
         var knee = Vector2.Lerp(root, foot, .53f) - forward * (Math.Sign(legIndex) * radius * .02f);
-        var pad = (crawler ? 1.15f : brute ? 1.35f : 1.1f) + rank * .10f;
+        var pad = ((crawler ? 1.15f : brute ? 1.35f : 1.1f) + rank * .10f) * EnemyModelArt.LimbDetailScale(enemy);
         var pose = new EnemyLegPose(root, knee, foot, pad);
         return new(pose, foot, true, 0, 0);
     }
@@ -410,11 +423,11 @@ public static class EnemyLocomotion
         var brute = enemy.Definition.Id == "t3_brute";
         var forward = new Vector2(MathF.Cos(heading), MathF.Sin(heading));
         var lateral = new Vector2(-forward.Y, forward.X);
-        var rank = enemy.IsBoss ? 2 : enemy.IsElite ? 1 : 0;
-        var along = crawler || brute ? legIndex * radius * (crawler ? .60f : .61f) :
+        var rank = EnemyModelArt.VisualRank(enemy);
+        var along = crawler || brute ? legIndex * radius * (crawler ? rank > 0 ? .78f : .60f : rank > 0 ? .74f : .61f) :
             Math.Sign(legIndex) * radius * (Math.Abs(legIndex) == 3 ? .90f : .34f);
         var rootAlong = legIndex * radius * (crawler ? .46f : brute ? .48f : .19f);
-        var spread = crawler ? radius * .83f : brute ? radius * .86f : 22.8f + rank * .15f;
+        var spread = crawler ? radius * (rank > 0 ? 1.02f : .83f) : brute ? radius * (rank > 0 ? .98f : .86f) : rank > 0 ? 25.3f : 22.8f * EnemyModelArt.StandardAegisScale;
         var rootSpread = crawler ? .38f : brute ? .48f : .47f;
         var stride = StrideDistance(enemy);
         var stance = StanceDuration(enemy);
@@ -428,7 +441,8 @@ public static class EnemyLocomotion
         var progress = phase - cycle;
         var planted = progress < stance;
         var root = center + forward * rootAlong + lateral * (side * radius * rootSpread);
-        var pad = (crawler ? 1.15f : brute ? 1.35f : 1.1f) + rank * .10f;
+        var pad = ((crawler ? 1.15f : brute ? 1.35f : 1.1f) + rank * .10f) * EnemyModelArt.LimbDetailScale(enemy);
+        var edgeInset = rank > 0 ? -1f : 3f;
 
         Vector2 Contact(float contactPhase)
         {
@@ -437,7 +451,7 @@ public static class EnemyLocomotion
             var contactSide = new Vector2(-contactForward.Y, contactForward.X);
             var contactCenter = path?.VisualPosition(distance, radius) ?? center + forward * (distance - travelDistance);
             var point = contactCenter + contactForward * along + contactSide * (side * spread);
-            return path?.ConstrainContact(point, pad) ?? point;
+            return path?.ConstrainContact(point, pad, edgeInset) ?? point;
         }
 
         var contactPhase = cycle - offset + stance * .5f;
@@ -449,15 +463,15 @@ public static class EnemyLocomotion
             // A broad, steady swing avoids a fast mid-stride snap while easing both contact joins.
             var eased = EnemyLocomotionPath.EasedIntegral(swing, .25f);
             ground = Vector2.Lerp(ground, Contact(contactPhase + 1), eased);
-            if (path is not null) ground = path.ConstrainContact(ground, pad);
+            if (path is not null) ground = path.ConstrainContact(ground, pad, edgeInset);
             var arc = MathF.Sin(swing * MathHelper.Pi);
             lift = arc * arc;
         }
         var foot = Vector2.Lerp(ground, root, lift * .055f);
-        if (!planted && path is not null) foot = path.ConstrainContact(foot, pad);
+        if (!planted && path is not null) foot = path.ConstrainContact(foot, pad, edgeInset);
         var knee = Vector2.Lerp(root, foot, .53f) - forward * (Math.Sign(legIndex) * radius * .02f);
         var pose = new EnemyLegPose(root, knee, foot, pad);
-        if (path is not null) pose = pose with { Knee = path.ConstrainContact(pose.Knee, pad) };
+        if (path is not null) pose = pose with { Knee = path.ConstrainContact(pose.Knee, pad, edgeInset) };
         return new(pose, ground, planted, lift, (int)cycle);
     }
 }

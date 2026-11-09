@@ -1,4 +1,5 @@
 using MaximalBastion.Combat;
+using MaximalBastion.Core;
 using MaximalBastion.Data;
 using MaximalBastion.Enemies;
 using MaximalBastion.Multiplayer;
@@ -15,10 +16,9 @@ public sealed partial class VisualVerificationGame
     {
         AssertEnemySelection(content, font, display, assertions, scenes);
         AssertBossExhaust(content, font, display, assertions, scenes);
-        var ranks = new[] { "Standard", "Elite", "Boss" };
         var families = content.Enemies.Values.ToArray();
-        var samples = families.SelectMany(definition => ranks.Select(rank =>
-            EnemyRankSample(content, definition.Id, rank) with { Heading = -MathHelper.PiOver2 })).ToArray();
+        var samples = families.SelectMany(definition => EnemyRoster.RanksFor(definition.Id).Select(rank =>
+            EnemyRankSample(content, definition.Id, rank.ToString()) with { Heading = -MathHelper.PiOver2 })).ToArray();
         var monochrome = new List<Texture2D>();
         var color = new List<Texture2D>();
         try
@@ -49,16 +49,19 @@ public sealed partial class VisualVerificationGame
                 Require(checksum == SessionChecksum.Compute(sample.Session, 0),
                     $"{sample.Enemy.Definition.Id} {sample.Enemy.Rank}: grayscale construction leaves synchronized state untouched.", assertions);
             }
-            for (var family = 0; family < families.Length; family++)
-            for (var rank = 1; rank < ranks.Length; rank++)
+            foreach (var family in samples.GroupBy(sample => sample.Enemy.Definition.Id))
             {
-                var previous = samples[family * 3 + rank - 1];
-                var current = samples[family * 3 + rank];
-                var first = EnemyFamilyModelSilhouette(previous.Enemy, previous.Heading);
-                var second = EnemyFamilyModelSilhouette(current.Enemy, current.Heading);
-                var difference = SilhouetteDifference(first, second);
-                Require(difference >= .04f,
-                    $"{families[family].Id}: unshielded {ranks[rank]} differs across {difference:P1} of the complete solid silhouette from {ranks[rank - 1]}, independently of color.", assertions);
+                var ranked = family.ToArray();
+                for (var rank = 1; rank < ranked.Length; rank++)
+                {
+                    var previous = ranked[rank - 1];
+                    var current = ranked[rank];
+                    var first = EnemyFamilyModelSilhouette(previous.Enemy, previous.Heading);
+                    var second = EnemyFamilyModelSilhouette(current.Enemy, current.Heading);
+                    var difference = SilhouetteDifference(first, second);
+                    Require(difference >= .04f,
+                        $"{family.Key}: unshielded {current.Enemy.Rank} differs across {difference:P1} of the complete solid silhouette from {previous.Enemy.Rank}, independently of color.", assertions);
+                }
             }
             scenes.Add(CaptureUnshieldedGrayscaleRanks(samples, monochrome, font));
             scenes.Add(CaptureUnshieldedGrayscaleRanks(samples, color, font,
@@ -87,8 +90,9 @@ public sealed partial class VisualVerificationGame
     {
         const int width = 1120;
         const int top = 110;
-        const int rowHeight = 126;
-        using var target = new RenderTarget2D(GraphicsDevice, width, top + samples.Count / 3 * rowHeight + 16,
+        const int rowHeight = 184;
+        var families = samples.Select(sample => sample.Enemy.Definition.Id).Distinct().ToArray();
+        using var target = new RenderTarget2D(GraphicsDevice, width, top + families.Length * rowHeight + 16,
             false, SurfaceFormat.Color, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
         GraphicsDevice.SetRenderTarget(target);
         GraphicsDevice.Clear(ColorPalette.Canvas);
@@ -98,17 +102,21 @@ public sealed partial class VisualVerificationGame
             new Vector2(24, 52), .55f);
         for (var rank = 0; rank < 3; rank++)
             StatusLabel(font, new[] { "STANDARD", "ELITE", "BOSS" }[rank], new Vector2(210 + rank * 296, 83), .57f);
-        for (var family = 0; family < samples.Count / 3; family++)
+        for (var family = 0; family < families.Length; family++)
         {
             var y = top + family * rowHeight;
             _primitives.FillRect(_batch, new Rectangle(12, y, width - 24, rowHeight - 5), ColorPalette.Panel);
-            StatusLabel(font, samples[family * 3].Enemy.Definition.DisplayName.ToUpperInvariant(),
-                new Vector2(27, y + 49), .66f);
+            var sample = samples.First(sample => sample.Enemy.Definition.Id == families[family]);
+            StatusLabel(font, sample.Enemy.Definition.DisplayName.ToUpperInvariant(),
+                new Vector2(27, y + rowHeight * .5f - 12), .66f);
         }
         for (var index = 0; index < samples.Count; index++)
         {
-            var x = 207 + index % 3 * 296;
-            var y = top + index / 3 * rowHeight + 61;
+            var sample = samples[index];
+            var rank = sample.Enemy.Rank switch { EnemyRank.Elite => 1, EnemyRank.Boss => 2, _ => 0 };
+            var family = Array.IndexOf(families, sample.Enemy.Definition.Id);
+            var x = 207 + rank * 296;
+            var y = top + family * rowHeight + rowHeight * .5f;
             foreach (var (offset, scale) in new[] { (45f, 2f), (160f, 1f), (230f, .65f) })
                 _batch.Draw(textures[index], new Vector2(x + offset, y), null, Color.White,
                     0, new Vector2(64), scale, SpriteEffects.None, 0);
@@ -125,7 +133,8 @@ public sealed partial class VisualVerificationGame
         var labels = new List<string>();
         try
         {
-            foreach (var definition in content.Enemies.Values)
+            foreach (var definition in content.Enemies.Values.Where(definition =>
+                         EnemyRoster.SupportsRank(definition.Id, EnemyRank.Boss)))
             {
                 var sample = EnemyRankSample(content, definition.Id, "Boss");
                 var enemy = sample.Enemy;
@@ -168,12 +177,12 @@ public sealed partial class VisualVerificationGame
                         MathF.Abs(timeline.Feedback(enemy, 1.175f).OverdriveOpening - .5f) < .001f &&
                         timeline.Feedback(enemy, 1.35f).OverdriveOpening == 1 &&
                         timeline.Feedback(enemy, 1.65f).OverdriveTransition == 0,
-                    $"{definition.Id}: the local opening eases over 350ms and the command release expires after 650ms.", assertions);
+                    $"{definition.Id}: the local onset envelope eases over 350ms and the command release expires after 650ms.", assertions);
                 if (reduced)
                     Require(ReadabilityModelPixels(sample, 1, true, timeline.Feedback(enemy, 1), bodyOnly: true)
                             .SequenceEqual(ReadabilityModelPixels(sample, 1.35f, true,
                                 timeline.Feedback(enemy, 1.35f), bodyOnly: true)),
-                        $"{definition.Id}: Reduced Effects retains an open, steady Boss chassis throughout the phase transition.", assertions);
+                        $"{definition.Id}: Reduced Effects retains a steady Boss chassis throughout the phase transition.", assertions);
                 Require(checksum == SessionChecksum.Compute(sample.Session, 0),
                     $"{definition.Id}: overdrive frame sampling leaves synchronized state untouched in {(reduced ? "Reduced" : "Full")} effects.", assertions);
             }

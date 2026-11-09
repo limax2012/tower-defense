@@ -1695,6 +1695,11 @@ class _BastionHomeState extends State<BastionHome> with WidgetsBindingObserver {
     if (_enemyId.isEmpty && enemies.isNotEmpty) {
       _enemyId = enemies.first['id'].toString();
     }
+    final rankOptions = object(engine.catalog['enemyRanks'])[_enemyId];
+    final ranks = rankOptions is List
+        ? rankOptions.map((rank) => rank.toString()).toList()
+        : ['Standard', 'Elite'];
+    if (!ranks.contains(_rank)) _rank = ranks.last;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1705,9 +1710,10 @@ class _BastionHomeState extends State<BastionHome> with WidgetsBindingObserver {
           (value) => setState(() => _enemyId = value),
         ),
         DropdownButtonFormField<String>(
+          key: ValueKey('sandbox-rank-$_enemyId'),
           initialValue: _rank,
           decoration: const InputDecoration(labelText: 'Rank'),
-          items: ['Standard', 'Elite', 'Boss']
+          items: ranks
               .map((rank) => DropdownMenuItem(value: rank, child: Text(rank)))
               .toList(),
           onChanged: (value) => setState(() => _rank = value!),

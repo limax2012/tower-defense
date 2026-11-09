@@ -48,7 +48,7 @@ public sealed partial class VisualVerificationGame
 
                 var active = BossExhaustPixels(sample, 2.2f, false, timeline.Feedback(enemy, 2.2f));
                 var next = BossExhaustPixels(sample, 2.28f, false, timeline.Feedback(enemy, 2.28f));
-                var rear = BossExhaustRegion(sample.Heading);
+                var rear = BossExhaustRegion(enemy, sample.Heading);
                 Require(rear.All(index => before[index].A == 0),
                     $"Boss exhaust {labels[direction]}: the rear outlets emit no flow above half health.", assertions);
                 Require(rear.Count(index => active[index].A > 2) >= 12 &&
@@ -60,11 +60,12 @@ public sealed partial class VisualVerificationGame
                 var reduced = BossExhaustPixels(sample, 2.2f, true, timeline.Feedback(enemy, 2.2f));
                 Require(reduced.SequenceEqual(BossExhaustPixels(sample, 2.8f, true, timeline.Feedback(enemy, 2.8f))),
                     $"Boss exhaust {labels[direction]}: Reduced Effects holds a steady chassis and exhaust presentation.", assertions);
+                AssertBossIgnitionAndLamps(sample, before, labels[direction], assertions);
                 Require(checksum == SessionChecksum.Compute(sample.Session, 915),
                     $"Boss exhaust {labels[direction]}: time sampling, heading changes, reduced effects, and resting artwork preserve synchronized state.", assertions);
             }
-            scenes.Add(CaptureReadabilityTransitionAtlas(rows, labels, font, "BASTION CORE / EXHAUST SHUTTERS",
-                ["51% HEALTH", "+50ms / CLOSED", "+200ms / OPENING", "+400ms / FLOW", "+1.2s / STEADY"],
+            scenes.Add(CaptureReadabilityTransitionAtlas(rows, labels, font, "BASTION CORE / REACTOR IGNITION",
+                ["51% HEALTH", "+50ms / IGNITION", "+200ms / SWEEP", "+400ms / DRIVE", "+1.2s / ACTIVE"],
                 "boss-exhaust-headings.png"));
         }
         finally { foreach (var row in rows) foreach (var texture in row) texture.Dispose(); }
@@ -95,6 +96,66 @@ public sealed partial class VisualVerificationGame
         finally { _renderer = originalRenderer; }
     }
 
+    private void AssertBossIgnitionAndLamps(StatusReviewEnemy sample, Color[] before, string heading,
+        ICollection<string> assertions)
+    {
+        const float clock = .9f;
+        var settledFeedback = new EnemyVisualFeedback(1, 0, 0, 0, OverdriveElapsed: 2.4f);
+        var settled = BossExhaustPixels(sample, clock, false, settledFeedback);
+        var ignition = BossExhaustPixels(sample, clock, false, settledFeedback with { OverdriveElapsed = .10f });
+        var core = Enumerable.Range(0, 128 * 128).Where(index =>
+            Vector2.DistanceSquared(new(index % 128 + .5f, index / 128 + .5f), new(64)) < 81).ToArray();
+        Require(core.Average(index => BossCoreLuminance(settled[index])) >
+                core.Average(index => BossCoreLuminance(before[index])) + 10,
+            $"Boss ignition {heading}: the reactor remains visibly brighter after the activation pulse.", assertions);
+        Require(core.Average(index => BossCoreLuminance(ignition[index])) >
+                core.Average(index => BossCoreLuminance(settled[index])) + 8,
+            $"Boss ignition {heading}: the brief ignition is distinct from the sustained hot core.", assertions);
+
+        var first = BossExhaustPixels(sample, clock, false, settledFeedback with { OverdriveElapsed = .8f });
+        var second = BossExhaustPixels(sample, clock, false, settledFeedback with { OverdriveElapsed = 1.13f });
+        var forward = new Vector2(MathF.Cos(sample.Heading), MathF.Sin(sample.Heading));
+        var lateral = new Vector2(-forward.Y, forward.X);
+        var lampChanges = new int[2];
+        var lampEnergy = new double[2];
+        var gapChanges = 0;
+        var gapSamples = 0;
+        for (var index = 0; index < first.Length; index++)
+        {
+            var offset = new Vector2(index % 128 + .5f, index / 128 + .5f) - new Vector2(64);
+            var along = Vector2.Dot(offset, forward);
+            var across = Vector2.Dot(offset, lateral);
+            if (MathF.Abs(MathF.Abs(across) - 25) > 1.5f || MathF.Abs(along) > 23.5f) continue;
+            var module = Math.Clamp(MathF.Round(along / 10), -2, 2) * 10;
+            var local = MathF.Abs(along - module);
+            if (local <= 3.5f)
+            {
+                var side = across < 0 ? 0 : 1;
+                if (first[index] != second[index]) lampChanges[side]++;
+                lampEnergy[side] += Math.Abs(BossCoreLuminance(first[index]) - BossCoreLuminance(second[index]));
+            }
+            else if (local >= 4.25f)
+            {
+                gapSamples++;
+                if (first[index] != second[index]) gapChanges++;
+            }
+        }
+        Require(lampChanges.All(count => count >= 4),
+            $"Boss lamp sweep {heading}: the white highlight travels through both rows of module windows.", assertions);
+        Require(Math.Abs(lampEnergy[0] - lampEnergy[1]) <= Math.Max(lampEnergy[0], lampEnergy[1]) * .20,
+            $"Boss lamp sweep {heading}: both module rows share the same sweep phase and brightness.", assertions);
+        Require(gapSamples > 0 && gapChanges == 0,
+            $"Boss lamp sweep {heading}: inter-module gaps stay unchanged while the white highlight moves.", assertions);
+        var resting = BossExhaustPixels(sample, clock, false,
+            settledFeedback with { OverdriveElapsed = .8f }, atRest: true);
+        Require(resting.SequenceEqual(BossExhaustPixels(sample, clock, false,
+                settledFeedback with { OverdriveElapsed = 1.13f }, atRest: true)),
+            $"Boss ignition {heading}: resting Intel artwork keeps a steady reactor and lamp state.", assertions);
+    }
+
+    private static double BossCoreLuminance(Color color) =>
+        color.R * .2126 + color.G * .7152 + color.B * .0722;
+
     private Color[] BossExhaustPixels(StatusReviewEnemy sample, float time, bool reduced,
         EnemyVisualFeedback feedback, bool atRest = false)
     {
@@ -121,18 +182,24 @@ public sealed partial class VisualVerificationGame
         return pixels;
     }
 
-    private static int[] BossExhaustRegion(float heading)
+    private static int[] BossExhaustRegion(EnemyInstance enemy, float heading)
     {
+        var radius = EnemyModelArt.BodyRadius(enemy);
+        var scale = radius / 36;
+        var rearArmorExtent = -EnemyModelContours.Shapes[EnemyModelContours.ArmorOutlineId(enemy)]
+            .Min(point => point.X) * radius + 2;
         var forward = new Vector2(MathF.Cos(heading), MathF.Sin(heading));
         var side = new Vector2(-forward.Y, forward.X);
         var indices = new List<int>();
         for (var y = 0; y < 128; y++)
         for (var x = 0; x < 128; x++)
         {
-            var offset = new Vector2(x + .5f, y + .5f) - new Vector2(64);
+            var offset = (new Vector2(x + .5f, y + .5f) - new Vector2(64) + forward * (radius * .14f)) / scale;
             var along = Vector2.Dot(offset, forward);
             var across = MathF.Abs(Vector2.Dot(offset, side));
-            if (along is < -35 and > -49 && MathF.Abs(across - 12.8f) < 3.5f)
+            // Measure expelled flow beyond the armor and its filtered raster fringe.
+            if (along is < -35 and > -49 && MathF.Abs(across - 12.8f) < 3.5f &&
+                along * scale - radius * .14f < -rearArmorExtent)
                 indices.Add(y * 128 + x);
         }
         return indices.ToArray();
@@ -196,7 +263,7 @@ public sealed partial class VisualVerificationGame
                 GraphicsDevice.SetRenderTarget(board);
                 GraphicsDevice.Clear(ColorPalette.Canvas);
                 _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp);
-                StatusLabel(font, "BASTION CORE / EXHAUST SHUTTERS", new Vector2(20, 12), .72f);
+                StatusLabel(font, "BASTION CORE / REACTOR IGNITION", new Vector2(20, 12), .72f);
                 StatusLabel(font, "GAMEPLAY SIZE", new Vector2(20, 52), .5f);
                 StatusLabel(font, "2x DETAIL", new Vector2(380, 52), .5f);
                 _batch.Draw(native, new Rectangle(20, 162, 320, 160), crop, Color.White);

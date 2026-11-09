@@ -144,7 +144,7 @@ public sealed class Game1 : Game
         _input = new InputRouter(_viewportTransform);
         Window.TextInput += (_, args) =>
         {
-            if (PlatformServices.InputFocusReader?.Invoke() ?? IsActive) _input.QueueTextInput(args.Character);
+            if (HasWindowInputFocus()) _input.QueueTextInput(args.Character);
         };
         Deactivated += (_, _) =>
         {
@@ -155,6 +155,9 @@ public sealed class Game1 : Game
         base.Initialize();
         CaptureWindowedClientSize(scheduleSave: true);
     }
+
+    private bool HasWindowInputFocus() =>
+        PlatformServices.InputFocusReader?.Invoke() ?? WindowInputFocus.IsActive(Window.Handle, IsActive);
 
     protected override void LoadContent()
     {
@@ -224,7 +227,7 @@ public sealed class Game1 : Game
         SynchronizeBrowserDisplayState();
 #endif
         UpdateViewportTransform();
-        var input = _input.Update(PlatformServices.InputFocusReader?.Invoke() ?? IsActive);
+        var input = _input.Update(HasWindowInputFocus());
         if (input.FullscreenPressed) ToggleFullscreenFromHotkey();
         var elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
         AdvanceWindowSizePersistence(elapsedSeconds);

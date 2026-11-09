@@ -68,17 +68,17 @@ public sealed partial class VisualVerificationGame
                     var enemy = session.Enemies[index];
                     var distance = enemy.DistanceAlongPath + enemy.CurrentSpeed * presentation.LeadSeconds;
                     var position = presentation.EnemyPosition(enemy);
-                    var forward = path.Forward(distance, EnemyLocomotion.MotionRadius(enemy), EnemyLocomotion.UsesTracks(enemy));
+                    var forward = path.Forward(distance, EnemyLocomotion.MotionRadius(enemy), EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy));
                     var heading = MathF.Atan2(forward.Y, forward.X);
                     DrawView(new Rectangle(index * columnWidth + 8, 108, columnWidth - 16, 278), corner, 1);
                     DrawView(new Rectangle(index * columnWidth + 8, 400, columnWidth - 16, 278), position, 2);
                     var contacts = EnemyLocomotion.ContactSlots(enemy).ToArray().Select(slot =>
                         EnemyLocomotion.Sample(enemy, position, heading, distance, slot.Side, slot.Leg, path)).ToArray();
                     var motionRadius = EnemyLocomotion.MotionRadius(enemy);
-                    var before = path.Forward(distance - .01f, motionRadius, EnemyLocomotion.UsesTracks(enemy));
-                    var after = path.Forward(distance + .01f, motionRadius, EnemyLocomotion.UsesTracks(enemy));
-                    var speed = Vector2.Distance(path.VisualPosition(distance - .01f, motionRadius, EnemyLocomotion.UsesTracks(enemy)),
-                        path.VisualPosition(distance + .01f, motionRadius, EnemyLocomotion.UsesTracks(enemy))) * enemy.CurrentSpeed / .02f;
+                    var before = path.Forward(distance - .01f, motionRadius, EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy));
+                    var after = path.Forward(distance + .01f, motionRadius, EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy));
+                    var speed = Vector2.Distance(path.VisualPosition(distance - .01f, motionRadius, EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy)),
+                        path.VisualPosition(distance + .01f, motionRadius, EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy))) * enemy.CurrentSpeed / .02f;
                     var angularSpeed = MathHelper.WrapAngle(MathF.Atan2(after.Y, after.X) -
                         MathF.Atan2(before.Y, before.X)) * enemy.CurrentSpeed / .02f;
                     var acceleration = 0f;

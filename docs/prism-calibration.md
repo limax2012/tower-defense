@@ -26,7 +26,7 @@ The general search without a layout prior reached wave 28 in 14,303 wave evaluat
 
 ## How the strategy holds
 
-The winning plan banks 4,827 credits after wave 27. Before wave 28 it buys five Apex upgrades across Frost, Breaker and Needle towers. Before wave 29 it buys the Split Beam Prism Apex for 2,000. It pays for two Plates on wave 25, four on wave 27 and eleven on wave 30. Earlier investment and overlapping fire let it clear waves 28–29 without buying Plates.
+The winning plan banks 4,827 credits after wave 27. Before wave 28 it buys five Apex upgrades across Frost, Breaker and Needle towers. Before wave 29 it buys the Chain Beam Prism Apex for 2,000. It pays for two Plates on wave 25, four on wave 27 and eleven on wave 30. Earlier investment and overlapping fire let it clear waves 28–29 without buying Plates.
 
 The original history reports 277 credits at victory. The verified reconstruction uses its own targeting and tactical decisions and records the cost and state after each accepted command. Its final campaign state signature is `DF58357CC9DEE23297D17322BB0ED0A860F052866428855B6DE3E44DB19EABC7`.
 

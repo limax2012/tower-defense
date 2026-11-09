@@ -202,6 +202,8 @@ public sealed class MobileSessionController
             rules = ChallengeRules(challenge, _content.Towers.Count)
         }),
         enemies = _content.Enemies.Values,
+        enemyRanks = _content.Enemies.Values.ToDictionary(enemy => enemy.Id,
+            enemy => EnemyRoster.RanksFor(enemy.Id).Select(rank => rank.ToString()).ToArray()),
         signals = Enum.GetValues<EnemySignalRole>().Where(role => role != EnemySignalRole.None).Select(role => new
         {
             id = role.ToString(), displayName = role + " Signal"

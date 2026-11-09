@@ -20,7 +20,7 @@ public sealed partial class VisualVerificationGame
             var width = font.MeasureString(TowerInfo.ComparisonStatLabelText(stat)).X *
                 UIManager.TowerStatGridMinimumScale * GameConstants.FontDrawScale;
             Require(width <= available,
-                $"{definition.Id}/{name}: the effective-slow cap label fits without ellipsis.", assertions);
+                $"{definition.Id}/{name}: the slow stat label fits without ellipsis.", assertions);
         }
 
         var seed = new GameSession(content, "foundry_loop", "normal", "standard");

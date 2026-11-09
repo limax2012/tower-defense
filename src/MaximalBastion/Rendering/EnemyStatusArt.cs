@@ -11,7 +11,7 @@ public static class EnemyStatusArt
         EnemyModelContours.Shapes.ToDictionary(pair => pair.Key, pair => ConvexEnvelope(pair.Value));
 
     internal static IReadOnlyList<Vector2> ShieldEnvelope(EnemyInstance enemy) =>
-        ShieldEnvelopes[EnemyModelContours.ShapeId(enemy)];
+        ShieldEnvelopes[EnemyModelContours.ArmorOutlineId(enemy)];
 
     private static Vector2[] ConvexEnvelope(Vector2[] contour)
     {

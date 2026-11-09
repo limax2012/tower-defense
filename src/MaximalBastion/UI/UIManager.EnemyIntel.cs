@@ -135,7 +135,17 @@ public sealed partial class UIManager
         var sampler = device.SamplerStates[0];
         var depth = device.DepthStencilState;
         var rasterizer = device.RasterizerState;
-        var portraitTransform = Matrix.CreateScale(.70f) * Matrix.CreateTranslation(center.X, center.Y, 0) * transform;
+        var portraitScale = .70f;
+        if (enemy.Definition.Id == "t5_regenerator" && (enemy.IsElite || enemy.IsBoss))
+        {
+            var halfLength = 0f;
+            foreach (var vertex in EnemyModelContours.Shapes[EnemyModelContours.ArmorOutlineId(enemy)])
+                halfLength = MathF.Max(halfLength, MathF.Abs(vertex.X));
+            // End caps and their bevels share the fixed portrait pocket with the elongated hull.
+            halfLength = halfLength * EnemyModelArt.BodyRadius(enemy) + 2;
+            portraitScale = MathF.Min(portraitScale, (enemy.IsBoss ? 24.5f : 23f) / halfLength);
+        }
+        var portraitTransform = Matrix.CreateScale(portraitScale) * Matrix.CreateTranslation(center.X, center.Y, 0) * transform;
         batch.Begin(SpriteSortMode.Deferred, blend, sampler, depth, rasterizer, null, portraitTransform);
         try
         {

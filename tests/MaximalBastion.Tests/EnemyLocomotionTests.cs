@@ -227,7 +227,8 @@ internal static class EnemyLocomotionTests
                 $"{label}: consecutive stance contacts stay planted in world space ({largestSlip:0.000}px drift)");
             Check.True(minimumSide > radius * .30f && minimumOrder > 0,
                 $"{label}: roots, knees and feet retain separate side and front/rear corridors ({minimumSide:0.00}, {minimumOrder:0.00})");
-            Check.True(maximumReach <= EnemyLocomotion.MaximumReach(enemy) && maximumRoadOffset <= map.PathWidth * .5f - 2,
+            var roadLimit = map.PathWidth * .5f + (rank == "Standard" ? -2f : EnemyRankArtTests.OutlineExtension(map) - .25f);
+            Check.True(maximumReach <= EnemyLocomotion.MaximumReach(enemy) && maximumRoadOffset <= roadLimit,
                 $"{label}: contacts remain on the supporting deck ({maximumReach:0.00}px radial, {maximumRoadOffset:0.00}px path offset; {maximumRoadSample})");
             Check.True(intersections == 0 && minimumContactGap > .25f,
                 $"{label}: legs never cross and contact pads remain separate ({intersections} crossings, {minimumContactGap:0.00}px clearance; {minimumContactSample})");
@@ -314,10 +315,11 @@ internal static class EnemyLocomotionTests
             Check.Equal(0, EnemyLocomotion.ContactSlots(enemy).Length, "Tracked Regenerators have no walking contacts");
             var track = EnemyModelArt.TrackGeometry(enemy);
             var motionRadius = EnemyLocomotion.MotionRadius(enemy);
+            var margin = rank == "Standard" ? 1.5f : .25f - EnemyRankArtTests.OutlineExtension(map);
             for (var distance = radius; distance < session.Map.Path.TotalLength - radius; distance += 1)
             {
-                var center = path.VisualPosition(distance, motionRadius, tracked: true);
-                var forward = path.Forward(distance, motionRadius, tracked: true);
+                var center = path.VisualPosition(distance, motionRadius, tracked: true, heavyTracked: EnemyLocomotion.UsesHeavyTracks(enemy));
+                var forward = path.Forward(distance, motionRadius, tracked: true, heavyTracked: EnemyLocomotion.UsesHeavyTracks(enemy));
                 var lateral = new Vector2(-forward.Y, forward.X);
                 for (var index = 0; index < EnemyModelArt.HullVertexCount(enemy); index++)
                 {
@@ -327,8 +329,8 @@ internal static class EnemyLocomotionTests
                     {
                         var vertex = Vector2.Lerp(start, end, sample / 16f);
                         var point = center + (forward * vertex.X + lateral * vertex.Y) * radius;
-                        Check.True(OnPavedLane(session, point, 1.5f),
-                            $"{map.Id} {rank}: tracked hull edge {index} stays inside the paved lane at {distance:0}px");
+                        Check.True(OnPavedLane(session, point, margin),
+                            $"{map.Id} {rank}: tracked hull edge {index} stays inside the path outline at {distance:0}px");
                     }
                 }
                 for (var side = -1; side <= 1; side += 2)
@@ -338,8 +340,8 @@ internal static class EnemyLocomotionTests
                     var a = angle * MathHelper.TwoPi / 16;
                     var point = center + (forward * (end * track.HalfLength + MathF.Cos(a) * track.HalfWidth) +
                         lateral * (side * track.LateralOffset + MathF.Sin(a) * track.HalfWidth)) * radius;
-                    Check.True(OnPavedLane(session, point, 1.5f),
-                        $"{map.Id} {rank}: track endcaps retain a clean lane margin at {distance:0}px");
+                    Check.True(OnPavedLane(session, point, margin),
+                        $"{map.Id} {rank}: track endcaps retain a clean outline margin at {distance:0}px");
                 }
             }
             var phase = EnemyLocomotion.TrackPhase(170, radius);
@@ -375,23 +377,23 @@ internal static class EnemyLocomotionTests
                 foreach (var join in new[] { cornerDistance - window, cornerDistance + window })
                 {
                     const float step = .1f;
-                    var at = path.VisualPosition(join, radius, tracked: true);
-                    var before = (at - path.VisualPosition(join - step, radius, tracked: true)) / step;
-                    var after = (path.VisualPosition(join + step, radius, tracked: true) - at) / step;
+                    var at = path.VisualPosition(join, radius, tracked: true, heavyTracked: EnemyLocomotion.UsesHeavyTracks(enemy));
+                    var before = (at - path.VisualPosition(join - step, radius, tracked: true, heavyTracked: EnemyLocomotion.UsesHeavyTracks(enemy))) / step;
+                    var after = (path.VisualPosition(join + step, radius, tracked: true, heavyTracked: EnemyLocomotion.UsesHeavyTracks(enemy)) - at) / step;
                     Check.True(Vector2.Distance(before, after) < .025f &&
-                        Vector2.Distance(before, path.Forward(join, radius, tracked: true)) < .025f,
+                        Vector2.Distance(before, path.Forward(join, radius, tracked: true, heavyTracked: EnemyLocomotion.UsesHeavyTracks(enemy))) < .025f,
                         $"{map.Id} {rank}: tracked corner joins preserve tangent and travel continuity");
                 }
                 for (var distance = cornerDistance - window; distance <= cornerDistance + window; distance += .5f)
                 {
-                    Check.True(Vector2.Distance(path.Forward(distance - .01f, radius, tracked: true),
-                        path.Forward(distance + .01f, radius, tracked: true)) < .003f,
+                    Check.True(Vector2.Distance(path.Forward(distance - .01f, radius, tracked: true, heavyTracked: EnemyLocomotion.UsesHeavyTracks(enemy)),
+                        path.Forward(distance + .01f, radius, tracked: true, heavyTracked: EnemyLocomotion.UsesHeavyTracks(enemy))) < .003f,
                         $"{map.Id} {rank}: tracked heading changes continuously throughout the turn");
                     enemy.SetSandboxPathDistance(distance, session.Map.Path);
                     var authoritative = enemy.Position;
                     var sampleChecksum = SessionChecksum.Compute(session, 0);
                     var presented = PresentationFrame.Create(session, 0).EnemyPosition(enemy);
-                    Check.True(Vector2.Distance(presented, path.VisualPosition(distance, radius, tracked: true)) < .001f,
+                    Check.True(Vector2.Distance(presented, path.VisualPosition(distance, radius, tracked: true, heavyTracked: EnemyLocomotion.UsesHeavyTracks(enemy))) < .001f,
                         $"{map.Id} {rank}: presented tracked center uses the same rounding as its heading");
                     Check.Equal(authoritative, enemy.Position, "Tracked presentation preserves the authoritative position");
                     Check.Equal(sampleChecksum, SessionChecksum.Compute(session, 0),
@@ -438,10 +440,10 @@ internal static class EnemyLocomotionTests
                 for (var sample = 0; sample <= samples; sample++)
                 {
                     var distance = cornerDistance - window - 1 + sample * step;
-                    var velocity = (path.VisualPosition(distance + step, radius, tracked) -
-                        path.VisualPosition(distance - step, radius, tracked)) / (2 * step);
-                    var before = path.Forward(distance - step, radius, tracked);
-                    var after = path.Forward(distance + step, radius, tracked);
+                    var velocity = (path.VisualPosition(distance + step, radius, tracked, EnemyLocomotion.UsesHeavyTracks(enemy)) -
+                        path.VisualPosition(distance - step, radius, tracked, EnemyLocomotion.UsesHeavyTracks(enemy))) / (2 * step);
+                    var before = path.Forward(distance - step, radius, tracked, EnemyLocomotion.UsesHeavyTracks(enemy));
+                    var after = path.Forward(distance + step, radius, tracked, EnemyLocomotion.UsesHeavyTracks(enemy));
                     var yawRate = MathF.Atan2(before.X * after.Y - before.Y * after.X,
                         Vector2.Dot(before, after)) / (2 * step);
                     minimumSpeed = MathF.Min(minimumSpeed, velocity.Length());
@@ -458,8 +460,8 @@ internal static class EnemyLocomotionTests
                     previousYawRate = yawRate;
                     if (family == "t2_runner" && sample % 10 == 0)
                     {
-                        var center = path.VisualPosition(distance, radius, tracked);
-                        var forward = path.Forward(distance, radius, tracked);
+                        var center = path.VisualPosition(distance, radius, tracked, EnemyLocomotion.UsesHeavyTracks(enemy));
+                        var forward = path.Forward(distance, radius, tracked, EnemyLocomotion.UsesHeavyTracks(enemy));
                         var lateral = new Vector2(-forward.Y, forward.X);
                         for (var vertexIndex = 0; vertexIndex < EnemyModelArt.HullVertexCount(enemy); vertexIndex++)
                         {
@@ -482,7 +484,7 @@ internal static class EnemyLocomotionTests
                 Check.True(maximumVelocityChange < .012f && maximumYawRateChange < .004f,
                     $"{label}: successive travel samples preserve smooth velocity and yaw ({maximumVelocityChange:0.0000}, {maximumYawRateChange:0.00000})");
                 foreach (var distance in new[] { cornerDistance - window - .1f, cornerDistance + window + .1f })
-                    Check.True(Vector2.Distance(path.VisualPosition(distance, radius, tracked), path.Position(distance)) < .001f,
+                    Check.True(Vector2.Distance(path.VisualPosition(distance, radius, tracked, EnemyLocomotion.UsesHeavyTracks(enemy)), path.Position(distance)) < .001f,
                         $"{label}: visual offsets end on the straight path without accumulating drift");
                 if (family == "t2_runner")
                     foreach (var fraction in new[] { -1f, -.5f, 0, .5f, 1f })
@@ -494,7 +496,7 @@ internal static class EnemyLocomotionTests
                         foreach (var lead in new[] { 0, .008f })
                         {
                             var presentation = PresentationFrame.Create(session, lead);
-                            var expected = path.VisualPosition(distance + enemy.CurrentSpeed * presentation.LeadSeconds, radius, tracked);
+                            var expected = path.VisualPosition(distance + enemy.CurrentSpeed * presentation.LeadSeconds, radius, tracked, EnemyLocomotion.UsesHeavyTracks(enemy));
                             Check.True(Vector2.Distance(presentation.EnemyPosition(enemy), expected) < .001f,
                                 $"{label}: Runner interpolation follows its smooth visual flight path");
                         }

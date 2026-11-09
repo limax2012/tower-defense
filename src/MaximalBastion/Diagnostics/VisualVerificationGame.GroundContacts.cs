@@ -62,8 +62,8 @@ public sealed partial class VisualVerificationGame
                     {
                         var radius = EnemyModelArt.BodyRadius(enemy);
                         var motionRadius = EnemyLocomotion.MotionRadius(enemy);
-                        var center = path.VisualPosition(enemy.DistanceAlongPath, motionRadius, EnemyLocomotion.UsesTracks(enemy));
-                        var forward = path.Forward(enemy.DistanceAlongPath, motionRadius, EnemyLocomotion.UsesTracks(enemy));
+                        var center = path.VisualPosition(enemy.DistanceAlongPath, motionRadius, EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy));
+                        var forward = path.Forward(enemy.DistanceAlongPath, motionRadius, EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy));
                         var heading = MathF.Atan2(forward.Y, forward.X);
                         return new
                         {

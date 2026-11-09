@@ -15,8 +15,9 @@ public sealed partial class VisualVerificationGame
     private void AssertEnemyRestPortraits(GameContent content, SpriteFont font, SpriteFont display,
         ICollection<string> assertions, ICollection<VisualVerificationScene> scenes)
     {
-        var samples = AreaReviewFamilies.SelectMany(id => new[] { "Standard", "Elite", "Boss" }
-            .Select(rank => EnemyRankSample(content, id, rank))).ToArray();
+        var samples = AreaReviewFamilies.SelectMany(id => EnemyRoster.RanksFor(id)
+            .Select(rank => EnemyRankSample(content, id, rank.ToString()))).ToArray();
+        var families = samples.GroupBy(sample => sample.Enemy.Definition.Id).Select(group => group.ToArray()).ToArray();
         foreach (var sample in samples)
         {
             var enemy = sample.Enemy;
@@ -44,12 +45,12 @@ public sealed partial class VisualVerificationGame
         for (var family = 0; family < 5; family++)
         {
             var x = 20 + family * 250;
-            StatusLabel(font, samples[family * 3].Enemy.Definition.DisplayName.ToUpperInvariant(),
+            StatusLabel(font, families[family][0].Enemy.Definition.DisplayName.ToUpperInvariant(),
                 new Vector2(x + 14, 104), .54f);
-            for (var rank = 0; rank < 3; rank++)
+            for (var rank = 0; rank < families[family].Length; rank++)
             {
                 var y = 144 + rank * 180;
-                var enemy = samples[family * 3 + rank].Enemy;
+                var enemy = families[family][rank].Enemy;
                 _primitives.FillRect(_batch, new Rectangle(x, y, 240, 166), ColorPalette.Panel);
                 StatusLabel(font, enemy.Rank.ToString().ToUpperInvariant(), new Vector2(x + 14, y + 14), .46f);
                 UIManager.DrawEnemyIntelModel(_batch, _primitives, enemy, new Vector2(x + 120, y + 100), Matrix.CreateScale(2));
@@ -111,11 +112,11 @@ public sealed partial class VisualVerificationGame
             _batch.End();
             GraphicsDevice.SetRenderTarget(null);
             for (var family = 0; family < 5; family++)
-            for (var rank = 0; rank < 3; rank++)
+            foreach (var rank in EnemyRoster.RanksFor(AreaReviewFamilies[family]))
             {
                 var id = AreaReviewFamilies[family];
-                var role = id == "t5_regenerator" && rank == 1 ? EnemySignalRole.Disruptor : EnemySignalRole.None;
-                var sample = EnemyRankSample(content, id, new[] { "Standard", "Elite", "Boss" }[rank], role);
+                var role = id == "t5_regenerator" && rank == EnemyRank.Elite ? EnemySignalRole.Disruptor : EnemySignalRole.None;
+                var sample = EnemyRankSample(content, id, rank.ToString(), role);
                 var enemy = sample.Enemy;
                 if (enemy.IsBoss)
                 {
@@ -134,16 +135,16 @@ public sealed partial class VisualVerificationGame
                 ui.HandleGameplayInput(Pointer(position.X, position.Y, true), sample.Session);
                 ui.HandleGameplayInput(Pointer(1100, 600), sample.Session);
                 using var scene = RenderScene(ui, GameState.Playing, sample.Session);
-                if (id == "t5_regenerator" && rank is 1 or 2)
+                if (id == "t5_regenerator" && rank is EnemyRank.Elite or EnemyRank.Boss)
                 {
                     using var full = DownsampleEnemyLaneScene(scene);
-                    scenes.Add(SaveTierScene(full, rank == 1 ? "enemy-intel-regenerator-disruptor.png" :
+                    scenes.Add(SaveTierScene(full, rank == EnemyRank.Elite ? "enemy-intel-regenerator-disruptor.png" :
                         "enemy-intel-regenerator-overdrive.png"));
                 }
                 GraphicsDevice.SetRenderTarget(sheet);
                 _batch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp,
                     null, null, null, Matrix.CreateScale(2));
-                _batch.Draw(scene, new Rectangle(20 + family * 308, 88 + rank * 126, 296, 114),
+                _batch.Draw(scene, new Rectangle(20 + family * 308, 88 + (int)rank * 126, 296, 114),
                     new Rectangle(972 * 2, 474 * 2, 296 * 2, 114 * 2), Color.White);
                 _batch.End();
                 GraphicsDevice.SetRenderTarget(null);

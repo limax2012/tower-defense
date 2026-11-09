@@ -784,7 +784,7 @@ public sealed partial class VisualVerificationGame : Game
             content.Towers["needle_turret"].Levels[0],
             content.Towers["needle_turret"].Levels[1].WithDoctrine(calibratedFeed));
         Require(calibratedStats.Single(stat => stat.Label == "RATE").Direction == TowerStatDirection.Unchanged,
-            "Precision Feed does not color an unchanged displayed rate as an increase.", assertions);
+            "Heavy Needles does not color an unchanged displayed rate as an increase.", assertions);
         Require(TowerInfo.ComparisonStatText(calibratedStats.Single(stat => stat.Label == "DAMAGE")) == "DAMAGE 8 -> 11",
             "Changed preview stats show old and new values.", assertions);
         Require(TowerInfo.ComparisonStatValueText(calibratedStats.Single(stat => stat.Label == "DAMAGE")) == "8 -> 11",
@@ -2972,16 +2972,20 @@ public sealed partial class VisualVerificationGame : Game
 
     private void HideAndDisableActivation()
     {
-        if (!OperatingSystem.IsWindows() || Window.Handle == IntPtr.Zero) return;
-        var style = GetWindowLongPtr(Window.Handle, GwlExStyle);
-        SetWindowLongPtr(Window.Handle, GwlExStyle,
+        var nativeWindow = WindowInputFocus.TryGetWindowsHandle(Window.Handle);
+        if (nativeWindow == IntPtr.Zero) return;
+        var style = GetWindowLongPtr(nativeWindow, GwlExStyle);
+        SetWindowLongPtr(nativeWindow, GwlExStyle,
             new IntPtr(style.ToInt64() | WsExNoActivate | WsExToolWindow));
-        SetWindowPos(Window.Handle, IntPtr.Zero, 0, 0, 0, 0,
+        SetWindowPos(nativeWindow, IntPtr.Zero, 0, 0, 0, 0,
             SwpNoMove | SwpNoSize | SwpNoZOrder | SwpNoActivate | SwpHideWindow);
     }
 
-    private bool IsVerifierForeground() =>
-        OperatingSystem.IsWindows() && Window.Handle != IntPtr.Zero && GetForegroundWindow() == Window.Handle;
+    private bool IsVerifierForeground()
+    {
+        var nativeWindow = WindowInputFocus.TryGetWindowsHandle(Window.Handle);
+        return nativeWindow != IntPtr.Zero && GetForegroundWindow() == nativeWindow;
+    }
 
     protected override void Dispose(bool disposing)
     {

@@ -8,6 +8,11 @@ public static partial class EnemyModelArt
 {
     private static void DrawArmoredFamily(Chassis f)
     {
+        if (f.Rank > 0 && f.Enemy.Definition.Id != "t2_runner")
+        {
+            DrawReinforcedFamily(f);
+            return;
+        }
         DrawHull(f.Batch, f.P, f.Enemy, f.Center, f.Radius * .94f, f.Heading, f.Shell);
         DrawHull(f.Batch, f.P, f.Enemy, f.Center, f.Radius * .83f, f.Heading, ColorPalette.EnemyChassis);
         var vertices = Contour(f.Enemy);
@@ -56,7 +61,7 @@ public static partial class EnemyModelArt
 
     private static void DrawAssaultArmor(Chassis f)
     {
-        Plate(f, new(.43f, 0), .25f, .43f, 0, f.Edge, fasteners: true);
+        Plate(f, new(.43f, 0), .25f, .43f, 0, f.Edge);
         for (var sign = -1; sign <= 1; sign += 2)
         {
             SegmentPlate(f, new(-.35f, sign * .13f), new(.23f, sign * .35f), .16f, f.Shell);
@@ -73,7 +78,7 @@ public static partial class EnemyModelArt
         f.P.BeveledArmorRing(f.Batch, f.Center, f.Radius * radius, sides, f.Edge, rotation);
         for (var end = -1; end <= 1; end += 2)
         {
-            Plate(f, new(end * .66f, 0), .18f, .28f, 0, f.Edge, fasteners: true);
+            Plate(f, new(end * .66f, 0), .18f, .28f, 0, f.Edge);
             f.Rail(end * .67f, -.07f, end * .67f, .07f, ColorPalette.EnemyRecess, .05f);
         }
     }
@@ -92,13 +97,26 @@ public static partial class EnemyModelArt
         }
         for (var end = -1; end <= 1; end += 2)
         {
-            Plate(f, new(end * .74f, 0), .24f, .32f, 0, f.Edge, fasteners: true);
+            Plate(f, new(end * .74f, 0), .24f, .32f, 0, f.Edge);
             f.Rail(end * .77f, -.07f, end * .77f, .07f, ColorPalette.EnemyRecess, .05f);
         }
     }
 
-    public static float CoreRadius(EnemyInstance enemy) => BodyRadius(enemy) *
-        (enemy.Definition.Id is "t2_runner" or "t1_crawler" ? .43f : .38f);
+    public static float CoreRadius(EnemyInstance enemy)
+    {
+        var rank = VisualRank(enemy);
+        var proportion = rank == 0 || enemy.Definition.Id == "t2_runner"
+            ? enemy.Definition.Id is "t2_runner" or "t1_crawler" ? .43f : .38f
+            : enemy.Definition.Id switch
+            {
+                "t1_crawler" => .49f,
+                "t3_brute" => .44f,
+                "t4_aegis" => .47f * EliteAegisBodyScale,
+                "t5_regenerator" => rank == 2 ? .45f : .415f,
+                _ => .38f
+            };
+        return BodyRadius(enemy) * proportion;
+    }
 
     public static void DrawSignalCore(SpriteBatch batch, PrimitiveRenderer p, EnemyInstance enemy,
         Vector2 center, float heading, float time, bool reducedEffects)
@@ -142,13 +160,11 @@ public static partial class EnemyModelArt
 
     private static void DrawRankArmor(Chassis f)
     {
-        if (f.Rank == 0) return;
+        if (f.Rank == 0 || f.Enemy.Definition.Id != "t2_runner") return;
         for (var sign = -1; sign <= 1; sign += 2)
         {
-            var x = f.Enemy.Definition.Id == "t2_runner" ? -.30f : -.51f;
+            const float x = -.30f;
             Plate(f, new(x, sign * .34f), .19f, .11f, 0, f.Edge);
-            if (f.Rank == 2)
-                Window(f, new(x - .065f, sign * .34f), new(x + .065f, sign * .34f), .035f);
         }
     }
 

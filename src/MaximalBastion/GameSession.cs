@@ -113,7 +113,7 @@ public sealed class GameSession
     public bool AnnouncementPositive { get; private set; }
     private const string BossArrivalSignal = "BOSS SIGNAL // BASTION CORE";
     private const string BossOverdriveSignal = "BASTION CORE // OVERDRIVE";
-    public bool HasVisibleAnnouncement => AnnouncementRemaining > 0 && !string.IsNullOrWhiteSpace(AnnouncementTitle) &&
+    public bool HasVisibleAnnouncement => !IsSandbox && AnnouncementRemaining > 0 && !string.IsNullOrWhiteSpace(AnnouncementTitle) &&
         AnnouncementTitle is not (BossArrivalSignal or BossOverdriveSignal);
     public int CurrentWave => Waves.CurrentWaveNumber;
     public int TotalWaves => Waves.TotalWaves;
@@ -1073,7 +1073,8 @@ public sealed class GameSession
     {
         if (!IsSandbox || count is < 1 or > 24 || !float.IsFinite(healthMultiplier) || healthMultiplier <= 0 ||
             !_content.Enemies.TryGetValue(enemyId, out var definition)) return false;
-        if (!Enum.TryParse<EnemyRank>(rank, true, out _)) return false;
+        if (!Enum.TryParse<EnemyRank>(rank, true, out var parsedRank) ||
+            !EnemyRoster.SupportsRank(enemyId, parsedRank)) return false;
 
         var spacing = MathF.Max(18f, definition.Visual.Radius * 1.35f);
         for (var index = 0; index < count; index++)

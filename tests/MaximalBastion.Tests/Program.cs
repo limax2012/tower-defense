@@ -101,6 +101,8 @@ internal static class Program
             ("mobile shared-engine bridge", MobileControllerTests.Run),
             ("release identity and notes", ReleaseIdentityAndNotes),
             ("high-resolution viewport", HighResolutionViewport),
+            ("window focus input suppression", InputFocusTests.Run),
+            ("Windows native window focus", WindowInputFocusTests.Run),
             ("persistent display and audio settings", PersistentUserSettings),
             ("product storage migration", ProductStorageMigrationTest),
             ("procedural audio mastering", ProceduralAudioMastering),
@@ -127,6 +129,7 @@ internal static class Program
             ("damage over time floor", DamageOverTimeFloor),
             ("ember piercing burn", EmberPiercingBurn),
             ("status effects", StatusEffects),
+            ("shared slow strength and duration", SlowStatusTests.Run),
             ("burn selection by armor-adjusted damage", BurnSelectionTests.Run),
             ("effective slow display", EffectiveSlowDisplayTests.Run),
             ("enemy breach display", EnemyBreachDisplayTests.Run),
@@ -136,6 +139,8 @@ internal static class Program
             ("planted enemy contacts and corner gait", EnemyLocomotionTests.Run),
             ("effect budget", EffectBudget),
             ("elite and boss ranks", EliteAndBossRanks),
+            ("supported enemy rank roster", EnemyRosterTests.Run),
+            ("enemy rank artwork and footprints", EnemyRankArtTests.Run),
             ("economy", EconomyRules),
             ("late campaign income steps", LateCampaignIncomeSteps),
             ("placement rules", PlacementRules),
@@ -1996,7 +2001,7 @@ internal static class Program
         statuses.Apply(new StatusApplication { Type = StatusType.Slow, Duration = 2, Magnitude = 0.3f, SourceId = 1 });
         statuses.Apply(new StatusApplication { Type = StatusType.Slow, Duration = 1, Magnitude = 0.5f, SourceId = 2 });
         Check.Nearly(0.5f, statuses.SlowFactor, "strongest slow");
-        Check.Equal(2, statuses.Active.Single(x => x.Type == StatusType.Slow).SourceId,
+        Check.Equal(2, statuses.Active.Single(status => status.Type == StatusType.Slow).SourceId,
             "stronger status transfers utility attribution to its source");
         statuses.Apply(new StatusApplication { Type = StatusType.Burn, Duration = 2, Magnitude = 5, SourceId = 1 });
         statuses.Apply(new StatusApplication { Type = StatusType.Burn, Duration = 2, Magnitude = 7, SourceId = 2 });
@@ -6734,7 +6739,7 @@ internal static class Program
                 .Concat(tower.Specializations.Select(choice => (tower.Id, choice.DisplayName, choice.ShortLabel, choice.Summary))))
             .ToArray();
         var vagueUpgradeWords = new[] { "lighter", "harder", "utility", "throughput", "steadier", "cadence" };
-        Check.True(upgradeChoices.All(choice => choice.DisplayName.Length <= 16 && choice.Summary.Length <= 48),
+        Check.True(upgradeChoices.All(choice => choice.DisplayName.Length <= 15 && choice.Summary.Length <= 48),
             "upgrade names and summaries stay compact enough for Tower Intel");
         Check.True(upgradeChoices.All(choice => vagueUpgradeWords.All(word =>
                 !choice.Summary.Contains(word, StringComparison.OrdinalIgnoreCase))),
@@ -6794,7 +6799,7 @@ internal static class Program
             content.Towers["needle_turret"].Levels[1].WithDoctrine(calibratedFeed));
         var calibratedRate = calibratedPreview.Single(stat => stat.Label == "RATE");
         Check.Equal(TowerStatDirection.Unchanged, calibratedRate.Direction,
-            "Precision Feed rate stays neutral when both values display as 2/s");
+            "Heavy Needles rate stays neutral when both values display as 2/s");
         Check.Equal("RATE 2/s", TowerInfo.ComparisonStatText(calibratedRate),
             "unchanged upgrade stats do not imply a hidden delta");
         var calibratedDamage = calibratedPreview.Single(stat => stat.Label == "DAMAGE");

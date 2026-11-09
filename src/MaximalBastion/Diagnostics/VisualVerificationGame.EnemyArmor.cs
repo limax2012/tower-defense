@@ -1,5 +1,6 @@
 using MaximalBastion.Core;
 using MaximalBastion.Data;
+using MaximalBastion.Enemies;
 using MaximalBastion.Multiplayer;
 using MaximalBastion.Rendering;
 using MaximalBastion.UI;
@@ -13,8 +14,8 @@ public sealed partial class VisualVerificationGame
     private void AssertEnemyArmorPresentation(GameContent content, SpriteFont font, SpriteFont display,
         ICollection<string> assertions, ICollection<VisualVerificationScene> scenes)
     {
-        var ranks = new[] { "Standard", "Elite", "Boss" };
-        var samples = AreaReviewFamilies.SelectMany(id => ranks.Select(rank => EnemyRankSample(content, id, rank))).ToArray();
+        var samples = AreaReviewFamilies.SelectMany(id => EnemyRoster.RanksFor(id).Select(rank =>
+            EnemyRankSample(content, id, rank.ToString()))).ToArray();
         foreach (var sample in samples) sample.Enemy.AbsorbShield(sample.Enemy.Shield);
         foreach (var sample in samples)
         {
@@ -47,6 +48,7 @@ public sealed partial class VisualVerificationGame
 
     private VisualVerificationScene CaptureEnemyArmorRoster(IReadOnlyList<StatusReviewEnemy> samples, SpriteFont font)
     {
+        var standards = samples.Where(sample => sample.Enemy.Rank == EnemyRank.Standard).ToArray();
         using var target = NewEnemyArmorTarget();
         GraphicsDevice.SetRenderTarget(target);
         GraphicsDevice.Clear(ColorPalette.Canvas);
@@ -58,7 +60,7 @@ public sealed partial class VisualVerificationGame
         {
             var x = 20 + family * 250;
             _primitives.FillRect(_batch, new Rectangle(x, 106, 240, 570), ColorPalette.Panel);
-            StatusLabel(font, samples[family * 3].Enemy.Definition.DisplayName.ToUpperInvariant(), new Vector2(x + 15, 129), .66f);
+            StatusLabel(font, standards[family].Enemy.Definition.DisplayName.ToUpperInvariant(), new Vector2(x + 15, 129), .66f);
             StatusLabel(font, new[] { "SKIMMER", "4 LEGS", "6 LEGS", "8 LEGS", "CONTINUOUS TRACKS" }[family],
                 new Vector2(x + 15, 168), .49f);
             _primitives.Line(_batch, new Vector2(x + 16, 463), new Vector2(x + 224, 463), ColorPalette.Metal, .6f);
@@ -68,8 +70,8 @@ public sealed partial class VisualVerificationGame
         _batch.End();
         for (var family = 0; family < 5; family++)
         {
-            DrawEnemyArmorBody(samples[family * 3], new Vector2(140 + family * 250, 325), 3, -MathHelper.PiOver2, .43f, 0);
-            DrawEnemyArmorBody(samples[family * 3], new Vector2(140 + family * 250, 550), 1, -MathHelper.PiOver2, .43f, 0);
+            DrawEnemyArmorBody(standards[family], new Vector2(140 + family * 250, 325), 3, -MathHelper.PiOver2, .43f, 0);
+            DrawEnemyArmorBody(standards[family], new Vector2(140 + family * 250, 550), 1, -MathHelper.PiOver2, .43f, 0);
         }
         GraphicsDevice.SetRenderTarget(null);
         using var native = DownsampleEnemyLaneScene(target);
@@ -78,6 +80,7 @@ public sealed partial class VisualVerificationGame
 
     private VisualVerificationScene CaptureEnemyArmorRanks(IReadOnlyList<StatusReviewEnemy> samples, SpriteFont font)
     {
+        var families = samples.GroupBy(sample => sample.Enemy.Definition.Id).Select(group => group.ToArray()).ToArray();
         using var target = NewEnemyArmorTarget();
         GraphicsDevice.SetRenderTarget(target);
         GraphicsDevice.Clear(ColorPalette.Canvas);
@@ -87,19 +90,19 @@ public sealed partial class VisualVerificationGame
         for (var family = 0; family < 5; family++)
         {
             var x = 20 + family * 250;
-            StatusLabel(font, samples[family * 3].Enemy.Definition.DisplayName.ToUpperInvariant(), new Vector2(x + 14, 78), .58f);
-            for (var rank = 0; rank < 3; rank++)
+            StatusLabel(font, families[family][0].Enemy.Definition.DisplayName.ToUpperInvariant(), new Vector2(x + 14, 78), .58f);
+            for (var rank = 0; rank < families[family].Length; rank++)
             {
                 var y = 112 + rank * 194;
                 _primitives.FillRect(_batch, new Rectangle(x, y, 240, 184), ColorPalette.Panel);
-                StatusLabel(font, samples[family * 3 + rank].Enemy.Rank.ToString().ToUpperInvariant(), new Vector2(x + 14, y + 14), .49f);
+                StatusLabel(font, families[family][rank].Enemy.Rank.ToString().ToUpperInvariant(), new Vector2(x + 14, y + 14), .49f);
             }
         }
         _batch.End();
         for (var family = 0; family < 5; family++)
-        for (var rank = 0; rank < 3; rank++)
+        for (var rank = 0; rank < families[family].Length; rank++)
         {
-            var sample = samples[family * 3 + rank];
+            var sample = families[family][rank];
             DrawEnemyArmorBody(sample, new Vector2(95 + family * 250, 224 + rank * 194), 2, -MathHelper.PiOver2, .43f, 0);
             DrawEnemyArmorBody(sample, new Vector2(208 + family * 250, 224 + rank * 194), 1, -MathHelper.PiOver2, .43f, 0);
         }
@@ -143,6 +146,7 @@ public sealed partial class VisualVerificationGame
     private VisualVerificationScene CaptureEnemyArmorHeadings(IReadOnlyList<StatusReviewEnemy> samples,
         SpriteFont font)
     {
+        var standards = samples.Where(sample => sample.Enemy.Rank == EnemyRank.Standard).ToArray();
         const int width = 1280;
         const int height = 1140;
         var headings = new[] { -MathHelper.PiOver2, 0, MathHelper.PiOver2, MathHelper.Pi };
@@ -160,7 +164,7 @@ public sealed partial class VisualVerificationGame
         for (var family = 0; family < 5; family++)
         {
             var y = 132 + family * 198;
-            StatusLabel(font, samples[family * 3].Enemy.Definition.DisplayName.ToUpperInvariant(),
+            StatusLabel(font, standards[family].Enemy.Definition.DisplayName.ToUpperInvariant(),
                 new Vector2(20, y + 83), .45f);
             for (var heading = 0; heading < headings.Length; heading++)
                 _primitives.FillRect(_batch, new Rectangle(140 + heading * 280, y, 272, 188), ColorPalette.Panel);
@@ -169,7 +173,7 @@ public sealed partial class VisualVerificationGame
         for (var family = 0; family < 5; family++)
         for (var heading = 0; heading < headings.Length; heading++)
         {
-            var sample = samples[family * 3];
+            var sample = standards[family];
             var y = 226 + family * 198;
             DrawEnemyArmorBody(sample, new Vector2(240 + heading * 280, y), 3,
                 headings[heading], .43f, 0, atRest: true);
@@ -191,6 +195,7 @@ public sealed partial class VisualVerificationGame
     private VisualVerificationScene CaptureEnemyArmorTracks(IReadOnlyList<StatusReviewEnemy> samples,
         SpriteFont font, int frame)
     {
+        var tracks = samples.Where(sample => sample.Enemy.Definition.Id == "t5_regenerator").ToArray();
         var time = frame / 30f;
         var distance = MathF.Min(time, 2) * 20 + MathF.Max(0, time - 3) * 20;
         using var target = NewEnemyArmorTarget();
@@ -205,7 +210,7 @@ public sealed partial class VisualVerificationGame
         {
             var x = 24 + rank * 420;
             _primitives.FillRect(_batch, new Rectangle(x, 158, 392, 508), ColorPalette.Panel);
-            StatusLabel(font, samples[12 + rank].Enemy.Rank.ToString().ToUpperInvariant(), new Vector2(x + 18, 180), .65f);
+            StatusLabel(font, tracks[rank].Enemy.Rank.ToString().ToUpperInvariant(), new Vector2(x + 18, 180), .65f);
             _primitives.Line(_batch, new Vector2(x + 110, 434), new Vector2(x + 270, 434), ColorPalette.Metal, 1);
             _primitives.Line(_batch, new Vector2(x + 270, 434), new Vector2(x + 260, 427), ColorPalette.Metal, 1);
             _primitives.Line(_batch, new Vector2(x + 270, 434), new Vector2(x + 260, 441), ColorPalette.Metal, 1);
@@ -215,8 +220,8 @@ public sealed partial class VisualVerificationGame
         _batch.End();
         for (var rank = 0; rank < 3; rank++)
         {
-            DrawEnemyArmorBody(samples[12 + rank], new Vector2(220 + rank * 420, 324), 3, 0, time, distance);
-            DrawEnemyArmorBody(samples[12 + rank], new Vector2(180 + rank * 420 + distance, 566), 1, 0, time, distance);
+            DrawEnemyArmorBody(tracks[rank], new Vector2(220 + rank * 420, 324), 3, 0, time, distance);
+            DrawEnemyArmorBody(tracks[rank], new Vector2(180 + rank * 420 + distance, 566), 1, 0, time, distance);
         }
         GraphicsDevice.SetRenderTarget(null);
         using var native = DownsampleEnemyLaneScene(target);
@@ -226,6 +231,15 @@ public sealed partial class VisualVerificationGame
     private RenderTarget2D NewEnemyArmorTarget() => new(GraphicsDevice,
         GameConstants.RenderWidth, GameConstants.RenderHeight, false,
         SurfaceFormat.Color, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
+
+    private static float OuterGuardOverhang(EnemyInstance enemy)
+    {
+        if (!EnemyLocomotion.UsesHeavyTracks(enemy)) return 0;
+        var track = EnemyModelArt.TrackGeometry(enemy);
+        var halfWidth = EnemyModelContours.Shapes[EnemyModelContours.ArmorOutlineId(enemy)]
+            .Max(point => MathF.Abs(point.Y));
+        return MathF.Max(0, halfWidth - track.LateralOffset - track.HalfWidth) * EnemyModelArt.BodyRadius(enemy);
+    }
 
     private void AssertEnemyArmorCornerContainment(GameContent content, ICollection<string> assertions)
     {
@@ -238,7 +252,7 @@ public sealed partial class VisualVerificationGame
         var failures = new List<string>();
         foreach (var map in content.Maps.Values)
         foreach (var family in AreaReviewFamilies)
-        foreach (var rank in new[] { "Standard", "Elite", "Boss" })
+        foreach (var rank in EnemyRoster.RanksFor(family).Select(rank => rank.ToString()))
         {
             var session = new GameSession(content, map.Id, "normal", "sandbox_lab");
             session.SpawnEnemy(family, 1, 1, rank);
@@ -261,8 +275,8 @@ public sealed partial class VisualVerificationGame
                 foreach (var offset in new[] { -1f, -.5f, 0, .5f, 1 })
                 {
                     var distance = cornerDistance + offset * radius;
-                    var position = movementPath.VisualPosition(distance, motionRadius, EnemyLocomotion.UsesTracks(enemy));
-                    var forward = movementPath.Forward(distance, motionRadius, EnemyLocomotion.UsesTracks(enemy));
+                    var position = movementPath.VisualPosition(distance, motionRadius, EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy));
+                    var forward = movementPath.Forward(distance, motionRadius, EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy));
                     var heading = MathF.Atan2(forward.Y, forward.X);
                     GraphicsDevice.SetRenderTarget(target);
                     GraphicsDevice.Clear(Color.Transparent);
@@ -296,8 +310,15 @@ public sealed partial class VisualVerificationGame
                     poses++;
                 }
             }
-            var description = $"{map.Id} {family} {rank}: {poses} rendered corner poses keep every solid armor pixel inside the supporting deck ({maximumAcross:0.00}px maximum centerline distance at path {worstDistance:0.0}).";
-            if (maximumAcross <= map.PathWidth * .5f - 2)
+            var allowed = enemy.Rank == EnemyRank.Standard
+                ? map.PathWidth * .5f - 2
+                : map.PathWidth * .5f + (map.PathVisual.Style == "trail" ? 7 : 4) - .25f;
+            // Tread support is checked independently; the outer guard may extend past that footprint.
+            var armorOverhang = OuterGuardOverhang(enemy);
+            allowed += armorOverhang;
+            var footprint = armorOverhang > 0 ? $"the deck plus {armorOverhang:0.00}px of outer armor overhang" : "the supporting deck";
+            var description = $"{map.Id} {family} {rank}: {poses} rendered corner poses keep every solid armor pixel inside {footprint} ({maximumAcross:0.00}px maximum centerline distance, {allowed:0.00}px allowed, at path {worstDistance:0.0}).";
+            if (maximumAcross <= allowed)
             {
                 Require(true, description, assertions);
                 continue;
@@ -311,7 +332,7 @@ public sealed partial class VisualVerificationGame
                 Vector2.Dot(worstPixel - worstCenter, new Vector2(-forwardAtFailure.Y, forwardAtFailure.X))) / radius;
             File.WriteAllText(Path.Combine(directory, file + ".json"), System.Text.Json.JsonSerializer.Serialize(new
             {
-                map = map.Id, family, rank, radius, maximumAcross, allowed = map.PathWidth * .5f - 2,
+                map = map.Id, family, rank, radius, maximumAcross, allowed,
                 worstDistance, worstHeading, worldPixel = new { x = worstPixel.X, y = worstPixel.Y },
                 normalizedBodyPixel = new { x = localPixel.X, y = localPixel.Y },
                 pixelColor = new { worstColor.R, worstColor.G, worstColor.B, worstColor.A },
@@ -339,7 +360,7 @@ public sealed partial class VisualVerificationGame
                     pixel.G <= ColorPalette.Canvas.G + 1 && pixel.B <= ColorPalette.Canvas.B + 1)) continue;
                 var relative = new Vector2(index % size + .5f - size * .5f,
                     index / size + .5f - size * .5f) / rasterScale;
-                if (session.Map.Path.DistanceToPath(worstCenter + relative) + pixelExtent > map.PathWidth * .5f - 2)
+                if (session.Map.Path.DistanceToPath(worstCenter + relative) + pixelExtent > allowed)
                     worstPixels[index] = ColorPalette.Burn;
             }
             texture.SetData(worstPixels);

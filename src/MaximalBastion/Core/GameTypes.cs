@@ -234,6 +234,7 @@ public sealed class InputRouter
     private readonly ViewportTransform _transform;
     private long _nextBackspaceRepeatTimestamp;
     private bool _wasWindowActive;
+    private bool _suppressLeftUntilRelease;
 
     public InputRouter(ViewportTransform transform) => _transform = transform;
 
@@ -255,7 +256,14 @@ public sealed class InputRouter
         var keyboard = Microsoft.Xna.Framework.Input.Keyboard.GetState();
         var mouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
         var platformPointer = PlatformServices.PointerStateReader?.Invoke();
+        return Update(windowActive, keyboard, mouse, platformPointer);
+    }
+
+    internal InputSnapshot Update(bool windowActive, KeyboardState keyboard, MouseState mouse,
+        PlatformPointerState? platformPointer = null)
+    {
         if (platformPointer is not null) windowActive &= platformPointer.Active;
+        var leftDown = platformPointer?.LeftDown ?? mouse.LeftButton == ButtonState.Pressed;
         var screenPoint = platformPointer is null
             ? new Point(mouse.X, mouse.Y)
             : new Point(platformPointer.X, platformPointer.Y);
@@ -273,9 +281,13 @@ public sealed class InputRouter
             _textInput.Clear();
             _nextBackspaceRepeatTimestamp = 0;
             _wasWindowActive = windowActive;
+            _suppressLeftUntilRelease = leftDown;
             return InactiveSnapshot(logical);
         }
 
+        // A click held across activation cannot start a drag or emit a release action.
+        var suppressLeft = _suppressLeftUntilRelease;
+        if (!leftDown) _suppressLeftUntilRelease = false;
         var controlDown = keyboard.IsKeyDown(Keys.LeftControl) || keyboard.IsKeyDown(Keys.RightControl);
         var textEntered = DrainTextInput();
         if (controlDown) textEntered = "";
@@ -283,8 +295,8 @@ public sealed class InputRouter
             textEntered = ClipboardService.TryGetText() ?? "";
         var snapshot = new InputSnapshot(
             logical,
-            platformPointer?.LeftPressed ?? mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed && _previousMouse.LeftButton != Microsoft.Xna.Framework.Input.ButtonState.Pressed,
-            platformPointer?.LeftReleased ?? mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Released && _previousMouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed,
+            !suppressLeft && (platformPointer?.LeftPressed ?? mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed && _previousMouse.LeftButton != Microsoft.Xna.Framework.Input.ButtonState.Pressed),
+            !suppressLeft && (platformPointer?.LeftReleased ?? mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Released && _previousMouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed),
             platformPointer?.RightPressed ?? mouse.RightButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed && _previousMouse.RightButton != Microsoft.Xna.Framework.Input.ButtonState.Pressed,
             platformPointer?.MiddlePressed ?? mouse.MiddleButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed && _previousMouse.MiddleButton != Microsoft.Xna.Framework.Input.ButtonState.Pressed,
             IsPressed(keyboard, _previousKeyboard, Microsoft.Xna.Framework.Input.Keys.Escape),
@@ -324,7 +336,7 @@ public sealed class InputRouter
             IsPressed(keyboard, _previousKeyboard, Keys.K),
             IsPressed(keyboard, _previousKeyboard, Keys.H),
             IsPressed(keyboard, _previousKeyboard, Keys.J),
-            platformPointer?.LeftDown ?? mouse.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed,
+            !suppressLeft && leftDown,
             IsPressed(keyboard, _previousKeyboard, Keys.L));
         _previousKeyboard = keyboard;
         _previousMouse = mouse;

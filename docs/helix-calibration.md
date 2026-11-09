@@ -10,7 +10,7 @@ The current production rules admit a replay-verified solo campaign victory on `r
 | Accepted commands | 759; 614 during combat |
 | Final wave | 157 kills; central Frost Apex; 16 paid Plates; 8 late sales |
 | Information / execution | Oracle / expert |
-| Content SHA-256 | `22141FA59B9A2882876DD51B9FCC05B9B3F314B43193C6B4C5CCF3D5D3B4DC51` |
+| Content SHA-256 | `78A9731F9481B96673FBA95DA23D6BE08CCA86B45433D506641F17EEFC7A5399` |
 | Final state SHA-256 | `8A8B5AA31220F97521660840046FCFE6A9DEC7BDB980758AE0B21A14221630CF` |
 
 The [campaign plan](../tests/MaximalBastion.Tests/Fixtures/helix-bastion-signal-plan.json) contains a goal layout and conditional policies, with no starting money, health, enemies or recorded command sequence. `LayoutCampaignRunner` buys that layout legally as income arrives and evaluates configured tactical alternatives. It reproduces the [archived witness](../tests/MaximalBastion.Tests/Fixtures/helix-bastion-signal-witness.json) from a fresh session. `HelixCalibrationTests` checks both independent replay and rebuilding the campaign with the policy runner.

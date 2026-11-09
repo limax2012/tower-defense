@@ -662,7 +662,7 @@ public sealed class GameRenderer
     private static float EnemyHeading(GameSession session, EnemyInstance enemy, float leadSeconds = 0)
     {
         var distance = enemy.DistanceAlongPath + enemy.CurrentSpeed * leadSeconds;
-        var forward = EnemyLocomotionPath.For(session.Map).Forward(distance, EnemyLocomotion.MotionRadius(enemy), EnemyLocomotion.UsesTracks(enemy));
+        var forward = EnemyLocomotionPath.For(session.Map).Forward(distance, EnemyLocomotion.MotionRadius(enemy), EnemyLocomotion.UsesTracks(enemy), EnemyLocomotion.UsesHeavyTracks(enemy));
         return MathF.Atan2(forward.Y, forward.X);
     }
 

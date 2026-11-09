@@ -65,7 +65,7 @@ public sealed class AudioManager : IDisposable
             _sounds[Cue.WaveClear] = CreateChord(520, 780, 0.28f);
             _sounds[Cue.Plate] = CreateNoisePulse(0.11f);
             _sounds[Cue.Forge] = CreateTone(620, 980, 0.16f, WaveShape.Sine);
-            _sounds[Cue.BossPhase] = CreateTwoNoteCue(330, 440, 0.24f);
+            _sounds[Cue.BossPhase] = CreateGeneratedOneShot(CreateBossOverdriveSamples());
             _sounds[Cue.Victory] = CreateTriad(392, 523, 659, 0.48f);
             _sounds[Cue.Defeat] = CreateTwoNoteCue(392, 330, 0.30f);
             _sounds[Cue.UiConfirm] = CreateTone(410, 620, 0.075f, WaveShape.Sine);
@@ -484,6 +484,52 @@ public sealed class AudioManager : IDisposable
             samples[index] = ToSample(wave * envelope * envelope * 0.18f);
         }
         return CreateGeneratedOneShot(samples);
+    }
+
+    private static short[] CreateBossOverdriveSamples()
+    {
+        const float seconds = 0.52f;
+        var count = (int)(SampleRate * seconds);
+        var signal = new float[count];
+        var samples = new short[count];
+        var rotorPhase = 0f;
+        var impactPhase = 0f;
+        var filteredNoise = 0f;
+        var noiseFloor = 0f;
+        var peak = 0f;
+        uint state = 0xBA5710u;
+        for (var index = 0; index < count; index++)
+        {
+            var time = index / (float)SampleRate;
+            state = state * 1664525u + 1013904223u;
+            var noise = ((state >> 8) / (float)0xFFFFFF) * 2f - 1f;
+            filteredNoise += (noise - filteredNoise) * 0.14f;
+            noiseFloor += (filteredNoise - noiseFloor) * 0.012f;
+            var pressureNoise = filteredNoise - noiseFloor;
+
+            // Inharmonic rotor sidebands and filtered pressure keep the surge mechanical.
+            var rotorFrequency = 82f + 83f * (1f - MathF.Exp(-time * 7f));
+            rotorPhase += MathHelper.TwoPi * rotorFrequency / SampleRate;
+            var rotor = MathF.Sin(rotorPhase + 0.85f * MathF.Sin(rotorPhase * 0.47f)) * 0.53f +
+                        MathF.Sin(rotorPhase * 2.07f) * 0.17f;
+            var rotorEnvelope = MathHelper.SmoothStep(0, 1, Math.Clamp(time / 0.055f, 0, 1)) *
+                                MathHelper.SmoothStep(0, 1, Math.Clamp((seconds - time) / 0.22f, 0, 1));
+            var flutter = 0.86f + 0.14f * MathF.Sin(MathHelper.TwoPi * (19f * time + 22f * time * time));
+
+            // A brief contactor strike leads into the motor load.
+            impactPhase += MathHelper.TwoPi * (92f + 68f * MathF.Exp(-time * 35f)) / SampleRate;
+            var impact = MathF.Sin(impactPhase) * MathF.Exp(-time * 29f) * 0.65f;
+            var latch = (pressureNoise * 0.85f + MathF.Sin(MathHelper.TwoPi * 1367f * time) * 0.12f) *
+                        MathF.Exp(-time * 58f);
+            var edgeFade = MathHelper.SmoothStep(0, 1, Math.Clamp(time / 0.004f, 0, 1)) *
+                           MathHelper.SmoothStep(0, 1, Math.Clamp((seconds - time) / 0.025f, 0, 1));
+            signal[index] = (impact + latch + (rotor * flutter + pressureNoise * 0.65f) * rotorEnvelope) * edgeFade;
+            peak = MathF.Max(peak, MathF.Abs(signal[index]));
+        }
+
+        var gain = peak > 0 ? 0.18f / peak : 0;
+        for (var index = 0; index < count; index++) samples[index] = ToSample(signal[index] * gain);
+        return samples;
     }
 
     private static GeneratedOneShot CreateNoisePulse(float seconds)
