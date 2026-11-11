@@ -106,7 +106,7 @@ internal sealed class AudioDirector
         {
             var gain = family switch
             {
-                "needle_turret" => 0.21f, "watchtower" => 0.30f,
+                "needle_turret" => 0.15f, "watchtower" => 0.30f,
                 "breaker_cannon" => 0.32f, "siege_mortar" => 0.29f,
                 "ember_coil" => 0.24f, _ => 0.25f
             };
@@ -133,7 +133,7 @@ internal sealed class AudioDirector
             LevelIndex: impact.Appearance.Level - 1, Apex: impact.Appearance.IsApex);
         var gain = family switch
         {
-            "needle_turret" => 0.105f, "siege_mortar" => 0.34f, "breaker_cannon" => 0.27f,
+            "needle_turret" => 0.065f, "siege_mortar" => 0.34f, "breaker_cannon" => 0.27f,
             "watchtower" => 0.22f, "arc_relay" => chain ? 0.20f : 0.12f, _ => 0.17f
         };
         Request(new SoundRequest(key, gain * _pressureGain, Pan: Pan(impact.Position),
@@ -165,7 +165,7 @@ internal sealed class AudioDirector
         {
             if (_defeatPlayed) return;
             _defeatPlayed = true;
-            Cue(SoundCue.Defeat, 0.72f, SoundCategory.Critical, 1f);
+            Cue(SoundCue.Defeat, 0.95f, SoundCategory.Critical, 1f);
         }
         else Cue(SoundCue.Leak, enemy.IsBoss ? 0.66f : 0.42f, SoundCategory.Critical, 0.22f);
     }
@@ -179,7 +179,8 @@ internal sealed class AudioDirector
     private void OnUpgraded(TowerInstance tower, int cost) => Cue(tower.IsApex ? SoundCue.Apex : SoundCue.Upgrade,
         tower.IsApex ? 0.72f : 0.56f, position: tower.Position);
     private void OnSold(TowerInstance tower, int refund) => Cue(SoundCue.Sell, 0.44f, position: tower.Position);
-    private void OnProtocol(TowerInstance tower) => Cue(SoundCue.Protocol, 0.65f, SoundCategory.Notification, 0.20f, tower.Position);
+    private void OnProtocol(TowerInstance tower) => Cue(SoundCue.Protocol, 0.9f, SoundCategory.Notification,
+        0.20f, tower.Position, ProtocolPitch(tower.Definition.Id));
     private void OnPlateDeployed(PulsePlateInstance plate, bool purchased) => Cue(SoundCue.PlateDeploy, 0.40f, position: plate.Position);
     private void OnPlateTriggered(PulsePlateInstance plate, int hitCount) => Cue(SoundCue.PlateTrigger, 0.46f,
         SoundCategory.Combat, 0.14f, plate.Position);
@@ -196,9 +197,17 @@ internal sealed class AudioDirector
     }
 
     private void Cue(SoundCue cue, float gain, SoundCategory category = SoundCategory.Notification,
-        float cooldown = 0.08f, Vector2? position = null) =>
+        float cooldown = 0.08f, Vector2? position = null, float pitch = 0) =>
         Request(new SoundRequest(new SoundKey(null, Cue: cue), gain, category,
-            position.HasValue ? Pan(position.Value) : 0, Cooldown: cooldown));
+            position.HasValue ? Pan(position.Value) : 0, Pitch: pitch, Cooldown: cooldown));
+
+    internal static float ProtocolPitch(string family) => family switch
+    {
+        "siege_mortar" => -0.25f, "breaker_cannon" => -0.16f, "ember_coil" => -0.08f,
+        "watchtower" => -0.03f, "needle_turret" => 0.04f, "shard_fan" => 0.10f,
+        "signal_beacon" => 0.14f, "frost_spire" => 0.18f, "arc_relay" => 0.22f,
+        "prism_beam" => 0.28f, _ => 0
+    };
 
     private void Request(SoundRequest request) => Requested?.Invoke(request);
     private static float Pan(Vector2 position) => Math.Clamp((position.X - 480) / 480 * 0.32f, -0.32f, 0.32f);

@@ -39,6 +39,7 @@ internal static class AudioVerificationCli
             }
             Directory.CreateDirectory(output);
             SoundscapeTests.Run();
+            ProtocolReferenceTests.Run();
             AudioMixTests.Run();
             CombatAudioEventTests.Run();
             UiAudioFeedbackTests.Run();
@@ -92,12 +93,15 @@ internal static class AudioVerificationCli
         foreach (var weapon in ProceduralSoundBank.WeaponIds)
         foreach (var stage in new[] { 0, 3 })
         foreach (var layer in new[] { WeaponSoundLayer.Shot, WeaponSoundLayer.Impact })
+        {
+            if (layer == WeaponSoundLayer.Impact && weapon is "prism_beam" or "signal_beacon") continue;
             Add(new SoundKey(weapon, layer, LevelIndex: Math.Min(2, stage), Apex: stage == 3),
                 $"{weapon}-{(stage == 3 ? "apex" : "base")}-{layer.ToString().ToLowerInvariant()}");
-        foreach (var weapon in new[] { "prism_beam", "ember_coil" })
-            Add(new SoundKey(weapon, WeaponSoundLayer.Sustain), weapon + "-sustain");
+        }
+        Add(new SoundKey("prism_beam", WeaponSoundLayer.Sustain), "prism_beam-sustain");
         Add(new SoundKey("arc_relay", WeaponSoundLayer.Chain), "arc_relay-chain");
-        foreach (var cue in Enum.GetValues<SoundCue>()) Add(new SoundKey(null, Cue: cue), cue.ToString());
+        foreach (var cue in Enum.GetValues<SoundCue>().Where(cue => cue != SoundCue.UiError))
+            Add(new SoundKey(null, Cue: cue), cue.ToString());
         WriteWave(Path.Combine(output, "palette-reel.wav"), reel.ToArray(), 1);
         return entries;
 

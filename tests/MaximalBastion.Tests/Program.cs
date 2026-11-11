@@ -111,6 +111,7 @@ internal static class Program
             ("procedural audio mastering", ProceduralAudioMastering),
             ("interface audio navigation", UiAudioFeedbackTests.Run),
             ("layered sound bank and voice budgets", SoundscapeTests.Run),
+            ("Protocol activation signal reference", ProtocolReferenceTests.Run),
             ("audio mix priorities and lifecycle", AudioMixTests.Run),
             ("combat audio event timing", CombatAudioEventTests.Run),
             ("browser one-shot audio parameters", BrowserOneShotAudioParameters),

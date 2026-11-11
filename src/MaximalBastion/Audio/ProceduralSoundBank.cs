@@ -35,108 +35,85 @@ internal static class ProceduralSoundBank
                 throw new ArgumentException("This weapon does not have a continuous emitter.", nameof(layer));
             return CreateSustain(id, stage, variant);
         }
+        if (layer is not (WeaponSoundLayer.Shot or WeaponSoundLayer.Impact or WeaponSoundLayer.Chain))
+            throw new ArgumentOutOfRangeException(nameof(layer));
+        if (id is "shard_fan" or "frost_spire" or "ember_coil")
+            return RenderedSoundBank.Load(id, layer == WeaponSoundLayer.Chain ? WeaponSoundLayer.Impact : layer, stage, variant);
 
-        var duration = WeaponDuration(id, layer);
-        var sound = new Sound(duration + stage * .012f, Seed(id, stage, variant, (int)layer));
-        var weight = 1 - stage * .055f;
-        var detail = .72f + stage * .11f;
-        var tune = 1 + (variant - 1) * .018f;
+        var tune = 1 + (variant - 1) * .006f;
+        if (layer == WeaponSoundLayer.Shot && id == "needle_turret")
+        {
+            // A tiny rising dart stays readable through cadence; added coils color only the upper tiers.
+            var samples = ProceduralSignalReferences.Tone(1080 * tune, 1420 * tune, .026f + stage * .002f, sourceGain: .28f);
+            if (stage > 0)
+            {
+                var edge = ProceduralSignalReferences.Tone(2160 * tune, 2840 * tune,
+                    samples.Length / (float)SampleRate + .000001f, sourceGain: .012f * stage);
+                for (var index = 0; index < samples.Length; index++)
+                    samples[index] = (short)(samples[index] * (1 - stage * .04f) + edge[index]);
+            }
+            return samples;
+        }
+        if (id == "signal_beacon")
+            return ProceduralSignalReferences.Chord(740 * tune, (1110 + stage * 2) * tune,
+                .065f + stage * .004f, sourceGain: layer == WeaponSoundLayer.Shot ? .20f : .14f);
+
+        var sound = new Sound(WeaponDuration(id, layer) + stage * .006f, Seed(id, stage, variant, (int)layer));
+        var weight = 1 - stage * .025f;
+        var detail = .70f + stage * .10f;
         if (layer == WeaponSoundLayer.Chain && id == "arc_relay")
         {
-            // Short electrical leaps retain one discharge contour across the chain.
-            sound.Zap(0, .062f, .78f, 1670 * tune, 680, .95f);
-            sound.Zap(.024f, .055f, .44f, 1420 * tune, 540, 1.1f);
-            sound.Noise(0, .028f, .10f, 1600, 4400, .001f, 65);
+            // Irregularly spaced contacts read as current finding successive targets.
+            for (var jump = 0; jump < 3; jump++)
+            {
+                var at = jump switch { 0 => 0, 1 => .021f, _ => .057f };
+                var gain = .62f / (1 + jump * .6f);
+                sound.Energy(at, .038f, gain, (950 - jump * 135) * tune, 540 - jump * 70,
+                    52, 3.17f + jump * .13f, 2.1f + stage * .15f);
+                sound.Noise(at, .018f, .14f / (jump + 1), 1400, 4100, .0008f, 87);
+            }
             return sound.Finish(.18f);
         }
-
         if (layer is WeaponSoundLayer.Impact or WeaponSoundLayer.Chain)
         {
             AddImpact(sound, id, stage, weight, detail, tune);
-            return sound.Finish(id == "signal_beacon" ? .14f : .22f);
+            return sound.Finish(id == "needle_turret" ? .14f : .22f);
         }
-        if (layer != WeaponSoundLayer.Shot) throw new ArgumentOutOfRangeException(nameof(layer));
 
         switch (id)
         {
-            case "needle_turret":
-                // A tight, bright laser dart with a light upper-octave edge.
-                sound.Zap(0, .074f, .90f, 1840 * tune, 880 * weight, .30f);
-                sound.Zap(.002f, .045f, .21f, 3380 * tune, 1580, .18f);
-                sound.Noise(.001f, .027f, .08f, 1400, 4000, .001f, 58);
-                sound.Metal(.027f, .025f, .025f * detail, 1520, 90);
-                break;
             case "watchtower":
-                // A long ion lance sweeps into a dense electrical tail.
-                sound.Zap(0, .17f, .86f, 2480 * tune, 340 * weight, .66f);
-                sound.Zap(.008f, .18f, .37f, 760 * weight, 180, .38f, .004f);
-                sound.Noise(.003f, .065f, .12f, 650, 4200, .002f, 35);
-                sound.Metal(.001f, .045f, .06f, 440 * weight, 45);
-                break;
-            case "shard_fan":
-                // Overlapping colored plasma chirps form one spreading burst.
-                for (var petal = 0; petal < 3 + stage; petal++)
-                {
-                    var at = petal * .009f;
-                    sound.Zap(at, .115f, .56f / (1 + petal * .20f),
-                        (1480 + petal * 270) * tune, (470 + petal * 85) * weight, .78f);
-                }
-                sound.Noise(.008f, .075f, .12f, 900, 3500, .005f, 28);
-                break;
-            case "frost_spire":
-                // Glassy energy rises through the crystal, with a soft coolant edge.
-                sound.Zap(0, .18f, .78f, 890 * tune, 1590, .22f, .004f);
-                sound.Zap(.014f, .17f, .32f * detail, 2340 * tune, 1880, .16f);
-                sound.Noise(.006f, .12f, .085f, 1800, 3500, .008f, 20);
-                break;
-            case "ember_coil":
-                // A warm, rounded plasma pulse expands from the charged coil.
-                sound.Zap(0, .21f, .88f, 760 * tune, 190 * weight, 1.05f, .005f);
-                sound.Zap(.009f, .135f, .30f, 1260 * tune, 430, .76f);
-                sound.Noise(.015f, .14f, .13f, 240, 1800, .012f, 18, 47);
-                sound.Metal(0, .025f, .035f, 760, 73);
+                // One concentrated rail release: low-mid impulse, ion edge, then silence.
+                sound.Energy(0, .085f, .90f, 310 * tune, 165 * weight, 28, 2.01f, .38f);
+                sound.Energy(.002f, .078f, .32f + stage * .035f, 1130 * tune, 970, 41, 2.53f, .75f);
+                sound.Noise(.001f, .050f, .12f, 1800, 4600, .0008f, 48);
+                sound.Energy(.027f, .065f, .10f * detail, 470, 450, 34, 2.02f, .12f);
                 break;
             case "breaker_cannon":
-                // A compact energy bolt has a deep, fast electrical punch.
-                sound.Zap(0, .17f, .94f, 940 * tune, 135 * weight, .72f);
-                sound.Zap(.002f, .09f, .33f, 1820, 480, .54f);
-                sound.Noise(.002f, .055f, .13f, 420, 3200, .002f, 35);
-                sound.Metal(.046f, .050f, .055f * detail, 530 * weight, 40);
+                // A braced bolt compresses its weight into a short, thick impulse.
+                sound.Energy(0, .095f, .93f, 215 * tune, 125 * weight, 34, 2.0f, 1.35f + stage * .12f);
+                sound.Energy(.001f, .040f, .32f, 830, 610, 65, 2.91f, .65f);
+                sound.Noise(.002f, .038f, .15f, 500, 2400, .001f, 64);
+                sound.Metal(.027f, .043f, .055f * detail, 440, 55);
                 break;
             case "siege_mortar":
-                // The charge lifts out of the well; its deeper collapse belongs to impact.
-                sound.Zap(0, .22f, .79f, 250 * weight, 1020 * tune, .50f, .006f);
-                sound.Zap(.008f, .10f, .34f, 1420, 460, .60f);
-                sound.Noise(.012f, .12f, .12f, 380, 1800, .012f, 20);
-                sound.Metal(.12f, .06f, .045f * detail, 470 * weight, 47);
+                // The rounded charge lifts from the well; the pressure burst belongs to arrival.
+                sound.Zap(0, .135f, .73f, 265 * weight, 440 * tune, .30f, .007f);
+                sound.Energy(.005f, .11f, .28f + stage * .035f, 530, 570, 20, 2.02f, .23f, .008f);
+                sound.Noise(.015f, .09f, .11f, 370, 1300, .009f, 25);
                 break;
             case "arc_relay":
-                sound.Zap(0, .11f, .88f, 1920 * tune, 470, 1.25f);
-                sound.Zap(.012f, .085f, .28f, 1040, 1720, .90f);
-                sound.Noise(.001f, .035f, .14f, 1200, 4600, .001f, 48);
+                sound.Energy(0, .066f, .84f, 820 * tune, 285, 41, 3.17f, 2.1f + stage * .12f);
+                sound.Noise(.001f, .028f, .17f, 1300, 4300, .0007f, 72);
+                sound.Energy(.016f, .027f, .21f * detail, 1390, 1050, 64, 2.73f, 1.9f);
                 break;
             case "prism_beam":
-                // A luminous rising focus leads into the sustained optical carrier.
-                sound.Zap(0, .14f, .86f, 680 * tune, 1340, .24f, .006f);
-                sound.Zap(.010f, .12f, .19f, 1960, 2440, .13f);
-                sound.Noise(.008f, .070f, .05f, 1600, 3400, .012f, 20);
-                break;
-            case "signal_beacon":
-                sound.Zap(0, .15f, .70f, 710 * tune, 1060, .32f, .009f);
-                sound.Zap(.025f, .10f, .16f * detail, 1530, 1290, .20f);
-                sound.Noise(.012f, .075f, .045f, 1100, 2700, .012f, 22);
+                // The brief focus gesture resolves into the continuous carrier.
+                sound.Energy(0, .062f, .77f, 1240 * tune, 733 - stage * 23, 32, 2.0f, .12f, .003f);
+                sound.Energy(.012f, .055f, .10f + stage * .02f, 1466, 1466, 26, 2.0f, .08f, .007f);
                 break;
         }
-
-        if (stage > 0)
-        {
-            // Higher capabilities add coupled energy bands without increasing source peak.
-            sound.Zap(.014f, .060f + stage * .008f, .055f * stage,
-                (980 + stage * 180) * tune, 420 * weight, .32f + stage * .10f);
-            if (stage == 3)
-                sound.Zap(.025f, .11f, .13f, 2180 * tune, 960, .40f, .004f);
-        }
-        return sound.Finish(id is "signal_beacon" or "prism_beam" ? .20f : .28f);
+        return sound.Finish(id == "prism_beam" ? .20f : .28f);
     }
 
     private static void AddImpact(Sound sound, string id, int stage, float weight, float detail, float tune)
@@ -144,204 +121,134 @@ internal static class ProceduralSoundBank
         switch (id)
         {
             case "needle_turret":
-                sound.Zap(0, .065f, .72f, 2240 * tune, 1120, .46f);
-                sound.Noise(0, .025f, .09f, 1400, 4200, .001f, 65);
-                sound.Metal(.001f, .032f, .05f, 1250, 58);
+                sound.Energy(0, .030f, .70f, 1460 * tune, 1190, 95, 2.03f, .17f + stage * .025f);
+                sound.Noise(.001f, .017f, .08f, 1600, 3500, .001f, 92);
                 break;
             case "watchtower":
-                sound.Zap(0, .14f, .88f, 1110 * tune, 220 * weight, .78f);
-                sound.Zap(.004f, .085f, .27f, 2180, 760, .48f);
-                sound.Noise(.002f, .075f, .15f, 600, 3300, .002f, 32);
-                sound.Metal(.001f, .075f, .08f, 470 * weight, 38);
-                break;
-            case "shard_fan":
-                sound.Zap(0, .12f, .70f, 1680 * tune, 600, .94f);
-                sound.Zap(.012f, .09f, .30f, 2360, 980, .68f);
-                sound.Noise(.003f, .070f, .12f, 1100, 3600, .002f, 32, 77);
-                break;
-            case "frost_spire":
-                sound.Zap(0, .18f, .72f, 2430 * tune, 1680, .18f, .003f);
-                sound.Zap(.015f, .15f, .26f, 1760, 2140, .22f);
-                sound.Noise(.003f, .10f, .08f, 1800, 3800, .005f, 20);
-                break;
-            case "ember_coil":
-                sound.Zap(0, .21f, .78f, 580 * tune, 170 * weight, 1.10f, .004f);
-                sound.Zap(.015f, .13f, .25f, 1220, 430, .82f);
-                sound.Noise(.008f, .15f, .15f, 350, 2200, .006f, 18, 57);
+                // A narrow puncture rather than a second cannon discharge.
+                sound.Energy(0, .060f, .68f, 560 * tune, 390 * weight, 49, 2.43f, .80f);
+                sound.Noise(.001f, .044f, .18f, 1100, 3900, .001f, 57);
+                sound.Metal(.008f, .057f, .10f * detail, 740 * weight, 46);
                 break;
             case "breaker_cannon":
-                sound.Zap(0, .18f, .88f, 780 * tune, 125 * weight, .96f);
-                sound.Zap(.002f, .11f, .27f, 1740, 510, .62f);
-                sound.Noise(.002f, .085f, .19f, 450, 3400, .002f, 30);
-                sound.Metal(.006f, .09f, .12f * detail, 310 * weight, 32);
+                // Armor fracture has the hardest edge of the direct-fire impacts.
+                sound.Energy(0, .105f, .76f, 185 * tune, 115 * weight, 28, 2.07f, .92f);
+                sound.Noise(.001f, .066f, .31f, 700, 3300, .0008f, 41);
+                sound.Metal(.003f, .080f, .21f * detail, 580 * weight, 39);
+                sound.Metal(.023f, .045f, .07f, 1170, 63);
                 break;
             case "siege_mortar":
-                sound.Zap(0, .30f, .86f, 1020 * tune, 135 * weight, 1.06f, .003f);
-                sound.Zap(.018f, .24f, .37f, 460, 180, .45f, .006f);
-                sound.Noise(.005f, .21f, .24f, 250, 2900, .004f, 15);
-                sound.Zap(.065f, .12f, .14f * detail, 1960, 690, .74f);
+                // A wider pressure bloom, broken into short diffuse resonances.
+                sound.Energy(0, .17f, .75f, 150 * tune, 92 * weight, 23, 1.61f, 1.25f);
+                sound.Noise(.002f, .18f, .36f, 160, 2300, .003f, 19);
+                sound.Energy(.026f, .13f, .21f * detail, 410, 360, 29, 2.63f, 1.8f);
+                sound.Noise(.045f, .12f, .13f, 1300, 3400, .008f, 30);
                 break;
             case "arc_relay":
-                sound.Zap(0, .09f, .78f, 1540 * tune, 490, 1.15f);
-                sound.Noise(.001f, .028f, .12f, 1400, 4300, .001f, 55);
+                sound.Energy(0, .040f, .68f, 970 * tune, 610, 62, 3.31f, 1.9f + stage * .1f);
+                sound.Noise(.001f, .021f, .13f, 1600, 3900, .0008f, 72);
                 break;
             case "prism_beam":
-                sound.Zap(0, .09f, .72f, 1760 * tune, 940, .28f);
-                sound.Noise(.002f, .055f, .055f, 1300, 3300, .006f, 29);
-                break;
-            case "signal_beacon":
-                sound.Zap(0, .13f, .64f, 1210 * tune, 790, .24f, .005f);
-                sound.Noise(.002f, .075f, .045f, 1000, 2500, .012f, 25);
+                sound.Energy(0, .048f, .60f, 1040 * tune, 960, 48, 2.0f, .15f + stage * .02f);
                 break;
         }
-        if (stage >= 2 && id is not ("signal_beacon" or "prism_beam"))
-            sound.Zap(.014f, .065f, .045f * stage, 2140 * tune, 940, .40f);
     }
 
     internal static short[] CreateCue(SoundCue cue, int variant = 0)
     {
+        // Signals use fixed intervals so repeated actions retain a stable meaning.
+        var signal = cue switch
+        {
+            SoundCue.Upgrade => ProceduralSignalReferences.Tone(480, 760, .14f),
+            SoundCue.Sell => ProceduralSignalReferences.Tone(360, 210, .12f, triangle: true),
+            SoundCue.Protocol => ProceduralSignalReferences.Chord(390, 585, .20f),
+            SoundCue.Leak => ProceduralSignalReferences.TwoNote(392, 392, .22f, .26f),
+            SoundCue.WaveStart => ProceduralSignalReferences.Tone(260, 540, .24f, triangle: true),
+            SoundCue.WaveClear => ProceduralSignalReferences.Chord(520, 780, .28f),
+            SoundCue.ChargeReady => ProceduralSignalReferences.TwoNote(880, 1175, .16f, .21f),
+            SoundCue.Victory => ProceduralSignalReferences.Triad(392, 523, 659, .48f),
+            SoundCue.Defeat => ProceduralSignalReferences.TwoNote(392, 330, .30f),
+            SoundCue.UiNavigate => ProceduralSignalReferences.Tone(760, 820, .035f, sourceGain: .11f),
+            SoundCue.UiConfirm => ProceduralSignalReferences.Tone(410, 620, .075f),
+            SoundCue.UiBack => ProceduralSignalReferences.Tone(430, 300, .075f, triangle: true),
+            SoundCue.UiDelete => ProceduralSignalReferences.TwoNote(420, 300, .11f, .16f),
+            SoundCue.UiError => ProceduralSignalReferences.TwoNote(310, 310, .13f, .16f),
+            _ => null
+        };
+        if (signal is not null) return signal;
+
         variant = (int)((uint)variant % VariantCount);
         var sound = new Sound(CueDuration(cue), Seed(cue.ToString(), 0, variant, 17));
         var tune = 1 + (variant - 1) * .014f;
         switch (cue)
         {
             case SoundCue.Place:
-            case SoundCue.ForgePlace:
-                sound.Metal(0, .075f, .18f, cue == SoundCue.Place ? 470 : 330, 42);
-                sound.Zap(.018f, .16f, .48f, 290 * tune, cue == SoundCue.Place ? 710 : 540, .38f, .006f);
-                sound.Noise(.003f, .10f, .12f, 500, 2500, .006f, 28);
+                sound.Metal(0, .065f, .15f, 470 * tune, 48);
+                sound.Energy(.015f, .14f, .40f, 470, 470, 9, 1.5f, .12f, .008f);
                 break;
-            case SoundCue.Upgrade:
+            case SoundCue.ForgePlace:
+                sound.Metal(0, .08f, .20f, 330 * tune, 38);
+                AddActuator(sound, .015f, .15f, 190, 245, .12f);
+                sound.Energy(.055f, .13f, .31f, 490, 490, 8, 2, .12f, .012f);
+                break;
             case SoundCue.ForgeUpgrade:
-                sound.Zap(.005f, .21f, .48f, 360 * tune, cue == SoundCue.Upgrade ? 1080 : 810, .42f, .006f);
-                sound.Zap(.13f, .14f, .24f, 930 * tune, 1490, .28f, .004f);
-                sound.Metal(0, .045f, .08f, 620, 55);
-                sound.Noise(.15f, .08f, .06f, 1300, 3300, .006f, 28);
+                sound.Metal(0, .055f, .10f, 620, 55);
+                AddActuator(sound, .01f, .12f, 230, 285, .10f);
+                sound.Energy(.05f, .10f, .28f, 620, 620, 9, 2, .10f, .006f);
+                sound.Energy(.13f, .13f, .30f, 930, 930, 8, 2, .08f, .006f);
                 break;
             case SoundCue.Apex:
-                sound.Metal(0, .09f, .12f, 320, 32);
-                sound.Zap(.012f, .35f, .48f, 230 * tune, 1150, .62f, .012f);
-                sound.Zap(.17f, .25f, .26f, 620 * tune, 1740, .38f, .008f);
-                sound.Zap(.29f, .22f, .19f, 1530, 1070, .24f, .012f);
-                sound.Noise(.25f, .17f, .08f, 1500, 3800, .015f, 16);
-                break;
-            case SoundCue.Sell:
-                sound.Metal(0, .045f, .11f, 900, 58);
-                sound.Zap(.009f, .17f, .44f, 820 * tune, 270, .35f, .004f);
-                sound.Metal(.13f, .05f, .08f, 430, 55);
-                break;
-            case SoundCue.Protocol:
-                sound.Zap(.002f, .25f, .55f, 320 * tune, 1380, .72f, .008f);
-                sound.Zap(.14f, .15f, .25f, 1930, 860, .58f, .003f);
-                sound.Noise(.04f, .19f, .11f, 900, 3400, .012f, 18, 39);
-                sound.Metal(0, .045f, .07f, 460, 52);
+                // A settled field opens into higher harmonics as the promoted emitter comes online.
+                sound.Energy(0, .44f, .42f, 390, 390, 2.5f, 2, .16f, .025f);
+                sound.Energy(.04f, .44f, .28f, 585, 585, 2.8f, 2, .12f, .045f);
+                sound.Energy(.10f, .38f, .12f, 780, 780, 4, 2, .08f, .040f);
                 break;
             case SoundCue.KillSmall:
-                sound.Zap(0, .075f, .48f, 1170 * tune, 340, .70f);
-                sound.Noise(0, .055f, .15f, 1300, 4800, .001f, 46);
-                sound.Metal(.015f, .05f, .10f, 1020, 58);
+                sound.Noise(0, .038f, .28f, 1300, 4300, .001f, 62);
+                sound.Metal(.003f, .065f, .16f, 1020 * tune, 57);
+                sound.Energy(.009f, .065f, .15f, 670, 630, 43, 2.7f, 2.2f);
                 break;
             case SoundCue.KillArmored:
-                sound.Metal(0, .12f, .25f, 390 * tune, 33);
-                sound.Zap(.002f, .14f, .46f, 840 * tune, 190, .68f);
-                sound.Noise(.002f, .11f, .17f, 700, 3600, .002f, 29);
-                sound.Metal(.043f, .06f, .09f, 830, 48);
+                sound.Metal(0, .14f, .36f, 390 * tune, 29);
+                sound.Noise(.002f, .10f, .16f, 650, 3200, .002f, 34);
+                sound.Energy(.012f, .12f, .13f, 420, 390, 24, 2.4f, 2.1f);
+                sound.Metal(.045f, .065f, .08f, 830, 51);
                 break;
             case SoundCue.KillLarge:
-                sound.Zap(.001f, .28f, .58f, 610 * tune, 95, .78f, .004f);
-                sound.Noise(0, .24f, .24f, 250, 2700, .003f, 17);
-                sound.Metal(.006f, .18f, .20f, 340, 25);
-                sound.Zap(.075f, .17f, .16f, 1160, 360, .58f, .004f);
+                sound.Noise(0, .24f, .40f, 220, 2600, .003f, 18);
+                sound.Energy(0, .20f, .26f, 138, 110, 21, 2.2f, .35f, .003f);
+                sound.Metal(.008f, .19f, .24f, 340 * tune, 24);
+                sound.Energy(.065f, .16f, .12f, 540, 490, 22, 3.1f, 2.5f);
                 break;
             case SoundCue.ShieldHit:
-                sound.Zap(.001f, .075f, .48f, 1510 * tune, 960, .68f);
-                sound.Noise(0, .055f, .08f, 1700, 4200, .003f, 38);
+                sound.Energy(0, .085f, .46f, 970 * tune, 940 * tune, 28, 2.4f, 1.6f, .001f);
+                sound.Noise(0, .025f, .04f, 1700, 4000, .001f, 60);
                 break;
             case SoundCue.ShieldBreak:
-                sound.Zap(0, .18f, .50f, 1940 * tune, 270, .83f);
-                sound.Zap(.035f, .12f, .20f, 2710, 640, .56f);
-                sound.Noise(.002f, .14f, .17f, 1300, 4300, .004f, 25, 83);
-                break;
-            case SoundCue.Leak:
-                sound.Zap(0, .115f, .43f, 590 * tune, 390, .36f);
-                sound.Zap(.115f, .12f, .40f, 510 * tune, 320, .36f);
-                sound.Metal(0, .05f, .08f, 310, 45);
-                break;
-            case SoundCue.WaveStart:
-                sound.Zap(.005f, .22f, .44f, 390 * tune, 950, .42f, .005f);
-                sound.Zap(.16f, .13f, .25f, 1180, 1600, .25f, .004f);
-                sound.Metal(0, .05f, .08f, 480, 52);
-                break;
-            case SoundCue.WaveClear:
-                sound.Zap(.005f, .26f, .39f, 470 * tune, 820, .26f, .008f);
-                sound.Zap(.13f, .16f, .20f, 1220, 1460, .19f, .008f);
-                sound.Noise(.025f, .18f, .07f, 1300, 3400, .025f, 17);
+                sound.Energy(0, .16f, .35f, 1220 * tune, 1140, 20, 2.41f, 2.7f);
+                sound.Energy(.027f, .11f, .15f, 1650, 1520, 26, 3.07f, 2.5f);
+                sound.Noise(.002f, .14f, .20f, 1400, 4300, .003f, 25, 83);
                 break;
             case SoundCue.PlateDeploy:
-                sound.Metal(0, .07f, .19f, 680, 46);
-                sound.Zap(.02f, .105f, .43f, 510 * tune, 1190, .42f, .004f);
-                sound.Noise(.002f, .055f, .07f, 1000, 2800, .004f, 42);
+                sound.Metal(0, .055f, .18f, 680 * tune, 48);
+                sound.Energy(.027f, .09f, .32f, 920, 920, 16, 2, .08f, .005f);
                 break;
             case SoundCue.PlateTrigger:
-                sound.Zap(.001f, .21f, .64f, 1360 * tune, 220, .80f, .003f);
-                sound.Noise(0, .15f, .22f, 850, 3900, .002f, 26);
-                sound.Zap(.035f, .14f, .20f, 2070, 590, .48f, .003f);
-                break;
-            case SoundCue.ChargeReady:
-                sound.Zap(.004f, .16f, .41f, 570 * tune, 1150, .30f, .005f);
-                sound.Zap(.10f, .11f, .23f, 1300, 1770, .22f, .004f);
-                sound.Noise(.005f, .11f, .05f, 1500, 3300, .012f, 26);
+                sound.Noise(0, .17f, .53f, 240, 3900, .0015f, 23);
+                sound.Energy(.002f, .16f, .30f, 165, 145, 25, 2, .18f, .002f);
+                sound.Noise(.028f, .14f, .11f, 1300, 3400, .008f, 23);
                 break;
             case SoundCue.BossPhase:
             case SoundCue.BossArrival:
                 AddBossLoad(sound, cue == SoundCue.BossArrival);
-                break;
-            case SoundCue.Victory:
-                sound.Metal(0, .07f, .07f, 500, 40);
-                AddActuator(sound, .015f, .30f, 175, 320, .22f);
-                // Sparse, damped resonances leave the soundtrack in charge of the melody.
-                sound.Energy(.07f, .45f, .23f, 392, 392, 9, 1.003f, .18f);
-                sound.Energy(.15f, .46f, .18f, 523.25f, 523.25f, 9, 1.002f, .14f);
-                sound.Energy(.23f, .46f, .16f, 659.25f, 659.25f, 9, 1.003f, .12f);
-                sound.Noise(.09f, .34f, .07f, 1500, 3600, .035f, 14);
-                break;
-            case SoundCue.Defeat:
-                sound.Zap(.005f, .39f, .46f, 490 * tune, 100, .48f, .012f);
-                sound.Metal(0, .13f, .14f, 310, 27);
-                sound.Noise(.028f, .29f, .12f, 300, 1900, .013f, 15);
-                sound.Zap(.25f, .14f, .19f, 340, 170, .24f, .007f);
-                break;
-            case SoundCue.UiNavigate:
-                sound.Zap(0, .032f, .44f, 1040 * tune, 1510, .24f, .001f);
-                sound.Noise(0, .021f, .04f, 2100, 4300, .001f, 97);
-                break;
-            case SoundCue.UiConfirm:
-                sound.Zap(.001f, .072f, .43f, 580 * tune, 1060, .31f);
-                sound.Zap(.033f, .042f, .13f, 1110, 1360, .17f);
-                sound.Noise(.001f, .035f, .03f, 1500, 3300, .002f, 55);
-                break;
-            case SoundCue.UiBack:
-                sound.Zap(.001f, .073f, .44f, 940 * tune, 400, .30f);
-                sound.Noise(.002f, .039f, .03f, 1200, 2800, .003f, 48);
-                break;
-            case SoundCue.UiDelete:
-                sound.Zap(0, .055f, .39f, 1130 * tune, 660, .38f);
-                sound.Zap(.063f, .057f, .32f, 590, 260, .29f);
-                sound.Metal(.07f, .03f, .05f, 550, 73);
-                break;
-            case SoundCue.UiError:
-                sound.Zap(0, .057f, .36f, 470 * tune, 330, .26f);
-                sound.Zap(.067f, .058f, .32f, 420 * tune, 290, .26f);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(cue));
         }
         var peak = cue switch
         {
-            SoundCue.UiNavigate => .11f,
-            SoundCue.UiConfirm or SoundCue.UiBack or SoundCue.UiDelete or SoundCue.UiError => .16f,
             SoundCue.KillSmall or SoundCue.ShieldHit => .20f,
-            SoundCue.KillArmored or SoundCue.ChargeReady => .24f,
+            SoundCue.KillArmored or SoundCue.PlateDeploy => .24f,
             _ => .30f
         };
         return sound.Finish(peak);
@@ -349,8 +256,8 @@ internal static class ProceduralSoundBank
 
     private static void AddActuator(Sound sound, float at, float duration, float from, float to, float gain)
     {
-        sound.Zap(at, duration, gain, from, to, .42f, .012f);
-        sound.Noise(at, duration, gain * .12f, 900, 2700, .018f, 16, 29);
+        sound.Energy(at, duration, gain, from, to, 12, 2.1f, .3f, .008f);
+        sound.Noise(at, duration, gain * .07f, 700, 2100, .012f, 18, 29);
     }
 
     private static void AddBossLoad(Sound sound, bool arrival)
@@ -364,55 +271,41 @@ internal static class ProceduralSoundBank
         if (arrival)
         {
             sound.Metal(.17f, .19f, .18f, 510, 21);
-            sound.Zap(.22f, .25f, .18f, 370, 840, .45f, .025f);
+            sound.Energy(.22f, .25f, .18f, 370, 410, 8, 2.07f, .6f, .025f);
         }
     }
 
     private static float WeaponDuration(string id, WeaponSoundLayer layer) => (id, layer) switch
     {
-        ("needle_turret", _) => .08f,
-        ("watchtower", WeaponSoundLayer.Shot) => .20f,
-        ("watchtower", _) => .16f,
-        ("shard_fan", WeaponSoundLayer.Shot) => .18f,
-        ("shard_fan", _) => .14f,
-        ("frost_spire", _) => .22f,
-        ("ember_coil", _) => .24f,
-        ("breaker_cannon", _) => .20f,
-        ("siege_mortar", WeaponSoundLayer.Shot) => .25f,
-        ("siege_mortar", _) => .34f,
-        ("arc_relay", WeaponSoundLayer.Chain) => .09f,
-        ("arc_relay", _) => .14f,
-        ("prism_beam", WeaponSoundLayer.Shot) => .16f,
-        ("prism_beam", _) => .10f,
-        _ => .18f
+        ("needle_turret", _) => .035f,
+        ("watchtower", WeaponSoundLayer.Shot) => .105f,
+        ("watchtower", _) => .080f,
+        ("breaker_cannon", WeaponSoundLayer.Shot) => .110f,
+        ("breaker_cannon", _) => .125f,
+        ("siege_mortar", WeaponSoundLayer.Shot) => .160f,
+        ("siege_mortar", _) => .230f,
+        ("arc_relay", WeaponSoundLayer.Chain) => .105f,
+        ("arc_relay", WeaponSoundLayer.Shot) => .080f,
+        ("arc_relay", _) => .055f,
+        ("prism_beam", WeaponSoundLayer.Shot) => .080f,
+        _ => .065f
     };
 
     private static float CueDuration(SoundCue cue) => cue switch
     {
-        SoundCue.Place or SoundCue.ForgePlace => .21f,
-        SoundCue.Upgrade or SoundCue.ForgeUpgrade => .31f,
-        SoundCue.Apex => .56f,
-        SoundCue.Sell => .22f,
-        SoundCue.Protocol => .35f,
+        SoundCue.Place => .17f,
+        SoundCue.ForgePlace => .20f,
+        SoundCue.ForgeUpgrade => .28f,
+        SoundCue.Apex => .50f,
         SoundCue.KillSmall => .10f,
         SoundCue.KillArmored => .18f,
-        SoundCue.KillLarge => .35f,
+        SoundCue.KillLarge => .27f,
         SoundCue.ShieldHit => .10f,
-        SoundCue.ShieldBreak => .22f,
-        SoundCue.Leak => .27f,
-        SoundCue.WaveStart => .34f,
-        SoundCue.WaveClear => .35f,
+        SoundCue.ShieldBreak => .18f,
         SoundCue.PlateDeploy => .15f,
-        SoundCue.PlateTrigger => .25f,
-        SoundCue.ChargeReady => .25f,
+        SoundCue.PlateTrigger => .20f,
         SoundCue.BossPhase => .54f,
         SoundCue.BossArrival => .62f,
-        SoundCue.Victory => .74f,
-        SoundCue.Defeat => .46f,
-        SoundCue.UiNavigate => .04f,
-        SoundCue.UiConfirm or SoundCue.UiBack => .09f,
-        SoundCue.UiDelete => .14f,
-        SoundCue.UiError => .15f,
         _ => throw new ArgumentOutOfRangeException(nameof(cue))
     };
 

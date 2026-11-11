@@ -169,6 +169,8 @@ internal static class AudioMixTests
         Expect(SoundCue.Upgrade, () => sandbox.TrySpecializeTower(tower.Id, tower.Definition.Specializations[0].Id));
         Expect(SoundCue.Apex, () => sandbox.TryUpgradeTower(tower.Id));
         Expect(SoundCue.Protocol, () => sandbox.TryOverdriveTower(tower.Id));
+        Check.Equal(.9f, requests.Single().Gain, "activation retains the full short-hum playback gain");
+        Check.Equal(.04f, requests.Single().Pitch, "activation retains the Needle family transposition");
         Expect(SoundCue.Sell, () => sandbox.TrySellTower(tower.Id));
         Check.True(sandbox.SpawnSandboxTargets("t1_crawler", 1, 1, "Standard", true), "plate cue target spawns");
         sandbox.Enemies[0].SetSandboxPathDistance(240, sandbox.Map.Path);

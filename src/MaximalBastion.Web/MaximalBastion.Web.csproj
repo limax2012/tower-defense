@@ -35,6 +35,8 @@
              Exclude="..\MaximalBastion\bin\**;..\MaximalBastion\obj\**;..\MaximalBastion\Program.cs;..\MaximalBastion\Diagnostics\**" />
     <EmbeddedResource Include="..\MaximalBastion\ContentData\**\*.json"
                       LogicalName="MaximalBastion.ContentData.%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\MaximalBastion\Audio\Samples\*.wav"
+                      LogicalName="MaximalBastion.Audio.Samples.%(Filename)%(Extension)" />
     <KniContentReference Include="Content\Content.mgcb" />
     <Content Include="..\MaximalBastion\Content\Fonts\*.ttf"
              Link="wwwroot\fonts\%(Filename)%(Extension)"

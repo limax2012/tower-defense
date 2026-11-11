@@ -24,7 +24,7 @@ The tactical layout uses a fixed 1280×720 logical canvas:
 
 `Game1` owns the backbuffer, display transitions, focus-safe input, and presentation mode. `GameRenderer` renders the logical scene through `PrimitiveRenderer` and map/tower/enemy-specific helpers. `ColorPalette` centralizes theme constants so DPI and output changes do not alter the palette.
 
-The game generates shape masks, icons, tower/enemy silhouettes, effects, menu combat, and audio procedurally. Effects are bounded, and essential tactical cues have priority over cosmetic flashes in dense waves. UI verification can render real scenes in a hidden non-activating window.
+The game generates shape masks, icons, tower/enemy silhouettes, visual effects, and menu combat procedurally. Audio combines procedural voices with embedded authored material layers. Effects are bounded, and essential tactical cues have priority over cosmetic flashes in dense waves. UI verification can render real scenes in a hidden non-activating window.
 
 ## Top-level runtime
 
@@ -219,7 +219,7 @@ Projectile Splash effects draw with their live damage recipient, above that enem
 
 ## Audio
 
-`AudioManager` owns effect playback and the menu/gameplay music lifecycle. `ProceduralSoundBank` builds swept energy effects with restrained mechanical detail; `AudioDirector` maps actual launches, impacts, enemy transitions, and tactical events into local requests. `SoundMixer` limits real-time cadence, simultaneous voices, and summed peak levels while reserving room for important cues. Sustained Prism audio uses a renewable lease and fades after target loss or pause. Audio has no influence on deterministic state and degrades safely when no audio device is available. See [sound design](docs/audio-design.md) for the palette and reproducible mix verification.
+`AudioManager` owns effect playback and the menu/gameplay music lifecycle. `ProceduralSoundBank` combines concise procedural voices with embedded Csound-authored Shard, Ember, and Frost material layers. Their source and reproducible renderer live in `scripts/audio`; Csound is an authoring dependency, not a playback dependency. `AudioDirector` maps actual launches, impacts, enemy transitions, and tactical events into local requests. Whole attacks and area detonations do not multiply cues by damage recipients, and damage-over-time does not replay weapon sounds. `SoundMixer` limits real-time cadence, simultaneous voices, and summed peak levels while reserving room for important cues. Prism uses a shared renewable sustain that fades after target loss or pause. Audio is presentation-only, preserves separate volume controls and the music lifecycle, and degrades safely when no audio device is available. See [sound design](docs/audio-design.md) for the art brief, complete cue purposes, source workflow, and mix verification.
 
 ## Diagnostics and verification
 
@@ -240,7 +240,7 @@ The test executable covers content loading/validation, maps/waves, placement, co
 ```text
 src/MaximalBastion/
   Analytics/      career, medals, achievements, run statistics
-  Audio/          procedural music and synthesized effects
+  Audio/          effect synthesis, authored layers, and playback
   Combat/         targeting, buffs, projectiles, damage
   ContentData/    authored JSON definitions
   Core/           shared constants, input, viewport, metrics
