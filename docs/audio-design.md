@@ -1,21 +1,21 @@
 # Sound design
 
-Effects use short mechanical contacts, filtered pressure noise, inharmonic material resonances, and modulated energy layers. Tier changes add assembly detail and weight while preserving each weapon's identity. Three generated variations and small presentation-only pitch changes reduce repeated transients. The shipped menu loop, gameplay playlist, shuffle behavior, activity gain, and fallback music remain independent of effect synthesis.
+Weapon effects center on colorful laser sweeps, overlapping plasma chirps, and shimmering energy carriers. Quiet grain, pressure, and contact layers support those electronic identities. Tier changes add coupled energy bands and weight while preserving each weapon's contour. Three generated variations and small presentation-only pitch changes reduce repeated transients. The shipped menu loop, gameplay playlist, shuffle behavior, activity gain, and fallback music remain independent of effect synthesis.
 
 | Family | Launch / operation | Contact |
 | --- | --- | --- |
-| Needle | Tight rail contact and receiver return | Small metal strike |
-| Watchtower | Heavy contactor and ionized rail wake | Dense armor strike |
-| Shard Fan | Staggered plasma petals in one burst | Granular plasma splash |
-| Frost Spire | Coolant valve and inharmonic crystal modes | Brittle crystal fracture |
-| Ember Coil | Igniter, chamber pressure, nozzle exhaust | Restrained thermal wash |
-| Breaker Cannon | Compact armored breech and recoil | Short, heavy direct impact |
-| Siege Mortar | Pneumatic launch and closing mechanism | Delayed pressure wave and debris |
-| Arc Relay | Irregular electrical discharge | Separate contacts identify chaining |
-| Prism Beam | Aperture opening and continuous optical texture | Sustained emitter replaces repeated hit cues |
-| Signal Beacon | Quiet transmission pulse when a supported tower fires | Bounded support feedback |
+| Needle | Tight, bright laser dart with an upper-octave edge | Small energy spark |
+| Watchtower | Long ion lance with a deep electrical tail | Dense energy collapse with an armor accent |
+| Shard Fan | Overlapping plasma chirps in one spreading burst | Layered plasma splash |
+| Frost Spire | Rising, glassy crystal energy | Bright descending crystal shimmer |
+| Ember Coil | Warm, rounded plasma pulse | Low thermal energy bloom |
+| Breaker Cannon | Deep, compact energy bolt | Fast electrical punch with an armor accent |
+| Siege Mortar | Rising launched charge | Delayed, deep energy collapse |
+| Arc Relay | Bright, rough electrical sweep | Short electrical leaps identify chaining |
+| Prism Beam | Rising focus and a smooth, shimmering optical carrier | Sustained emitter replaces repeated hit cues |
+| Signal Beacon | Quiet rising transmission pulse during supported attacks | Bounded support feedback |
 
-`ProceduralSoundBank` creates device-independent 44.1 kHz mono PCM. One-shots have short edge fades and filtered noise; sustained emitter samples have crossfaded seams. Event cues cover mounting, upgrades, Apex, sale, Protocol, plate deployment/trigger, Forge installation/upgrade, charge completion, shields, material-scaled destruction, breaches, boss arrival/overdrive, wave transitions, victory/defeat, and interface actions. Boss overdrive uses contactor, pressure, and accelerating rotor layers. Interface navigation uses restrained contacts; confirmation, back, and deletion have distinct gestures.
+`ProceduralSoundBank` creates device-independent 44.1 kHz mono PCM. One-shots combine pitch glides and evolving harmonic color with short edge fades; sustained emitter samples have crossfaded seams. Prism uses a quieter shared carrier with slow shimmer and a light noise layer. Event cues cover mounting, upgrades, Apex, sale, Protocol, plate deployment/trigger, Forge installation/upgrade, charge completion, shields, material-scaled destruction, breaches, boss arrival/overdrive, wave transitions, victory/defeat, and interface actions. Boss overdrive uses contactor, pressure, and accelerating rotor layers. Interface navigation uses short electronic chirps; confirmation, back, and deletion have distinct rising or falling gestures.
 
 `AudioDirector` subscribes to local session events and unsubscribes on detach. `TowerFired` represents one attack, including a whole multi-projectile burst. `WeaponImpacted` follows actual contact or detonation and is independent of the number of damage recipients. Damage-over-time does not replay a launch or impact; shield collapse can still announce its actual transition. Beacon pulses follow supported attacks. A Prism engagement leases one shared continuous emitter, which releases after target loss, pause, or detach. All audio timers, variation, admission, and position panning are presentation state and are excluded from snapshots and checksums.
 
@@ -35,4 +35,4 @@ dotnet run --project tests\MaximalBastion.Tests -c Debug -- --verify-audio .arti
 
 `--music-root <Content/Audio>` and `--ffmpeg <executable>` support other working directories. The command exports a timed palette reel, individual base/Apex samples, and six 18-second Sandbox scenarios: a quiet opening, a mixed group, dense late combat at 1×/2×, and bosses at 1×/2×. Real session events pass through the production director and mixer; each scenario contains an effects stem, a mix with shipped music at default settings, an event trace, and measured peak/RMS/voice counts. The controlled boss scenarios force the damage threshold after eight seconds to exercise overdrive. Offline rendering approximates device panning; it does not establish perceived balance or substitute for listening to device output.
 
-For an audible review, use Sandbox Lab to isolate each family, compare base/tier/Apex fire, disable and re-enable Prism during an engagement, and trigger Protocols and plates. Then play quiet openings, mixed groups, late waves, and bosses at both speeds with music enabled. Check placement, sale, Forge production, wave/results transitions, menu selections, confirmation cancellation, deletion, mute, and live volume adjustment. Listen for clear mechanism identities, audible music, restrained routine damage, readable warnings, and clean sustained release.
+For an audible review, use Sandbox Lab to isolate each family, compare base/tier/Apex fire, disable and re-enable Prism during an engagement, and trigger Protocols and plates. Then play quiet openings, mixed groups, late waves, and bosses at both speeds with music enabled. Check placement, sale, Forge production, wave/results transitions, menu selections, confirmation cancellation, deletion, mute, and live volume adjustment. Listen for distinct energy identities, audible music, restrained routine damage, readable warnings, and clean sustained release.

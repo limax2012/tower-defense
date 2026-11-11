@@ -99,7 +99,7 @@ internal sealed class AudioDirector
                 Request(new SoundRequest(key, 0.20f * _pressureGain, Pan: Pan(tower.Position), Cooldown: 0.22f));
             var hold = Math.Clamp(1f / MathF.Max(1, _session.GetEffectiveAttacksPerSecond(tower) * _session.Speed) + 0.025f, 0.08f, 0.32f);
             _beamActivity[tower.Id] = hold + 0.085f;
-            Request(new SoundRequest(key with { Layer = WeaponSoundLayer.Sustain }, 0.23f * _pressureGain,
+            Request(new SoundRequest(key with { Layer = WeaponSoundLayer.Sustain }, 0.17f * _pressureGain,
                 Pan: Pan(tower.Position), Cooldown: 0, HoldSeconds: hold));
         }
         else
