@@ -11,7 +11,6 @@ namespace MaximalBastion.Audio;
 internal sealed class AudioDirector
 {
     private GameSession? _session;
-    private readonly Dictionary<int, float> _beamActivity = [];
     private bool _combatEnabled = true;
     private bool _defeatPlayed;
     private float _pressureGain = 1;
@@ -21,11 +20,6 @@ internal sealed class AudioDirector
     {
         _combatEnabled = combatEnabled && _session?.IsCoOpPaused != true;
         var elapsed = float.IsFinite(deltaSeconds) ? MathF.Max(0, deltaSeconds) : 0;
-        foreach (var id in _beamActivity.Keys.ToArray())
-        {
-            _beamActivity[id] -= elapsed;
-            if (_beamActivity[id] <= 0 || !_combatEnabled) _beamActivity.Remove(id);
-        }
         var enemies = _session?.Enemies.Count(enemy => !enemy.IsDead && !enemy.HasEscaped) ?? 0;
         var target = enemies switch { > 80 => 0.52f, > 35 => 0.64f, > 12 => 0.80f, _ => 1f };
         _pressureGain = MathHelper.Lerp(_pressureGain, target, 1 - MathF.Exp(-elapsed * 5));
@@ -83,7 +77,6 @@ internal sealed class AudioDirector
             session.DamageResolver.DamageApplied -= OnDamageApplied;
         }
         _session = null;
-        _beamActivity.Clear();
         _defeatPlayed = false;
         _pressureGain = 1;
     }
@@ -93,26 +86,14 @@ internal sealed class AudioDirector
         if (!_combatEnabled || _session is null) return;
         var family = tower.Definition.Id;
         var key = new SoundKey(family, WeaponSoundLayer.Shot, LevelIndex: tower.LevelIndex, Apex: tower.IsApex);
-        if (family == "prism_beam")
+        var gain = family switch
         {
-            if (!_beamActivity.ContainsKey(tower.Id))
-                Request(new SoundRequest(key, 0.20f * _pressureGain, Pan: Pan(tower.Position), Cooldown: 0.22f));
-            var hold = Math.Clamp(1f / MathF.Max(1, _session.GetEffectiveAttacksPerSecond(tower) * _session.Speed) + 0.025f, 0.08f, 0.32f);
-            _beamActivity[tower.Id] = hold + 0.085f;
-            Request(new SoundRequest(key with { Layer = WeaponSoundLayer.Sustain }, 0.17f * _pressureGain,
-                Pan: Pan(tower.Position), Cooldown: 0, HoldSeconds: hold));
-        }
-        else
-        {
-            var gain = family switch
-            {
-                "needle_turret" => 0.15f, "watchtower" => 0.30f,
-                "breaker_cannon" => 0.32f, "siege_mortar" => 0.29f,
-                "ember_coil" => 0.24f, _ => 0.25f
-            };
-            Request(new SoundRequest(key, gain * _pressureGain, Pan: Pan(tower.Position),
-                Cooldown: AudioManager.CombatCueCooldown(family)));
-        }
+            "needle_turret" => 0.15f, "watchtower" => 0.30f,
+            "breaker_cannon" => 0.32f, "siege_mortar" => 0.29f,
+            "ember_coil" => 0.24f, "prism_beam" => 0.22f, _ => 0.25f
+        };
+        Request(new SoundRequest(key, gain * _pressureGain, Pan: Pan(tower.Position),
+            Cooldown: AudioManager.CombatCueCooldown(family)));
         var support = _session.GetSupportBuff(tower);
         var beaconId = support.AttackSpeedSourceTowerId > 0 ? support.AttackSpeedSourceTowerId : support.RangeSourceTowerId;
         var beacon = beaconId > 0 ? _session.Towers.FirstOrDefault(source => source.Id == beaconId) : null;
@@ -126,7 +107,7 @@ internal sealed class AudioDirector
     {
         if (!_combatEnabled || !impact.Appearance.IsKnown) return;
         var family = impact.Appearance.TowerId!;
-        // Beam contact is already represented by its sustained optical texture.
+        // Each beam attack is one zap; its immediate contact must not double that cue.
         if (family == "prism_beam") return;
         var chain = family == "arc_relay" && impact.SecondaryHitCount > 0;
         var key = new SoundKey(family, chain ? WeaponSoundLayer.Chain : WeaponSoundLayer.Impact,

@@ -20,7 +20,7 @@ internal static class AudioMixTests
         DamageTicksAndPause(content);
         ConstructionAndTacticalCues(content);
         WaveAndThreatCues(content);
-        BasePrismCadence(content);
+        PrismPulseCadence(content);
     }
 
     private static void NonfiniteControls()
@@ -239,28 +239,42 @@ internal static class AudioMixTests
         }
     }
 
-    private static void BasePrismCadence(GameContent content)
+    private static void PrismPulseCadence(GameContent content)
     {
-        var session = Session(content, "prism_beam");
-        var director = new AudioDirector();
-        var mixer = new SoundMixer();
-        director.Requested += request => mixer.TryPlay(request);
-        director.Attach(session);
-        int? carrier = null;
-        for (var frame = 0; frame < 120; frame++)
+        foreach (var speed in new[] { 1, 2 })
         {
-            director.Update(1f / 60);
-            mixer.Update(1f / 60);
-            session.Update(1f / 60);
-            var voice = mixer.Voices.Single(sound => sound.IsLooped);
-            carrier ??= voice.Id;
-            Check.Equal(carrier.Value, voice.Id, "base Prism attack cadence preserves a continuous carrier");
+            var session = Session(content, "prism_beam");
+            session.SetSpeed(speed);
+            var director = new AudioDirector();
+            var mixer = new SoundMixer();
+            var attacks = 0;
+            var requests = new List<SoundRequest>();
+            var starts = 0;
+            session.TowerFired += _ => attacks++;
+            director.Requested += request =>
+            {
+                if (request.Key.WeaponId != "prism_beam") return;
+                requests.Add(request);
+                mixer.TryPlay(request);
+            };
+            mixer.Started += _ => starts++;
+            director.Attach(session);
+            for (var frame = 0; frame < 120; frame++)
+            {
+                director.Update(1f / 60);
+                mixer.Update(1f / 60);
+                session.Update(1f / 60);
+            }
+            Check.True(attacks >= 6 && starts >= 6, "Prism emits discrete repeated zaps at both gameplay speeds");
+            Check.Equal(attacks, requests.Count, "each Prism attack requests one zap with no doubled contact");
+            Check.True(requests.All(request => request.Key.Layer == WeaponSoundLayer.Shot && request.HoldSeconds == 0),
+                "Prism attacks never request a continuous harmonic carrier");
+            session.Towers.Clear();
+            director.Update(.5f);
+            mixer.Update(.5f);
+            Check.Equal(0, mixer.Voices.Count, "Prism reaches silence between engagements");
+            director.Detach();
         }
-        session.Towers.Clear();
-        director.Update(.5f);
-        mixer.Update(.5f);
-        Check.True(!mixer.Voices.Any(sound => sound.IsLooped), "target loss releases the carrier within half a second");
-        director.Detach();
     }
 
     private static GameSession Session(GameContent content, string family = "needle_turret")

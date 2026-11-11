@@ -18,6 +18,46 @@ internal static class AudioVerificationCli
     private const int SamplesPerFrame = Rate / FramesPerSecond;
     private const float Seconds = 18;
 
+    public static int ExportCores(string[] args)
+    {
+        try
+        {
+            if (args.Length != 2 || string.IsNullOrWhiteSpace(args[1]))
+                throw new ArgumentException("Usage: --export-audio-cores <output-directory>");
+            var output = Path.GetFullPath(args[1]);
+            Directory.CreateDirectory(output);
+            var weaponCount = 0;
+            foreach (var weapon in ProceduralSoundBank.WeaponIds)
+            foreach (var layer in Enum.GetValues<WeaponSoundLayer>())
+            {
+                if (layer == WeaponSoundLayer.Sustain && weapon is not ("prism_beam" or "ember_coil")) continue;
+                for (var stage = 0; stage < 4; stage++)
+                for (var variant = 0; variant < ProceduralSoundBank.VariantCount; variant++)
+                {
+                    var name = $"{weapon}-{layer.ToString().ToLowerInvariant()}-{stage}-{variant}.wav";
+                    var samples = ProceduralSoundBank.CreateWeaponCore(weapon, layer, Math.Min(stage, 2), stage == 3, variant);
+                    WriteWave(Path.Combine(output, name), samples);
+                    weaponCount++;
+                }
+            }
+            var cueCount = 0;
+            foreach (var cue in Enum.GetValues<SoundCue>())
+            for (var variant = 0; variant < ProceduralSoundBank.VariantCount; variant++)
+            {
+                var name = $"cue-{cue.ToString().ToLowerInvariant()}-{variant}.wav";
+                WriteWave(Path.Combine(output, name), ProceduralSoundBank.CreateCueCore(cue, variant));
+                cueCount++;
+            }
+            Console.WriteLine($"Exported {weaponCount} weapon cores and {cueCount} event cores to {output}");
+            return 0;
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine("Audio core export failed: " + error);
+            return 1;
+        }
+    }
+
     public static int Run(string[] args)
     {
         try
@@ -98,7 +138,6 @@ internal static class AudioVerificationCli
             Add(new SoundKey(weapon, layer, LevelIndex: Math.Min(2, stage), Apex: stage == 3),
                 $"{weapon}-{(stage == 3 ? "apex" : "base")}-{layer.ToString().ToLowerInvariant()}");
         }
-        Add(new SoundKey("prism_beam", WeaponSoundLayer.Sustain), "prism_beam-sustain");
         Add(new SoundKey("arc_relay", WeaponSoundLayer.Chain), "arc_relay-chain");
         foreach (var cue in Enum.GetValues<SoundCue>().Where(cue => cue != SoundCue.UiError))
             Add(new SoundKey(null, Cue: cue), cue.ToString());
@@ -287,8 +326,22 @@ internal static class AudioVerificationCli
     {
         using var stream = File.Create(path);
         using var writer = new BinaryWriter(stream, Encoding.UTF8);
+        WriteWaveHeader(writer, samples.Length, channels);
+        foreach (var sample in samples) writer.Write((short)(Math.Clamp(sample, -1, 1) * short.MaxValue));
+    }
+
+    private static void WriteWave(string path, short[] samples)
+    {
+        using var stream = File.Create(path);
+        using var writer = new BinaryWriter(stream, Encoding.UTF8);
+        WriteWaveHeader(writer, samples.Length, 1);
+        foreach (var sample in samples) writer.Write(sample);
+    }
+
+    private static void WriteWaveHeader(BinaryWriter writer, int sampleCount, int channels)
+    {
         writer.Write("RIFF"u8.ToArray());
-        writer.Write(36 + samples.Length * 2);
+        writer.Write(36 + sampleCount * 2);
         writer.Write("WAVEfmt "u8.ToArray());
         writer.Write(16);
         writer.Write((short)1);
@@ -298,8 +351,7 @@ internal static class AudioVerificationCli
         writer.Write((short)(channels * 2));
         writer.Write((short)16);
         writer.Write("data"u8.ToArray());
-        writer.Write(samples.Length * 2);
-        foreach (var sample in samples) writer.Write((short)(Math.Clamp(sample, -1, 1) * short.MaxValue));
+        writer.Write(sampleCount * 2);
     }
 
     private static float Db(float value) => 20 * MathF.Log10(MathF.Max(value, 0.0000001f));

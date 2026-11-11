@@ -6,6 +6,7 @@ internal static class SoundscapeTests
 {
     public static void Run()
     {
+        FinishedResourceNames();
         var mixer = new SoundMixer(41);
         foreach (var id in ProceduralSoundBank.WeaponIds)
         foreach (var layer in new[] { WeaponSoundLayer.Shot, WeaponSoundLayer.Impact })
@@ -22,6 +23,12 @@ internal static class SoundscapeTests
                 previous = sample.Samples;
             }
         }
+        for (var tier = 0; tier < 4; tier++)
+        for (var variant = 0; variant < ProceduralSoundBank.VariantCount; variant++)
+        {
+            var key = new SoundKey("arc_relay", WeaponSoundLayer.Chain, LevelIndex: Math.Min(2, tier), Apex: tier == 3);
+            CheckSample(mixer.GetSample(key, variant), $"arc_relay/Chain/{tier}/{variant}", false);
+        }
         foreach (var cue in Enum.GetValues<SoundCue>())
         for (var variant = 0; variant < ProceduralSoundBank.VariantCount; variant++)
             CheckSample(mixer.GetSample(new SoundKey(null, Cue: cue), variant), cue.ToString(), false);
@@ -29,6 +36,34 @@ internal static class SoundscapeTests
             CheckSample(mixer.GetSample(new SoundKey(id, WeaponSoundLayer.Sustain)), id + " loop", true);
 
         AdmissionAndRelease();
+    }
+
+    private static void FinishedResourceNames()
+    {
+        const string prefix = "MaximalBastion.Audio.Finished.";
+        var expected = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var id in ProceduralSoundBank.WeaponIds)
+        {
+            var layers = id switch
+            {
+                "prism_beam" or "signal_beacon" => new[] { WeaponSoundLayer.Shot },
+                "arc_relay" => new[] { WeaponSoundLayer.Shot, WeaponSoundLayer.Impact, WeaponSoundLayer.Chain },
+                _ => new[] { WeaponSoundLayer.Shot, WeaponSoundLayer.Impact }
+            };
+            foreach (var layer in layers)
+            for (var stage = 0; stage < 4; stage++)
+            for (var variant = 0; variant < ProceduralSoundBank.VariantCount; variant++)
+                expected.Add($"{prefix}{id}-{layer.ToString().ToLowerInvariant()}-{stage}-{variant}.wav");
+        }
+        foreach (var cue in Enum.GetValues<SoundCue>().Where(cue => cue is not (SoundCue.Protocol or SoundCue.UiError)))
+        for (var variant = 0; variant < ProceduralSoundBank.VariantCount; variant++)
+            expected.Add($"{prefix}cue-{cue.ToString().ToLowerInvariant()}-{variant}.wav");
+
+        var resources = typeof(ProceduralSoundBank).Assembly.GetManifestResourceNames()
+            .Where(name => name.StartsWith(prefix, StringComparison.Ordinal)).ToArray();
+        Check.Equal(303, expected.Count, "the live soundscape defines 228 weapon and 75 event samples");
+        Check.Equal(expected.Count, resources.Length, "the desktop assembly embeds every finished sample exactly once");
+        Check.True(expected.SetEquals(resources), "finished resource names exactly match every live family, layer, stage, variant, and event");
     }
 
     private static void CheckSample(SoundSample sample, string name, bool loop)

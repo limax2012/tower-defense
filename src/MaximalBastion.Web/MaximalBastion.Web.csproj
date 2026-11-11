@@ -37,6 +37,8 @@
                       LogicalName="MaximalBastion.ContentData.%(RecursiveDir)%(Filename)%(Extension)" />
     <EmbeddedResource Include="..\MaximalBastion\Audio\Samples\*.wav"
                       LogicalName="MaximalBastion.Audio.Samples.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\MaximalBastion\Audio\Finished\*.wav"
+                      LogicalName="MaximalBastion.Audio.Finished.%(Filename)%(Extension)" />
     <KniContentReference Include="Content\Content.mgcb" />
     <Content Include="..\MaximalBastion\Content\Fonts\*.ttf"
              Link="wwwroot\fonts\%(Filename)%(Extension)"

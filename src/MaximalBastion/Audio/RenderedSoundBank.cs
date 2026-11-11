@@ -6,8 +6,16 @@ namespace MaximalBastion.Audio;
 internal static class RenderedSoundBank
 {
     internal static short[] Load(string family, WeaponSoundLayer layer, int stage, int variant)
+        => Read($"MaximalBastion.Audio.Samples.{family}-{layer.ToString().ToLowerInvariant()}-{stage}-{variant}.wav");
+
+    internal static short[] LoadFinished(string family, WeaponSoundLayer layer, int stage, int variant)
+        => Read($"MaximalBastion.Audio.Finished.{family}-{layer.ToString().ToLowerInvariant()}-{stage}-{variant}.wav");
+
+    internal static short[] LoadFinishedCue(string name)
+        => Read($"MaximalBastion.Audio.Finished.{name}.wav");
+
+    private static short[] Read(string name)
     {
-        var name = $"MaximalBastion.Audio.Samples.{family}-{layer.ToString().ToLowerInvariant()}-{stage}-{variant}.wav";
         using var stream = typeof(RenderedSoundBank).Assembly.GetManifestResourceStream(name)
             ?? throw new InvalidDataException("Missing authored sound: " + name);
         using var reader = new BinaryReader(stream, Encoding.ASCII);

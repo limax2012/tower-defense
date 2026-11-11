@@ -10,7 +10,7 @@ internal enum SoundCue
     UiNavigate, UiConfirm, UiBack, UiDelete, UiError
 }
 
-/// <summary>Device-independent PCM for colorful energy weapons and futuristic interface feedback.</summary>
+/// <summary>Loads finished effects and builds their device-independent authoring cores.</summary>
 internal static class ProceduralSoundBank
 {
     internal const int SampleRate = 44100;
@@ -23,6 +23,28 @@ internal static class ProceduralSoundBank
     });
 
     internal static short[] CreateWeapon(string towerId, WeaponSoundLayer layer,
+        int levelIndex = 0, bool apex = false, int variant = 0)
+    {
+        var id = towerId.ToLowerInvariant();
+        if (!WeaponIds.Contains(id)) throw new ArgumentException("Unknown weapon sound family.", nameof(towerId));
+        if (layer is not (WeaponSoundLayer.Shot or WeaponSoundLayer.Impact or WeaponSoundLayer.Chain or WeaponSoundLayer.Sustain))
+            throw new ArgumentOutOfRangeException(nameof(layer));
+        var stage = apex ? 3 : Math.Clamp(levelIndex, 0, 2);
+        variant = (int)((uint)variant % VariantCount);
+        var live = layer switch
+        {
+            WeaponSoundLayer.Shot => true,
+            WeaponSoundLayer.Impact => id is not ("prism_beam" or "signal_beacon"),
+            WeaponSoundLayer.Chain => id == "arc_relay",
+            WeaponSoundLayer.Sustain => false,
+            _ => false
+        };
+        return live
+            ? RenderedSoundBank.LoadFinished(id, layer, stage, variant)
+            : CreateWeaponCore(id, layer, Math.Min(stage, 2), stage == 3, variant);
+    }
+
+    internal static short[] CreateWeaponCore(string towerId, WeaponSoundLayer layer,
         int levelIndex = 0, bool apex = false, int variant = 0)
     {
         var id = towerId.ToLowerInvariant();
@@ -54,8 +76,11 @@ internal static class ProceduralSoundBank
             }
             return samples;
         }
+        if (layer == WeaponSoundLayer.Shot && id == "prism_beam")
+            return ProceduralSignalReferences.Tone(1240 * tune, 710 * tune,
+                .050f + stage * .002f, sourceGain: .28f);
         if (id == "signal_beacon")
-            return ProceduralSignalReferences.Chord(740 * tune, (1110 + stage * 2) * tune,
+            return ProceduralSignalReferences.Chord(783.9909f * tune, (1174.659f + stage * 2) * tune,
                 .065f + stage * .004f, sourceGain: layer == WeaponSoundLayer.Shot ? .20f : .14f);
 
         var sound = new Sound(WeaponDuration(id, layer) + stage * .006f, Seed(id, stage, variant, (int)layer));
@@ -107,13 +132,8 @@ internal static class ProceduralSoundBank
                 sound.Noise(.001f, .028f, .17f, 1300, 4300, .0007f, 72);
                 sound.Energy(.016f, .027f, .21f * detail, 1390, 1050, 64, 2.73f, 1.9f);
                 break;
-            case "prism_beam":
-                // The brief focus gesture resolves into the continuous carrier.
-                sound.Energy(0, .062f, .77f, 1240 * tune, 733 - stage * 23, 32, 2.0f, .12f, .003f);
-                sound.Energy(.012f, .055f, .10f + stage * .02f, 1466, 1466, 26, 2.0f, .08f, .007f);
-                break;
         }
-        return sound.Finish(id == "prism_beam" ? .20f : .28f);
+        return sound.Finish(.28f);
     }
 
     private static void AddImpact(Sound sound, string id, int stage, float weight, float detail, float tune)
@@ -155,6 +175,15 @@ internal static class ProceduralSoundBank
     }
 
     internal static short[] CreateCue(SoundCue cue, int variant = 0)
+    {
+        if (!Enum.IsDefined(cue)) throw new ArgumentOutOfRangeException(nameof(cue));
+        variant = (int)((uint)variant % VariantCount);
+        return cue is SoundCue.Protocol or SoundCue.UiError
+            ? CreateCueCore(cue, variant)
+            : RenderedSoundBank.LoadFinishedCue($"cue-{cue.ToString().ToLowerInvariant()}-{variant}");
+    }
+
+    internal static short[] CreateCueCore(SoundCue cue, int variant = 0)
     {
         // Signals use fixed intervals so repeated actions retain a stable meaning.
         var signal = cue switch

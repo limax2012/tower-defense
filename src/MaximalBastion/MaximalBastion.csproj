@@ -28,5 +28,6 @@
     <InternalsVisibleTo Include="MaximalBastion.Tests" />
     <EmbeddedResource Include="Branding\MaximalBastion.bmp" LogicalName="MaximalBastion.Icon.bmp" />
     <EmbeddedResource Include="Audio\Samples\*.wav" LogicalName="MaximalBastion.Audio.Samples.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Audio\Finished\*.wav" LogicalName="MaximalBastion.Audio.Finished.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

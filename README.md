@@ -14,7 +14,7 @@ Maximal Bastion is an industrial cyberpunk tower-defense game built with C# and 
 - Contextual Tower Intel with complete live statistics, upgrade comparisons, Protocol controls, and lifetime contributions.
 - Soft colored fog summarizes Burn, Slow, Armor Break, and Expose, with exact values available by hovering or selecting an enemy. Stun has fine branching blue discharges, brief contact sparks, and a restrained chassis shudder over planted feet or tracks. Reduced Effects keeps steady electrical contacts without vibration. Support carriers show their application radius; recipients do not receive redundant buff auras. Health bars remain visible from entry, shields retain a quiet shell and capacity meter, and family-specific grounded movement reinforces enemy scale.
 - Direct two-player Windows co-op with host-authoritative commands, deterministic local simulation, reconnect repair, shared defenses, and visible remote cursor/placement state.
-- Night Grid art direction: furnace works, rain-soaked rooftop skybridges, virtual hard-light platforms, reactor infrastructure, mechanical defense hardware, hostile drones, dark tactical panels, and bounded energy effects. All art is generated at runtime; no external asset downloads are required. A shuffled gameplay soundtrack and menu music accompany purpose-specific energy effects that combine procedural voices with embedded Csound-authored material layers.
+- Night Grid art direction: furnace works, rain-soaked rooftop skybridges, virtual hard-light platforms, reactor infrastructure, mechanical defense hardware, hostile drones, dark tactical panels, and bounded energy effects. All art is generated at runtime; no external asset downloads are required. A shuffled gameplay soundtrack and menu music accompany effects that combine harmonic glow, concise arcade gestures, and tactile contacts through embedded, offline-authored samples.
 - Headless deterministic agents, isolated regression tests, and a hidden UI renderer for verification without taking desktop focus. Verified strategy traces can be [exported as timelapse replay videos](docs/strategy-solver.md#timelapse-replay-videos).
 
 Play opens one run setup containing illustrated map selection, difficulty, mode, and Start Run. The main menu presents Play, Co-op, Load, History, Settings, and Quit where supported in one evenly spaced column, with a taller Play control. Two framed live defense feeds flank its action list. Menus share graphite command surfaces, peripheral service infrastructure, Barlow/Oxanium typography, and restrained ambient motion. Action buttons use subdued accents; cyan highlights identify selected run options. Solo and co-op pause controls follow the same evenly spaced column structure. The animated title uses an armored prism tower emblem. Mode and difficulty explanations appear consistently on hover. Settings use Display, Audio, and Gameplay tabs. Selected towers show complete current statistics with optional lifetime details, and results offer overview and statistics views; achievements, medals, and records have separate tabs. See the [interface design system](docs/interface-design.md). Reduced Effects freezes decorative menu motion and suppresses decorative combat lighting in the feeds.
@@ -251,14 +251,16 @@ dotnet run --project tests\MaximalBastion.Tests -c Debug -- --verify-audio .arti
 
 This requires FFmpeg and writes WAVs, event traces, and voice/headroom measurements. The palette excludes unused sound-bank entries. Measurements and offline exports support an audible review; they do not establish perceived balance with the soundtrack. See [sound design](docs/audio-design.md) for the art brief, all weapon and event identities, event timing, mix limits, and the runtime audition procedure.
 
-Shard Fan, Ember Coil, and Frost Spire use authored material layers rendered with Csound. Their checked-in WAVs are embedded in the game; normal builds and playback need no external audio tools. To regenerate or check those assets, use Python and the pinned renderer:
+The effects palette uses 303 embedded finished WAVs: 228 weapon samples and 75 event/interface samples. Their recipes combine controlled procedural cores, Csound material, and selected ElevenLabs source recordings. Protocol keeps its exact short procedural harmonic signal. Prism fires discrete zaps with a brief harmonic afterglow. Normal builds and playback need no external audio tools, service access, or credentials.
+
+With the .NET SDK, Python, and FFmpeg/FFprobe available, install the pinned authoring dependency and check the finished samples:
 
 ```powershell
-python scripts/audio/render-materials.py
-python scripts/audio/render-materials.py --check
+python -m pip install -r scripts/audio/requirements.txt
+python scripts/audio/finish-soundscape.py --check
 ```
 
-The renderer downloads its pinned Csound tool into ignored `.artifacts/audio-tools` when needed. `--check` regenerates into ignored artifacts and compares the checked-in sample bytes without replacing them.
+The workflow exports the authoring cores, processes archived selected source material using explicit recipes, and compares the resulting WAVs without calling a generation service. Omit `--check` to write rebuilt finished assets. The separate `scripts/audio/render-materials.py --check` command verifies the 72 Csound source samples; on Windows it downloads a pinned authoring tool into ignored `.artifacts/audio-tools`. See [sound design](docs/audio-design.md#sound-sources-and-playback) for source provenance and the full authoring workflow.
 
 Representative headless commands:
 

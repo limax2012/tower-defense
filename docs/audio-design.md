@@ -13,7 +13,15 @@ The four districts share this visual language while giving it different surround
 | Prism Nullspace | Suspended violet data structures, precise grids, luminous bus connections, and dark voids. |
 | Helix Reactor | Deep green containment machinery, jade conduits, enclosed circular cores, and concentric rings. |
 
-Weapon sound follows the visible mechanism and the action's purpose. A precise dart needs a short, repeatable discharge; a slow explosive charge needs separate launch and detonation; a support antenna needs a quiet acknowledgment. Mechanical detail gives energy a physical source, while the energy behavior supplies each family's identity. Quiet intervals and short tails leave room for the soundtrack and important events, just as the dark scene leaves room for luminous action. See [map art direction](map-art-direction.md) for the visual hierarchy.
+Weapon sound follows the visible mechanism and the action's purpose. A precise dart needs a short, repeatable discharge; a slow explosive charge needs separate launch and detonation; a support antenna needs a quiet acknowledgment. The palette combines harmonic glow, the readable simplicity of short 8-bit-style gestures, and tactile mechanical contacts. Its richness comes from fine material detail inside a clear action. All playback is 16-bit PCM; the arcade influence describes concise contours and recognition, not reduced sample resolution.
+
+Mechanical detail gives energy a physical source, while each energy process supplies its own identity. Quiet intervals and short tails leave room for the soundtrack and important events, just as the dark scene leaves room for luminous action. See [map art direction](map-art-direction.md) for the visual hierarchy.
+
+## Musical foundation
+
+The composition reference is dry, minimal tactical synth: warm sine bass, muted triangle melody, brief glassy FM accents, tiny clock-like ticks, sparse incomplete motifs, and generous silence. Its three tonal references are 97 BPM B minor with restrained chromatic detail, 103 BPM D-minor pentatonic with suspended-second color, and 100 BPM G-major/E-minor pentatonic. These are authoring references, not measured key or tempo claims about each shipped file.
+
+Effects complement that close, restrained language through short resonant bodies, small tonal gestures, purposeful contact noise, and controlled tails. D, G, and A provide shared pitch classes where a new stable harmonic layer is useful; established signals retain their recognizable contours. Protocol's 390/585 Hz source is approximately G4/D5. Prism places a brief D5/A5 glow behind its zap. Gameplay events remain timed to the action, independently of musical tempo.
 
 ## Weapon families
 
@@ -21,20 +29,20 @@ The base voice remains recognizable through tier and Apex changes. Added layers 
 
 | Family | Visible mechanism and role | Live sound layers |
 | --- | --- | --- |
-| Needle | Exposed precision rails and a tiny, fast turquoise dart; frequent focused fire. | A simple 26 ms rising energy pulse, 1080–1420 Hz at base, followed by a much quieter contact spark. Its cadence supplies most of the texture. |
-| Watchtower | Long precision barrel and optic; narrow white lance with an extended wake. | A tight, forceful rail release and concentrated ion tail; a separate dense contact with an armor accent. Greater energy density distinguishes it from Needle. |
-| Shard Fan | Orange aperture and focusing petals launch a spreading group of plasma beads. | One rounded granular plasma burst per attack. Short clustered contacts suggest plasma fragments without a high squealing glide or a launch cue for every bead. |
-| Frost Spire | Central blue crystal and coolant banks project a crystalline slowing charge. | A simple 55 ms sine body with subtle modal ice detail; contact adds a small brittle crystalline edge. The cool texture stays compact. |
-| Ember Coil | Energized red coil projects a hot core with trailing licks and embers. | Brief ignition and warm turbulent expansion, with a separate restrained thermal contact. Burning damage does not repeat a bass sweep or create a cue on every tick. |
-| Breaker Cannon | Braced breech and dense gold discharge deliver direct armor-breaking force. | Compressed launch, direct punch, and short fracture/contact detail. Weight is concentrated in the impact rather than a long explosive tail. |
-| Siege Mortar | Recessed bore ejects a slow luminous charge that bursts over an area. | A loaded ejection at launch; a separate, delayed pressure detonation on arrival. One detonation represents the whole area hit. |
-| Arc Relay | Triangular electrodes and branching blue-white filaments deliver chained current. | A crisp electrical release and irregular branch contacts. A chained hit uses one aggregate chain gesture rather than one full cue per victim. |
-| Prism Beam | Concentric violet optical emitter maintains a straight focused luminous core. | Small engagement onset plus a steady, quiet luminous underlay. A shared renewable sustain fades on disengagement; repeated beam contacts are silent. |
-| Signal Beacon | Green antenna and receiver packets support nearby towers. | Quiet transmission pulses when supported towers attack, limited to one pulse per 1.15 seconds across the family. It has no damage-contact sound. |
+| Needle | Exposed precision rails and a tiny, fast turquoise dart; frequent focused fire. | A simple 26 ms rising 1080–1420 Hz core with a microscopic ion-filament edge. Its separate contact uses a shorter, quieter fragment. Cadence supplies most of the texture. |
+| Watchtower | Long precision barrel and optic; narrow white lance with an extended wake. | Concentrated rail force with a fine midrange ion seam and short tensile detail. A separate confined puncture closes inward at contact. |
+| Shard Fan | Orange aperture and focusing petals launch a spreading group of plasma beads. | One rounded granular plasma body divides into petal-like details. Contact uses a shorter fragment of the same plasma material, preserving the family while changing the action. |
+| Frost Spire | Central blue crystal and coolant banks project a crystalline slowing charge. | The simple 55 ms sine body carries rapidly damped ice modes and fine glass-pin texture. Contact selects a different small crystalline fragment. |
+| Ember Coil | Energized red coil projects a hot core with trailing licks and embers. | A contained ignition body, warm irregular thermal motion, and a tiny bright catch. A separate local heat contact establishes burning; damage ticks remain silent. |
+| Breaker Cannon | Braced breech and dense gold discharge deliver direct armor-breaking force. | A dense flux-like launch with a short seating contact; actual impact carries the harder composite fracture and small secondary fragment. |
+| Siege Mortar | Recessed bore ejects a slow luminous charge that bursts over an area. | Hollow charge ejection at launch; delayed pressure diffusion and unequal energy pockets on arrival. One detonation represents the complete area hit. |
+| Arc Relay | Triangular electrodes and branching blue-white filaments deliver chained current. | A crisp dielectric snap, compact direct contact, and an aggregate chain with irregular smaller attachments. The gaps make branching recognizable. |
+| Prism Beam | Concentric violet optical emitter directs a straight focused luminous core. | One short, clearly bending zap per attack, a finite D5/A5 harmonic afterglow, and a tiny aperture contact. The whole gesture ends; no continuous carrier is requested. |
+| Signal Beacon | Green antenna and receiver packets support nearby towers. | A quiet open-fifth transmission pulse with a soft receiving-field packet. Supported attacks request it at most once per 1.15 seconds across the family. |
 
 `TowerFired` describes one attack, including a complete multi-projectile burst. `WeaponImpacted` follows actual projectile contact or detonation and does not multiply with the number of area-damage recipients. Shard projectiles can make separate contacts, subject to the family cooldown. Arc reports its secondary contacts together. Damage-over-time does not produce another launch or ordinary impact.
 
-Prism's onset is tracked per tower engagement, while all active Prism towers share one sustained voice. Renewing its lease does not restart its carrier or alternate timbre between different tower tiers. Target loss, pause, and detach release it. Ember is a projectile weapon and does not request the bank's available sustain sample.
+Each Prism attack requests one shot at a 0.13-second family cooldown. Its immediate beam contact is suppressed so the same attack does not produce two cues. All live weapon sounds are finite one-shots. The bank's Ember and Prism sustain cores remain available to authoring tools but are not used by gameplay or the live audition palette.
 
 ## Event and interface cues
 
@@ -42,54 +50,83 @@ Enemy bodies are gray armored machines with bright reactor cores. Their reaction
 
 | Cue | Actual purpose and trigger | Sound role |
 | --- | --- | --- |
-| `Place` | Successful tower installation. | Compact mounting contact and energized ready indication. |
-| `Upgrade` | Successful tier, doctrine, or specialization upgrade. | A brief rising sine confirms increased capability. |
-| `Apex` | Final tower promotion. | A settled field opens into staged 390/585/780 Hz harmonics as the promoted emitter comes online. |
-| `Sell` | Successful tower or Forge removal and refund. | A short falling triangle pulse releases the device. |
+| `Place` | Successful tower installation. | A mount seats and latches, followed by a compact energized ready presence. |
+| `Upgrade` | Successful tier, doctrine, or specialization upgrade. | A precise aperture lock supports the brief rising sine capability signal. |
+| `Apex` | Final tower promotion. | A settled 390/585/780 Hz field opens into fine containment facets as the promoted emitter comes online. |
+| `Sell` | Successful tower or Forge removal and refund. | A short undocking contact supports the falling triangle removal signal. |
 | `Protocol` | Tower enters its temporary powered state. | A 200 ms glowing harmonic hum with a 390/585 Hz source body and family-specific playback pitch. Its stable body announces energizing rather than projectile travel. |
-| `KillSmall` | Destruction of a light enemy. | A small circuit crack and restrained panel resonance. |
-| `KillArmored` | Destruction of an armored or elite enemy. | Lower armor fracture and a short secondary fragment. |
-| `KillLarge` | Regenerator or boss destruction. | Compact pressure, casing breakup, and reactor collapse; a boss receives critical priority. |
-| `ShieldHit` | A direct hit removes shield strength without breaking it. | A brief elastic, inharmonic field tap, quieter than the weapon. |
-| `ShieldBreak` | Shield strength actually reaches zero, including through burning damage. | A split field resonance and fluttering scatter distinguish collapse from a touch. |
-| `Leak` | An enemy breaches without causing terminal defeat. | Two equal warning pulses; boss breaches receive greater weight. |
-| `WaveStart` | A wave starts. | A concise upward triangle readiness signal. |
-| `WaveClear` | A non-final wave completes. | A settled 520/780 Hz harmonic acknowledgment that leaves music in place. |
-| `PlateDeploy` | A Pulse Plate is successfully placed and armed. | Compact seating contact and a short armed ping. |
-| `PlateTrigger` | The armed plate actually discharges. | One broadband pressure burst with restrained low-mid weight for the complete area effect. |
-| `ForgePlace` | A Charge Forge is successfully installed. | Heavier socket contact, a small motor rise, and a steady readiness hum. |
-| `ForgeUpgrade` | A Forge capacity upgrade succeeds. | A brief assembly cycle followed by two discrete harmonic ready notes. |
-| `ChargeReady` | A Forge actually produces a charge. | Paired 880/1175 Hz completion pings; full storage creates no repeated completion cue. |
-| `BossPhase` | A boss crosses its phase threshold and powers up. | Contactor strike and accelerating inharmonic reactor load identify increased danger. |
-| `BossArrival` | A boss spawns. | A longer reactor-load announcement with a second contact and greater body presence. |
-| `Victory` | The final campaign wave completes outside Endless. | A brief 392/523/659 Hz triad with higher priority than routine combat. |
-| `Defeat` | Lives reach zero outside Sandbox. | Two descending notes, 392 then 330 Hz, emitted once instead of another breach warning. |
-| `UiNavigate` | Intentional input changes a selection, tab, page, or relevant interface state. | A tiny, low-level sine tick. |
-| `UiConfirm` | An action is dispatched or a confirmation is armed. | A short rising sine confirmation. |
-| `UiBack` | A screen, detail layer, picker, or confirmation is exited or canceled. | A compact falling triangle gesture. |
-| `UiDelete` | A confirmed save or history deletion succeeds. | Two short descending notes mark removal, separate from opening its confirmation. |
+| `KillSmall` | Destruction of a light enemy. | A tiny circuit cutoff and compact casing response form one complete failure. |
+| `KillArmored` | Destruction of an armored or elite enemy. | Dense panel fracture, a small powered interior, and an understated secondary fragment. |
+| `KillLarge` | Regenerator or boss destruction. | Contained core and casing collapse with bounded low-mid scale; a boss receives critical priority. |
+| `ShieldHit` | A direct hit removes shield strength without breaking it. | A taut energy membrane absorbs contact and returns to shape, quieter than the weapon. |
+| `ShieldBreak` | Shield strength actually reaches zero, including through burning damage. | Membrane tension splits into a short field dissolution. |
+| `Leak` | An enemy breaches without causing terminal defeat. | A small seal interruption supports two equal warning pulses; boss breaches receive greater weight. |
+| `WaveStart` | A wave starts. | A controlled lane-opening texture supports the upward triangle readiness signal. |
+| `WaveClear` | A non-final wave completes. | A small field settles beneath the 520/780 Hz completion chord. |
+| `PlateDeploy` | A Pulse Plate is successfully placed and armed. | A flat disc locks into place and gives its brief armed indication. |
+| `PlateTrigger` | The armed plate actually discharges. | One compact radial pressure release represents the complete area effect. |
+| `ForgePlace` | A Charge Forge is successfully installed. | A powered socket and fluid actuator establish the charge assembly, followed by short readiness energy. |
+| `ForgeUpgrade` | A Forge capacity upgrade succeeds. | One brief irregular reconfiguration leads into discrete harmonic ready notes. |
+| `ChargeReady` | A Forge actually produces a charge. | A small capture/settle contact supports the fixed 880/1175 Hz completion pair; full storage creates no repeated completion cue. |
+| `BossPhase` | A boss crosses its phase threshold and powers up. | The reactor rotor tightens into denser, faster nonmetrical load. |
+| `BossArrival` | A boss spawns. | Contactor and compact loaded reactor announce a larger powered threat. |
+| `Victory` | The final campaign wave completes outside Endless. | A small field opening supports the brief 392/523/659 Hz terminal triad, with critical priority. |
+| `Defeat` | Lives reach zero outside Sandbox. | Quiet field extinction supports the descending 392/330 Hz ending, emitted once instead of another breach warning. |
+| `UiNavigate` | Intentional input changes a selection, tab, page, or relevant interface state. | A tiny rounded touch under the low-level sine selection point. |
+| `UiConfirm` | An action is dispatched or a confirmation is armed. | A soft committed press reinforces the short rising confirmation. |
+| `UiBack` | A screen, detail layer, picker, or confirmation is exited or canceled. | A lighter tactile release surrounds the compact falling gesture. |
+| `UiDelete` | A confirmed save or history deletion succeeds. | A definite small closure finishes the two-part descending deletion gesture. |
 | `UiError` | Available in the sound bank; no live caller. | Reserved rejection cue; excluded from the live audition palette. |
 
-Hover, clicking the already-selected option, and continuous slider dragging are silent. The bank also contains unused Ember sustain, Prism impact, and Beacon impact entries; the live audition palette excludes them. Only Arc uses the chain layer. Available bank entries do not imply live feedback.
+Hover, clicking the already-selected option, and continuous slider dragging are silent. The bank also contains unused Ember/Prism sustain, Prism impact, and Beacon impact cores; the live audition palette excludes them. Only Arc uses the chain layer. Available authoring cores do not imply live feedback.
 
 ## Sound sources and playback
 
-`ProceduralSoundBank` supplies device-independent 44.1 kHz mono PCM. Simple pulses, harmonic notifications, contacts, and continuous carriers remain procedural. Csound-authored WAV material layers add shaped spectral texture to Shard Fan, Ember Coil, and Frost Spire. Those WAVs are embedded in the game; playback does not require Csound, a plugin host, or downloaded content.
+`ProceduralSoundBank` supplies 44.1 kHz mono PCM through a finished playback bank and separate authoring cores. `RenderedSoundBank` loads 303 finished PCM16 WAVs from `src/MaximalBastion/Audio/Finished`, embedded under `MaximalBastion.Audio.Finished` in both desktop and browser builds:
 
-The authored source is [`scripts/audio/materials.orc`](../scripts/audio/materials.orc). Shard uses short overlapping formant grains and rounded resonant plasma noise; Ember uses filtered thermal turbulence, a nearly steady energized core, and tiny ignition crackles; Frost uses a 55 ms 610–360 Hz body with quiet, rapidly damped crystal modes. Csound's [formant-grain synthesis](https://csound.com/docs/manual/fof.html), [modal resonator](https://csound.com/docs/manual/mode.html), and [resonant filter](https://csound.com/docs/manual/reson.html) provide separate controls for each material instead of imposing one oscillator contour on every family.
+| Finished material | Structure | Files |
+| --- | --- | --- |
+| Weapon shots | Ten families × four stages × three variants | 120 |
+| Weapon impacts | Eight families × four stages × three variants | 96 |
+| Arc chain contacts | Four stages × three variants | 12 |
+| Event/interface cues | 25 cues × three variants | 75 |
 
-[`scripts/audio/render-materials.py`](../scripts/audio/render-materials.py) renders 72 mono 44.1 kHz PCM16 WAVs under `src/MaximalBastion/Audio/Samples`: three families, shot/impact layers, four stages, and three variants. Filenames use `{family}-{shot|impact}-{stage}-{variant}.wav`. The renderer fades both edges, removes DC, and normalizes shots to a 0.28 peak and impacts to 0.22 before runtime gain and mixing.
+Weapon filenames use `{family}-{shot|impact|chain}-{stage}-{variant}.wav`; event filenames use `cue-{lowercase-cue}-{variant}.wav`. Protocol bypasses the finished bank and keeps its exact 200 ms procedural source, envelope, gain behavior, and family pitch mapping. UiError also stays procedural and has no live caller. Unused bank entries remain available through their authoring cores when explicitly requested; gameplay does not request them.
+
+Finished recipes combine three kinds of source: controlled electronic gestures from `CreateWeaponCore` and `CreateCueCore`, Csound material, and selected recordings authored with ElevenLabs. Each recipe selects an explicit source fragment, shapes its frequency range and envelope, controls its level and position within the cue, and masters the resulting short event. Material bodies have different prominence and envelopes by purpose. Needle and interface gestures retain a strong simple core; shields, destruction, and pressure releases give their material more of the body. Shard launch and impact use different selections from the same plasma source.
+
+The selected recordings live in `scripts/audio/source-materials`; [`scripts/audio/soundscape.json`](../scripts/audio/soundscape.json) records the authoritative finishing recipes, source hashes, and generation metadata. Generated material was authored under an ElevenLabs Starter account; provenance records the account tier at generation alongside the model, prompt, settings, and download hash. Rebuilding uses those exact recordings, not a fresh model response. Generation credentials remain in ignored local configuration and are not playback or rebuild inputs.
+
+### Reproducible finishing
+
+[`scripts/audio/finish-soundscape.py`](../scripts/audio/finish-soundscape.py) is the offline finishing entry point. It uses the .NET SDK to export the controlled cores, NumPy 2.5.4, FFmpeg/FFprobe on `PATH`, archived selected material, and the explicit finishing recipes. It does not call a generation service.
 
 ```powershell
-python scripts/audio/render-materials.py
-python scripts/audio/render-materials.py --check
+python -m pip install -r scripts/audio/requirements.txt
+python scripts/audio/finish-soundscape.py --check
 ```
 
-On Windows the renderer downloads a pinned, checksum-verified portable Csound 6.18.1 into ignored `.artifacts/audio-tools`. Other platforms can use an installed Csound 6.18 executable or pass `--csound <executable>`. `--check` renders into ignored artifacts and compares checked-in WAV bytes without replacing them. Normal game builds use the embedded samples directly.
+`--check` rebuilds into ignored `.artifacts/audio-finishing` and compares the checked-in WAVs without replacing them. Omit it to write rebuilt finished assets. The renderer validates every source hash, records NumPy/FFmpeg versions, and reports per-cue duration, peak/RMS, DC, endpoints, and spectral allocations. Byte-identical reproduction depends on the recorded sources, recipes, cores, and tool versions. `--dotnet <executable>` selects an SDK explicitly; `--no-build` reuses an existing Release core exporter while retaining source-hash checks.
+
+The individual authoring cores can also be exported without running regression tests or loading the finished bank:
+
+```powershell
+dotnet run --project tests\MaximalBastion.Tests -c Release -- --export-audio-cores .artifacts\audio-cores
+```
+
+This exports every supported core layer, including unused compatibility entries. The finishing recipes select the live subset. Normal builds and playback use the embedded assets and require none of these external authoring tools.
+
+### Csound source material
+
+[`scripts/audio/materials.orc`](../scripts/audio/materials.orc) authors the source material for Shard, Ember, and Frost. Shard uses overlapping formant grains and rounded resonant plasma noise; Ember uses filtered thermal turbulence, a nearly steady core, and small ignition crackles; Frost uses its 55 ms 610–360 Hz body with rapidly damped crystal modes. Csound's [formant-grain synthesis](https://csound.com/docs/manual/fof.html), [modal resonator](https://csound.com/docs/manual/mode.html), and [resonant filter](https://csound.com/docs/manual/reson.html) provide separate material controls.
+
+[`scripts/audio/render-materials.py`](../scripts/audio/render-materials.py) produces 72 mono 44.1 kHz PCM16 source WAVs under `src/MaximalBastion/Audio/Samples`: three families, shot/impact layers, four stages, and three variants. Its `--check` mode compares fresh renders with those source WAVs. On Windows it downloads a pinned, checksum-verified portable Csound 6.18.1 into ignored `.artifacts/audio-tools`; other platforms can provide an installed Csound 6.18 executable with `--csound <executable>`.
+
+### Runtime mix
 
 `AudioDirector` subscribes to local session events and unsubscribes on detach. Audio timers, variation, voice admission, and panning are presentation state, excluded from snapshots and checksums. Material voices have three sample variants, and combat one-shots receive small pitch changes. Interface and state signals keep fixed intervals so their meaning remains stable. The soundtrack is independent of effect synthesis.
 
-`SoundMixer` uses real elapsed time at both gameplay speeds. Family cooldowns and voice limits bound overlapping volleys, chains, area damage, and identical towers. It permits at most 20 effect voices, including at most 12 combat/detail voices and four detail voices. Conservative summed source-peak budgets are 0.30 for combat and 0.58 overall before the SFX volume setting. Threat and interface cues can reclaim lower-priority voices. Dense enemy populations smoothly reduce routine combat gain. Sustained voices have short attack/release envelopes and crossfaded sample seams.
+`SoundMixer` uses real elapsed time at both gameplay speeds. Family cooldowns and voice limits bound overlapping volleys, chains, area damage, and identical towers. It permits at most 20 effect voices, including at most 12 combat/detail voices and four detail voices. Conservative summed source-peak budgets are 0.30 for combat and 0.58 overall before the SFX volume setting. Threat and interface cues can reclaim lower-priority voices. Dense enemy populations smoothly reduce routine combat gain. Current live requests are finite one-shots; the mixer's loop support remains available independently of the palette.
 
 `AudioManager` owns MonoGame playback instances, applies platform-specific immediate one-shot parameters, and synchronizes existing voices with the SFX control. Music and SFX controls remain separate. An unavailable or lost audio device cannot interrupt gameplay or overwrite the user's volume preference.
 
@@ -125,10 +162,10 @@ dotnet run --project tests\MaximalBastion.Tests -c Debug -- --verify-audio .arti
 For an audible review:
 
 1. In Sandbox Lab, isolate each family and compare base, tier, and Apex fire. Listen to launch and contact separately, and check the delayed Mortar burst, Arc chains, and Beacon support rate.
-2. Disable and re-enable Prism during an engagement. Check its onset, shared continuous body, and release after target loss, pause, and leaving the run.
+2. Isolate Prism and check that each admitted attack is one recognizable zap with a brief harmonic end. Its immediate contact must not double the sound, and target loss or pause must leave no continuous tone.
 3. Trigger Protocols and plates, install and upgrade a Forge, produce a charge, and fill its storage. Check placement, upgrades, Apex, and selling.
 4. With music enabled, play quiet openings, mixed groups, dense late waves, and bosses at both normal and accelerated speed. Check that repeated fire leaves music audible and threat cues remain identifiable.
 5. Check shield contacts and breaks, small and large deaths, breaches, boss transitions, wave transitions, victory, and defeat. Burning ticks and area damage must not create a flood of cues.
 6. Navigate menus, open and cancel confirmations, delete a disposable save/history record, mute each bus, and adjust volume during active playback. Check that changed selections receive feedback and hover/slider motion remain quiet.
 
-Listen for family recognition, meaningful event timing, restrained repeated transients, comfortable upper-frequency energy, controlled bass, short tails, and clean sustained release. Measurements and event traces support this review; they do not record subjective listening results.
+Listen for family recognition, meaningful event timing, readable harmonic gestures, tactile contact detail, restrained repeated transients, comfortable upper-frequency energy, controlled bass, and short tails. Automatic checks cover source integrity, finite samples, event behavior, and bounded mixing. Perceived musical fit and acceptance of the complete soundscape require the full runtime review above.

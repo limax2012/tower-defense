@@ -58,6 +58,9 @@ internal static class Program
 
     private static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0].Equals("--export-audio-cores", StringComparison.OrdinalIgnoreCase))
+            return AudioVerificationCli.ExportCores(args);
+
         if (args.Length > 0 && args[0].Equals("--verify-audio", StringComparison.OrdinalIgnoreCase))
             return AudioVerificationCli.Run(args);
 
