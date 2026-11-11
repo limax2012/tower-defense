@@ -3,7 +3,7 @@ using MaximalBastion.Towers;
 namespace MaximalBastion.Effects;
 
 /// <summary>
-/// Transient weapon identity captured at firing time. It drives local artwork only;
+/// Transient weapon identity captured at firing time. It drives local artwork and audio;
 /// damage, collisions, synchronized snapshots and checksums do not depend on it.
 /// </summary>
 public readonly record struct AttackAppearance(string? TowerId, int Level, bool IsApex)

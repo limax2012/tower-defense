@@ -34,6 +34,7 @@ public sealed class TowerSystem
         if (target is null) return false;
         if (!_behaviors.TryGetValue(tower.Definition.Behavior, out var behavior))
             _behaviors[tower.Definition.Behavior] = behavior = TowerBehaviorRegistry.Create(tower.Definition.Behavior);
+        session.OnTowerFired(tower);
         behavior.Attack(new TowerInstanceContext { Tower = tower, Target = target, Session = session });
         tower.OnFired();
         return true;

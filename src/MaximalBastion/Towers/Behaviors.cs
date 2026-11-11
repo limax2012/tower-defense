@@ -168,6 +168,8 @@ public sealed class ChainBehavior : ITowerBehavior
             previous = enemy.Position;
             previousEnemy = enemy;
         }
+        context.Session.OnWeaponImpacted(new WeaponImpact(context.Tower.Id,
+            AttackAppearance.FromTower(context.Tower), context.Target.Position, excluded.Count - 1));
     }
 }
 
@@ -211,7 +213,12 @@ public sealed class BeamBehavior : ITowerBehavior
         context.Session.DamageResolver.Apply(context.Target, BehaviorHelpers.Payload(context, level, level.Damage, status, level.IgnoreShield, level.ArmorPierce));
         context.Session.Effects.AddBeam(context.Tower.Position, context.Target.Position, context.Tower.Definition.Visual.PrimaryColor,
             0.15f, BeamStyle.Prism, context.Tower.Id, AttackAppearance.FromTower(context.Tower), targetEnemy: context.Target);
-        if (level.ChainCount <= 0 || level.ChainDamage <= 0 || level.ChainRange <= 0) return;
+        if (level.ChainCount <= 0 || level.ChainDamage <= 0 || level.ChainRange <= 0)
+        {
+            context.Session.OnWeaponImpacted(new WeaponImpact(context.Tower.Id,
+                AttackAppearance.FromTower(context.Tower), context.Target.Position));
+            return;
+        }
 
         var excluded = new HashSet<int> { context.Target.Id };
         var previous = context.Target.Position;
@@ -226,6 +233,8 @@ public sealed class BeamBehavior : ITowerBehavior
             previous = enemy.Position;
             previousEnemy = enemy;
         }
+        context.Session.OnWeaponImpacted(new WeaponImpact(context.Tower.Id,
+            AttackAppearance.FromTower(context.Tower), context.Target.Position, excluded.Count - 1));
     }
 }
 

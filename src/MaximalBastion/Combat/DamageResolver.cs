@@ -76,7 +76,10 @@ public sealed class DamageResolver
                 expose?.SourceId ?? 0,
                 exposeEquivalent,
                 armorBreak?.SourceId ?? 0,
-                armorBreakEquivalent));
+                armorBreakEquivalent,
+                payload.IsDamageOverTime,
+                enemy,
+                appliedShieldDamage > 0 && shieldBefore > 0 && enemy.Shield <= 0));
         }
     }
 

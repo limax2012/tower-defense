@@ -13,9 +13,11 @@ public sealed class AudioManager : IDisposable
     internal const float OneShotCompressionThreshold = 0.18f;
     internal const float OneShotCompressionRatio = 2.5f;
     internal const float OneShotPeakLimit = 0.22f;
-    private readonly Dictionary<Cue, GeneratedOneShot> _sounds = new();
-    private readonly Dictionary<string, GeneratedOneShot> _towerImpacts = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, float> _towerImpactCooldowns = new(StringComparer.OrdinalIgnoreCase);
+    private readonly AudioDirector _director = new();
+    private readonly SoundMixer _mixer = new();
+    private readonly Dictionary<SoundSample, SoundEffect> _effects = [];
+    private readonly Dictionary<int, SoundEffectInstance> _voices = [];
+    private bool _effectsUnavailable;
     private SoundEffect? _musicSound;
     private SoundEffectInstance? _musicInstance;
     private readonly SoundEffect? _menuMusicSound;
@@ -24,22 +26,22 @@ public sealed class AudioManager : IDisposable
     private bool _ownsMusicSound;
     private bool _gameplayPlaylistActive;
     private float _playlistStartGrace;
-    private float _killCooldown;
-    private float _leakCooldown;
-    private float _bossPhaseCooldown;
-    private float _combatImpactCooldown;
     private float _sfxVolume = 0.65f;
     private float _musicVolume = 0.20f;
     private float _musicActivity = 0.68f;
     private string _musicThemeId = "menu";
     private bool _disposed;
-    private bool _defeatCuePlayed;
     private GameSession? _attachedSession;
 
     public float SfxVolume
     {
         get => _sfxVolume;
-        set => _sfxVolume = Math.Clamp(float.IsFinite(value) ? value : 0.65f, 0, 1);
+        set
+        {
+            _sfxVolume = Math.Clamp(float.IsFinite(value) ? value : 0.65f, 0, 1);
+            if (_sfxVolume <= 0) _mixer.Clear();
+            SynchronizeVoices();
+        }
     }
 
     public float MusicVolume
@@ -53,35 +55,10 @@ public sealed class AudioManager : IDisposable
         _menuMusicSound = menuMusicSound;
         _gameplaySongs = gameplaySongs?.Where(song => song is not null).ToArray() ?? [];
         _gameplayShuffle = _gameplaySongs.Count > 0 ? new ShuffleBag(_gameplaySongs.Count) : null;
-        try
-        {
-            _sounds[Cue.Place] = CreateTone(280, 470, 0.10f, WaveShape.Triangle);
-            _sounds[Cue.Upgrade] = CreateTone(480, 760, 0.14f, WaveShape.Sine);
-            _sounds[Cue.Sell] = CreateTone(360, 210, 0.12f, WaveShape.Triangle);
-            _sounds[Cue.Protocol] = CreateChord(390, 585, 0.20f);
-            _sounds[Cue.Kill] = CreateTone(720, 560, 0.045f, WaveShape.Square);
-            _sounds[Cue.Leak] = CreateTone(392, 392, 0.10f, WaveShape.Sine);
-            _sounds[Cue.WaveStart] = CreateTone(260, 540, 0.24f, WaveShape.Triangle);
-            _sounds[Cue.WaveClear] = CreateChord(520, 780, 0.28f);
-            _sounds[Cue.Plate] = CreateNoisePulse(0.11f);
-            _sounds[Cue.Forge] = CreateTone(620, 980, 0.16f, WaveShape.Sine);
-            _sounds[Cue.BossPhase] = CreateGeneratedOneShot(CreateBossOverdriveSamples());
-            _sounds[Cue.Victory] = CreateTriad(392, 523, 659, 0.48f);
-            _sounds[Cue.Defeat] = CreateTwoNoteCue(392, 330, 0.30f);
-            _sounds[Cue.UiConfirm] = CreateTone(410, 620, 0.075f, WaveShape.Sine);
-            _sounds[Cue.UiBack] = CreateTone(430, 300, 0.075f, WaveShape.Triangle);
-            _sounds[Cue.UiDelete] = CreateTwoNoteCue(420, 500, 0.11f);
-            CreateTowerImpactPalette();
-            TryStartMusic("menu");
-        }
-        catch
-        {
-            foreach (var sound in _sounds.Values) sound.Effect.Dispose();
-            _sounds.Clear();
-            foreach (var sound in _towerImpacts.Values) sound.Effect.Dispose();
-            _towerImpacts.Clear();
-            throw;
-        }
+        _director.Requested += Play;
+        _mixer.Started += StartVoice;
+        _mixer.Stopped += StopVoice;
+        TryStartMusic("menu");
     }
 
     public static AudioManager? TryCreate(SoundEffect? menuMusicSound = null, IReadOnlyList<Song>? gameplaySongs = null)
@@ -90,18 +67,13 @@ public sealed class AudioManager : IDisposable
         catch { return null; }
     }
 
-    public void Update(float deltaSeconds)
+    public void Update(float deltaSeconds, bool combatEnabled = true)
     {
-        _killCooldown = MathF.Max(0, _killCooldown - MathF.Max(0, deltaSeconds));
-        _leakCooldown = MathF.Max(0, _leakCooldown - MathF.Max(0, deltaSeconds));
-        _bossPhaseCooldown = MathF.Max(0, _bossPhaseCooldown - MathF.Max(0, deltaSeconds));
-        _combatImpactCooldown = MathF.Max(0, _combatImpactCooldown - MathF.Max(0, deltaSeconds));
-        foreach (var towerId in _towerImpactCooldowns.Keys.ToArray())
-        {
-            var remaining = MathF.Max(0, _towerImpactCooldowns[towerId] - MathF.Max(0, deltaSeconds));
-            if (remaining <= 0) _towerImpactCooldowns.Remove(towerId);
-            else _towerImpactCooldowns[towerId] = remaining;
-        }
+        if (_disposed) return;
+        _director.Update(deltaSeconds, combatEnabled);
+        if (!combatEnabled || _attachedSession?.IsCoOpPaused == true) _mixer.StopCombat();
+        _mixer.Update(deltaSeconds);
+        SynchronizeVoices();
         if (_musicInstance is null && !_gameplayPlaylistActive) return;
         try
         {
@@ -145,134 +117,100 @@ public sealed class AudioManager : IDisposable
 
     public void Attach(GameSession session, bool preserveMusic = false)
     {
-        if (ReferenceEquals(_attachedSession, session)) return;
+        if (_disposed || ReferenceEquals(_attachedSession, session)) return;
+        _director.Attach(session);
+        _mixer.Clear(preserveInterface: true);
         _attachedSession = session;
-        _leakCooldown = 0;
-        _bossPhaseCooldown = 0;
-        _defeatCuePlayed = false;
         var themeId = session.Map.Definition.Id;
         if (preserveMusic && HasActiveGameplayMusic()) _musicThemeId = themeId.ToLowerInvariant();
         else SwitchMusic(themeId);
-        session.TowerPlaced += _ => Play(Cue.Place, 0.72f);
-        session.TowerUpgraded += (_, _) => Play(Cue.Upgrade, 0.78f);
-        session.TowerSold += (_, _) => Play(Cue.Sell, 0.62f);
-        session.TowerOverdriven += tower => Play(Cue.Protocol, 0.9f, ProtocolPitch(tower.Definition.Id));
-        session.EnemyKilled += _ => PlayKill();
-        session.EnemyEscaped += _ => PlayLeak(session.Economy.Lives <= 0);
-        session.BossPhaseChanged += _ => PlayBossPhase();
-        session.EmergencyDefenseDeployed += (_, _) => Play(Cue.Place, 0.48f, 0.18f);
-        session.EmergencyDefenseTriggered += (_, _) => Play(Cue.Plate, 0.72f);
-        session.GeneratorPlaced += _ => Play(Cue.Forge, 0.72f);
-        session.GeneratorUpgraded += (_, _) => Play(Cue.Upgrade, 0.72f);
-        session.GeneratorSold += (_, _) => Play(Cue.Sell, 0.62f);
-        session.EmergencyChargeProduced += () => Play(Cue.Forge, 0.55f);
-        session.WaveStarted += _ => Play(Cue.WaveStart, 0.78f);
-        session.WaveCompleted += wave => Play(wave >= session.TotalWaves && !session.IsEndlessMode ? Cue.Victory : Cue.WaveClear,
-            wave >= session.TotalWaves && !session.IsEndlessMode ? 0.92f : 0.82f);
-        session.DamageResolver.DamageApplied += OnDamageApplied;
     }
 
     public void Detach(bool preserveMusic = false)
     {
+        _director.Detach();
+        _mixer.Clear(preserveInterface: true);
         _attachedSession = null;
-        _leakCooldown = 0;
-        _bossPhaseCooldown = 0;
-        _defeatCuePlayed = false;
-        _towerImpactCooldowns.Clear();
-        if (!preserveMusic || !HasActiveGameplayMusic()) SwitchMusic("menu");
+        if (!_disposed && (!preserveMusic || !HasActiveGameplayMusic())) SwitchMusic("menu");
     }
 
-    public void PlayUiConfirm() => Play(Cue.UiConfirm, 0.42f);
-    public void PlayUiBack() => Play(Cue.UiBack, 0.36f);
-    public void PlayUiDelete() => Play(Cue.UiDelete, 0.30f);
+    public void PlayUiNavigate() => PlayUi(SoundCue.UiNavigate, 0.30f);
+    public void PlayUiConfirm() => PlayUi(SoundCue.UiConfirm, 0.40f);
+    public void PlayUiBack() => PlayUi(SoundCue.UiBack, 0.34f);
+    public void PlayUiDelete() => PlayUi(SoundCue.UiDelete, 0.36f);
+    public void PlayUiError() => PlayUi(SoundCue.UiError, 0.34f);
+
+    private void PlayUi(SoundCue cue, float gain) =>
+        Play(new SoundRequest(new SoundKey(null, Cue: cue), gain, SoundCategory.Interface, Cooldown: 0.065f));
+
+    private void Play(SoundRequest request)
+    {
+        if (_disposed || _effectsUnavailable || _sfxVolume <= 0) return;
+        try { _mixer.TryPlay(request); }
+        catch
+        {
+            _effectsUnavailable = true;
+            _mixer.Clear();
+        }
+    }
+
+    private void StartVoice(SoundVoice voice)
+    {
+        SoundEffectInstance? instance = null;
+        try
+        {
+            if (!_effects.TryGetValue(voice.Sample, out var effect))
+            {
+                effect = CreateSoundEffect(voice.Sample.Samples);
+                _effects.Add(voice.Sample, effect);
+            }
+            instance = effect.CreateInstance();
+            PlatformServices.PlayWithImmediateOneShotAudioParameters(() =>
+            {
+                instance.IsLooped = voice.IsLooped;
+                instance.Volume = Math.Clamp(_sfxVolume * voice.OutputGain, 0, 1);
+                instance.Pitch = voice.Pitch;
+                instance.Pan = voice.Pan;
+                instance.Play();
+            });
+            _voices.Add(voice.Id, instance);
+        }
+        catch
+        {
+            try { instance?.Dispose(); } catch { }
+            // Device failures cannot interrupt gameplay or overwrite the user's volume preference.
+            _effectsUnavailable = true;
+            _mixer.Clear();
+        }
+    }
+
+    private void SynchronizeVoices()
+    {
+        try
+        {
+            foreach (var voice in _mixer.Voices)
+                if (_voices.TryGetValue(voice.Id, out var instance))
+                    instance.Volume = Math.Clamp(_sfxVolume * voice.OutputGain, 0, 1);
+        }
+        catch
+        {
+            _effectsUnavailable = true;
+            _mixer.Clear();
+        }
+    }
+
+    private void StopVoice(int id)
+    {
+        if (!_voices.Remove(id, out var instance)) return;
+        try { instance.Stop(); } catch { }
+        try { instance.Dispose(); } catch { }
+    }
 
     public static float MusicActivityTarget(bool waveActive, int liveEnemyCount, bool bossPresent)
     {
         if (!waveActive) return 0.68f;
         var pressure = MathHelper.Clamp(Math.Max(0, liveEnemyCount) / 70f, 0, 1);
         return MathF.Min(1f, 0.78f + pressure * 0.17f + (bossPresent ? 0.08f : 0));
-    }
-
-    private void PlayKill()
-    {
-        if (_killCooldown > 0) return;
-        _killCooldown = 0.055f;
-        Play(Cue.Kill, 0.24f);
-    }
-
-    private void PlayLeak(bool defeat)
-    {
-        if (defeat)
-        {
-            if (_defeatCuePlayed) return;
-            _defeatCuePlayed = true;
-            Play(Cue.Defeat, 0.95f);
-            return;
-        }
-        if (_leakCooldown > 0) return;
-        _leakCooldown = 0.055f;
-        Play(Cue.Leak, 0.50f);
-    }
-
-    private void PlayBossPhase()
-    {
-        if (_bossPhaseCooldown > 0) return;
-        _bossPhaseCooldown = 0.25f;
-        Play(Cue.BossPhase, 0.80f);
-    }
-
-    private void Play(Cue cue, float cueVolume, float pitch = 0)
-    {
-        if (_disposed || _sfxVolume <= 0 || !_sounds.TryGetValue(cue, out var sound)) return;
-        var masteredGain = MasteredOneShotGain(sound.Peak, cueVolume);
-        try
-        {
-            PlatformServices.PlayWithImmediateOneShotAudioParameters(() =>
-                sound.Effect.Play(Math.Clamp(_sfxVolume * masteredGain, 0, 1), Math.Clamp(pitch, -1, 1), 0));
-        }
-        catch
-        {
-            // Audio is presentational only. A device disappearing mid-match must
-            // never interrupt the deterministic game session.
-            _sfxVolume = 0;
-        }
-    }
-
-    private void OnDamageApplied(Combat.DamageReport report)
-    {
-        if (report.ShieldDamage + report.HealthDamage <= 0 || _attachedSession is null) return;
-        if (report.SourceTowerId > 0)
-        {
-            var source = _attachedSession.Towers.FirstOrDefault(tower => tower.Id == report.SourceTowerId);
-            if (source is not null)
-            {
-                TryPlayTowerImpact(source.Definition.Id, false);
-                var support = _attachedSession.GetSupportBuff(source);
-                var beaconId = support.AttackSpeedSourceTowerId > 0
-                    ? support.AttackSpeedSourceTowerId
-                    : support.RangeSourceTowerId;
-                if (beaconId > 0 && _attachedSession.Towers.FirstOrDefault(tower => tower.Id == beaconId) is { } beacon)
-                    TryPlayTowerImpact(beacon.Definition.Id, true);
-            }
-        }
-    }
-
-    private void TryPlayTowerImpact(string towerId, bool supportCue)
-    {
-        if (_disposed || _sfxVolume <= 0 || !_towerImpacts.TryGetValue(towerId, out var sound)) return;
-        if (_towerImpactCooldowns.ContainsKey(towerId) || !supportCue && _combatImpactCooldown > 0) return;
-        _towerImpactCooldowns[towerId] = CombatCueCooldown(towerId);
-        if (!supportCue) _combatImpactCooldown = 0.028f;
-        var liveEnemies = _attachedSession?.Enemies.Count(enemy => !enemy.IsDead && !enemy.HasEscaped) ?? 0;
-        var pressureMix = liveEnemies switch { > 80 => 0.42f, > 35 => 0.58f, > 12 => 0.74f, _ => 1f };
-        var cueVolume = (supportCue ? 0.07f : 0.13f) * pressureMix;
-        var masteredGain = MasteredOneShotGain(sound.Peak, cueVolume);
-        try
-        {
-            PlatformServices.PlayWithImmediateOneShotAudioParameters(() =>
-                sound.Effect.Play(Math.Clamp(_sfxVolume * masteredGain, 0, 1), 0, 0));
-        }
-        catch { _sfxVolume = 0; }
     }
 
     internal static float MasteredOneShotGain(float sourcePeak, float requestedGain)
@@ -306,20 +244,6 @@ public sealed class AudioManager : IDisposable
         "signal_beacon" => 0.42f,
         _ => 0.14f
     };
-
-    private void CreateTowerImpactPalette()
-    {
-        _towerImpacts["needle_turret"] = CreateTone(1080, 1420, 0.026f, WaveShape.Sine);
-        _towerImpacts["frost_spire"] = CreateTone(610, 360, 0.055f, WaveShape.Sine);
-        _towerImpacts["shard_fan"] = CreateTone(920, 540, 0.032f, WaveShape.Saw);
-        _towerImpacts["watchtower"] = CreateTone(310, 165, 0.070f, WaveShape.Triangle);
-        _towerImpacts["ember_coil"] = CreateTone(240, 120, 0.075f, WaveShape.Saw);
-        _towerImpacts["breaker_cannon"] = CreateTone(175, 78, 0.085f, WaveShape.Square);
-        _towerImpacts["signal_beacon"] = CreateChord(740, 1110, 0.065f);
-        _towerImpacts["arc_relay"] = CreateTone(820, 285, 0.060f, WaveShape.Triangle);
-        _towerImpacts["siege_mortar"] = CreateImpactPulse(0.095f, 82f);
-        _towerImpacts["prism_beam"] = CreateTone(1240, 710, 0.050f, WaveShape.Sine);
-    }
 
     private void SwitchMusic(string themeId)
     {
@@ -398,174 +322,6 @@ public sealed class AudioManager : IDisposable
         }
     }
 
-    private static float ProtocolPitch(string towerId) => towerId.ToLowerInvariant() switch
-    {
-        "siege_mortar" => -0.25f,
-        "breaker_cannon" => -0.16f,
-        "ember_coil" => -0.08f,
-        "watchtower" => -0.03f,
-        "needle_turret" => 0.04f,
-        "shard_fan" => 0.10f,
-        "signal_beacon" => 0.14f,
-        "frost_spire" => 0.18f,
-        "arc_relay" => 0.22f,
-        "prism_beam" => 0.28f,
-        _ => 0
-    };
-
-    private static GeneratedOneShot CreateTone(float startFrequency, float endFrequency, float seconds, WaveShape shape)
-    {
-        var count = Math.Max(1, (int)(SampleRate * seconds));
-        var samples = new short[count];
-        var phase = 0f;
-        for (var index = 0; index < count; index++)
-        {
-            var t = index / (float)Math.Max(1, count - 1);
-            var frequency = MathHelper.Lerp(startFrequency, endFrequency, t);
-            phase += MathHelper.TwoPi * frequency / SampleRate;
-            var wave = shape switch
-            {
-                WaveShape.Square => MathF.Sin(phase) >= 0 ? 0.62f : -0.62f,
-                WaveShape.Triangle => 2f / MathF.PI * MathF.Asin(MathF.Sin(phase)),
-                WaveShape.Saw => 2f * (phase / MathHelper.TwoPi - MathF.Floor(phase / MathHelper.TwoPi + 0.5f)),
-                _ => MathF.Sin(phase)
-            };
-            samples[index] = ToSample(wave * Envelope(t) * 0.34f);
-        }
-        return CreateGeneratedOneShot(samples);
-    }
-
-    private static GeneratedOneShot CreateChord(float firstFrequency, float secondFrequency, float seconds)
-    {
-        var count = Math.Max(1, (int)(SampleRate * seconds));
-        var samples = new short[count];
-        for (var index = 0; index < count; index++)
-        {
-            var t = index / (float)Math.Max(1, count - 1);
-            var time = index / (float)SampleRate;
-            var wave = MathF.Sin(MathHelper.TwoPi * firstFrequency * time) * 0.55f +
-                       MathF.Sin(MathHelper.TwoPi * secondFrequency * time) * 0.45f;
-            samples[index] = ToSample(wave * Envelope(t) * 0.28f);
-        }
-        return CreateGeneratedOneShot(samples);
-    }
-
-    private static GeneratedOneShot CreateTriad(float firstFrequency, float secondFrequency, float thirdFrequency, float seconds)
-    {
-        var count = Math.Max(1, (int)(SampleRate * seconds));
-        var samples = new short[count];
-        for (var index = 0; index < count; index++)
-        {
-            var t = index / (float)Math.Max(1, count - 1);
-            var time = index / (float)SampleRate;
-            var wave = MathF.Sin(MathHelper.TwoPi * firstFrequency * time) * 0.38f +
-                       MathF.Sin(MathHelper.TwoPi * secondFrequency * time) * 0.34f +
-                       MathF.Sin(MathHelper.TwoPi * thirdFrequency * time) * 0.28f;
-            samples[index] = ToSample(wave * Envelope(t) * 0.27f);
-        }
-        return CreateGeneratedOneShot(samples);
-    }
-
-    private static GeneratedOneShot CreateTwoNoteCue(float firstFrequency, float secondFrequency, float seconds)
-    {
-        var count = Math.Max(2, (int)(SampleRate * seconds));
-        var samples = new short[count];
-        var split = count / 2;
-        for (var index = 0; index < count; index++)
-        {
-            var firstNote = index < split;
-            var noteStart = firstNote ? 0 : split;
-            var noteLength = firstNote ? split : count - split;
-            var noteTime = (index - noteStart) / (float)Math.Max(1, noteLength - 1);
-            var frequency = firstNote ? firstFrequency : secondFrequency;
-            var time = (index - noteStart) / (float)SampleRate;
-            var envelope = MathF.Sin(MathF.PI * noteTime);
-            var wave = MathF.Sin(MathHelper.TwoPi * frequency * time);
-            samples[index] = ToSample(wave * envelope * envelope * 0.18f);
-        }
-        return CreateGeneratedOneShot(samples);
-    }
-
-    private static short[] CreateBossOverdriveSamples()
-    {
-        const float seconds = 0.52f;
-        var count = (int)(SampleRate * seconds);
-        var signal = new float[count];
-        var samples = new short[count];
-        var rotorPhase = 0f;
-        var impactPhase = 0f;
-        var filteredNoise = 0f;
-        var noiseFloor = 0f;
-        var peak = 0f;
-        uint state = 0xBA5710u;
-        for (var index = 0; index < count; index++)
-        {
-            var time = index / (float)SampleRate;
-            state = state * 1664525u + 1013904223u;
-            var noise = ((state >> 8) / (float)0xFFFFFF) * 2f - 1f;
-            filteredNoise += (noise - filteredNoise) * 0.14f;
-            noiseFloor += (filteredNoise - noiseFloor) * 0.012f;
-            var pressureNoise = filteredNoise - noiseFloor;
-
-            // Inharmonic rotor sidebands and filtered pressure keep the surge mechanical.
-            var rotorFrequency = 82f + 83f * (1f - MathF.Exp(-time * 7f));
-            rotorPhase += MathHelper.TwoPi * rotorFrequency / SampleRate;
-            var rotor = MathF.Sin(rotorPhase + 0.85f * MathF.Sin(rotorPhase * 0.47f)) * 0.53f +
-                        MathF.Sin(rotorPhase * 2.07f) * 0.17f;
-            var rotorEnvelope = MathHelper.SmoothStep(0, 1, Math.Clamp(time / 0.055f, 0, 1)) *
-                                MathHelper.SmoothStep(0, 1, Math.Clamp((seconds - time) / 0.22f, 0, 1));
-            var flutter = 0.86f + 0.14f * MathF.Sin(MathHelper.TwoPi * (19f * time + 22f * time * time));
-
-            // A brief contactor strike leads into the motor load.
-            impactPhase += MathHelper.TwoPi * (92f + 68f * MathF.Exp(-time * 35f)) / SampleRate;
-            var impact = MathF.Sin(impactPhase) * MathF.Exp(-time * 29f) * 0.65f;
-            var latch = (pressureNoise * 0.85f + MathF.Sin(MathHelper.TwoPi * 1367f * time) * 0.12f) *
-                        MathF.Exp(-time * 58f);
-            var edgeFade = MathHelper.SmoothStep(0, 1, Math.Clamp(time / 0.004f, 0, 1)) *
-                           MathHelper.SmoothStep(0, 1, Math.Clamp((seconds - time) / 0.025f, 0, 1));
-            signal[index] = (impact + latch + (rotor * flutter + pressureNoise * 0.65f) * rotorEnvelope) * edgeFade;
-            peak = MathF.Max(peak, MathF.Abs(signal[index]));
-        }
-
-        var gain = peak > 0 ? 0.18f / peak : 0;
-        for (var index = 0; index < count; index++) samples[index] = ToSample(signal[index] * gain);
-        return samples;
-    }
-
-    private static GeneratedOneShot CreateNoisePulse(float seconds)
-    {
-        var count = Math.Max(1, (int)(SampleRate * seconds));
-        var samples = new short[count];
-        uint state = 0xC0FFEEu;
-        for (var index = 0; index < count; index++)
-        {
-            state = state * 1664525u + 1013904223u;
-            var noise = ((state >> 8) / (float)0xFFFFFF) * 2f - 1f;
-            var time = index / (float)SampleRate;
-            var body = MathF.Sin(MathHelper.TwoPi * 105f * time);
-            var t = index / (float)Math.Max(1, count - 1);
-            samples[index] = ToSample((noise * 0.38f + body * 0.62f) * Envelope(t) * 0.32f);
-        }
-        return CreateGeneratedOneShot(samples);
-    }
-
-    private static GeneratedOneShot CreateImpactPulse(float seconds, float bodyFrequency)
-    {
-        var count = Math.Max(1, (int)(SampleRate * seconds));
-        var samples = new short[count];
-        uint state = 0x51E6E123u;
-        for (var index = 0; index < count; index++)
-        {
-            state = state * 1664525u + 1013904223u;
-            var noise = ((state >> 8) / (float)0xFFFFFF) * 2f - 1f;
-            var time = index / (float)SampleRate;
-            var t = index / (float)Math.Max(1, count - 1);
-            var body = MathF.Sin(MathHelper.TwoPi * bodyFrequency * (1f - t * 0.18f) * time);
-            samples[index] = ToSample((body * 0.76f + noise * 0.24f) * Envelope(t) * 0.28f);
-        }
-        return CreateGeneratedOneShot(samples);
-    }
-
     private static SoundEffect CreateTacticalLoop(string themeId)
     {
         const float seconds = 24f;
@@ -600,13 +356,6 @@ public sealed class AudioManager : IDisposable
         return CreateSoundEffect(samples);
     }
 
-    private static float Envelope(float t)
-    {
-        var attack = MathHelper.Clamp(t / 0.08f, 0, 1);
-        var release = MathHelper.Clamp((1f - t) / 0.32f, 0, 1);
-        return attack * release;
-    }
-
     private static short ToSample(float value) => (short)(MathHelper.Clamp(value, -1, 1) * short.MaxValue);
 
     private static MemoryStream CreateWaveStream(IReadOnlyList<short> samples)
@@ -639,22 +388,16 @@ public sealed class AudioManager : IDisposable
         return SoundEffect.FromStream(stream);
     }
 
-    private static GeneratedOneShot CreateGeneratedOneShot(IReadOnlyList<short> samples)
-    {
-        var peak = 0;
-        foreach (var sample in samples) peak = Math.Max(peak, Math.Abs((int)sample));
-        return new GeneratedOneShot(CreateSoundEffect(samples), peak / (float)short.MaxValue);
-    }
-
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+        _director.Detach();
+        _director.Requested -= Play;
+        _mixer.Clear();
         StopMusicPlayback();
-        foreach (var sound in _sounds.Values) sound.Effect.Dispose();
-        _sounds.Clear();
-        foreach (var sound in _towerImpacts.Values) sound.Effect.Dispose();
-        _towerImpacts.Clear();
+        foreach (var sound in _effects.Values) sound.Dispose();
+        _effects.Clear();
     }
 
     private void DisposeMusic()
@@ -680,15 +423,6 @@ public sealed class AudioManager : IDisposable
         StopGameplayPlaylist();
         DisposeMusic();
     }
-
-    private enum Cue
-    {
-        Place, Upgrade, Sell, Protocol, Kill, Leak, WaveStart, WaveClear, Plate, Forge, BossPhase, Victory, Defeat,
-        UiConfirm, UiBack, UiDelete
-    }
-
-    private readonly record struct GeneratedOneShot(SoundEffect Effect, float Peak);
-    private enum WaveShape { Sine, Triangle, Square, Saw }
 
     private sealed record MusicTheme(float[] Bass, float[] Melody, float[] Counter, float ClockSeconds,
         float ClockFrequency, float Gain)

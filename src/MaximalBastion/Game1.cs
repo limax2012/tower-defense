@@ -53,6 +53,7 @@ public sealed class Game1 : Game
     private UIManager _ui = null!;
     private DebugOverlay _debug = null!;
     private AudioManager? _audio;
+    private bool _uiActionAudioPlayed;
     private GameContent _content = null!;
     private GameSession? _session;
     private GameSession? _historyInspectionSession;
@@ -233,7 +234,7 @@ public sealed class Game1 : Game
         AdvanceWindowSizePersistence(elapsedSeconds);
         _ui.AdvanceVisualTime(elapsedSeconds);
         if (_state == GameState.MainMenu) _ui.AdvanceMainMenuBattle(elapsedSeconds);
-        _audio?.Update(elapsedSeconds);
+        _audio?.Update(elapsedSeconds, _state == GameState.Playing);
         _coOpCursor.Advance(elapsedSeconds);
         SyncRemoteCoOpCursor();
 
@@ -244,6 +245,8 @@ public sealed class Game1 : Game
             return;
         }
 
+        var navigationBefore = _ui.CaptureNavigationSnapshot();
+        _uiActionAudioPlayed = false;
         switch (_state)
         {
             case GameState.MainMenu:
@@ -306,6 +309,16 @@ public sealed class Game1 : Game
                 break;
         }
 
+
+        if (!_uiActionAudioPlayed)
+        {
+            switch (_ui.NavigationFeedbackSince(navigationBefore, input))
+            {
+                case UiNavigationFeedback.Navigate: _audio?.PlayUiNavigate(); break;
+                case UiNavigationFeedback.Confirm: _audio?.PlayUiConfirm(); break;
+                case UiNavigationFeedback.Back: _audio?.PlayUiBack(); break;
+            }
+        }
 
         var connectionTimedOut = _coOpConnection is not null && _coOpHeartbeat.Advance(elapsedSeconds);
         _ui?.SetCoOpLinkSilence(_coOpHeartbeat.SilenceSeconds);
@@ -595,10 +608,12 @@ public sealed class Game1 : Game
     private UiAction WithUiAudio(UiAction action)
     {
         if (action == UiAction.None || _audio is null) return action;
+        _uiActionAudioPlayed = true;
         if (action is UiAction.DeleteSaveSlot or UiAction.DeleteRunHistory)
             _audio.PlayUiDelete();
         else if (action is UiAction.CloseSettings or UiAction.CloseSaveSlots or UiAction.CloseRunHistory or
-                 UiAction.MainMenu or UiAction.Exit)
+                 UiAction.CloseRunHistoryField or UiAction.MainMenu or UiAction.Exit ||
+                 action == UiAction.CoOp && _state == GameState.GameSetup)
             _audio.PlayUiBack();
         else
             _audio.PlayUiConfirm();
@@ -610,7 +625,11 @@ public sealed class Game1 : Game
         if (_ui.SelectedSettingsIndex is 3 or 4 &&
             action is (UiAction.PreviewSettings or UiAction.ApplySettings))
         {
-            if (input.LeftPressed) _audio?.PlayUiConfirm();
+            if (input.LeftPressed)
+            {
+                _uiActionAudioPlayed = true;
+                _audio?.PlayUiConfirm();
+            }
             return action;
         }
         return WithUiAudio(action);

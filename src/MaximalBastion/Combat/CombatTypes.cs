@@ -34,7 +34,17 @@ public readonly record struct DamageReport(
     int ExposeSourceTowerId = 0,
     float ExposeDamageEquivalent = 0,
     int ArmorBreakSourceTowerId = 0,
-    float ArmorBreakDamageEquivalent = 0);
+    float ArmorBreakDamageEquivalent = 0,
+    bool IsDamageOverTime = false,
+    EnemyInstance? Target = null,
+    bool ShieldBroken = false);
+
+/// <summary>A single weapon contact or detonation, independent of the number of damage recipients.</summary>
+public readonly record struct WeaponImpact(
+    int SourceTowerId,
+    AttackAppearance Appearance,
+    Vector2 Position,
+    int SecondaryHitCount = 0);
 
 public sealed class ProjectileInstance
 {

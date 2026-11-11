@@ -243,6 +243,14 @@ Verify the mastered loudness, true-peak headroom, and dynamic range of every mus
 powershell -ExecutionPolicy Bypass -File scripts\verify-audio-mix.ps1
 ```
 
+Export the generated effects palette and six Sandbox combat mixes with the shipped music, including normal and accelerated late-wave and boss scenes:
+
+```powershell
+dotnet run --project tests\MaximalBastion.Tests -c Debug -- --verify-audio .artifacts\audio
+```
+
+This requires FFmpeg and writes WAVs, event traces, and voice/headroom measurements. See [sound design](docs/audio-design.md) for weapon identities, event timing, mix limits, and the runtime audition procedure.
+
 Representative headless commands:
 
 ```powershell

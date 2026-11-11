@@ -139,6 +139,8 @@ public sealed class GameSession
     public event Action<TowerInstance, int>? TowerUpgraded;
     public event Action<TowerInstance, int>? TowerSold;
     public event Action<TowerInstance>? TowerOverdriven;
+    public event Action<TowerInstance>? TowerFired;
+    public event Action<WeaponImpact>? WeaponImpacted;
     public event Action<EnemyInstance>? EnemyKilled;
     public event Action<EnemyInstance>? EnemyEscaped;
     public event Action<EnemyInstance>? EnemySpawned;
@@ -1549,6 +1551,9 @@ public sealed class GameSession
         Effects.AddImpact(target.Position, ColorPalette.Disruption, target.Definition.Visual.Radius + 7, signal: signal);
         Effects.AddFlash(target.Position, ColorPalette.Disruption, 0.26f, target.Definition.Visual.Radius + 7, signal: signal);
     }
+
+    internal void OnTowerFired(TowerInstance tower) => TowerFired?.Invoke(tower);
+    internal void OnWeaponImpacted(WeaponImpact impact) => WeaponImpacted?.Invoke(impact);
 
     public void OnEnemyKilled(EnemyInstance enemy)
     {

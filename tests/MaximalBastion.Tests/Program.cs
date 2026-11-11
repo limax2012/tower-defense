@@ -58,6 +58,9 @@ internal static class Program
 
     private static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0].Equals("--verify-audio", StringComparison.OrdinalIgnoreCase))
+            return AudioVerificationCli.Run(args);
+
         if (args.Any(x => x.StartsWith("--planner", StringComparison.OrdinalIgnoreCase)))
             return PlannerCli.Run(new ContentLoader(Path.Combine(AppContext.BaseDirectory, "ContentData")).Load(), args);
 
@@ -106,6 +109,10 @@ internal static class Program
             ("persistent display and audio settings", PersistentUserSettings),
             ("product storage migration", ProductStorageMigrationTest),
             ("procedural audio mastering", ProceduralAudioMastering),
+            ("interface audio navigation", UiAudioFeedbackTests.Run),
+            ("layered sound bank and voice budgets", SoundscapeTests.Run),
+            ("audio mix priorities and lifecycle", AudioMixTests.Run),
+            ("combat audio event timing", CombatAudioEventTests.Run),
             ("browser one-shot audio parameters", BrowserOneShotAudioParameters),
             ("gameplay music shuffle bag", GameplayMusicShuffleBag),
             ("crash report fallback", CrashReportFallback),

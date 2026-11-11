@@ -42,11 +42,13 @@ public sealed class ProjectileSystem
             {
                 var recipient = ApplySplash(session, projectile);
                 AddSplashEffect(session, projectile, recipient);
+                session.OnWeaponImpacted(new WeaponImpact(projectile.Payload.SourceTowerId, appearance, projectile.Position));
             }
             else if (projectile.Kind == ProjectileKind.Homing && projectile.SplashRadius > 0)
             {
                 var recipient = ApplySplash(session, projectile);
                 AddSplashEffect(session, projectile, recipient);
+                session.OnWeaponImpacted(new WeaponImpact(projectile.Payload.SourceTowerId, appearance, projectile.Position));
             }
             else if (projectile.Target is { IsDead: false, HasEscaped: false } target)
             {
@@ -55,6 +57,7 @@ public sealed class ProjectileSystem
                     MathF.Max(6, MathF.Min(12, target.Radius * 0.6f)), appearance, incomingDirection,
                     targetEnemy: target);
                 ApplyRicochet(session, projectile, target);
+                session.OnWeaponImpacted(new WeaponImpact(projectile.Payload.SourceTowerId, appearance, target.Position));
             }
             projectile.Expire();
         }

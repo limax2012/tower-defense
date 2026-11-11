@@ -219,7 +219,7 @@ Projectile Splash effects draw with their live damage recipient, above that enem
 
 ## Audio
 
-`AudioManager` synthesizes UI, tower, enemy, boss, tactical, victory/defeat, and procedural music voices. Per-effect and global cadence limits avoid an audio wall during dense combat. Audio has no influence on deterministic state and degrades safely when no audio device is available.
+`AudioManager` owns effect playback and the menu/gameplay music lifecycle. `ProceduralSoundBank` builds layered mechanical and energy effects; `AudioDirector` maps actual launches, impacts, enemy transitions, and tactical events into local requests. `SoundMixer` limits real-time cadence, simultaneous voices, and summed peak levels while reserving room for important cues. Sustained Prism audio uses a renewable lease and fades after target loss or pause. Audio has no influence on deterministic state and degrades safely when no audio device is available. See [sound design](docs/audio-design.md) for the palette and reproducible mix verification.
 
 ## Diagnostics and verification
 
