@@ -110,6 +110,7 @@ internal static class AudioVerificationCli
                 sfxVolume = 0.65,
                 musicVolume = 0.20,
                 rendering = "Real Sandbox simulation events through AudioDirector and SoundMixer; offline PCM rendering with shipped music. Device output and listening require a runtime audition.",
+                admission = "Starts count mixer admissions, including voices preempted before rendering. RenderedStarts counts voices contributing nonzero PCM, not perceptual audibility. Gain ratios separate per-voice mastering and admission from the shared combat mix gain.",
                 palette,
                 scenarios = reports
             }, new JsonSerializerOptions { WriteIndented = true }));
@@ -169,17 +170,89 @@ internal static class AudioVerificationCli
         var mixer = new SoundMixer(8101);
         var starts = new Dictionary<string, int>();
         var requests = new Dictionary<string, int>();
+        var evaluations = new Dictionary<string, int>();
+        var rejections = new Dictionary<string, Dictionary<string, int>>();
+        var preemptions = new Dictionary<string, int>();
+        var renderedVoices = new HashSet<int>();
         var trace = new List<object>();
         var time = 0f;
+        var requestId = 0;
+        var retiredStarts = 0;
+        var preemptedStarts = 0;
+        var preemptedBeforeRender = 0;
+        var budgetAttenuatedStarts = 0;
+        var masteringAttenuatedStarts = 0;
+        var minimumAdmissionGainRatio = 1f;
+        var minimumBudgetGainRatio = 1f;
+        var minimumCombatMixGain = 1f;
+        var maxVoices = 0;
+        var maxCombat = 0;
+        var maxPeakSum = 0f;
+        var maxReservedPeak = 0f;
+        var maxCombatReservedPeak = 0f;
         director.Requested += request =>
         {
+            requestId++;
             requests[request.Key.Family] = requests.GetValueOrDefault(request.Key.Family) + 1;
+            trace.Add(new
+            {
+                kind = "requested", seconds = time, requestId, family = request.Key.Family,
+                requestedGain = request.Gain, category = request.Category.ToString(), request.Pitch,
+                request.Cooldown, request.Key.LevelIndex, request.Key.Apex
+            });
             mixer.TryPlay(request);
+        };
+        mixer.Evaluated += (request, result) =>
+        {
+            var reason = result.ToString();
+            evaluations[reason] = evaluations.GetValueOrDefault(reason) + 1;
+            if (result is not (SoundAdmissionResult.Started or SoundAdmissionResult.Renewed))
+            {
+                if (!rejections.TryGetValue(request.Key.Family, out var familyReasons))
+                    rejections[request.Key.Family] = familyReasons = new Dictionary<string, int>();
+                familyReasons[reason] = familyReasons.GetValueOrDefault(reason) + 1;
+            }
+            trace.Add(new
+            {
+                kind = "evaluated", seconds = time, requestId, family = request.Key.Family, reason,
+                requestedGain = request.Gain, mixer.CombatMixGain, mixer.ReservedPeak, mixer.CombatReservedPeak
+            });
+            ObserveMixer();
         };
         mixer.Started += voice =>
         {
             starts[voice.Key.Family] = starts.GetValueOrDefault(voice.Key.Family) + 1;
-            trace.Add(new { seconds = time, family = voice.Key.Family, voice.Id, voice.Gain, voice.Pitch, voice.IsLooped });
+            var masteredGain = AudioManager.MasteredOneShotGain(voice.Sample.Peak, voice.RequestedGain);
+            var admissionRatio = voice.Gain / MathF.Max(voice.RequestedGain, 0.000001f);
+            var budgetRatio = voice.Gain / MathF.Max(masteredGain, 0.000001f);
+            minimumAdmissionGainRatio = MathF.Min(minimumAdmissionGainRatio, admissionRatio);
+            minimumBudgetGainRatio = MathF.Min(minimumBudgetGainRatio, budgetRatio);
+            if (masteredGain < voice.RequestedGain - 0.00001f) masteringAttenuatedStarts++;
+            if (voice.Gain < masteredGain - 0.00001f) budgetAttenuatedStarts++;
+            trace.Add(new
+            {
+                kind = "started", seconds = time, requestId, family = voice.Key.Family, voice.Id,
+                voice.RequestedGain, masteredGain, voice.Gain, admissionRatio, budgetRatio,
+                voice.OutputGain, voice.ReservedPeak, mixer.CombatMixGain,
+                category = voice.Category.ToString(), voice.Pitch, voice.IsLooped
+            });
+        };
+        mixer.Retired += (voice, preempted) =>
+        {
+            retiredStarts++;
+            var rendered = renderedVoices.Contains(voice.Id);
+            if (preempted)
+            {
+                preemptedStarts++;
+                if (!rendered) preemptedBeforeRender++;
+                preemptions[voice.Key.Family] = preemptions.GetValueOrDefault(voice.Key.Family) + 1;
+            }
+            trace.Add(new
+            {
+                kind = "stopped", seconds = time, family = voice.Key.Family, voice.Id,
+                reason = preempted ? "preempted" : "retired", rendered,
+                voice.Age, voice.RequestedGain, voice.Gain, voice.OutputGain
+            });
         };
         director.Attach(session);
         session.StartSandboxWave(scenario.Wave);
@@ -191,9 +264,6 @@ internal static class AudioVerificationCli
         }
         var sfx = new float[(int)(Seconds * Rate) * 2];
         var musicGain = new float[(int)(Seconds * FramesPerSecond)];
-        var maxVoices = 0;
-        var maxCombat = 0;
-        var maxPeakSum = 0f;
         var activity = 0.68f;
         for (var frame = 0; frame < Seconds * FramesPerSecond; frame++)
         {
@@ -212,10 +282,8 @@ internal static class AudioVerificationCli
                         Damage = boss.MaxHealth * 0.56f, ArmorPierce = 1000, IgnoreShield = true
                     });
             }
-            maxVoices = Math.Max(maxVoices, mixer.Voices.Count);
-            maxCombat = Math.Max(maxCombat, mixer.Voices.Count(voice => voice.Category is SoundCategory.Combat or SoundCategory.Detail));
-            maxPeakSum = MathF.Max(maxPeakSum, mixer.Voices.Sum(voice => voice.Gain * voice.Sample.Peak));
-            RenderFrame(mixer, sfx, frame * SamplesPerFrame * 2);
+            ObserveMixer();
+            RenderFrame(mixer, sfx, frame * SamplesPerFrame * 2, renderedVoices);
             var target = AudioManager.MusicActivityTarget(session.Waves.IsActive,
                 session.Enemies.Count(enemy => !enemy.IsDead && !enemy.HasEscaped),
                 session.Enemies.Any(enemy => enemy.IsBoss && !enemy.IsDead && !enemy.HasEscaped));
@@ -225,8 +293,14 @@ internal static class AudioVerificationCli
         director.Detach();
         Check.True(maxVoices <= SoundMixer.MaximumVoices && maxCombat <= SoundMixer.MaximumCombatVoices,
             scenario.Name + " respects voice caps at real-time playback speed");
-        Check.True(maxPeakSum <= SoundMixer.TotalPeakBudget + 0.0001f,
+        Check.True(maxReservedPeak <= SoundMixer.TotalPeakBudget + 0.0001f,
             scenario.Name + " has bounded worst-case simultaneous peak headroom");
+        Check.True(maxCombatReservedPeak <= SoundMixer.CombatPeakBudget + 0.0001f,
+            scenario.Name + " preserves the combat peak reservation");
+        Check.True(evaluations.Values.Sum() == requests.Values.Sum() &&
+            evaluations.GetValueOrDefault(nameof(SoundAdmissionResult.Started)) == starts.Values.Sum() &&
+            retiredStarts + mixer.Voices.Count == starts.Values.Sum(),
+            scenario.Name + " accounts for every request and admitted voice");
         Check.True(starts.Keys.Any(key => key.EndsWith("/Shot", StringComparison.Ordinal)),
             scenario.Name + " exercises real weapon firing");
         var musicPath = Path.Combine(musicRoot, "Music", scenario.Music);
@@ -245,7 +319,21 @@ internal static class AudioVerificationCli
         File.WriteAllText(Path.Combine(output, scenario.Name + "-events.json"),
             JsonSerializer.Serialize(trace, new JsonSerializerOptions { WriteIndented = true }));
         return new ScenarioReport(scenario.Name, scenario.Speed, scenario.Music, starts.Values.Sum(), maxVoices,
-            maxCombat, maxPeakSum, RmsDb(sfx), RmsDb(musicOnly), Db(mixed.Max(MathF.Abs)), requests, starts);
+            maxCombat, maxPeakSum, RmsDb(sfx), RmsDb(musicOnly), Db(mixed.Max(MathF.Abs)), requests, starts,
+            evaluations, rejections, preemptions, renderedVoices.Count, retiredStarts, mixer.Voices.Count,
+            preemptedStarts, preemptedBeforeRender, masteringAttenuatedStarts, budgetAttenuatedStarts,
+            minimumAdmissionGainRatio, minimumBudgetGainRatio, minimumCombatMixGain,
+            maxReservedPeak, maxCombatReservedPeak);
+
+        void ObserveMixer()
+        {
+            maxVoices = Math.Max(maxVoices, mixer.Voices.Count);
+            maxCombat = Math.Max(maxCombat, mixer.Voices.Count(voice => voice.Category is SoundCategory.Combat or SoundCategory.Detail));
+            maxPeakSum = MathF.Max(maxPeakSum, mixer.Voices.Sum(voice => voice.Gain * voice.Sample.Peak));
+            maxReservedPeak = MathF.Max(maxReservedPeak, mixer.ReservedPeak);
+            maxCombatReservedPeak = MathF.Max(maxCombatReservedPeak, mixer.CombatReservedPeak);
+            minimumCombatMixGain = MathF.Min(minimumCombatMixGain, mixer.CombatMixGain);
+        }
     }
 
     private static void PlaceTower(GameSession session, string weapon, int index, int stage)
@@ -280,7 +368,7 @@ internal static class AudioVerificationCli
             session.SpawnSandboxTargets(enemy.Id, count, 3, "Standard", false);
     }
 
-    private static void RenderFrame(SoundMixer mixer, float[] output, int start)
+    private static void RenderFrame(SoundMixer mixer, float[] output, int start, HashSet<int> renderedVoices)
     {
         foreach (var voice in mixer.Voices)
         {
@@ -290,6 +378,7 @@ internal static class AudioVerificationCli
             var gain = voice.OutputGain * 0.65f / short.MaxValue;
             var left = MathF.Sqrt(1 - MathF.Max(0, voice.Pan));
             var right = MathF.Sqrt(1 + MathF.Min(0, voice.Pan));
+            var rendered = false;
             for (var sample = 0; sample < SamplesPerFrame; sample++)
             {
                 var offset = first + sample * rate;
@@ -298,9 +387,11 @@ internal static class AudioVerificationCli
                 var index = (int)offset;
                 var next = (index + 1) % source.Length;
                 var value = (source[index] + (source[next] - source[index]) * (offset - index)) * gain;
+                rendered |= value != 0;
                 output[start + sample * 2] += value * left;
                 output[start + sample * 2 + 1] += value * right;
             }
+            if (rendered) renderedVoices.Add(voice.Id);
         }
     }
 
@@ -360,5 +451,10 @@ internal static class AudioVerificationCli
     private sealed record Scenario(string Name, float Speed, int Towers, int Stage, int Wave, string Music, bool Boss = false);
     private sealed record ScenarioReport(string Name, float Speed, string Music, int Starts, int MaximumVoices,
         int MaximumCombatVoices, float MaximumPeakSum, float SfxRmsDb, float MusicRmsDb, float MixedPeakDb,
-        Dictionary<string, int> RequestedFamilies, Dictionary<string, int> StartedFamilies);
+        Dictionary<string, int> RequestedFamilies, Dictionary<string, int> StartedFamilies,
+        Dictionary<string, int> AdmissionResults, Dictionary<string, Dictionary<string, int>> RejectedFamilies,
+        Dictionary<string, int> PreemptedFamilies, int RenderedStarts, int RetiredStarts, int ActiveStartsAtEnd,
+        int PreemptedStarts, int PreemptedBeforeRender, int MasteringAttenuatedStarts, int BudgetAttenuatedStarts,
+        float MinimumAdmissionGainRatio, float MinimumBudgetGainRatio, float MinimumCombatMixGain,
+        float MaximumReservedPeak, float MaximumCombatReservedPeak);
 }

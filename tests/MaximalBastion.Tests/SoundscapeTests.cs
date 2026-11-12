@@ -124,7 +124,7 @@ internal static class SoundscapeTests
             Check.True(mixer.Voices.Count <= SoundMixer.MaximumVoices, "Dense combat respects the total voice budget");
             Check.True(mixer.Voices.Count(voice => voice.Category is SoundCategory.Combat or SoundCategory.Detail) <=
                 SoundMixer.MaximumCombatVoices, "Dense combat respects its reserved voice budget");
-            Check.True(mixer.Voices.Sum(voice => voice.Sample.Peak * voice.Gain) <= SoundMixer.TotalPeakBudget + 0.0001f,
+            Check.True(mixer.ReservedPeak <= SoundMixer.TotalPeakBudget + 0.0001f,
                 "Worst-case aligned transients remain below the mix peak budget");
         }
         Check.True(mixer.TryPlay(new SoundRequest(new SoundKey(null, Cue: SoundCue.Leak), 0.75f, SoundCategory.Critical)),

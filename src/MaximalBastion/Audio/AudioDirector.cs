@@ -13,16 +13,11 @@ internal sealed class AudioDirector
     private GameSession? _session;
     private bool _combatEnabled = true;
     private bool _defeatPlayed;
-    private float _pressureGain = 1;
     public event Action<SoundRequest>? Requested;
 
     public void Update(float deltaSeconds, bool combatEnabled = true)
     {
         _combatEnabled = combatEnabled && _session?.IsCoOpPaused != true;
-        var elapsed = float.IsFinite(deltaSeconds) ? MathF.Max(0, deltaSeconds) : 0;
-        var enemies = _session?.Enemies.Count(enemy => !enemy.IsDead && !enemy.HasEscaped) ?? 0;
-        var target = enemies switch { > 80 => 0.52f, > 35 => 0.64f, > 12 => 0.80f, _ => 1f };
-        _pressureGain = MathHelper.Lerp(_pressureGain, target, 1 - MathF.Exp(-elapsed * 5));
     }
 
     public void Attach(GameSession session)
@@ -36,7 +31,7 @@ internal sealed class AudioDirector
         session.TowerPlaced += OnPlaced;
         session.TowerUpgraded += OnUpgraded;
         session.TowerSold += OnSold;
-        session.TowerOverdriven += OnProtocol;
+        session.ProtocolActivated += OnProtocol;
         session.EnemyKilled += OnKilled;
         session.EnemyEscaped += OnEscaped;
         session.EnemySpawned += OnSpawned;
@@ -61,7 +56,7 @@ internal sealed class AudioDirector
             session.TowerPlaced -= OnPlaced;
             session.TowerUpgraded -= OnUpgraded;
             session.TowerSold -= OnSold;
-            session.TowerOverdriven -= OnProtocol;
+            session.ProtocolActivated -= OnProtocol;
             session.EnemyKilled -= OnKilled;
             session.EnemyEscaped -= OnEscaped;
             session.EnemySpawned -= OnSpawned;
@@ -78,7 +73,6 @@ internal sealed class AudioDirector
         }
         _session = null;
         _defeatPlayed = false;
-        _pressureGain = 1;
     }
 
     private void OnTowerFired(TowerInstance tower)
@@ -92,14 +86,14 @@ internal sealed class AudioDirector
             "breaker_cannon" => 0.32f, "siege_mortar" => 0.29f,
             "ember_coil" => 0.24f, "prism_beam" => 0.22f, _ => 0.25f
         };
-        Request(new SoundRequest(key, gain * _pressureGain, Pan: Pan(tower.Position),
+        Request(new SoundRequest(key, gain, Pan: Pan(tower.Position),
             Cooldown: AudioManager.CombatCueCooldown(family)));
         var support = _session.GetSupportBuff(tower);
         var beaconId = support.AttackSpeedSourceTowerId > 0 ? support.AttackSpeedSourceTowerId : support.RangeSourceTowerId;
         var beacon = beaconId > 0 ? _session.Towers.FirstOrDefault(source => source.Id == beaconId) : null;
         if (beacon is not null)
             Request(new SoundRequest(new SoundKey("signal_beacon", WeaponSoundLayer.Shot,
-                LevelIndex: beacon.LevelIndex, Apex: beacon.IsApex), 0.11f * _pressureGain,
+                LevelIndex: beacon.LevelIndex, Apex: beacon.IsApex), 0.11f,
                 SoundCategory.Detail, Pan(beacon.Position), Cooldown: 1.15f));
     }
 
@@ -117,7 +111,7 @@ internal sealed class AudioDirector
             "needle_turret" => 0.065f, "siege_mortar" => 0.34f, "breaker_cannon" => 0.27f,
             "watchtower" => 0.22f, "arc_relay" => chain ? 0.20f : 0.12f, _ => 0.17f
         };
-        Request(new SoundRequest(key, gain * _pressureGain, Pan: Pan(impact.Position),
+        Request(new SoundRequest(key, gain, Pan: Pan(impact.Position),
             Cooldown: MathF.Max(0.075f, AudioManager.CombatCueCooldown(family))));
     }
 
@@ -125,9 +119,9 @@ internal sealed class AudioDirector
     {
         if (!_combatEnabled || report.Target is null || report.ShieldDamage <= 0) return;
         if (report.ShieldBroken)
-            Cue(SoundCue.ShieldBreak, 0.28f * _pressureGain, SoundCategory.Detail, 0.22f, report.Target.Position);
+            Cue(SoundCue.ShieldBreak, 0.28f, SoundCategory.Detail, 0.22f, report.Target.Position);
         else if (!report.IsDamageOverTime)
-            Cue(SoundCue.ShieldHit, 0.12f * _pressureGain, SoundCategory.Detail, 0.16f, report.Target.Position);
+            Cue(SoundCue.ShieldHit, 0.12f, SoundCategory.Detail, 0.16f, report.Target.Position);
     }
 
     private void OnKilled(EnemyInstance enemy)
@@ -135,7 +129,7 @@ internal sealed class AudioDirector
         if (!_combatEnabled) return;
         var cue = enemy.IsBoss || enemy.Definition.Id == "t5_regenerator" ? SoundCue.KillLarge :
             enemy.BaseArmor >= 4 || enemy.IsElite ? SoundCue.KillArmored : SoundCue.KillSmall;
-        Cue(cue, (enemy.IsBoss ? 0.58f : cue == SoundCue.KillLarge ? 0.25f : 0.16f) * _pressureGain,
+        Cue(cue, enemy.IsBoss ? 0.58f : cue == SoundCue.KillLarge ? 0.25f : 0.16f,
             enemy.IsBoss ? SoundCategory.Critical : SoundCategory.Detail,
             enemy.IsBoss ? 0.5f : 0.14f, enemy.Position);
     }
@@ -160,8 +154,14 @@ internal sealed class AudioDirector
     private void OnUpgraded(TowerInstance tower, int cost) => Cue(tower.IsApex ? SoundCue.Apex : SoundCue.Upgrade,
         tower.IsApex ? 0.72f : 0.56f, position: tower.Position);
     private void OnSold(TowerInstance tower, int refund) => Cue(SoundCue.Sell, 0.44f, position: tower.Position);
-    private void OnProtocol(TowerInstance tower) => Cue(SoundCue.Protocol, 0.9f, SoundCategory.Notification,
-        0.20f, tower.Position, ProtocolPitch(tower.Definition.Id));
+    private void OnProtocol(TowerInstance tower, ProtocolActivationOrigin origin)
+    {
+        var automatic = origin is ProtocolActivationOrigin.ArmedAutomatic or ProtocolActivationOrigin.ApexAutomatic;
+        if (automatic && !_combatEnabled) return;
+        Cue(SoundCue.Protocol, automatic ? 0.34f : 0.52f,
+            automatic ? SoundCategory.Combat : SoundCategory.Notification,
+            automatic ? 0.65f : 0.20f, tower.Position, ProtocolPitch(tower.Definition.Id));
+    }
     private void OnPlateDeployed(PulsePlateInstance plate, bool purchased) => Cue(SoundCue.PlateDeploy, 0.40f, position: plate.Position);
     private void OnPlateTriggered(PulsePlateInstance plate, int hitCount) => Cue(SoundCue.PlateTrigger, 0.46f,
         SoundCategory.Combat, 0.14f, plate.Position);

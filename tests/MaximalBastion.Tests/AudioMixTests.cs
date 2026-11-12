@@ -12,6 +12,8 @@ internal static class AudioMixTests
 {
     public static void Run()
     {
+        ProtocolAudioTests.Run();
+        SoundEnvelopeTests.Run();
         NonfiniteControls();
         CriticalAdmissionUnderNotifications();
         MixedTierBeamContinuity();
@@ -52,7 +54,7 @@ internal static class AudioMixTests
         Check.True(mixer.TryPlay(new SoundRequest(new SoundKey(null, Cue: SoundCue.Defeat), .72f,
             SoundCategory.Critical)), "terminal warnings can reclaim lower-priority notification headroom");
         Check.True(mixer.Voices.Any(voice => voice.Key.Cue == SoundCue.Defeat), "the warning owns an audible voice");
-        Check.True(mixer.Voices.Sum(voice => voice.Gain * voice.Sample.Peak) <= SoundMixer.TotalPeakBudget + .0001f,
+        Check.True(mixer.ReservedPeak <= SoundMixer.TotalPeakBudget + .0001f,
             "priority reclamation preserves the worst-case peak ceiling");
 
         mixer.Clear();
@@ -169,7 +171,7 @@ internal static class AudioMixTests
         Expect(SoundCue.Upgrade, () => sandbox.TrySpecializeTower(tower.Id, tower.Definition.Specializations[0].Id));
         Expect(SoundCue.Apex, () => sandbox.TryUpgradeTower(tower.Id));
         Expect(SoundCue.Protocol, () => sandbox.TryOverdriveTower(tower.Id));
-        Check.Equal(.9f, requests.Single().Gain, "activation retains the full short-hum playback gain");
+        Check.Equal(.52f, requests.Single().Gain, "manual activation keeps a clear, restrained short-hum gain");
         Check.Equal(.04f, requests.Single().Pitch, "activation retains the Needle family transposition");
         Expect(SoundCue.Sell, () => sandbox.TrySellTower(tower.Id));
         Check.True(sandbox.SpawnSandboxTargets("t1_crawler", 1, 1, "Standard", true), "plate cue target spawns");

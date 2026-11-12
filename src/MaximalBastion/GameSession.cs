@@ -17,6 +17,9 @@ using EconomyService = MaximalBastion.Economy.Economy;
 
 namespace MaximalBastion;
 
+/// <summary>Presentation context emitted at activation; it is not retained in synchronized state.</summary>
+public enum ProtocolActivationOrigin { Manual, ArmedAutomatic, ApexAutomatic, Sandbox }
+
 public sealed class GameSession
 {
     private const float BuildPlacementAssistRadius = 64f;
@@ -139,6 +142,7 @@ public sealed class GameSession
     public event Action<TowerInstance, int>? TowerUpgraded;
     public event Action<TowerInstance, int>? TowerSold;
     public event Action<TowerInstance>? TowerOverdriven;
+    public event Action<TowerInstance, ProtocolActivationOrigin>? ProtocolActivated;
     public event Action<TowerInstance>? TowerFired;
     public event Action<WeaponImpact>? WeaponImpacted;
     public event Action<EnemyInstance>? EnemyKilled;
@@ -808,18 +812,21 @@ public sealed class GameSession
     public bool IsTargetModeAvailable(TargetMode mode) =>
         Enum.IsDefined(mode) && (mode != TargetMode.Support || SupportTargetingEnabled);
 
-    public bool TryOverdriveTower(int towerId, int requestingPlayerId = 1)
+    public bool TryOverdriveTower(int towerId, int requestingPlayerId = 1) =>
+        TryOverdriveTower(towerId, requestingPlayerId, ProtocolActivationOrigin.Manual);
+
+    private bool TryOverdriveTower(int towerId, int requestingPlayerId, ProtocolActivationOrigin origin)
     {
         var tower = Towers.FirstOrDefault(x => x.Id == towerId);
         if (!ProtocolsEnabled || requestingPlayerId is < 1 or > 2 || tower is null ||
             OverdriveCooldownRemaining > 0)
             return false;
-        if (!ActivateProtocol(tower)) return false;
+        if (!ActivateProtocol(tower, origin)) return false;
         OverdriveCooldownRemaining = tower.Protocol.CooldownSeconds;
         return true;
     }
 
-    private bool ActivateProtocol(TowerInstance tower)
+    private bool ActivateProtocol(TowerInstance tower, ProtocolActivationOrigin origin)
     {
         if (tower.IsSandboxDisabled || tower.IsOverdriven || tower.ApexProtocolCooldownRemaining > 0)
             return false;
@@ -837,6 +844,7 @@ public sealed class GameSession
                 AttackAppearance.FromTower(tower), purpose: EffectPurpose.ProtocolActivation);
         }
         TowerOverdriven?.Invoke(tower);
+        ProtocolActivated?.Invoke(tower, origin);
         return true;
     }
 
@@ -870,7 +878,7 @@ public sealed class GameSession
         }
 
         if (!ShouldActivateAutomaticProtocol(tower)) return;
-        TryOverdriveTower(tower.Id);
+        TryOverdriveTower(tower.Id, 1, ProtocolActivationOrigin.ArmedAutomatic);
     }
 
     private void TryActivateApexProtocols()
@@ -882,7 +890,7 @@ public sealed class GameSession
             .OrderBy(tower => tower.Id)
             .Where(ShouldActivateAutomaticProtocol)
             .ToArray();
-        foreach (var tower in ready) ActivateProtocol(tower);
+        foreach (var tower in ready) ActivateProtocol(tower, ProtocolActivationOrigin.ApexAutomatic);
     }
 
     private bool ShouldActivateAutomaticProtocol(TowerInstance tower)
@@ -1218,7 +1226,7 @@ public sealed class GameSession
         if (tower is null || tower.IsSandboxDisabled) return false;
         if (AutoOverdriveTowerId == tower.Id) AutoOverdriveTowerId = 0;
         tower.ClearOverdrive();
-        if (!ActivateProtocol(tower)) return false;
+        if (!ActivateProtocol(tower, ProtocolActivationOrigin.Sandbox)) return false;
         AnnouncementTitle = $"TESTING {tower.Protocol.DisplayName.ToUpperInvariant()}";
         AnnouncementSubtitle = "The selected tower's Protocol restarted from a clean timer.";
         AnnouncementPositive = true;
